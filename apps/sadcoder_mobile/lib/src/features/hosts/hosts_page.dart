@@ -363,10 +363,13 @@ class _SessionActionButton extends StatelessWidget {
         status == CodexSessionStatus.disconnecting;
 
     if (status == CodexSessionStatus.connected ||
+        status == CodexSessionStatus.reconnecting ||
         status == CodexSessionStatus.disconnecting) {
       return FilledButton.icon(
         key: const ValueKey('session-disconnect-button'),
-        onPressed: transitioning ? null : onDisconnect,
+        onPressed: status == CodexSessionStatus.disconnecting
+            ? null
+            : onDisconnect,
         icon: transitioning
             ? const SizedBox.square(
                 dimension: 18,
@@ -447,6 +450,7 @@ class _SessionStatusPanel extends StatelessWidget {
 
   IconData _iconForState() => switch (controller.status) {
     CodexSessionStatus.connected => Icons.check_circle_outline,
+    CodexSessionStatus.reconnecting => Icons.sync,
     CodexSessionStatus.connecting ||
     CodexSessionStatus.disconnecting => Icons.sync,
     CodexSessionStatus.failed => Icons.error_outline,
@@ -457,6 +461,7 @@ class _SessionStatusPanel extends StatelessWidget {
     CodexSessionStatus.connected => Theme.of(context).colorScheme.primary,
     CodexSessionStatus.failed => Theme.of(context).colorScheme.error,
     CodexSessionStatus.connecting ||
+    CodexSessionStatus.reconnecting ||
     CodexSessionStatus.disconnecting ||
     CodexSessionStatus.idle => null,
   };
@@ -471,12 +476,24 @@ class _SessionStatusPanel extends StatelessWidget {
         endpoint == null
             ? l10n.connected
             : '${l10n.activeConnection}: $endpoint',
+      CodexSessionStatus.reconnecting => _reconnectingText(l10n, endpoint),
       CodexSessionStatus.disconnecting => l10n.disconnecting,
       CodexSessionStatus.failed =>
         endpoint == null
             ? l10n.connectionFailed
             : '${l10n.connectionFailed}: $endpoint',
     };
+  }
+
+  String _reconnectingText(AppLocalizations l10n, String? endpoint) {
+    final delay = controller.nextReconnectDelay;
+    final prefix = endpoint == null
+        ? l10n.reconnecting
+        : '${l10n.reconnecting}: $endpoint';
+    if (delay == null) {
+      return prefix;
+    }
+    return '$prefix (${delay.inSeconds}s)';
   }
 }
 

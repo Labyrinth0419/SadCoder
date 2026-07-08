@@ -5,21 +5,43 @@ import 'package:flutter/foundation.dart';
 import '../approvals/approval_state_controller.dart';
 import '../ssh/ssh_profile.dart';
 import 'codex_session_connector.dart';
+import 'reconnect_policy.dart';
 
-enum CodexSessionStatus { idle, connecting, connected, disconnecting, failed }
+enum CodexSessionStatus {
+  idle,
+  connecting,
+  connected,
+  reconnecting,
+  disconnecting,
+  failed,
+}
 
 class CodexSessionStateController extends ChangeNotifier {
   CodexSessionStateController({
     required CodexSessionConnectionStarter connector,
     required this.approvalController,
-  }) : _connector = connector;
+    ReconnectPolicy? reconnectPolicy,
+    ReconnectDelayScheduler reconnectDelayScheduler =
+        const TimerReconnectDelayScheduler(),
+    bool autoReconnect = true,
+  }) : _connector = connector,
+       _reconnectPolicy = reconnectPolicy ?? ReconnectPolicy(),
+       _reconnectDelayScheduler = reconnectDelayScheduler,
+       _autoReconnect = autoReconnect;
 
   final CodexSessionConnectionStarter _connector;
+  final ReconnectPolicy _reconnectPolicy;
+  final ReconnectDelayScheduler _reconnectDelayScheduler;
+  final bool _autoReconnect;
   final ApprovalStateController approvalController;
   CodexSessionConnectionHandle? _connection;
   CodexSessionStatus _status = CodexSessionStatus.idle;
   SshProfile? _profile;
   Object? _error;
+  int _generation = 0;
+  int _reconnectAttempt = 0;
+  Duration? _nextReconnectDelay;
+  bool _disposed = false;
 
   CodexSessionStatus get status => _status;
 
@@ -29,29 +51,43 @@ class CodexSessionStateController extends ChangeNotifier {
 
   Object? get error => _error;
 
+  int get reconnectAttempt => _reconnectAttempt;
+
+  Duration? get nextReconnectDelay => _nextReconnectDelay;
+
   Future<void> connect(SshProfile profile) async {
     if (_status == CodexSessionStatus.connecting ||
         _status == CodexSessionStatus.disconnecting) {
       throw StateError('A session transition is already in progress');
     }
 
-    if (_connection != null) {
-      await disconnect();
+    final generation = ++_generation;
+    final existingConnection = _connection;
+    if (existingConnection != null) {
+      _connection = null;
+      await existingConnection.close();
     }
 
-    _setState(
-      status: CodexSessionStatus.connecting,
-      profile: profile,
-      error: null,
-    );
+    _reconnectAttempt = 0;
+    _nextReconnectDelay = null;
+    _setState(status: CodexSessionStatus.connecting, profile: profile);
 
     try {
-      _connection = await _connector.connect(
+      final connection = await _connector.connect(
         profile,
         approvalController: approvalController,
       );
+      if (!_isCurrentGeneration(generation)) {
+        await connection.close(notifyApprovalController: false);
+        return;
+      }
+      _connection = connection;
+      _watchConnectionDone(connection, generation);
       _setState(status: CodexSessionStatus.connected, profile: profile);
     } on Object catch (error) {
+      if (!_isCurrentGeneration(generation)) {
+        return;
+      }
       _connection = null;
       _setState(
         status: CodexSessionStatus.failed,
@@ -63,26 +99,116 @@ class CodexSessionStateController extends ChangeNotifier {
   }
 
   Future<void> disconnect() async {
+    _generation++;
     final connection = _connection;
     if (connection == null) {
-      _setState(status: CodexSessionStatus.idle, error: null);
+      _reconnectAttempt = 0;
+      _nextReconnectDelay = null;
+      _setState(status: CodexSessionStatus.idle);
       return;
     }
 
-    _setState(status: CodexSessionStatus.disconnecting, error: null);
+    _setState(status: CodexSessionStatus.disconnecting);
     try {
       await connection.close();
     } finally {
       _connection = null;
-      _setState(status: CodexSessionStatus.idle, error: null);
+      _reconnectAttempt = 0;
+      _nextReconnectDelay = null;
+      _setState(status: CodexSessionStatus.idle);
     }
   }
 
   @override
   void dispose() {
+    _disposed = true;
+    _generation++;
     unawaited(_connection?.close(notifyApprovalController: false));
     _connection = null;
     super.dispose();
+  }
+
+  void _watchConnectionDone(
+    CodexSessionConnectionHandle connection,
+    int generation,
+  ) {
+    unawaited(
+      connection.done.then(
+        (_) => _handleConnectionDone(connection, generation),
+        onError: (Object error, StackTrace stackTrace) =>
+            _handleConnectionDone(connection, generation, error),
+      ),
+    );
+  }
+
+  Future<void> _handleConnectionDone(
+    CodexSessionConnectionHandle connection,
+    int generation, [
+    Object? error,
+  ]) async {
+    if (!_isCurrentGeneration(generation) || _connection != connection) {
+      return;
+    }
+
+    _connection = null;
+    await connection.close();
+    if (!_isCurrentGeneration(generation)) {
+      return;
+    }
+
+    final reconnectProfile = _profile;
+    if (!_autoReconnect || reconnectProfile == null) {
+      _setState(status: CodexSessionStatus.failed, error: error);
+      return;
+    }
+
+    unawaited(_reconnect(reconnectProfile, generation, error));
+  }
+
+  Future<void> _reconnect(
+    SshProfile profile,
+    int generation,
+    Object? error,
+  ) async {
+    var lastError = error;
+    while (_isCurrentGeneration(generation)) {
+      _reconnectAttempt++;
+      final delay = _reconnectPolicy.delayForAttempt(_reconnectAttempt);
+      _nextReconnectDelay = delay;
+      _setState(
+        status: CodexSessionStatus.reconnecting,
+        profile: profile,
+        error: lastError,
+      );
+
+      await _reconnectDelayScheduler.wait(delay);
+      if (!_isCurrentGeneration(generation)) {
+        return;
+      }
+
+      try {
+        final connection = await _connector.connect(
+          profile,
+          approvalController: approvalController,
+        );
+        if (!_isCurrentGeneration(generation)) {
+          await connection.close(notifyApprovalController: false);
+          return;
+        }
+        _connection = connection;
+        _reconnectAttempt = 0;
+        _nextReconnectDelay = null;
+        _watchConnectionDone(connection, generation);
+        _setState(status: CodexSessionStatus.connected, profile: profile);
+        return;
+      } on Object catch (error) {
+        lastError = error;
+      }
+    }
+  }
+
+  bool _isCurrentGeneration(int generation) {
+    return !_disposed && generation == _generation;
   }
 
   void _setState({

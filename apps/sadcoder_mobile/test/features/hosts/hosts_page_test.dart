@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +11,7 @@ import 'package:sadcoder_mobile/src/features/hosts/hosts_page.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/probe/m0_probe_coordinator.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
+import 'package:sadcoder_mobile/src/session/reconnect_policy.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 
@@ -181,6 +184,59 @@ void main() {
     expect(find.text('Connection failed: alice@srv.dev:22'), findsOneWidget);
     expect(find.textContaining('connect failed'), findsOneWidget);
   });
+
+  testWidgets('shows reconnecting state after an observed session drops', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final approvalController = ApprovalStateController();
+    final starter = _FakeSessionStarter();
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+      reconnectPolicy: const ReconnectPolicy.fixed(
+        delays: [Duration(seconds: 1)],
+      ),
+      reconnectDelayScheduler: _FakeReconnectDelayScheduler(),
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await _pumpHostsPage(tester, runner, sessionController: sessionController);
+
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('password-field')),
+      'secret',
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('session-connect-button')),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('session-connect-button')));
+    await _pumpUntil(
+      tester,
+      () => sessionController.status == CodexSessionStatus.connected,
+      describe: () => 'status=${sessionController.status}',
+    );
+
+    starter.connections.single.completeDone();
+    await _pumpUntil(
+      tester,
+      () => sessionController.status == CodexSessionStatus.reconnecting,
+      describe: () => 'status=${sessionController.status}',
+    );
+
+    expect(find.text('Reconnecting: alice@srv.dev:22 (1s)'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('session-disconnect-button')),
+      findsOneWidget,
+    );
+  });
 }
 
 Future<void> _pumpUntil(
@@ -251,6 +307,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
 
   final bool failConnect;
   final connectedProfiles = <SshProfile>[];
+  final connections = <_FakeSessionConnection>[];
   int closeCount = 0;
 
   @override
@@ -262,21 +319,34 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       throw StateError('connect failed');
     }
     connectedProfiles.add(profile);
-    return _FakeSessionConnection(
+    final connection = _FakeSessionConnection(
       profile: profile,
       onClose: () => closeCount++,
     );
+    connections.add(connection);
+    return connection;
   }
 }
 
 class _FakeSessionConnection implements CodexSessionConnectionHandle {
   _FakeSessionConnection({required this.profile, required this.onClose});
 
+  final _doneCompleter = Completer<void>();
+
   @override
   final SshProfile profile;
 
   final VoidCallback onClose;
   bool _closed = false;
+
+  @override
+  Future<void> get done => _doneCompleter.future;
+
+  void completeDone() {
+    if (!_doneCompleter.isCompleted) {
+      _doneCompleter.complete();
+    }
+  }
 
   @override
   Future<void> close({bool notifyApprovalController = true}) async {
@@ -286,4 +356,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     _closed = true;
     onClose();
   }
+}
+
+class _FakeReconnectDelayScheduler implements ReconnectDelayScheduler {
+  @override
+  Future<void> wait(Duration delay) => Completer<void>().future;
 }

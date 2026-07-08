@@ -14,11 +14,13 @@ class AgentProxyConnection {
     required this.input,
     required this.output,
     required this.close,
-  });
+    Future<void>? done,
+  }) : done = done ?? Completer<void>().future;
 
   final Stream<Uint8List> input;
   final StreamSink<Uint8List> output;
   final Future<void> Function() close;
+  final Future<void> done;
 
   JsonRpcTransport asJsonRpcTransport() {
     return LineJsonRpcTransport(input: input, output: output);

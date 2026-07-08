@@ -18,6 +18,7 @@ class DartSshProxyConnector implements AgentProxyConnector {
     return AgentProxyConnection(
       input: session.stdout,
       output: session.stdin,
+      done: session.done,
       close: () => _close(client, session),
     );
   }
