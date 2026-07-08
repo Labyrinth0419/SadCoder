@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../agent/agent_remote_service.dart';
+import '../../agent/agent_status.dart';
 import '../../i18n/app_localizations.dart';
 import '../../probe/m0_probe_coordinator.dart';
 import '../../ssh/dart_ssh_proxy_connector.dart';
@@ -310,6 +311,12 @@ class _ProbeResultPanel extends StatelessWidget {
               Text(
                 '${report!.agentStatus!.platformOs}/${report.agentStatus!.platformArch} - ${report.agentStatus!.codexVersion ?? report.agentStatus!.codexPath}',
               ),
+              const SizedBox(height: 4),
+              Text(_backendSummary(l10n, report.agentStatus!)),
+              if (report.agentStatus!.backendDetail != null) ...[
+                const SizedBox(height: 4),
+                Text(report.agentStatus!.backendDetail!),
+              ],
             ],
             if (report != null) ...[
               const SizedBox(height: 12),
@@ -356,6 +363,15 @@ class _ProbeResultPanel extends StatelessWidget {
       return Theme.of(context).colorScheme.primary;
     }
     return null;
+  }
+
+  String _backendSummary(AppLocalizations l10n, AgentStatus status) {
+    final kind = switch (status.backendKind) {
+      BackendKind.codexAppServerDaemon => l10n.backendDaemon,
+      BackendKind.codexAppServerStdio => l10n.backendStdioFallback,
+      BackendKind.unknown => l10n.backendUnknown,
+    };
+    return '${l10n.backend}: $kind';
   }
 }
 

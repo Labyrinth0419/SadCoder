@@ -42,6 +42,10 @@ class AppLocalizations {
   String get initialize => _text('initialize');
   String get modelList => _text('modelList');
   String get threadList => _text('threadList');
+  String get backend => _text('backend');
+  String get backendDaemon => _text('backendDaemon');
+  String get backendStdioFallback => _text('backendStdioFallback');
+  String get backendUnknown => _text('backendUnknown');
   String get disconnected => _text('disconnected');
   String get m0ProtocolClient => _text('m0ProtocolClient');
   String get m0ProtocolClientBody => _text('m0ProtocolClientBody');
@@ -116,6 +120,10 @@ const _values = <String, Map<String, String>>{
     'initialize': 'Initialize',
     'modelList': 'Model list',
     'threadList': 'Thread list',
+    'backend': 'Backend',
+    'backendDaemon': 'daemon',
+    'backendStdioFallback': 'stdio fallback',
+    'backendUnknown': 'unknown',
     'disconnected': 'Disconnected',
     'm0ProtocolClient': 'M0 protocol client',
     'm0ProtocolClientBody':
@@ -167,6 +175,10 @@ const _values = <String, Map<String, String>>{
     'initialize': '初始化',
     'modelList': '模型列表',
     'threadList': '会话列表',
+    'backend': '后端',
+    'backendDaemon': 'daemon',
+    'backendStdioFallback': 'stdio fallback',
+    'backendUnknown': '未知',
     'disconnected': '未连接',
     'm0ProtocolClient': 'M0 协议客户端',
     'm0ProtocolClientBody':

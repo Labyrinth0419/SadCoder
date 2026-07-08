@@ -43,6 +43,13 @@ void main() {
     expect(runner.lastProfile?.password, 'secret');
     expect(runner.lastProfile?.agentCommand, 'sadcoder-agent');
     expect(find.text('Probe passed'), findsOneWidget);
+    expect(find.text('Backend: stdio fallback'), findsOneWidget);
+    expect(
+      find.text(
+        'on-demand stdio fallback; SSH disconnect can end this backend',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Agent status'), findsOneWidget);
     expect(find.text('Thread list'), findsOneWidget);
   });
@@ -87,6 +94,8 @@ const _readyStatus = AgentStatus(
   codexVersion: 'codex-cli 0.142.5',
   backendKind: BackendKind.codexAppServerStdio,
   backendState: BackendState.ready,
+  backendDetail:
+      'on-demand stdio fallback; SSH disconnect can end this backend',
 );
 
 class _FakeProbeRunner implements M0ProbeRunner {
