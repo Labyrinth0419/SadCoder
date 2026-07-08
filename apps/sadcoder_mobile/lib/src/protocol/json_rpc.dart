@@ -28,12 +28,43 @@ class JsonRpcNotification {
   };
 }
 
+class JsonRpcServerRequest {
+  const JsonRpcServerRequest({
+    required this.id,
+    required this.method,
+    this.params,
+  });
+
+  final Object id;
+  final String method;
+  final Object? params;
+}
+
+class JsonRpcResponseMessage {
+  const JsonRpcResponseMessage({required this.id, this.result, this.error});
+
+  final Object id;
+  final Object? result;
+  final Object? error;
+
+  Map<String, Object?> toJson() => {
+    'jsonrpc': '2.0',
+    'id': id,
+    if (error != null) 'error': error,
+    if (error == null) 'result': result,
+  };
+}
+
 abstract interface class JsonRpcTransport {
   Future<Map<String, Object?>> request(JsonRpcRequest request);
 
   Future<void> notify(JsonRpcNotification notification);
 
+  Future<void> respond(JsonRpcResponseMessage response);
+
   Stream<Map<String, Object?>> get notifications;
+
+  Stream<JsonRpcServerRequest> get serverRequests;
 
   Future<void> close();
 }
@@ -45,6 +76,9 @@ class MemoryJsonRpcTransport implements JsonRpcTransport {
   _handler;
   final StreamController<Map<String, Object?>> _notifications =
       StreamController.broadcast();
+  final StreamController<JsonRpcServerRequest> _serverRequests =
+      StreamController.broadcast();
+  final List<JsonRpcResponseMessage> responses = [];
 
   @override
   Future<Map<String, Object?>> request(JsonRpcRequest request) async {
@@ -57,10 +91,19 @@ class MemoryJsonRpcTransport implements JsonRpcTransport {
   }
 
   @override
+  Future<void> respond(JsonRpcResponseMessage response) async {
+    responses.add(response);
+  }
+
+  @override
   Stream<Map<String, Object?>> get notifications => _notifications.stream;
 
   @override
-  Future<void> close() {
-    return _notifications.close();
+  Stream<JsonRpcServerRequest> get serverRequests => _serverRequests.stream;
+
+  @override
+  Future<void> close() async {
+    await _notifications.close();
+    await _serverRequests.close();
   }
 }

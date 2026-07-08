@@ -56,6 +56,47 @@ void main() {
     await transport.close();
   });
 
+  test('server requests are routed separately and can be answered', () async {
+    final input = StreamController<List<int>>();
+    final output = StreamController<Uint8List>();
+    final outgoing = <Map<String, Object?>>[];
+    output.stream.listen((bytes) {
+      outgoing.add(jsonDecode(utf8.decode(bytes)) as Map<String, Object?>);
+    });
+    final transport = LineJsonRpcTransport(
+      input: input.stream,
+      output: output.sink,
+    );
+    final serverRequest = transport.serverRequests.first;
+
+    input.add(
+      utf8.encode(
+        '{"jsonrpc":"2.0","id":"approval-1","method":"item/commandExecution/requestApproval","params":{"command":"cargo test"}}\n',
+      ),
+    );
+
+    final request = await serverRequest;
+    expect(request.id, 'approval-1');
+    expect(request.method, 'item/commandExecution/requestApproval');
+    expect(request.params, {'command': 'cargo test'});
+
+    await transport.respond(
+      const JsonRpcResponseMessage(
+        id: 'approval-1',
+        result: {'decision': 'accept'},
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(outgoing.single, {
+      'jsonrpc': '2.0',
+      'id': 'approval-1',
+      'result': {'decision': 'accept'},
+    });
+
+    await transport.close();
+  });
+
   test('response error completes request with JsonRpcRemoteException', () async {
     final input = StreamController<List<int>>();
     final output = StreamController<Uint8List>();

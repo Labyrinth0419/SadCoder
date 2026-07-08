@@ -19,6 +19,8 @@ class LineJsonRpcTransport implements JsonRpcTransport {
   final Map<Object, Completer<Map<String, Object?>>> _pending = {};
   final StreamController<Map<String, Object?>> _notifications =
       StreamController.broadcast();
+  final StreamController<JsonRpcServerRequest> _serverRequests =
+      StreamController.broadcast();
   late final StreamSubscription<String> _subscription;
 
   @override
@@ -35,12 +37,21 @@ class LineJsonRpcTransport implements JsonRpcTransport {
   }
 
   @override
+  Future<void> respond(JsonRpcResponseMessage response) {
+    return _write(response.toJson());
+  }
+
+  @override
   Stream<Map<String, Object?>> get notifications => _notifications.stream;
+
+  @override
+  Stream<JsonRpcServerRequest> get serverRequests => _serverRequests.stream;
 
   @override
   Future<void> close() async {
     await _subscription.cancel();
     await _notifications.close();
+    await _serverRequests.close();
     await _output.close();
   }
 
@@ -62,6 +73,7 @@ class LineJsonRpcTransport implements JsonRpcTransport {
     }
 
     final id = decoded['id'];
+    final method = decoded['method'];
     if (id != null && _pending.containsKey(id)) {
       final completer = _pending.remove(id);
       final error = decoded['error'];
@@ -70,6 +82,13 @@ class LineJsonRpcTransport implements JsonRpcTransport {
       } else {
         completer?.complete(decoded);
       }
+      return;
+    }
+
+    if (id != null && method is String) {
+      _serverRequests.add(
+        JsonRpcServerRequest(id: id, method: method, params: decoded['params']),
+      );
       return;
     }
 
@@ -84,6 +103,7 @@ class LineJsonRpcTransport implements JsonRpcTransport {
     }
     _pending.clear();
     _notifications.addError(error, stackTrace);
+    _serverRequests.addError(error, stackTrace);
   }
 
   void _handleDone() {
