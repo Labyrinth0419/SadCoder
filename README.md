@@ -29,6 +29,10 @@ cargo run -p sadcoder-agent -- probe --json
 `initialize`, acknowledges `initialized`, then calls `model/list` and
 `thread/list`.
 
+The mobile app has an SSH command runner abstraction and a `dartssh2`
+implementation for invoking remote agent commands. The proxy stream transport
+will build on the same SSH boundary.
+
 ## Verification
 
 ```powershell
