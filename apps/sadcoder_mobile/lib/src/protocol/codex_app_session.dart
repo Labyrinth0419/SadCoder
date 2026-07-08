@@ -47,8 +47,8 @@ class CodexAppSession {
     );
   }
 
-  Future<void> close() async {
-    approvalController.detachCoordinator();
+  Future<void> close({bool notifyApprovalController = true}) async {
+    approvalController.detachCoordinator(notify: notifyApprovalController);
     await approvalCoordinator.close();
     if (_ownsApprovalController) {
       approvalController.dispose();
