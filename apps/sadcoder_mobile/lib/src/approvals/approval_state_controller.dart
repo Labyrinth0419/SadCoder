@@ -11,25 +11,48 @@ class ApprovalStateController extends ChangeNotifier {
   ApprovalStateController({
     Iterable<PendingApproval> initialApprovals = const [],
     ApprovalCoordinator? coordinator,
-  }) : _store = coordinator?.store ?? PendingApprovalStore(),
-       _dispatcher = coordinator == null
-           ? null
-           : ApprovalActionDispatcher(coordinator) {
+    PendingApprovalStore? store,
+  }) : _store = store ?? coordinator?.store ?? PendingApprovalStore() {
     for (final approval in initialApprovals) {
       _store.upsert(approval);
     }
-    _coordinatorSubscription = coordinator?.changes.listen((_) {
-      notifyListeners();
-    });
+    if (coordinator != null) {
+      attachCoordinator(coordinator, notify: false);
+    }
   }
 
   final PendingApprovalStore _store;
-  final ApprovalActionDispatcher? _dispatcher;
+  ApprovalActionDispatcher? _dispatcher;
   StreamSubscription<List<PendingApproval>>? _coordinatorSubscription;
+
+  PendingApprovalStore get store => _store;
 
   List<PendingApproval> get approvals => _store.approvals;
 
   bool get canRespond => _dispatcher != null;
+
+  void attachCoordinator(
+    ApprovalCoordinator coordinator, {
+    bool notify = true,
+  }) {
+    detachCoordinator(notify: false);
+    _dispatcher = ApprovalActionDispatcher(coordinator);
+    _coordinatorSubscription = coordinator.changes.listen((_) {
+      notifyListeners();
+    });
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  void detachCoordinator({bool notify = true}) {
+    _coordinatorSubscription?.cancel();
+    _coordinatorSubscription = null;
+    _dispatcher = null;
+    if (notify) {
+      notifyListeners();
+    }
+  }
 
   void replaceAll(Iterable<PendingApproval> approvals) {
     _store.clear();
@@ -85,7 +108,7 @@ class ApprovalStateController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _coordinatorSubscription?.cancel();
+    detachCoordinator(notify: false);
     super.dispose();
   }
 }

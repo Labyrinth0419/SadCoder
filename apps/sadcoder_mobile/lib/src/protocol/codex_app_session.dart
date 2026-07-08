@@ -4,19 +4,35 @@ import 'codex_app_server_client.dart';
 import 'json_rpc.dart';
 
 class CodexAppSession {
-  CodexAppSession(JsonRpcTransport transport)
-    : this._(
-        transport,
-        CodexAppServerClient(transport),
-        ApprovalCoordinator(transport: transport),
-      );
+  factory CodexAppSession(
+    JsonRpcTransport transport, {
+    ApprovalStateController? approvalController,
+  }) {
+    final controller = approvalController ?? ApprovalStateController();
+    final coordinator = ApprovalCoordinator(
+      transport: transport,
+      store: controller.store,
+    );
+    controller.attachCoordinator(coordinator);
+    return CodexAppSession._(
+      transport,
+      CodexAppServerClient(transport),
+      coordinator,
+      controller,
+      ownsApprovalController: approvalController == null,
+    );
+  }
 
-  CodexAppSession._(this._transport, this.client, this.approvalCoordinator)
-    : approvalController = ApprovalStateController(
-        coordinator: approvalCoordinator,
-      );
+  CodexAppSession._(
+    this._transport,
+    this.client,
+    this.approvalCoordinator,
+    this.approvalController, {
+    required bool ownsApprovalController,
+  }) : _ownsApprovalController = ownsApprovalController;
 
   final JsonRpcTransport _transport;
+  final bool _ownsApprovalController;
   final CodexAppServerClient client;
   final ApprovalCoordinator approvalCoordinator;
   final ApprovalStateController approvalController;
@@ -32,8 +48,11 @@ class CodexAppSession {
   }
 
   Future<void> close() async {
-    approvalController.dispose();
+    approvalController.detachCoordinator();
     await approvalCoordinator.close();
+    if (_ownsApprovalController) {
+      approvalController.dispose();
+    }
     await _transport.close();
   }
 }
