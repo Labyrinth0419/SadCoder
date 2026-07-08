@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../agent/agent_remote_service.dart';
+import '../../i18n/app_localizations.dart';
 import '../../probe/m0_probe_coordinator.dart';
 import '../../ssh/dart_ssh_proxy_connector.dart';
 import '../../ssh/dart_ssh_remote_command_runner.dart';
@@ -22,7 +23,7 @@ class HostsPage extends StatefulWidget {
 
 class _HostsPageState extends State<HostsPage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(text: 'Default server');
+  final _nameController = TextEditingController();
   final _hostController = TextEditingController();
   final _portController = TextEditingController(text: '22');
   final _usernameController = TextEditingController();
@@ -48,10 +49,11 @@ class _HostsPageState extends State<HostsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Hosts', style: Theme.of(context).textTheme.headlineMedium),
+        Text(l10n.hosts, style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 12),
         _HostProfileForm(
           formKey: _formKey,
@@ -139,6 +141,7 @@ class _HostProfileForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -148,16 +151,16 @@ class _HostProfileForm extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'SSH profile',
+                l10n.sshProfile,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 key: const ValueKey('host-name-field'),
                 controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  prefixIcon: Icon(Icons.label_outline),
+                decoration: InputDecoration(
+                  labelText: l10n.name,
+                  prefixIcon: const Icon(Icons.label_outline),
                 ),
               ),
               const SizedBox(height: 12),
@@ -165,11 +168,11 @@ class _HostProfileForm extends StatelessWidget {
                 key: const ValueKey('host-field'),
                 controller: hostController,
                 autocorrect: false,
-                decoration: const InputDecoration(
-                  labelText: 'Host',
-                  prefixIcon: Icon(Icons.dns_outlined),
+                decoration: InputDecoration(
+                  labelText: l10n.host,
+                  prefixIcon: const Icon(Icons.dns_outlined),
                 ),
-                validator: _required('Host is required'),
+                validator: _required(l10n.hostRequired),
               ),
               const SizedBox(height: 12),
               Row(
@@ -180,11 +183,12 @@ class _HostProfileForm extends StatelessWidget {
                       key: const ValueKey('port-field'),
                       controller: portController,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Port',
-                        prefixIcon: Icon(Icons.tag),
+                      decoration: InputDecoration(
+                        labelText: l10n.port,
+                        prefixIcon: const Icon(Icons.tag),
                       ),
-                      validator: _portValidator,
+                      validator: (value) =>
+                          _portValidator(value, l10n.invalidPort),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -194,11 +198,11 @@ class _HostProfileForm extends StatelessWidget {
                       key: const ValueKey('username-field'),
                       controller: usernameController,
                       autocorrect: false,
-                      decoration: const InputDecoration(
-                        labelText: 'Username',
-                        prefixIcon: Icon(Icons.person_outline),
+                      decoration: InputDecoration(
+                        labelText: l10n.username,
+                        prefixIcon: const Icon(Icons.person_outline),
                       ),
-                      validator: _required('Username is required'),
+                      validator: _required(l10n.usernameRequired),
                     ),
                   ),
                 ],
@@ -208,22 +212,22 @@ class _HostProfileForm extends StatelessWidget {
                 key: const ValueKey('password-field'),
                 controller: passwordController,
                 obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: Icon(Icons.key_outlined),
+                decoration: InputDecoration(
+                  labelText: l10n.password,
+                  prefixIcon: const Icon(Icons.key_outlined),
                 ),
-                validator: _required('Password is required'),
+                validator: _required(l10n.passwordRequired),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 key: const ValueKey('agent-command-field'),
                 controller: agentCommandController,
                 autocorrect: false,
-                decoration: const InputDecoration(
-                  labelText: 'Agent command',
-                  prefixIcon: Icon(Icons.terminal),
+                decoration: InputDecoration(
+                  labelText: l10n.agentCommand,
+                  prefixIcon: const Icon(Icons.terminal),
                 ),
-                validator: _required('Agent command is required'),
+                validator: _required(l10n.agentCommandRequired),
               ),
               const SizedBox(height: 16),
               Align(
@@ -237,7 +241,7 @@ class _HostProfileForm extends StatelessWidget {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.play_arrow),
-                  label: Text(testing ? 'Testing' : 'Test'),
+                  label: Text(testing ? l10n.testing : l10n.test),
                 ),
               ),
             ],
@@ -251,10 +255,10 @@ class _HostProfileForm extends StatelessWidget {
     return (value) => value == null || value.trim().isEmpty ? message : null;
   }
 
-  static String? _portValidator(String? value) {
+  static String? _portValidator(String? value, String message) {
     final port = int.tryParse(value?.trim() ?? '');
     if (port == null || port < 1 || port > 65535) {
-      return 'Invalid port';
+      return message;
     }
     return null;
   }
@@ -274,6 +278,7 @@ class _ProbeResultPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final report = this.report;
+    final l10n = context.l10n;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -286,7 +291,7 @@ class _ProbeResultPanel extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    _title,
+                    _title(l10n),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
@@ -316,18 +321,18 @@ class _ProbeResultPanel extends StatelessWidget {
     );
   }
 
-  String get _title {
+  String _title(AppLocalizations l10n) {
     if (testing) {
-      return 'Testing connection';
+      return l10n.testingConnection;
     }
     if (error != null) {
-      return 'Probe failed';
+      return l10n.probeFailed;
     }
     final report = this.report;
     if (report == null) {
-      return 'Not tested';
+      return l10n.notTested;
     }
-    return report.ok ? 'Probe passed' : 'Probe failed';
+    return report.ok ? l10n.probePassed : l10n.probeFailed;
   }
 
   IconData _iconForState() {
@@ -361,6 +366,7 @@ class _ProbeStepTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return ListTile(
       dense: true,
       contentPadding: EdgeInsets.zero,
@@ -370,16 +376,17 @@ class _ProbeStepTile extends StatelessWidget {
             ? Theme.of(context).colorScheme.primary
             : Theme.of(context).colorScheme.error,
       ),
-      title: Text(_labelFor(step.step)),
+      title: Text(_labelFor(step.step, l10n)),
       subtitle: step.detail == null ? null : Text(step.detail!),
     );
   }
 
-  static String _labelFor(M0ProbeStep step) => switch (step) {
-    M0ProbeStep.agentStatus => 'Agent status',
-    M0ProbeStep.proxyConnect => 'Proxy connect',
-    M0ProbeStep.initialize => 'Initialize',
-    M0ProbeStep.modelList => 'Model list',
-    M0ProbeStep.threadList => 'Thread list',
-  };
+  static String _labelFor(M0ProbeStep step, AppLocalizations l10n) =>
+      switch (step) {
+        M0ProbeStep.agentStatus => l10n.agentStatus,
+        M0ProbeStep.proxyConnect => l10n.proxyConnect,
+        M0ProbeStep.initialize => l10n.initialize,
+        M0ProbeStep.modelList => l10n.modelList,
+        M0ProbeStep.threadList => l10n.threadList,
+      };
 }

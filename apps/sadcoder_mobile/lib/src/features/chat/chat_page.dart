@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../i18n/app_localizations.dart';
+
 class ChatPage extends StatelessWidget {
   const ChatPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Column(
       children: [
         Padding(
@@ -13,11 +16,11 @@ class ChatPage extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Chat',
+                  l10n.chat,
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
               ),
-              const _StateChip(label: 'Disconnected'),
+              _StateChip(label: l10n.disconnected),
             ],
           ),
         ),
@@ -25,16 +28,14 @@ class ChatPage extends StatelessWidget {
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(16),
-            children: const [
+            children: [
               _MessageBlock(
-                title: 'M0 protocol client',
-                body:
-                    'The app has a JSON-RPC client for initialize, model/list, and thread/list. SSH transport will plug into the same interface.',
+                title: l10n.m0ProtocolClient,
+                body: l10n.m0ProtocolClientBody,
               ),
               _MessageBlock(
-                title: 'Slash command surface',
-                body:
-                    'Typing / will later open the SadCoder command palette instead of sending slash text as a normal prompt.',
+                title: l10n.slashCommandSurface,
+                body: l10n.slashCommandSurfaceBody,
               ),
             ],
           ),
@@ -46,12 +47,12 @@ class ChatPage extends StatelessWidget {
             child: TextField(
               enabled: false,
               decoration: InputDecoration(
-                hintText: 'Connect to a host before sending a turn',
+                hintText: l10n.connectBeforeTurn,
                 prefixIcon: const Icon(Icons.code),
                 suffixIcon: IconButton(
                   onPressed: null,
                   icon: const Icon(Icons.send),
-                  tooltip: 'Send',
+                  tooltip: l10n.send,
                 ),
                 border: const OutlineInputBorder(),
               ),

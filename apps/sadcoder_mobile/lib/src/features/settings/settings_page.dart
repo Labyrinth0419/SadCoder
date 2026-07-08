@@ -1,29 +1,30 @@
 import 'package:flutter/material.dart';
 
+import '../../i18n/app_localizations.dart';
+
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Settings', style: Theme.of(context).textTheme.headlineMedium),
+        Text(l10n.settings, style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 12),
-        const Card(
+        Card(
           child: ListTile(
-            leading: Icon(Icons.tune),
-            title: Text('Server defaults'),
-            subtitle: Text(
-              'Codex configuration is inherited from the server unless an override is explicitly set.',
-            ),
+            leading: const Icon(Icons.tune),
+            title: Text(l10n.serverDefaults),
+            subtitle: Text(l10n.serverDefaultsBody),
           ),
         ),
-        const Card(
+        Card(
           child: ListTile(
-            leading: Icon(Icons.dark_mode_outlined),
-            title: Text('Theme'),
-            subtitle: Text('System, light, and dark modes are supported.'),
+            leading: const Icon(Icons.dark_mode_outlined),
+            title: Text(l10n.theme),
+            subtitle: Text(l10n.themeBody),
           ),
         ),
       ],
