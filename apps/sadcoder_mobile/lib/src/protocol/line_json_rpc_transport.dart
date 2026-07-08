@@ -37,6 +37,7 @@ class LineJsonRpcTransport implements JsonRpcTransport {
   @override
   Stream<Map<String, Object?>> get notifications => _notifications.stream;
 
+  @override
   Future<void> close() async {
     await _subscription.cancel();
     await _notifications.close();

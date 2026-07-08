@@ -4,11 +4,16 @@ import '../ssh/remote_command_runner.dart';
 import '../ssh/ssh_profile.dart';
 import 'agent_status.dart';
 
-class AgentRemoteService {
+abstract interface class AgentStatusReader {
+  Future<AgentStatus> readStatus(SshProfile profile);
+}
+
+class AgentRemoteService implements AgentStatusReader {
   const AgentRemoteService(this._runner);
 
   final RemoteCommandRunner _runner;
 
+  @override
   Future<AgentStatus> readStatus(SshProfile profile) async {
     final result = await _runner.run(
       profile,

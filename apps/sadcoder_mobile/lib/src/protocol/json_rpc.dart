@@ -34,6 +34,8 @@ abstract interface class JsonRpcTransport {
   Future<void> notify(JsonRpcNotification notification);
 
   Stream<Map<String, Object?>> get notifications;
+
+  Future<void> close();
 }
 
 class MemoryJsonRpcTransport implements JsonRpcTransport {
@@ -56,4 +58,9 @@ class MemoryJsonRpcTransport implements JsonRpcTransport {
 
   @override
   Stream<Map<String, Object?>> get notifications => _notifications.stream;
+
+  @override
+  Future<void> close() {
+    return _notifications.close();
+  }
 }
