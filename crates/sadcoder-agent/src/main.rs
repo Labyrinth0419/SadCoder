@@ -8,6 +8,7 @@ use sadcoder_protocol::BackendStatus;
 use sadcoder_protocol::JsonRpcNotification;
 use sadcoder_protocol::JsonRpcRequest;
 use sadcoder_protocol::RequestId;
+use sadcoder_protocol::SlashCommandManifest;
 use serde::Serialize;
 use serde_json::Value;
 use serde_json::json;
@@ -49,6 +50,11 @@ enum AgentCommand {
         #[arg(long)]
         json: bool,
     },
+    /// Print the SadCoder slash command manifest for this agent build.
+    SlashCommands {
+        #[arg(long)]
+        json: bool,
+    },
     /// Proxy this process' stdin/stdout to `codex app-server --listen stdio://`.
     Proxy,
 }
@@ -59,9 +65,13 @@ fn main() -> anyhow::Result<()> {
         AgentCommand::Status { json } => print_status(&cli.codex_path, json),
         AgentCommand::Start { json } => print_status(&cli.codex_path, json),
         AgentCommand::Probe { json } => print_probe(&cli.codex_path, json),
+        AgentCommand::SlashCommands { json } => print_slash_commands(json),
         AgentCommand::Proxy => proxy_app_server(&cli.codex_path),
     }
 }
+
+const SLASH_COMMANDS_MANIFEST_JSON: &str =
+    include_str!("../../../resources/slash_commands_manifest.json");
 
 fn print_status(codex_path: &str, json: bool) -> anyhow::Result<()> {
     let status = collect_status(codex_path);
@@ -101,6 +111,35 @@ fn print_probe(codex_path: &str, json_output: bool) -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+fn print_slash_commands(json_output: bool) -> anyhow::Result<()> {
+    let manifest = load_slash_command_manifest()?;
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&manifest)?);
+    } else {
+        println!(
+            "slash command manifest v{} ({})",
+            manifest.schema_version, manifest.source
+        );
+        for command in &manifest.commands {
+            let aliases = if command.aliases.is_empty() {
+                String::new()
+            } else {
+                format!(" aliases: {}", command.aliases.join(", "))
+            };
+            println!(
+                "/{:<24} {}{}",
+                command.command, command.description, aliases
+            );
+        }
+    }
+    Ok(())
+}
+
+fn load_slash_command_manifest() -> anyhow::Result<SlashCommandManifest> {
+    serde_json::from_str(SLASH_COMMANDS_MANIFEST_JSON)
+        .context("embedded slash command manifest is invalid")
 }
 
 fn collect_status(codex_path: &str) -> AgentStatus {
@@ -338,5 +377,38 @@ mod tests {
         assert!(!status.codex_available);
         assert_eq!(status.backend.kind, BackendKind::Unknown);
         assert_eq!(status.backend.state, BackendState::Unavailable);
+    }
+
+    #[test]
+    fn embedded_slash_manifest_loads_aliases_and_topology_commands() {
+        let manifest = load_slash_command_manifest().expect("manifest loads");
+
+        assert_eq!(manifest.schema_version, 1);
+        assert_eq!(manifest.commands.len(), 55);
+        assert_eq!(
+            manifest
+                .commands
+                .first()
+                .map(|command| command.command.as_str()),
+            Some("model")
+        );
+
+        let stop = manifest
+            .commands
+            .iter()
+            .find(|command| command.command == "stop")
+            .expect("stop command");
+        assert_eq!(stop.aliases, vec!["clean".to_string()]);
+
+        let side = manifest
+            .commands
+            .iter()
+            .find(|command| command.command == "side")
+            .expect("side command");
+        assert!(side.supports_inline_args);
+        assert_eq!(
+            side.mapping_target,
+            "thread/fork ephemeral=true + side boundary prompt"
+        );
     }
 }

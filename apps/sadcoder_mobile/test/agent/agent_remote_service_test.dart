@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/agent/agent_remote_service.dart';
 import 'package:sadcoder_mobile/src/agent/agent_status.dart';
@@ -52,6 +54,23 @@ void main() {
       service.readStatus(_profile),
       throwsA(isA<RemoteCommandException>()),
     );
+  });
+
+  test('readSlashCommands parses shared slash command manifest JSON', () async {
+    final stdout = File(
+      '../../resources/slash_commands_manifest.json',
+    ).readAsStringSync();
+    final runner = _FakeRunner(
+      result: RemoteCommandResult(exitCode: 0, stdout: stdout, stderr: ''),
+    );
+    final service = AgentRemoteService(runner);
+
+    final manifest = await service.readSlashCommands(_profile);
+
+    expect(runner.lastCommand, 'sadcoder-agent slash-commands --json');
+    expect(manifest.source, 'refs/codex/codex-rs/tui/src/slash_command.rs');
+    expect(manifest.commands.first.command, 'model');
+    expect(manifest.asRegistry().find('/clean')?.command, 'stop');
   });
 }
 

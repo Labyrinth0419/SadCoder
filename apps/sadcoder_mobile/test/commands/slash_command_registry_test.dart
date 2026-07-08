@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/commands/slash_command_registry.dart';
 
@@ -62,6 +65,43 @@ void main() {
       'debug-m-drop',
       'debug-m-update',
     ]);
+  });
+
+  test('built-in registry matches the shared manifest', () {
+    final manifest =
+        jsonDecode(
+              File(
+                '../../resources/slash_commands_manifest.json',
+              ).readAsStringSync(),
+            )
+            as Map<String, Object?>;
+    final parsed = SlashCommandManifest.fromJson(manifest);
+    final commands = manifest['commands'] as List<Object?>;
+
+    expect(manifest['source'], slashCommandManifestSource);
+    expect(parsed.schemaVersion, 1);
+    expect(parsed.asRegistry().find('/clean')?.command, 'stop');
+    expect(commands, hasLength(builtInSlashCommands.length));
+
+    for (var i = 0; i < commands.length; i++) {
+      final json = commands[i] as Map<String, Object?>;
+      final command = builtInSlashCommands[i];
+
+      expect(json['command'], command.command);
+      expect(json['aliases'], command.aliases);
+      expect(json['description'], command.description);
+      expect(json['supportsInlineArgs'], command.supportsInlineArgs);
+      expect(json['availableDuringTask'], command.availableDuringTask);
+      expect(
+        json['availableInSideConversation'],
+        command.availableInSideConversation,
+      );
+      expect(json['platformVisibility'], command.platformVisibility.name);
+      expect(json['mappingType'], command.mappingType.name);
+      expect(json['mappingTarget'], command.mappingTarget);
+      expect(json['phase'], command.phase.name);
+      expect(json['riskLevel'], command.riskLevel.name);
+    }
   });
 
   test('aliases resolve to canonical commands', () {

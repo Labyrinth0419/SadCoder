@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../commands/slash_command_registry.dart';
 import '../ssh/remote_command_runner.dart';
 import '../ssh/ssh_profile.dart';
 import 'agent_status.dart';
@@ -34,5 +35,27 @@ class AgentRemoteService implements AgentStatusReader {
       );
     }
     return AgentStatus.fromJson(decoded);
+  }
+
+  Future<SlashCommandManifest> readSlashCommands(SshProfile profile) async {
+    final result = await _runner.run(
+      profile,
+      '${profile.agentCommand} slash-commands --json',
+      timeout: const Duration(seconds: 20),
+    );
+
+    if (!result.succeeded) {
+      throw RemoteCommandException(
+        'Slash command manifest failed with exit code ${result.exitCode}: ${result.stderr}',
+      );
+    }
+
+    final decoded = jsonDecode(result.stdout);
+    if (decoded is! Map<String, Object?>) {
+      throw const RemoteCommandException(
+        'Slash command manifest did not return a JSON object.',
+      );
+    }
+    return SlashCommandManifest.fromJson(decoded);
   }
 }

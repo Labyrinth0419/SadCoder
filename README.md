@@ -13,6 +13,7 @@ The design source of truth is [Plan.md](Plan.md).
 - `crates/sadcoder-agent` - Rust server-side binary for status, lifecycle, and
   app-server proxy commands.
 - `crates/sadcoder-protocol` - Rust protocol DTOs shared by the agent and tests.
+- `resources` - shared manifests used by both the mobile app and agent.
 - `refs` - ignored local reference projects for Codex and HappyCoder.
 
 ## M0 Local Probe
@@ -23,6 +24,7 @@ boundary without reimplementing Codex semantics.
 ```powershell
 cargo run -p sadcoder-agent -- status --json
 cargo run -p sadcoder-agent -- probe --json
+cargo run -p sadcoder-agent -- slash-commands --json
 ```
 
 `probe --json` starts `codex app-server --listen stdio://`, sends
@@ -41,6 +43,12 @@ sadcoder-agent proxy
 `proxy` starts `codex app-server --listen stdio://` on the server and forwards
 line-delimited JSON-RPC between the app and Codex. This keeps Codex execution on
 the server side instead of tying task lifetime to the mobile process.
+
+`slash-commands --json` prints the shared slash command manifest from
+`resources/slash_commands_manifest.json`. The manifest tracks the current Codex
+TUI slash command surface, aliases, availability rules, implementation phase,
+and SadCoder mapping strategy so `/...` input is handled as a command rather
+than silently sent as a normal prompt.
 
 ## Verification
 

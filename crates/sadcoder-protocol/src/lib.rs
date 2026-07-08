@@ -102,6 +102,71 @@ pub enum BackendState {
     Unavailable,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SlashCommandManifest {
+    pub schema_version: u32,
+    pub source: String,
+    pub commands: Vec<SlashCommandSpec>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SlashCommandSpec {
+    pub command: String,
+    pub aliases: Vec<String>,
+    pub description: String,
+    pub supports_inline_args: bool,
+    pub available_during_task: bool,
+    pub available_in_side_conversation: bool,
+    pub platform_visibility: SlashPlatformVisibility,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub feature_flag: Option<String>,
+    pub mapping_type: SlashCommandMappingType,
+    pub mapping_target: String,
+    pub phase: SlashCommandPhase,
+    pub risk_level: SlashCommandRiskLevel,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SlashCommandMappingType {
+    AppServer,
+    UiOnly,
+    AgentFallback,
+    Topology,
+    NotApplicable,
+    Debug,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SlashCommandPhase {
+    Mvp,
+    SecondStage,
+    SecondStageExperimental,
+    ThirdStage,
+    AdvancedDebug,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SlashCommandRiskLevel {
+    Low,
+    Medium,
+    High,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SlashPlatformVisibility {
+    All,
+    DesktopOnly,
+    WindowsOnly,
+    DebugOnly,
+    TuiOnly,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -143,5 +208,34 @@ mod tests {
         assert_eq!(encoded["agentVersion"], "0.1.0");
         assert_eq!(encoded["codexAvailable"], true);
         assert_eq!(encoded["backend"]["kind"], "codex-app-server-stdio");
+    }
+
+    #[test]
+    fn slash_command_manifest_uses_camel_case_wire_keys() {
+        let manifest = SlashCommandManifest {
+            schema_version: 1,
+            source: "source.rs".to_string(),
+            commands: vec![SlashCommandSpec {
+                command: "model".to_string(),
+                aliases: Vec::new(),
+                description: "choose model".to_string(),
+                supports_inline_args: false,
+                available_during_task: true,
+                available_in_side_conversation: false,
+                platform_visibility: SlashPlatformVisibility::All,
+                feature_flag: None,
+                mapping_type: SlashCommandMappingType::AppServer,
+                mapping_target: "model/list".to_string(),
+                phase: SlashCommandPhase::Mvp,
+                risk_level: SlashCommandRiskLevel::Low,
+            }],
+        };
+
+        let encoded = serde_json::to_value(manifest).expect("serialize manifest");
+
+        assert_eq!(encoded["schemaVersion"], 1);
+        assert_eq!(encoded["commands"][0]["supportsInlineArgs"], false);
+        assert_eq!(encoded["commands"][0]["mappingType"], "appServer");
+        assert_eq!(encoded["commands"][0]["phase"], "mvp");
     }
 }

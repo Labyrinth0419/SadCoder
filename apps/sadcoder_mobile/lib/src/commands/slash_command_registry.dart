@@ -41,6 +41,36 @@ class SlashCommandSpec {
     this.riskLevel = SlashCommandRiskLevel.low,
   });
 
+  factory SlashCommandSpec.fromJson(Map<String, Object?> json) {
+    return SlashCommandSpec(
+      command: _requiredString(json, 'command'),
+      aliases: _stringList(json['aliases']),
+      description: _requiredString(json, 'description'),
+      supportsInlineArgs: json['supportsInlineArgs'] as bool? ?? false,
+      availableDuringTask: json['availableDuringTask'] as bool? ?? true,
+      availableInSideConversation:
+          json['availableInSideConversation'] as bool? ?? false,
+      platformVisibility: _enumByName(
+        SlashPlatformVisibility.values,
+        _requiredString(json, 'platformVisibility'),
+      ),
+      featureFlag: json['featureFlag'] as String?,
+      mappingType: _enumByName(
+        SlashCommandMappingType.values,
+        _requiredString(json, 'mappingType'),
+      ),
+      mappingTarget: _requiredString(json, 'mappingTarget'),
+      phase: _enumByName(
+        SlashCommandPhase.values,
+        _requiredString(json, 'phase'),
+      ),
+      riskLevel: _enumByName(
+        SlashCommandRiskLevel.values,
+        _requiredString(json, 'riskLevel'),
+      ),
+    );
+  }
+
   final String command;
   final List<String> aliases;
   final String description;
@@ -60,6 +90,38 @@ class SlashCommandSpec {
     final normalized = _normalizeCommand(value);
     return command == normalized || aliases.contains(normalized);
   }
+}
+
+class SlashCommandManifest {
+  const SlashCommandManifest({
+    required this.schemaVersion,
+    required this.source,
+    required this.commands,
+  });
+
+  factory SlashCommandManifest.fromJson(Map<String, Object?> json) {
+    final commands = json['commands'];
+    if (commands is! List<Object?>) {
+      throw const FormatException(
+        'Slash command manifest commands must be a list.',
+      );
+    }
+
+    return SlashCommandManifest(
+      schemaVersion: json['schemaVersion'] as int? ?? 0,
+      source: _requiredString(json, 'source'),
+      commands: [
+        for (final command in commands)
+          SlashCommandSpec.fromJson(command as Map<String, Object?>),
+      ],
+    );
+  }
+
+  final int schemaVersion;
+  final String source;
+  final List<SlashCommandSpec> commands;
+
+  SlashCommandRegistry asRegistry() => SlashCommandRegistry(commands: commands);
 }
 
 enum SlashCommandParseKind { notSlash, empty, known, unknown }
@@ -624,4 +686,31 @@ const builtInSlashCommands = <SlashCommandSpec>[
 String _normalizeCommand(String value) {
   final trimmed = value.trim().toLowerCase();
   return trimmed.startsWith('/') ? trimmed.substring(1) : trimmed;
+}
+
+String _requiredString(Map<String, Object?> json, String key) {
+  final value = json[key];
+  if (value is String && value.isNotEmpty) {
+    return value;
+  }
+  throw FormatException('Missing required string field: $key');
+}
+
+List<String> _stringList(Object? value) {
+  if (value == null) {
+    return const [];
+  }
+  if (value is! List<Object?>) {
+    throw const FormatException('Expected a string list.');
+  }
+  return [for (final item in value) item as String];
+}
+
+T _enumByName<T extends Enum>(List<T> values, String name) {
+  for (final value in values) {
+    if (value.name == name) {
+      return value;
+    }
+  }
+  throw FormatException('Unknown enum value: $name');
 }
