@@ -6,11 +6,19 @@ import '../features/chat/chat_page.dart';
 import '../features/hosts/hosts_page.dart';
 import '../features/settings/settings_page.dart';
 import '../i18n/app_localizations.dart';
+import '../session/codex_session_connector.dart';
+import '../session/codex_session_state_controller.dart';
+import '../ssh/dart_ssh_proxy_connector.dart';
+
+const _defaultSessionConnector = CodexSessionConnector(
+  proxyConnector: DartSshProxyConnector(),
+);
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, this.approvalController});
+  const AppShell({super.key, this.approvalController, this.sessionController});
 
   final ApprovalStateController? approvalController;
+  final CodexSessionStateController? sessionController;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -19,30 +27,35 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _index = 0;
   late ApprovalStateController _approvalController;
+  late CodexSessionStateController _sessionController;
   late bool _ownsApprovalController;
+  late bool _ownsSessionController;
 
   @override
   void initState() {
     super.initState();
-    _setApprovalController(widget.approvalController);
+    _setControllers(
+      approvalController: widget.approvalController,
+      sessionController: widget.sessionController,
+    );
   }
 
   @override
   void didUpdateWidget(AppShell oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.approvalController != widget.approvalController) {
-      if (_ownsApprovalController) {
-        _approvalController.dispose();
-      }
-      _setApprovalController(widget.approvalController);
+    if (oldWidget.approvalController != widget.approvalController ||
+        oldWidget.sessionController != widget.sessionController) {
+      _disposeOwnedControllers();
+      _setControllers(
+        approvalController: widget.approvalController,
+        sessionController: widget.sessionController,
+      );
     }
   }
 
   @override
   void dispose() {
-    if (_ownsApprovalController) {
-      _approvalController.dispose();
-    }
+    _disposeOwnedControllers();
     super.dispose();
   }
 
@@ -85,14 +98,43 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  void _setApprovalController(ApprovalStateController? controller) {
-    _ownsApprovalController = controller == null;
-    _approvalController = controller ?? ApprovalStateController();
+  void _setControllers({
+    required ApprovalStateController? approvalController,
+    required CodexSessionStateController? sessionController,
+  }) {
+    if (approvalController != null &&
+        sessionController != null &&
+        !identical(approvalController, sessionController.approvalController)) {
+      throw ArgumentError(
+        'Injected sessionController and approvalController must share state.',
+      );
+    }
+    final resolvedApprovalController =
+        approvalController ?? sessionController?.approvalController;
+    _ownsApprovalController = resolvedApprovalController == null;
+    _approvalController =
+        resolvedApprovalController ?? ApprovalStateController();
+    _ownsSessionController = sessionController == null;
+    _sessionController =
+        sessionController ??
+        CodexSessionStateController(
+          connector: _defaultSessionConnector,
+          approvalController: _approvalController,
+        );
+  }
+
+  void _disposeOwnedControllers() {
+    if (_ownsSessionController) {
+      _sessionController.dispose();
+    }
+    if (_ownsApprovalController) {
+      _approvalController.dispose();
+    }
   }
 
   Widget _pageForIndex(int index) {
     return switch (index) {
-      0 => const HostsPage(),
+      0 => HostsPage(sessionController: _sessionController),
       1 => const ChatPage(),
       2 => ApprovalsPage(
         approvals: _approvalController.approvals,
@@ -107,7 +149,7 @@ class _AppShellState extends State<AppShell> {
             : null,
       ),
       3 => const SettingsPage(),
-      _ => const HostsPage(),
+      _ => HostsPage(sessionController: _sessionController),
     };
   }
 }

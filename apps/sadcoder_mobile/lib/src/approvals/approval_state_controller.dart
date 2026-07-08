@@ -35,7 +35,7 @@ class ApprovalStateController extends ChangeNotifier {
     ApprovalCoordinator coordinator, {
     bool notify = true,
   }) {
-    detachCoordinator(notify: false);
+    unawaited(detachCoordinator(notify: false));
     _dispatcher = ApprovalActionDispatcher(coordinator);
     _coordinatorSubscription = coordinator.changes.listen((_) {
       notifyListeners();
@@ -45,13 +45,14 @@ class ApprovalStateController extends ChangeNotifier {
     }
   }
 
-  void detachCoordinator({bool notify = true}) {
-    _coordinatorSubscription?.cancel();
+  Future<void> detachCoordinator({bool notify = true}) {
+    final subscription = _coordinatorSubscription;
     _coordinatorSubscription = null;
     _dispatcher = null;
     if (notify) {
       notifyListeners();
     }
+    return subscription?.cancel() ?? Future<void>.value();
   }
 
   void replaceAll(Iterable<PendingApproval> approvals) {
@@ -108,7 +109,7 @@ class ApprovalStateController extends ChangeNotifier {
 
   @override
   void dispose() {
-    detachCoordinator(notify: false);
+    unawaited(detachCoordinator(notify: false));
     super.dispose();
   }
 }

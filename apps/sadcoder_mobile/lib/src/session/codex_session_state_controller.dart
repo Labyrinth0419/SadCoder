@@ -16,7 +16,7 @@ class CodexSessionStateController extends ChangeNotifier {
 
   final CodexSessionConnectionStarter _connector;
   final ApprovalStateController approvalController;
-  CodexSessionConnection? _connection;
+  CodexSessionConnectionHandle? _connection;
   CodexSessionStatus _status = CodexSessionStatus.idle;
   SshProfile? _profile;
   Object? _error;

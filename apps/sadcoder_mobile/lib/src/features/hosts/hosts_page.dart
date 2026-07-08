@@ -4,6 +4,7 @@ import '../../agent/agent_remote_service.dart';
 import '../../agent/agent_status.dart';
 import '../../i18n/app_localizations.dart';
 import '../../probe/m0_probe_coordinator.dart';
+import '../../session/codex_session_state_controller.dart';
 import '../../ssh/dart_ssh_proxy_connector.dart';
 import '../../ssh/dart_ssh_remote_command_runner.dart';
 import '../../ssh/ssh_profile.dart';
@@ -14,9 +15,10 @@ const M0ProbeRunner _defaultProbeRunner = M0ProbeCoordinator(
 );
 
 class HostsPage extends StatefulWidget {
-  const HostsPage({super.key, this.probeRunner});
+  const HostsPage({super.key, this.probeRunner, this.sessionController});
 
   final M0ProbeRunner? probeRunner;
+  final CodexSessionStateController? sessionController;
 
   @override
   State<HostsPage> createState() => _HostsPageState();
@@ -34,6 +36,7 @@ class _HostsPageState extends State<HostsPage> {
   bool _testing = false;
   M0ProbeReport? _report;
   String? _error;
+  String? _connectionActionError;
 
   M0ProbeRunner get _runner => widget.probeRunner ?? _defaultProbeRunner;
 
@@ -50,6 +53,20 @@ class _HostsPageState extends State<HostsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final sessionController = widget.sessionController;
+    if (sessionController == null) {
+      return _buildContent(context, null);
+    }
+    return AnimatedBuilder(
+      animation: sessionController,
+      builder: (context, _) => _buildContent(context, sessionController),
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    CodexSessionStateController? sessionController,
+  ) {
     final l10n = context.l10n;
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -66,8 +83,18 @@ class _HostsPageState extends State<HostsPage> {
           agentCommandController: _agentCommandController,
           testing: _testing,
           onTest: _runProbe,
+          sessionStatus: sessionController?.status,
+          onConnect: sessionController == null ? null : _connect,
+          onDisconnect: sessionController == null ? null : _disconnect,
         ),
         const SizedBox(height: 12),
+        if (sessionController != null) ...[
+          _SessionStatusPanel(
+            controller: sessionController,
+            actionError: _connectionActionError,
+          ),
+          const SizedBox(height: 12),
+        ],
         _ProbeResultPanel(testing: _testing, report: _report, error: _error),
       ],
     );
@@ -102,6 +129,39 @@ class _HostsPageState extends State<HostsPage> {
     }
   }
 
+  Future<void> _connect() async {
+    final sessionController = widget.sessionController;
+    if (sessionController == null ||
+        !(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    setState(() => _connectionActionError = null);
+    try {
+      await sessionController.connect(_buildProfile());
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _connectionActionError = error.toString());
+      }
+    }
+  }
+
+  Future<void> _disconnect() async {
+    final sessionController = widget.sessionController;
+    if (sessionController == null) {
+      return;
+    }
+
+    setState(() => _connectionActionError = null);
+    try {
+      await sessionController.disconnect();
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _connectionActionError = error.toString());
+      }
+    }
+  }
+
   SshProfile _buildProfile() {
     final host = _hostController.text.trim();
     final name = _nameController.text.trim();
@@ -128,6 +188,9 @@ class _HostProfileForm extends StatelessWidget {
     required this.agentCommandController,
     required this.testing,
     required this.onTest,
+    required this.sessionStatus,
+    required this.onConnect,
+    required this.onDisconnect,
   });
 
   final GlobalKey<FormState> formKey;
@@ -139,6 +202,9 @@ class _HostProfileForm extends StatelessWidget {
   final TextEditingController agentCommandController;
   final bool testing;
   final VoidCallback onTest;
+  final CodexSessionStatus? sessionStatus;
+  final VoidCallback? onConnect;
+  final VoidCallback? onDisconnect;
 
   @override
   Widget build(BuildContext context) {
@@ -233,16 +299,29 @@ class _HostProfileForm extends StatelessWidget {
               const SizedBox(height: 16),
               Align(
                 alignment: Alignment.centerRight,
-                child: FilledButton.icon(
-                  key: const ValueKey('probe-test-button'),
-                  onPressed: testing ? null : onTest,
-                  icon: testing
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.play_arrow),
-                  label: Text(testing ? l10n.testing : l10n.test),
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      key: const ValueKey('probe-test-button'),
+                      onPressed: testing ? null : onTest,
+                      icon: testing
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.play_arrow),
+                      label: Text(testing ? l10n.testing : l10n.test),
+                    ),
+                    if (onConnect != null && onDisconnect != null)
+                      _SessionActionButton(
+                        status: sessionStatus ?? CodexSessionStatus.idle,
+                        onConnect: onConnect!,
+                        onDisconnect: onDisconnect!,
+                      ),
+                  ],
                 ),
               ),
             ],
@@ -262,6 +341,142 @@ class _HostProfileForm extends StatelessWidget {
       return message;
     }
     return null;
+  }
+}
+
+class _SessionActionButton extends StatelessWidget {
+  const _SessionActionButton({
+    required this.status,
+    required this.onConnect,
+    required this.onDisconnect,
+  });
+
+  final CodexSessionStatus status;
+  final VoidCallback onConnect;
+  final VoidCallback onDisconnect;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final transitioning =
+        status == CodexSessionStatus.connecting ||
+        status == CodexSessionStatus.disconnecting;
+
+    if (status == CodexSessionStatus.connected ||
+        status == CodexSessionStatus.disconnecting) {
+      return FilledButton.icon(
+        key: const ValueKey('session-disconnect-button'),
+        onPressed: transitioning ? null : onDisconnect,
+        icon: transitioning
+            ? const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.link_off),
+        label: Text(
+          status == CodexSessionStatus.disconnecting
+              ? l10n.disconnecting
+              : l10n.disconnect,
+        ),
+      );
+    }
+
+    return FilledButton.icon(
+      key: const ValueKey('session-connect-button'),
+      onPressed: transitioning ? null : onConnect,
+      icon: transitioning
+          ? const SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.link),
+      label: Text(
+        status == CodexSessionStatus.connecting
+            ? l10n.connecting
+            : l10n.connect,
+      ),
+    );
+  }
+}
+
+class _SessionStatusPanel extends StatelessWidget {
+  const _SessionStatusPanel({required this.controller, this.actionError});
+
+  final CodexSessionStateController controller;
+  final String? actionError;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final error = controller.error?.toString() ?? actionError;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(_iconForState(), color: _colorForState(context)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    l10n.connectionStatus,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(_statusText(l10n)),
+                  if (error != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      error,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _iconForState() => switch (controller.status) {
+    CodexSessionStatus.connected => Icons.check_circle_outline,
+    CodexSessionStatus.connecting ||
+    CodexSessionStatus.disconnecting => Icons.sync,
+    CodexSessionStatus.failed => Icons.error_outline,
+    CodexSessionStatus.idle => Icons.info_outline,
+  };
+
+  Color? _colorForState(BuildContext context) => switch (controller.status) {
+    CodexSessionStatus.connected => Theme.of(context).colorScheme.primary,
+    CodexSessionStatus.failed => Theme.of(context).colorScheme.error,
+    CodexSessionStatus.connecting ||
+    CodexSessionStatus.disconnecting ||
+    CodexSessionStatus.idle => null,
+  };
+
+  String _statusText(AppLocalizations l10n) {
+    final endpoint = controller.profile?.endpoint;
+    return switch (controller.status) {
+      CodexSessionStatus.idle => l10n.noActiveConnection,
+      CodexSessionStatus.connecting =>
+        endpoint == null ? l10n.connecting : '${l10n.connecting}: $endpoint',
+      CodexSessionStatus.connected =>
+        endpoint == null
+            ? l10n.connected
+            : '${l10n.activeConnection}: $endpoint',
+      CodexSessionStatus.disconnecting => l10n.disconnecting,
+      CodexSessionStatus.failed =>
+        endpoint == null
+            ? l10n.connectionFailed
+            : '${l10n.connectionFailed}: $endpoint',
+    };
   }
 }
 

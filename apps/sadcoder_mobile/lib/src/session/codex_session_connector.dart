@@ -3,8 +3,14 @@ import '../protocol/codex_app_session.dart';
 import '../ssh/ssh_profile.dart';
 import '../ssh/ssh_proxy_connector.dart';
 
+abstract interface class CodexSessionConnectionHandle {
+  SshProfile get profile;
+
+  Future<void> close({bool notifyApprovalController = true});
+}
+
 abstract interface class CodexSessionConnectionStarter {
-  Future<CodexSessionConnection> connect(
+  Future<CodexSessionConnectionHandle> connect(
     SshProfile profile, {
     ApprovalStateController? approvalController,
   });
@@ -50,18 +56,20 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
   }
 }
 
-class CodexSessionConnection {
+class CodexSessionConnection implements CodexSessionConnectionHandle {
   CodexSessionConnection({
     required this.profile,
     required this.session,
     required AgentProxyConnection proxyConnection,
   }) : _proxyConnection = proxyConnection;
 
+  @override
   final SshProfile profile;
   final CodexAppSession session;
   final AgentProxyConnection _proxyConnection;
   bool _closed = false;
 
+  @override
   Future<void> close({bool notifyApprovalController = true}) async {
     if (_closed) {
       return;

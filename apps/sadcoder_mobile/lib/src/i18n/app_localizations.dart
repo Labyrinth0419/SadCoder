@@ -46,6 +46,15 @@ class AppLocalizations {
   String get backendDaemon => _text('backendDaemon');
   String get backendStdioFallback => _text('backendStdioFallback');
   String get backendUnknown => _text('backendUnknown');
+  String get connect => _text('connect');
+  String get connecting => _text('connecting');
+  String get connected => _text('connected');
+  String get disconnect => _text('disconnect');
+  String get disconnecting => _text('disconnecting');
+  String get connectionStatus => _text('connectionStatus');
+  String get connectionFailed => _text('connectionFailed');
+  String get activeConnection => _text('activeConnection');
+  String get noActiveConnection => _text('noActiveConnection');
   String get disconnected => _text('disconnected');
   String get m0ProtocolClient => _text('m0ProtocolClient');
   String get m0ProtocolClientBody => _text('m0ProtocolClientBody');
@@ -146,6 +155,15 @@ const _values = <String, Map<String, String>>{
     'backendDaemon': 'daemon',
     'backendStdioFallback': 'stdio fallback',
     'backendUnknown': 'unknown',
+    'connect': 'Connect',
+    'connecting': 'Connecting',
+    'connected': 'Connected',
+    'disconnect': 'Disconnect',
+    'disconnecting': 'Disconnecting',
+    'connectionStatus': 'Connection status',
+    'connectionFailed': 'Connection failed',
+    'activeConnection': 'Active connection',
+    'noActiveConnection': 'No active connection',
     'disconnected': 'Disconnected',
     'm0ProtocolClient': 'M0 protocol client',
     'm0ProtocolClientBody':
@@ -223,6 +241,15 @@ const _values = <String, Map<String, String>>{
     'backendDaemon': 'daemon',
     'backendStdioFallback': 'stdio fallback',
     'backendUnknown': '未知',
+    'connect': '连接',
+    'connecting': '连接中',
+    'connected': '已连接',
+    'disconnect': '断开',
+    'disconnecting': '断开中',
+    'connectionStatus': '连接状态',
+    'connectionFailed': '连接失败',
+    'activeConnection': '当前连接',
+    'noActiveConnection': '暂无活动连接',
     'disconnected': '未连接',
     'm0ProtocolClient': 'M0 协议客户端',
     'm0ProtocolClientBody':

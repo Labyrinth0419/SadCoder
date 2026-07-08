@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
+import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
+import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/agent/agent_status.dart';
 import 'package:sadcoder_mobile/src/features/hosts/hosts_page.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/probe/m0_probe_coordinator.dart';
+import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
+import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 
 void main() {
@@ -68,9 +73,136 @@ void main() {
     expect(find.text('Username is required'), findsOneWidget);
     expect(find.text('Password is required'), findsOneWidget);
   });
+
+  testWidgets('connects and disconnects a Codex app session', (tester) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final approvalController = ApprovalStateController(
+      initialApprovals: const [
+        PendingApproval(
+          requestId: 'approval-1',
+          method: commandExecutionApprovalMethod,
+          kind: PendingApprovalKind.commandExecution,
+          rawParams: {},
+        ),
+      ],
+    );
+    final starter = _FakeSessionStarter();
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await _pumpHostsPage(tester, runner, sessionController: sessionController);
+
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('password-field')),
+      'secret',
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('session-connect-button')),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('session-connect-button')));
+    await _pumpUntil(
+      tester,
+      () => sessionController.status == CodexSessionStatus.connected,
+      describe: () => 'status=${sessionController.status}',
+    );
+
+    expect(starter.connectedProfiles.single.host, 'srv.dev');
+    expect(starter.connectedProfiles.single.username, 'alice');
+    expect(sessionController.status, CodexSessionStatus.connected);
+    expect(find.text('Active connection: alice@srv.dev:22'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('session-disconnect-button')),
+      findsOneWidget,
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('session-disconnect-button')),
+    );
+    await tester.tap(find.byKey(const ValueKey('session-disconnect-button')));
+    await _pumpUntil(
+      tester,
+      () => sessionController.status == CodexSessionStatus.idle,
+      describe: () =>
+          'status=${sessionController.status}, closeCount=${starter.closeCount}',
+    );
+
+    expect(starter.closeCount, 1);
+    expect(sessionController.status, CodexSessionStatus.idle);
+    expect(approvalController.approvals.single.requestId, 'approval-1');
+    expect(approvalController.canRespond, false);
+    expect(find.text('No active connection'), findsOneWidget);
+  });
+
+  testWidgets('shows connection failure from the session controller', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final approvalController = ApprovalStateController();
+    final sessionController = CodexSessionStateController(
+      connector: _FakeSessionStarter(failConnect: true),
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await _pumpHostsPage(tester, runner, sessionController: sessionController);
+
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('password-field')),
+      'secret',
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('session-connect-button')),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('session-connect-button')));
+    await _pumpUntil(
+      tester,
+      () => sessionController.status == CodexSessionStatus.failed,
+      describe: () => 'status=${sessionController.status}',
+    );
+
+    expect(sessionController.status, CodexSessionStatus.failed);
+    expect(find.text('Connection failed: alice@srv.dev:22'), findsOneWidget);
+    expect(find.textContaining('connect failed'), findsOneWidget);
+  });
 }
 
-Future<void> _pumpHostsPage(WidgetTester tester, M0ProbeRunner runner) {
+Future<void> _pumpUntil(
+  WidgetTester tester,
+  bool Function() predicate, {
+  String Function()? describe,
+}) async {
+  for (var i = 0; i < 20; i++) {
+    if (predicate()) {
+      await tester.pump();
+      return;
+    }
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+  expect(predicate(), isTrue, reason: describe?.call());
+}
+
+Future<void> _pumpHostsPage(
+  WidgetTester tester,
+  M0ProbeRunner runner, {
+  CodexSessionStateController? sessionController,
+}) {
   return tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: const [
@@ -80,7 +212,10 @@ Future<void> _pumpHostsPage(WidgetTester tester, M0ProbeRunner runner) {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      home: HostsPage(probeRunner: runner),
+      home: HostsPage(
+        probeRunner: runner,
+        sessionController: sessionController,
+      ),
     ),
   );
 }
@@ -108,5 +243,47 @@ class _FakeProbeRunner implements M0ProbeRunner {
   Future<M0ProbeReport> run(SshProfile profile) async {
     lastProfile = profile;
     return report;
+  }
+}
+
+class _FakeSessionStarter implements CodexSessionConnectionStarter {
+  _FakeSessionStarter({this.failConnect = false});
+
+  final bool failConnect;
+  final connectedProfiles = <SshProfile>[];
+  int closeCount = 0;
+
+  @override
+  Future<CodexSessionConnectionHandle> connect(
+    SshProfile profile, {
+    ApprovalStateController? approvalController,
+  }) async {
+    if (failConnect) {
+      throw StateError('connect failed');
+    }
+    connectedProfiles.add(profile);
+    return _FakeSessionConnection(
+      profile: profile,
+      onClose: () => closeCount++,
+    );
+  }
+}
+
+class _FakeSessionConnection implements CodexSessionConnectionHandle {
+  _FakeSessionConnection({required this.profile, required this.onClose});
+
+  @override
+  final SshProfile profile;
+
+  final VoidCallback onClose;
+  bool _closed = false;
+
+  @override
+  Future<void> close({bool notifyApprovalController = true}) async {
+    if (_closed) {
+      return;
+    }
+    _closed = true;
+    onClose();
   }
 }
