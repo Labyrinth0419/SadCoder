@@ -1,6 +1,6 @@
 import '../agent/agent_remote_service.dart';
 import '../agent/agent_status.dart';
-import '../protocol/codex_app_server_client.dart';
+import '../protocol/codex_app_session.dart';
 import '../protocol/json_rpc.dart';
 import '../ssh/ssh_profile.dart';
 import '../ssh/ssh_proxy_connector.dart';
@@ -52,6 +52,7 @@ class M0ProbeCoordinator implements M0ProbeRunner {
     AgentStatus? status;
     AgentProxyConnection? connection;
     JsonRpcTransport? transport;
+    CodexAppSession? session;
 
     try {
       status = await _statusReader.readStatus(profile);
@@ -79,12 +80,13 @@ class M0ProbeCoordinator implements M0ProbeRunner {
         const M0ProbeStepResult(step: M0ProbeStep.proxyConnect, ok: true),
       );
       transport = connection.asJsonRpcTransport();
-      final client = CodexAppServerClient(transport);
+      session = CodexAppSession(transport);
+      final client = session.client;
 
       if (!await _recordStep(
         steps,
         M0ProbeStep.initialize,
-        client.initialize,
+        session.initialize,
       )) {
         return M0ProbeReport(agentStatus: status, steps: steps);
       }
@@ -104,7 +106,7 @@ class M0ProbeCoordinator implements M0ProbeRunner {
       );
       return M0ProbeReport(agentStatus: status, steps: steps);
     } finally {
-      await _closeQuietly(transport?.close);
+      await _closeQuietly(session?.close ?? transport?.close);
       await _closeQuietly(connection?.close);
     }
   }
