@@ -66,6 +66,41 @@ pub struct JsonRpcError {
     pub message: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentStateSnapshot {
+    pub schema_version: u32,
+    pub pending_approvals: Vec<AgentCachedServerRequest>,
+    pub recent_events: Vec<AgentCachedEvent>,
+}
+
+impl Default for AgentStateSnapshot {
+    fn default() -> Self {
+        Self {
+            schema_version: 1,
+            pending_approvals: Vec::new(),
+            recent_events: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentCachedServerRequest {
+    pub id: Value,
+    pub method: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub params: Option<Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentCachedEvent {
+    pub method: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub params: Option<Value>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentStatus {
@@ -208,6 +243,31 @@ mod tests {
         assert_eq!(encoded["agentVersion"], "0.1.0");
         assert_eq!(encoded["codexAvailable"], true);
         assert_eq!(encoded["backend"]["kind"], "codex-app-server-stdio");
+    }
+
+    #[test]
+    fn agent_state_snapshot_uses_camel_case_wire_keys() {
+        let snapshot = AgentStateSnapshot {
+            schema_version: 1,
+            pending_approvals: vec![AgentCachedServerRequest {
+                id: Value::String("approval-1".to_string()),
+                method: "item/commandExecution/requestApproval".to_string(),
+                params: Some(serde_json::json!({ "command": "cargo test" })),
+            }],
+            recent_events: vec![AgentCachedEvent {
+                method: "thread/item".to_string(),
+                params: Some(serde_json::json!({ "threadId": "thr_1" })),
+            }],
+        };
+
+        let encoded = serde_json::to_value(snapshot).expect("serialize snapshot");
+
+        assert_eq!(encoded["schemaVersion"], 1);
+        assert_eq!(
+            encoded["pendingApprovals"][0]["method"],
+            "item/commandExecution/requestApproval"
+        );
+        assert_eq!(encoded["recentEvents"][0]["params"]["threadId"], "thr_1");
     }
 
     #[test]

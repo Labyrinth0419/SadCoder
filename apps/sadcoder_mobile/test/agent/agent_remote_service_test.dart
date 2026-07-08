@@ -72,6 +72,45 @@ void main() {
     expect(manifest.commands.first.command, 'model');
     expect(manifest.asRegistry().find('/clean')?.command, 'stop');
   });
+
+  test('readSnapshot parses pending approvals and recent events', () async {
+    final runner = _FakeRunner(
+      result: const RemoteCommandResult(
+        exitCode: 0,
+        stdout: '''
+{
+  "schemaVersion": 1,
+  "pendingApprovals": [
+    {
+      "id": "approval-1",
+      "method": "item/commandExecution/requestApproval",
+      "params": { "command": "cargo test" }
+    }
+  ],
+  "recentEvents": [
+    {
+      "method": "thread/item",
+      "params": { "threadId": "thr_1" }
+    }
+  ]
+}
+''',
+        stderr: '',
+      ),
+    );
+    final service = AgentRemoteService(runner);
+
+    final snapshot = await service.readSnapshot(_profile);
+
+    expect(runner.lastCommand, 'sadcoder-agent snapshot --json');
+    expect(snapshot.schemaVersion, 1);
+    expect(snapshot.pendingApprovals.single.id, 'approval-1');
+    expect(
+      snapshot.pendingApprovals.single.method,
+      'item/commandExecution/requestApproval',
+    );
+    expect(snapshot.recentEvents.single.method, 'thread/item');
+  });
 }
 
 const _profile = SshProfile(

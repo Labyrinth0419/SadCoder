@@ -17,11 +17,18 @@ use std::io;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 use std::process::ChildStdin;
 use std::process::ChildStdout;
 use std::process::Command;
 use std::process::Stdio;
 use std::thread;
+
+mod state_cache;
+
+use state_cache::AgentStateCache;
+use state_cache::resolve_state_path;
 
 #[derive(Debug, Parser)]
 #[command(name = "sadcoder-agent")]
@@ -32,6 +39,9 @@ struct Cli {
 
     #[arg(long, env = "SADCODER_BACKEND", value_enum, default_value_t = BackendMode::Auto)]
     backend: BackendMode,
+
+    #[arg(long, env = "SADCODER_STATE_PATH", value_name = "PATH")]
+    state_path: Option<PathBuf>,
 
     #[command(subcommand)]
     command: AgentCommand,
@@ -72,6 +82,11 @@ enum AgentCommand {
         #[arg(long)]
         json: bool,
     },
+    /// Print the agent's cached reconnect snapshot.
+    Snapshot {
+        #[arg(long)]
+        json: bool,
+    },
     /// Proxy this process' stdin/stdout to the selected app-server backend.
     Proxy,
 }
@@ -83,7 +98,12 @@ fn main() -> anyhow::Result<()> {
         AgentCommand::Start { json } => print_start(&cli.codex_path, cli.backend, json),
         AgentCommand::Probe { json } => print_probe(&cli.codex_path, json),
         AgentCommand::SlashCommands { json } => print_slash_commands(json),
-        AgentCommand::Proxy => proxy_app_server(&cli.codex_path, cli.backend),
+        AgentCommand::Snapshot { json } => print_snapshot(cli.state_path.as_deref(), json),
+        AgentCommand::Proxy => proxy_app_server(
+            &cli.codex_path,
+            cli.backend,
+            resolve_state_path(cli.state_path.as_deref()),
+        ),
     }
 }
 
@@ -162,6 +182,23 @@ fn print_slash_commands(json_output: bool) -> anyhow::Result<()> {
 fn load_slash_command_manifest() -> anyhow::Result<SlashCommandManifest> {
     serde_json::from_str(SLASH_COMMANDS_MANIFEST_JSON)
         .context("embedded slash command manifest is invalid")
+}
+
+fn print_snapshot(state_path: Option<&Path>, json_output: bool) -> anyhow::Result<()> {
+    let state_path = resolve_state_path(state_path);
+    let snapshot = AgentStateCache::load(&state_path)?.into_snapshot();
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&snapshot)?);
+    } else {
+        println!(
+            "agent snapshot v{}: {} pending approvals, {} recent events",
+            snapshot.schema_version,
+            snapshot.pending_approvals.len(),
+            snapshot.recent_events.len()
+        );
+        println!("{}", state_path.display());
+    }
+    Ok(())
 }
 
 fn collect_status(codex_path: &str, backend_mode: BackendMode) -> AgentStatus {
@@ -436,9 +473,13 @@ fn daemon_supported() -> bool {
     cfg!(unix)
 }
 
-fn proxy_app_server(codex_path: &str, backend_mode: BackendMode) -> anyhow::Result<()> {
+fn proxy_app_server(
+    codex_path: &str,
+    backend_mode: BackendMode,
+    state_path: PathBuf,
+) -> anyhow::Result<()> {
     match select_backend(backend_mode, daemon_supported()) {
-        Ok(SelectedBackend::Stdio) => proxy_stdio_app_server(codex_path),
+        Ok(SelectedBackend::Stdio) => proxy_stdio_app_server(codex_path, state_path),
         Ok(SelectedBackend::Daemon) => proxy_daemon_app_server(codex_path),
         Err(detail) => anyhow::bail!(detail),
     }
@@ -458,7 +499,7 @@ fn proxy_daemon_app_server(codex_path: &str) -> anyhow::Result<()> {
     }
 }
 
-fn proxy_stdio_app_server(codex_path: &str) -> anyhow::Result<()> {
+fn proxy_stdio_app_server(codex_path: &str, state_path: PathBuf) -> anyhow::Result<()> {
     let mut child = Command::new(codex_path)
         .args(["app-server", "--listen", "stdio://"])
         .stdin(Stdio::piped())
@@ -475,8 +516,28 @@ fn proxy_stdio_app_server(codex_path: &str) -> anyhow::Result<()> {
         let _ = io::copy(&mut stdin, &mut child_stdin);
     });
     let stdout_thread = thread::spawn(move || {
+        let mut reader = BufReader::new(&mut child_stdout);
         let mut stdout = io::stdout().lock();
-        let _ = io::copy(&mut child_stdout, &mut stdout);
+        let mut cache =
+            AgentStateCache::load(&state_path).unwrap_or_else(|_| AgentStateCache::empty());
+        let mut line = Vec::new();
+        loop {
+            line.clear();
+            let bytes = match reader.read_until(b'\n', &mut line) {
+                Ok(bytes) => bytes,
+                Err(_) => break,
+            };
+            if bytes == 0 {
+                break;
+            }
+            if cache.observe_server_line_bytes(&line) {
+                let _ = cache.save(&state_path);
+            }
+            if stdout.write_all(&line).is_err() {
+                break;
+            }
+            let _ = stdout.flush();
+        }
     });
 
     let status = child.wait().context("failed to wait for app-server")?;

@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../commands/slash_command_registry.dart';
 import '../ssh/remote_command_runner.dart';
 import '../ssh/ssh_profile.dart';
+import 'agent_snapshot.dart';
 import 'agent_status.dart';
 
 abstract interface class AgentStatusReader {
@@ -57,5 +58,27 @@ class AgentRemoteService implements AgentStatusReader {
       );
     }
     return SlashCommandManifest.fromJson(decoded);
+  }
+
+  Future<AgentSnapshot> readSnapshot(SshProfile profile) async {
+    final result = await _runner.run(
+      profile,
+      '${profile.agentCommand} snapshot --json',
+      timeout: const Duration(seconds: 20),
+    );
+
+    if (!result.succeeded) {
+      throw RemoteCommandException(
+        'Agent snapshot failed with exit code ${result.exitCode}: ${result.stderr}',
+      );
+    }
+
+    final decoded = jsonDecode(result.stdout);
+    if (decoded is! Map<String, Object?>) {
+      throw const RemoteCommandException(
+        'Agent snapshot did not return a JSON object.',
+      );
+    }
+    return AgentSnapshot.fromJson(decoded);
   }
 }
