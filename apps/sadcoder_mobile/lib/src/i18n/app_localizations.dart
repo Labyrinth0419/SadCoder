@@ -49,6 +49,12 @@ class AppLocalizations {
   String get slashCommandSurfaceBody => _text('slashCommandSurfaceBody');
   String get connectBeforeTurn => _text('connectBeforeTurn');
   String get send => _text('send');
+  String get slashCommands => _text('slashCommands');
+  String get typeCommandName => _text('typeCommandName');
+  String slashCommandUnknown(String slash) =>
+      _text('slashCommandUnknown').replaceAll('{slash}', slash);
+  String get slashCommandNotSentAsPrompt =>
+      _text('slashCommandNotSentAsPrompt');
   String get noPendingApprovals => _text('noPendingApprovals');
   String get approvalsBody => _text('approvalsBody');
   String get serverDefaults => _text('serverDefaults');
@@ -119,6 +125,10 @@ const _values = <String, Map<String, String>>{
         'Typing / will later open the SadCoder command palette instead of sending slash text as a normal prompt.',
     'connectBeforeTurn': 'Connect to a host before sending a turn',
     'send': 'Send',
+    'slashCommands': 'Slash commands',
+    'typeCommandName': 'Type a command name',
+    'slashCommandUnknown': 'Unknown command: {slash}',
+    'slashCommandNotSentAsPrompt': 'Not sent as a prompt',
     'noPendingApprovals': 'No pending approvals',
     'approvalsBody':
         'Command, file, and MCP requests will appear here with their thread and turn IDs.',
@@ -165,6 +175,10 @@ const _values = <String, Map<String, String>>{
     'slashCommandSurfaceBody': '输入 / 后会打开 SadCoder 命令面板，而不是把斜杠文本当作普通提示词发送。',
     'connectBeforeTurn': '连接主机后才能发送任务',
     'send': '发送',
+    'slashCommands': '斜杠命令',
+    'typeCommandName': '输入命令名称',
+    'slashCommandUnknown': '未知命令：{slash}',
+    'slashCommandNotSentAsPrompt': '不会作为普通提示词发送',
     'noPendingApprovals': '暂无待审批请求',
     'approvalsBody': '命令、文件和 MCP 请求会在这里显示对应的会话与回合 ID。',
     'serverDefaults': '服务器默认配置',

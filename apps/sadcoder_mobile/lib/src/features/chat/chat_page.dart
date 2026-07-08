@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../../commands/slash_command_registry.dart';
 import '../../i18n/app_localizations.dart';
 
-class ChatPage extends StatelessWidget {
-  const ChatPage({super.key});
+class ChatPage extends StatefulWidget {
+  const ChatPage({super.key, this.registry = const SlashCommandRegistry()});
+
+  final SlashCommandRegistry registry;
+
+  @override
+  State<ChatPage> createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<ChatPage> {
+  SlashCommandParseResult _slashCommand =
+      const SlashCommandParseResult.notSlash();
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +48,7 @@ class ChatPage extends StatelessWidget {
                 title: l10n.slashCommandSurface,
                 body: l10n.slashCommandSurfaceBody,
               ),
+              _SlashCommandPreview(result: _slashCommand),
             ],
           ),
         ),
@@ -45,7 +57,8 @@ class ChatPage extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
-              enabled: false,
+              key: const ValueKey('chat-composer-field'),
+              onChanged: _handleComposerChanged,
               decoration: InputDecoration(
                 hintText: l10n.connectBeforeTurn,
                 prefixIcon: const Icon(Icons.code),
@@ -61,6 +74,10 @@ class ChatPage extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  void _handleComposerChanged(String value) {
+    setState(() => _slashCommand = widget.registry.parseComposerText(value));
   }
 }
 
@@ -97,6 +114,58 @@ class _MessageBlock extends StatelessWidget {
             Text(body),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SlashCommandPreview extends StatelessWidget {
+  const _SlashCommandPreview({required this.result});
+
+  final SlashCommandParseResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return switch (result.kind) {
+      SlashCommandParseKind.notSlash => const SizedBox.shrink(),
+      SlashCommandParseKind.empty => _PreviewCard(
+        icon: Icons.manage_search,
+        title: l10n.slashCommands,
+        subtitle: l10n.typeCommandName,
+      ),
+      SlashCommandParseKind.unknown => _PreviewCard(
+        icon: Icons.error_outline,
+        title: l10n.slashCommandUnknown('/${result.rawCommand}'),
+        subtitle: l10n.slashCommandNotSentAsPrompt,
+      ),
+      SlashCommandParseKind.known => _PreviewCard(
+        icon: Icons.terminal,
+        title: result.command!.slash,
+        subtitle: result.command!.description,
+      ),
+    };
+  }
+}
+
+class _PreviewCard extends StatelessWidget {
+  const _PreviewCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(title),
+        subtitle: Text(subtitle),
       ),
     );
   }
