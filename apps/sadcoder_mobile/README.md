@@ -10,6 +10,8 @@ Current M0 scope:
 - `dartssh2`-backed command runner for password/private-key auth.
 - Remote agent status service for `sadcoder-agent status --json`.
 - JSON-RPC transport abstraction.
+- Line-delimited JSON-RPC stream transport for app-server stdio.
+- SSH proxy connector for `${agentCommand} proxy`.
 - Codex app-server client methods for `initialize`, `model/list`, and
   `thread/list`.
 - Tests for the protocol client and app shell.

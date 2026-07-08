@@ -30,8 +30,17 @@ cargo run -p sadcoder-agent -- probe --json
 `thread/list`.
 
 The mobile app has an SSH command runner abstraction and a `dartssh2`
-implementation for invoking remote agent commands. The proxy stream transport
-will build on the same SSH boundary.
+implementation for invoking remote agent commands.
+
+For interactive Codex sessions, the mobile app opens an SSH exec channel to:
+
+```powershell
+sadcoder-agent proxy
+```
+
+`proxy` starts `codex app-server --listen stdio://` on the server and forwards
+line-delimited JSON-RPC between the app and Codex. This keeps Codex execution on
+the server side instead of tying task lifetime to the mobile process.
 
 ## Verification
 
