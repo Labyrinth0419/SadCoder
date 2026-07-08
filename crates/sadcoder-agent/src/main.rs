@@ -1,6 +1,7 @@
 use anyhow::Context;
 use clap::Parser;
 use clap::Subcommand;
+use clap::ValueEnum;
 use sadcoder_protocol::AgentStatus;
 use sadcoder_protocol::BackendKind;
 use sadcoder_protocol::BackendState;
@@ -29,8 +30,24 @@ struct Cli {
     #[arg(long, env = "SADCODER_CODEX_PATH", default_value = "codex")]
     codex_path: String,
 
+    #[arg(long, env = "SADCODER_BACKEND", value_enum, default_value_t = BackendMode::Auto)]
+    backend: BackendMode,
+
     #[command(subcommand)]
     command: AgentCommand,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum BackendMode {
+    Auto,
+    Stdio,
+    Daemon,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SelectedBackend {
+    Stdio,
+    Daemon,
 }
 
 #[derive(Debug, Subcommand)]
@@ -40,7 +57,7 @@ enum AgentCommand {
         #[arg(long)]
         json: bool,
     },
-    /// Prepare the backend. M0 uses on-demand stdio, so this is a health check.
+    /// Prepare the selected backend.
     Start {
         #[arg(long)]
         json: bool,
@@ -55,26 +72,26 @@ enum AgentCommand {
         #[arg(long)]
         json: bool,
     },
-    /// Proxy this process' stdin/stdout to `codex app-server --listen stdio://`.
+    /// Proxy this process' stdin/stdout to the selected app-server backend.
     Proxy,
 }
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        AgentCommand::Status { json } => print_status(&cli.codex_path, json),
-        AgentCommand::Start { json } => print_status(&cli.codex_path, json),
+        AgentCommand::Status { json } => print_status(&cli.codex_path, cli.backend, json),
+        AgentCommand::Start { json } => print_start(&cli.codex_path, cli.backend, json),
         AgentCommand::Probe { json } => print_probe(&cli.codex_path, json),
         AgentCommand::SlashCommands { json } => print_slash_commands(json),
-        AgentCommand::Proxy => proxy_app_server(&cli.codex_path),
+        AgentCommand::Proxy => proxy_app_server(&cli.codex_path, cli.backend),
     }
 }
 
 const SLASH_COMMANDS_MANIFEST_JSON: &str =
     include_str!("../../../resources/slash_commands_manifest.json");
 
-fn print_status(codex_path: &str, json: bool) -> anyhow::Result<()> {
-    let status = collect_status(codex_path);
+fn print_status(codex_path: &str, backend_mode: BackendMode, json: bool) -> anyhow::Result<()> {
+    let status = collect_status(codex_path, backend_mode);
     if json {
         println!("{}", serde_json::to_string_pretty(&status)?);
     } else {
@@ -90,6 +107,11 @@ fn print_status(codex_path: &str, json: bool) -> anyhow::Result<()> {
         );
     }
     Ok(())
+}
+
+fn print_start(codex_path: &str, backend_mode: BackendMode, json: bool) -> anyhow::Result<()> {
+    start_backend(codex_path, backend_mode)?;
+    print_status(codex_path, backend_mode, json)
 }
 
 fn print_probe(codex_path: &str, json_output: bool) -> anyhow::Result<()> {
@@ -142,22 +164,10 @@ fn load_slash_command_manifest() -> anyhow::Result<SlashCommandManifest> {
         .context("embedded slash command manifest is invalid")
 }
 
-fn collect_status(codex_path: &str) -> AgentStatus {
+fn collect_status(codex_path: &str, backend_mode: BackendMode) -> AgentStatus {
     let codex_version = probe_codex_version(codex_path);
     let codex_available = codex_version.is_some();
-    let backend = if codex_available {
-        BackendStatus {
-            kind: BackendKind::CodexAppServerStdio,
-            state: BackendState::Ready,
-            detail: Some("on-demand stdio backend; persistent service is a later milestone".into()),
-        }
-    } else {
-        BackendStatus {
-            kind: BackendKind::Unknown,
-            state: BackendState::Unavailable,
-            detail: Some("codex executable was not found or did not run".into()),
-        }
-    };
+    let backend = collect_backend_status(codex_path, codex_available, backend_mode);
 
     AgentStatus {
         agent_version: env!("CARGO_PKG_VERSION").to_string(),
@@ -167,6 +177,83 @@ fn collect_status(codex_path: &str) -> AgentStatus {
         codex_available,
         codex_version,
         backend,
+    }
+}
+
+fn collect_backend_status(
+    codex_path: &str,
+    codex_available: bool,
+    backend_mode: BackendMode,
+) -> BackendStatus {
+    if !codex_available {
+        return BackendStatus {
+            kind: BackendKind::Unknown,
+            state: BackendState::Unavailable,
+            detail: Some("codex executable was not found or did not run".into()),
+        };
+    }
+
+    match select_backend(backend_mode, daemon_supported()) {
+        Ok(SelectedBackend::Stdio) => BackendStatus {
+            kind: BackendKind::CodexAppServerStdio,
+            state: BackendState::Ready,
+            detail: Some("on-demand stdio fallback; SSH disconnect can end this backend".into()),
+        },
+        Ok(SelectedBackend::Daemon) => {
+            if probe_daemon_version(codex_path).is_some() {
+                BackendStatus {
+                    kind: BackendKind::CodexAppServerDaemon,
+                    state: BackendState::Ready,
+                    detail: Some("official Codex app-server daemon is running".into()),
+                }
+            } else {
+                BackendStatus {
+                    kind: BackendKind::CodexAppServerDaemon,
+                    state: BackendState::NotStarted,
+                    detail: Some(
+                        "official daemon backend is preferred; run sadcoder-agent start".into(),
+                    ),
+                }
+            }
+        }
+        Err(detail) => BackendStatus {
+            kind: BackendKind::Unknown,
+            state: BackendState::Unavailable,
+            detail: Some(detail),
+        },
+    }
+}
+
+fn select_backend(
+    backend_mode: BackendMode,
+    daemon_supported: bool,
+) -> Result<SelectedBackend, String> {
+    match backend_mode {
+        BackendMode::Stdio => Ok(SelectedBackend::Stdio),
+        BackendMode::Daemon if daemon_supported => Ok(SelectedBackend::Daemon),
+        BackendMode::Daemon => {
+            Err("Codex app-server daemon is not supported on this platform".into())
+        }
+        BackendMode::Auto if daemon_supported => Ok(SelectedBackend::Daemon),
+        BackendMode::Auto => Ok(SelectedBackend::Stdio),
+    }
+}
+
+fn start_backend(codex_path: &str, backend_mode: BackendMode) -> anyhow::Result<()> {
+    match select_backend(backend_mode, daemon_supported()) {
+        Ok(SelectedBackend::Stdio) => Ok(()),
+        Ok(SelectedBackend::Daemon) => {
+            let status = Command::new(codex_path)
+                .args(["app-server", "daemon", "start"])
+                .status()
+                .context("failed to start Codex app-server daemon")?;
+            if status.success() {
+                Ok(())
+            } else {
+                anyhow::bail!("Codex app-server daemon start exited with status {status}")
+            }
+        }
+        Err(detail) => anyhow::bail!(detail),
     }
 }
 
@@ -334,7 +421,44 @@ fn probe_codex_version(codex_path: &str) -> Option<String> {
     }
 }
 
-fn proxy_app_server(codex_path: &str) -> anyhow::Result<()> {
+fn probe_daemon_version(codex_path: &str) -> Option<Value> {
+    let output = Command::new(codex_path)
+        .args(["app-server", "daemon", "version"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    serde_json::from_slice(&output.stdout).ok()
+}
+
+fn daemon_supported() -> bool {
+    cfg!(unix)
+}
+
+fn proxy_app_server(codex_path: &str, backend_mode: BackendMode) -> anyhow::Result<()> {
+    match select_backend(backend_mode, daemon_supported()) {
+        Ok(SelectedBackend::Stdio) => proxy_stdio_app_server(codex_path),
+        Ok(SelectedBackend::Daemon) => proxy_daemon_app_server(codex_path),
+        Err(detail) => anyhow::bail!(detail),
+    }
+}
+
+fn proxy_daemon_app_server(codex_path: &str) -> anyhow::Result<()> {
+    start_backend(codex_path, BackendMode::Daemon)?;
+    let status = Command::new(codex_path)
+        .args(["app-server", "proxy"])
+        .status()
+        .context("failed to proxy to Codex app-server daemon")?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        anyhow::bail!("Codex app-server proxy exited with status {status}")
+    }
+}
+
+fn proxy_stdio_app_server(codex_path: &str) -> anyhow::Result<()> {
     let mut child = Command::new(codex_path)
         .args(["app-server", "--listen", "stdio://"])
         .stdin(Stdio::piped())
@@ -372,11 +496,31 @@ mod tests {
 
     #[test]
     fn unavailable_codex_reports_unavailable_backend() {
-        let status = collect_status("definitely-missing-sadcoder-codex-binary");
+        let status = collect_status(
+            "definitely-missing-sadcoder-codex-binary",
+            BackendMode::Auto,
+        );
 
         assert!(!status.codex_available);
         assert_eq!(status.backend.kind, BackendKind::Unknown);
         assert_eq!(status.backend.state, BackendState::Unavailable);
+    }
+
+    #[test]
+    fn backend_selection_prefers_daemon_only_when_supported() {
+        assert_eq!(
+            select_backend(BackendMode::Auto, true),
+            Ok(SelectedBackend::Daemon)
+        );
+        assert_eq!(
+            select_backend(BackendMode::Auto, false),
+            Ok(SelectedBackend::Stdio)
+        );
+        assert_eq!(
+            select_backend(BackendMode::Stdio, true),
+            Ok(SelectedBackend::Stdio)
+        );
+        assert!(select_backend(BackendMode::Daemon, false).is_err());
     }
 
     #[test]

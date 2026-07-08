@@ -44,6 +44,14 @@ sadcoder-agent proxy
 line-delimited JSON-RPC between the app and Codex. This keeps Codex execution on
 the server side instead of tying task lifetime to the mobile process.
 
+Backend selection is controlled by `--backend` or `SADCODER_BACKEND`:
+
+- `auto` prefers the official Codex app-server daemon on Unix and falls back to
+  stdio where daemon lifecycle is unavailable.
+- `daemon` requires official `codex app-server daemon` support.
+- `stdio` forces the current fallback path and is useful for local debugging,
+  but SSH disconnect can end that app-server process.
+
 `slash-commands --json` prints the shared slash command manifest from
 `resources/slash_commands_manifest.json`. The manifest tracks the current Codex
 TUI slash command surface, aliases, availability rules, implementation phase,
