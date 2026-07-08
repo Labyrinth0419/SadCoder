@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
+import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
+import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/app/sadcoder_app.dart';
 
 void main() {
@@ -21,5 +24,32 @@ void main() {
     expect(find.text('对话'), findsWidgets);
     expect(find.text('审批'), findsWidgets);
     expect(find.text('设置'), findsWidgets);
+  });
+
+  testWidgets('renders injected pending approvals in the shell', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController(
+      initialApprovals: const [
+        PendingApproval(
+          requestId: 'approval-1',
+          method: commandExecutionApprovalMethod,
+          kind: PendingApprovalKind.commandExecution,
+          rawParams: {},
+          title: 'cargo test',
+          command: 'cargo test',
+        ),
+      ],
+    );
+    addTearDown(approvalController.dispose);
+
+    await tester.pumpWidget(
+      SadCoderApp(approvalController: approvalController),
+    );
+    await tester.tap(find.text('Approvals').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('cargo test'), findsWidgets);
+    expect(find.text('Command approval'), findsOneWidget);
   });
 }

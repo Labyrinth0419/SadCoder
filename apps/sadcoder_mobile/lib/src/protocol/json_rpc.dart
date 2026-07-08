@@ -95,6 +95,14 @@ class MemoryJsonRpcTransport implements JsonRpcTransport {
     responses.add(response);
   }
 
+  void emitServerRequest(JsonRpcServerRequest request) {
+    _serverRequests.add(request);
+  }
+
+  void emitNotification(Map<String, Object?> notification) {
+    _notifications.add(notification);
+  }
+
   @override
   Stream<Map<String, Object?>> get notifications => _notifications.stream;
 

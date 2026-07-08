@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import '../approvals/approval_state_controller.dart';
 import '../i18n/app_localizations.dart';
 import 'app_shell.dart';
 
 class SadCoderApp extends StatelessWidget {
-  const SadCoderApp({super.key, this.locale});
+  const SadCoderApp({super.key, this.locale, this.approvalController});
 
   final Locale? locale;
+  final ApprovalStateController? approvalController;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +38,7 @@ class SadCoderApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
       ),
-      home: const AppShell(),
+      home: AppShell(approvalController: approvalController),
     );
   }
 }
