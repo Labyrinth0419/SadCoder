@@ -50,6 +50,9 @@ void main() {
     expect(find.text('Choose repository'), findsWidgets);
     expect(find.text('MCP elicitation'), findsOneWidget);
     expect(find.text('Server: github'), findsOneWidget);
+    expect(find.text('Approve once'), findsOneWidget);
+    expect(find.text('Approve session'), findsOneWidget);
+    expect(find.text('Cancel'), findsWidgets);
   });
 
   testWidgets('renders Chinese approval labels', (tester) async {
@@ -67,6 +70,111 @@ void main() {
     expect(find.text('审批'), findsOneWidget);
     expect(find.text('文件变更审批'), findsOneWidget);
     expect(find.text('授权根目录: /repo'), findsOneWidget);
+    expect(find.text('批准一次'), findsOneWidget);
+  });
+
+  testWidgets('calls command decision callback from action buttons', (
+    tester,
+  ) async {
+    final decisions = <({Object requestId, CodexApprovalDecision decision})>[];
+    await _pumpApprovalsPage(
+      tester,
+      const [
+        PendingApproval(
+          requestId: 'cmd-1',
+          method: 'item/commandExecution/requestApproval',
+          kind: PendingApprovalKind.commandExecution,
+          rawParams: {},
+          title: 'cargo test',
+        ),
+      ],
+      onCommandOrFileDecision: (approval, decision) {
+        decisions.add((requestId: approval.requestId, decision: decision));
+      },
+    );
+
+    await tester.tap(find.text('Approve session'));
+
+    expect(decisions, [
+      (requestId: 'cmd-1', decision: CodexApprovalDecision.acceptForSession),
+    ]);
+  });
+
+  testWidgets('calls permission response callback with requested grant', (
+    tester,
+  ) async {
+    final responses =
+        <
+          ({
+            Object requestId,
+            Map<String, Object?> permissions,
+            PermissionApprovalScope scope,
+          })
+        >[];
+    await _pumpApprovalsPage(
+      tester,
+      const [
+        PendingApproval(
+          requestId: 61,
+          method: 'item/permissions/requestApproval',
+          kind: PendingApprovalKind.permissions,
+          rawParams: {},
+          title: 'Permission approval',
+          permissions: {
+            'fileSystem': {
+              'write': ['/repo'],
+            },
+          },
+        ),
+      ],
+      onPermissionsResponse: (approval, permissions, scope) {
+        responses.add((
+          requestId: approval.requestId,
+          permissions: permissions,
+          scope: scope,
+        ));
+      },
+    );
+
+    await tester.tap(find.text('Allow turn'));
+
+    expect(responses.single.requestId, 61);
+    expect(responses.single.scope, PermissionApprovalScope.turn);
+    expect(responses.single.permissions, {
+      'fileSystem': {
+        'write': ['/repo'],
+      },
+    });
+  });
+
+  testWidgets('calls MCP callback for decline and cancel actions', (
+    tester,
+  ) async {
+    final actions = <({Object requestId, McpElicitationAction action})>[];
+    await _pumpApprovalsPage(
+      tester,
+      const [
+        PendingApproval(
+          requestId: 'mcp-1',
+          method: 'mcpServer/elicitation/request',
+          kind: PendingApprovalKind.mcpElicitation,
+          rawParams: {},
+          title: 'Choose repository',
+          mcpMessage: 'Choose repository',
+        ),
+      ],
+      onMcpElicitationResponse: (approval, action) {
+        actions.add((requestId: approval.requestId, action: action));
+      },
+    );
+
+    await tester.tap(find.text('Deny'));
+    await tester.tap(find.text('Cancel'));
+
+    expect(actions, [
+      (requestId: 'mcp-1', action: McpElicitationAction.decline),
+      (requestId: 'mcp-1', action: McpElicitationAction.cancel),
+    ]);
   });
 }
 
@@ -74,6 +182,9 @@ Future<void> _pumpApprovalsPage(
   WidgetTester tester,
   List<PendingApproval> approvals, {
   Locale? locale,
+  CommandOrFileApprovalCallback? onCommandOrFileDecision,
+  PermissionsApprovalCallback? onPermissionsResponse,
+  McpElicitationApprovalCallback? onMcpElicitationResponse,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -85,7 +196,14 @@ Future<void> _pumpApprovalsPage(
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(body: ApprovalsPage(approvals: approvals)),
+      home: Scaffold(
+        body: ApprovalsPage(
+          approvals: approvals,
+          onCommandOrFileDecision: onCommandOrFileDecision,
+          onPermissionsResponse: onPermissionsResponse,
+          onMcpElicitationResponse: onMcpElicitationResponse,
+        ),
+      ),
     ),
   );
 }

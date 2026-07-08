@@ -76,6 +76,13 @@ class AppLocalizations {
   String get approvalServer => _text('approvalServer');
   String get approvalMessage => _text('approvalMessage');
   String get approvalUrl => _text('approvalUrl');
+  String get approvalApproveOnce => _text('approvalApproveOnce');
+  String get approvalApproveSession => _text('approvalApproveSession');
+  String get approvalAllowTurn => _text('approvalAllowTurn');
+  String get approvalAllowSession => _text('approvalAllowSession');
+  String get approvalDeny => _text('approvalDeny');
+  String get approvalCancel => _text('approvalCancel');
+  String get approvalNoDirectActions => _text('approvalNoDirectActions');
   String get serverDefaults => _text('serverDefaults');
   String get serverDefaultsBody => _text('serverDefaultsBody');
   String get theme => _text('theme');
@@ -170,6 +177,13 @@ const _values = <String, Map<String, String>>{
     'approvalServer': 'Server',
     'approvalMessage': 'Message',
     'approvalUrl': 'URL',
+    'approvalApproveOnce': 'Approve once',
+    'approvalApproveSession': 'Approve session',
+    'approvalAllowTurn': 'Allow turn',
+    'approvalAllowSession': 'Allow session',
+    'approvalDeny': 'Deny',
+    'approvalCancel': 'Cancel',
+    'approvalNoDirectActions': 'No direct actions available',
     'serverDefaults': 'Server defaults',
     'serverDefaultsBody':
         'Codex configuration is inherited from the server unless an override is explicitly set.',
@@ -238,6 +252,13 @@ const _values = <String, Map<String, String>>{
     'approvalServer': '服务器',
     'approvalMessage': '消息',
     'approvalUrl': 'URL',
+    'approvalApproveOnce': '批准一次',
+    'approvalApproveSession': '本会话批准',
+    'approvalAllowTurn': '本轮允许',
+    'approvalAllowSession': '本会话允许',
+    'approvalDeny': '拒绝',
+    'approvalCancel': '取消',
+    'approvalNoDirectActions': '暂无可直接执行的操作',
     'serverDefaults': '服务器默认配置',
     'serverDefaultsBody': '默认沿用服务器上的 Codex 配置，只有显式设置时才覆盖。',
     'theme': '主题',

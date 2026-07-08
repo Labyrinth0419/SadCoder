@@ -3,10 +3,30 @@ import 'package:flutter/material.dart';
 import '../../approvals/pending_approval.dart';
 import '../../i18n/app_localizations.dart';
 
+typedef CommandOrFileApprovalCallback =
+    void Function(PendingApproval approval, CodexApprovalDecision decision);
+typedef PermissionsApprovalCallback =
+    void Function(
+      PendingApproval approval,
+      Map<String, Object?> permissions,
+      PermissionApprovalScope scope,
+    );
+typedef McpElicitationApprovalCallback =
+    void Function(PendingApproval approval, McpElicitationAction action);
+
 class ApprovalsPage extends StatelessWidget {
-  const ApprovalsPage({super.key, this.approvals = const []});
+  const ApprovalsPage({
+    super.key,
+    this.approvals = const [],
+    this.onCommandOrFileDecision,
+    this.onPermissionsResponse,
+    this.onMcpElicitationResponse,
+  });
 
   final List<PendingApproval> approvals;
+  final CommandOrFileApprovalCallback? onCommandOrFileDecision;
+  final PermissionsApprovalCallback? onPermissionsResponse;
+  final McpElicitationApprovalCallback? onMcpElicitationResponse;
 
   @override
   Widget build(BuildContext context) {
@@ -25,16 +45,30 @@ class ApprovalsPage extends StatelessWidget {
             ),
           )
         else
-          for (final approval in approvals) _ApprovalCard(approval: approval),
+          for (final approval in approvals)
+            _ApprovalCard(
+              approval: approval,
+              onCommandOrFileDecision: onCommandOrFileDecision,
+              onPermissionsResponse: onPermissionsResponse,
+              onMcpElicitationResponse: onMcpElicitationResponse,
+            ),
       ],
     );
   }
 }
 
 class _ApprovalCard extends StatelessWidget {
-  const _ApprovalCard({required this.approval});
+  const _ApprovalCard({
+    required this.approval,
+    required this.onCommandOrFileDecision,
+    required this.onPermissionsResponse,
+    required this.onMcpElicitationResponse,
+  });
 
   final PendingApproval approval;
+  final CommandOrFileApprovalCallback? onCommandOrFileDecision;
+  final PermissionsApprovalCallback? onPermissionsResponse;
+  final McpElicitationApprovalCallback? onMcpElicitationResponse;
 
   @override
   Widget build(BuildContext context) {
@@ -72,10 +106,159 @@ class _ApprovalCard extends StatelessWidget {
               const SizedBox(height: 12),
               ...detailRows,
             ],
+            const SizedBox(height: 12),
+            _ApprovalActions(
+              approval: approval,
+              onCommandOrFileDecision: onCommandOrFileDecision,
+              onPermissionsResponse: onPermissionsResponse,
+              onMcpElicitationResponse: onMcpElicitationResponse,
+            ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _ApprovalActions extends StatelessWidget {
+  const _ApprovalActions({
+    required this.approval,
+    required this.onCommandOrFileDecision,
+    required this.onPermissionsResponse,
+    required this.onMcpElicitationResponse,
+  });
+
+  final PendingApproval approval;
+  final CommandOrFileApprovalCallback? onCommandOrFileDecision;
+  final PermissionsApprovalCallback? onPermissionsResponse;
+  final McpElicitationApprovalCallback? onMcpElicitationResponse;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final buttons = switch (approval.kind) {
+      PendingApprovalKind.commandExecution ||
+      PendingApprovalKind.fileChange => _commandOrFileButtons(l10n),
+      PendingApprovalKind.permissions => _permissionButtons(l10n),
+      PendingApprovalKind.mcpElicitation => _mcpButtons(l10n),
+      PendingApprovalKind.unknown => const <Widget>[],
+    };
+
+    if (buttons.isEmpty) {
+      return Text(l10n.approvalNoDirectActions);
+    }
+
+    return Wrap(spacing: 8, runSpacing: 8, children: buttons);
+  }
+
+  List<Widget> _commandOrFileButtons(AppLocalizations l10n) {
+    return [
+      FilledButton.icon(
+        onPressed: onCommandOrFileDecision == null
+            ? null
+            : () => onCommandOrFileDecision!(
+                approval,
+                CodexApprovalDecision.accept,
+              ),
+        icon: const Icon(Icons.check),
+        label: Text(l10n.approvalApproveOnce),
+      ),
+      OutlinedButton.icon(
+        onPressed: onCommandOrFileDecision == null
+            ? null
+            : () => onCommandOrFileDecision!(
+                approval,
+                CodexApprovalDecision.acceptForSession,
+              ),
+        icon: const Icon(Icons.done_all),
+        label: Text(l10n.approvalApproveSession),
+      ),
+      OutlinedButton.icon(
+        onPressed: onCommandOrFileDecision == null
+            ? null
+            : () => onCommandOrFileDecision!(
+                approval,
+                CodexApprovalDecision.decline,
+              ),
+        icon: const Icon(Icons.block),
+        label: Text(l10n.approvalDeny),
+      ),
+      TextButton.icon(
+        onPressed: onCommandOrFileDecision == null
+            ? null
+            : () => onCommandOrFileDecision!(
+                approval,
+                CodexApprovalDecision.cancel,
+              ),
+        icon: const Icon(Icons.cancel_outlined),
+        label: Text(l10n.approvalCancel),
+      ),
+    ];
+  }
+
+  List<Widget> _permissionButtons(AppLocalizations l10n) {
+    final permissions = _mapOrNull(approval.permissions);
+    final canGrant = onPermissionsResponse != null && permissions != null;
+    return [
+      FilledButton.icon(
+        onPressed: canGrant
+            ? () => onPermissionsResponse!(
+                approval,
+                permissions,
+                PermissionApprovalScope.turn,
+              )
+            : null,
+        icon: const Icon(Icons.check),
+        label: Text(l10n.approvalAllowTurn),
+      ),
+      OutlinedButton.icon(
+        onPressed: canGrant
+            ? () => onPermissionsResponse!(
+                approval,
+                permissions,
+                PermissionApprovalScope.session,
+              )
+            : null,
+        icon: const Icon(Icons.done_all),
+        label: Text(l10n.approvalAllowSession),
+      ),
+      OutlinedButton.icon(
+        onPressed: onPermissionsResponse == null
+            ? null
+            : () => onPermissionsResponse!(
+                approval,
+                const <String, Object?>{},
+                PermissionApprovalScope.turn,
+              ),
+        icon: const Icon(Icons.block),
+        label: Text(l10n.approvalDeny),
+      ),
+    ];
+  }
+
+  List<Widget> _mcpButtons(AppLocalizations l10n) {
+    return [
+      OutlinedButton.icon(
+        onPressed: onMcpElicitationResponse == null
+            ? null
+            : () => onMcpElicitationResponse!(
+                approval,
+                McpElicitationAction.decline,
+              ),
+        icon: const Icon(Icons.block),
+        label: Text(l10n.approvalDeny),
+      ),
+      TextButton.icon(
+        onPressed: onMcpElicitationResponse == null
+            ? null
+            : () => onMcpElicitationResponse!(
+                approval,
+                McpElicitationAction.cancel,
+              ),
+        icon: const Icon(Icons.cancel_outlined),
+        label: Text(l10n.approvalCancel),
+      ),
+    ];
   }
 }
 
@@ -126,4 +309,16 @@ IconData _kindIcon(PendingApprovalKind kind) {
     PendingApprovalKind.mcpElicitation => Icons.dynamic_form_outlined,
     PendingApprovalKind.unknown => Icons.help_outline,
   };
+}
+
+Map<String, Object?>? _mapOrNull(Object? value) {
+  if (value is Map<String, Object?>) {
+    return value;
+  }
+  if (value is Map) {
+    return value.map(
+      (key, value) => MapEntry(key.toString(), value as Object?),
+    );
+  }
+  return null;
 }
