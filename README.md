@@ -1,0 +1,41 @@
+# SadCoder
+
+SadCoder is a cross-platform mobile controller for Codex running on remote
+servers. The mobile app connects to a server over SSH, starts or attaches to a
+thin server-side agent, and then communicates with Codex through the official
+app-server JSON-RPC protocol.
+
+The design source of truth is [Plan.md](Plan.md).
+
+## Repository Layout
+
+- `apps/sadcoder_mobile` - Flutter + Material 3 Android/iOS app.
+- `crates/sadcoder-agent` - Rust server-side binary for status, lifecycle, and
+  app-server proxy commands.
+- `crates/sadcoder-protocol` - Rust protocol DTOs shared by the agent and tests.
+- `refs` - ignored local reference projects for Codex and HappyCoder.
+
+## M0 Local Probe
+
+The first implementation milestone focuses on proving the app-server protocol
+boundary without reimplementing Codex semantics.
+
+```powershell
+cargo run -p sadcoder-agent -- status --json
+cargo run -p sadcoder-agent -- probe --json
+```
+
+`probe --json` starts `codex app-server --listen stdio://`, sends
+`initialize`, acknowledges `initialized`, then calls `model/list` and
+`thread/list`.
+
+## Verification
+
+```powershell
+cargo fmt --all -- --check
+cargo test --workspace
+cd apps\sadcoder_mobile
+dart format lib test
+flutter analyze
+flutter test
+```

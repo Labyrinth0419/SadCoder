@@ -1,0 +1,147 @@
+use serde::Deserialize;
+use serde::Serialize;
+use serde_json::Value;
+use std::borrow::Cow;
+
+pub const JSONRPC_VERSION: &str = "2.0";
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum RequestId {
+    Number(i64),
+    String(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct JsonRpcRequest {
+    pub jsonrpc: Cow<'static, str>,
+    pub id: RequestId,
+    pub method: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub params: Option<Value>,
+}
+
+impl JsonRpcRequest {
+    pub fn new(id: RequestId, method: impl Into<String>, params: Option<Value>) -> Self {
+        Self {
+            jsonrpc: Cow::Borrowed(JSONRPC_VERSION),
+            id,
+            method: method.into(),
+            params,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct JsonRpcNotification {
+    pub jsonrpc: Cow<'static, str>,
+    pub method: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub params: Option<Value>,
+}
+
+impl JsonRpcNotification {
+    pub fn new(method: impl Into<String>, params: Option<Value>) -> Self {
+        Self {
+            jsonrpc: Cow::Borrowed(JSONRPC_VERSION),
+            method: method.into(),
+            params,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct JsonRpcResponse {
+    pub jsonrpc: Cow<'static, str>,
+    pub id: RequestId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<JsonRpcError>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct JsonRpcError {
+    pub code: i64,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentStatus {
+    pub agent_version: String,
+    pub platform_os: String,
+    pub platform_arch: String,
+    pub codex_path: String,
+    pub codex_available: bool,
+    pub codex_version: Option<String>,
+    pub backend: BackendStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BackendStatus {
+    pub kind: BackendKind,
+    pub state: BackendState,
+    pub detail: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BackendKind {
+    CodexAppServerStdio,
+    CodexAppServerDaemon,
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BackendState {
+    Ready,
+    NotStarted,
+    Unavailable,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn request_serializes_jsonrpc_version() {
+        let request = JsonRpcRequest::new(
+            RequestId::Number(1),
+            "model/list",
+            Some(serde_json::json!({ "limit": 10 })),
+        );
+
+        let encoded = serde_json::to_value(request).expect("serialize request");
+
+        assert_eq!(encoded["jsonrpc"], "2.0");
+        assert_eq!(encoded["id"], 1);
+        assert_eq!(encoded["method"], "model/list");
+        assert_eq!(encoded["params"]["limit"], 10);
+    }
+
+    #[test]
+    fn agent_status_uses_camel_case_wire_keys() {
+        let status = AgentStatus {
+            agent_version: "0.1.0".to_string(),
+            platform_os: "linux".to_string(),
+            platform_arch: "x86_64".to_string(),
+            codex_path: "codex".to_string(),
+            codex_available: true,
+            codex_version: Some("codex-cli 1.2.3".to_string()),
+            backend: BackendStatus {
+                kind: BackendKind::CodexAppServerStdio,
+                state: BackendState::Ready,
+                detail: None,
+            },
+        };
+
+        let encoded = serde_json::to_value(status).expect("serialize status");
+
+        assert_eq!(encoded["agentVersion"], "0.1.0");
+        assert_eq!(encoded["codexAvailable"], true);
+        assert_eq!(encoded["backend"]["kind"], "codex-app-server-stdio");
+    }
+}
