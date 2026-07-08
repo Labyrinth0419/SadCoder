@@ -61,6 +61,21 @@ class AppLocalizations {
       _text('slashCommandNotSentAsPrompt');
   String get noPendingApprovals => _text('noPendingApprovals');
   String get approvalsBody => _text('approvalsBody');
+  String get approvalKindCommand => _text('approvalKindCommand');
+  String get approvalKindFileChange => _text('approvalKindFileChange');
+  String get approvalKindPermissions => _text('approvalKindPermissions');
+  String get approvalKindMcp => _text('approvalKindMcp');
+  String get approvalKindUnknown => _text('approvalKindUnknown');
+  String get approvalRequestId => _text('approvalRequestId');
+  String get approvalThread => _text('approvalThread');
+  String get approvalTurn => _text('approvalTurn');
+  String get approvalCommand => _text('approvalCommand');
+  String get approvalWorkingDirectory => _text('approvalWorkingDirectory');
+  String get approvalReason => _text('approvalReason');
+  String get approvalGrantRoot => _text('approvalGrantRoot');
+  String get approvalServer => _text('approvalServer');
+  String get approvalMessage => _text('approvalMessage');
+  String get approvalUrl => _text('approvalUrl');
   String get serverDefaults => _text('serverDefaults');
   String get serverDefaultsBody => _text('serverDefaultsBody');
   String get theme => _text('theme');
@@ -140,6 +155,21 @@ const _values = <String, Map<String, String>>{
     'noPendingApprovals': 'No pending approvals',
     'approvalsBody':
         'Command, file, and MCP requests will appear here with their thread and turn IDs.',
+    'approvalKindCommand': 'Command approval',
+    'approvalKindFileChange': 'File change approval',
+    'approvalKindPermissions': 'Permission approval',
+    'approvalKindMcp': 'MCP elicitation',
+    'approvalKindUnknown': 'Unknown request',
+    'approvalRequestId': 'Request',
+    'approvalThread': 'Thread',
+    'approvalTurn': 'Turn',
+    'approvalCommand': 'Command',
+    'approvalWorkingDirectory': 'Working directory',
+    'approvalReason': 'Reason',
+    'approvalGrantRoot': 'Grant root',
+    'approvalServer': 'Server',
+    'approvalMessage': 'Message',
+    'approvalUrl': 'URL',
     'serverDefaults': 'Server defaults',
     'serverDefaultsBody':
         'Codex configuration is inherited from the server unless an override is explicitly set.',
@@ -193,6 +223,21 @@ const _values = <String, Map<String, String>>{
     'slashCommandNotSentAsPrompt': '不会作为普通提示词发送',
     'noPendingApprovals': '暂无待审批请求',
     'approvalsBody': '命令、文件和 MCP 请求会在这里显示对应的会话与回合 ID。',
+    'approvalKindCommand': '命令审批',
+    'approvalKindFileChange': '文件变更审批',
+    'approvalKindPermissions': '权限审批',
+    'approvalKindMcp': 'MCP 表单请求',
+    'approvalKindUnknown': '未知请求',
+    'approvalRequestId': '请求',
+    'approvalThread': '会话',
+    'approvalTurn': '回合',
+    'approvalCommand': '命令',
+    'approvalWorkingDirectory': '工作目录',
+    'approvalReason': '原因',
+    'approvalGrantRoot': '授权根目录',
+    'approvalServer': '服务器',
+    'approvalMessage': '消息',
+    'approvalUrl': 'URL',
     'serverDefaults': '服务器默认配置',
     'serverDefaultsBody': '默认沿用服务器上的 Codex 配置，只有显式设置时才覆盖。',
     'theme': '主题',
