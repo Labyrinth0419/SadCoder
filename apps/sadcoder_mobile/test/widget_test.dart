@@ -9,6 +9,6 @@ void main() {
     expect(find.text('Chat'), findsWidgets);
     expect(find.text('Approvals'), findsWidgets);
     expect(find.text('Settings'), findsWidgets);
-    expect(find.text('M0 probe'), findsOneWidget);
+    expect(find.text('SSH profile'), findsOneWidget);
   });
 }

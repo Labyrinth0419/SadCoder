@@ -32,7 +32,11 @@ class M0ProbeReport {
       steps.every((step) => step.ok);
 }
 
-class M0ProbeCoordinator {
+abstract interface class M0ProbeRunner {
+  Future<M0ProbeReport> run(SshProfile profile);
+}
+
+class M0ProbeCoordinator implements M0ProbeRunner {
   const M0ProbeCoordinator({
     required AgentStatusReader statusReader,
     required AgentProxyConnector proxyConnector,
@@ -42,6 +46,7 @@ class M0ProbeCoordinator {
   final AgentStatusReader _statusReader;
   final AgentProxyConnector _proxyConnector;
 
+  @override
   Future<M0ProbeReport> run(SshProfile profile) async {
     final steps = <M0ProbeStepResult>[];
     AgentStatus? status;
