@@ -1,18 +1,26 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../approvals/pending_approval.dart';
 import '../../i18n/app_localizations.dart';
 
 typedef CommandOrFileApprovalCallback =
-    void Function(PendingApproval approval, CodexApprovalDecision decision);
+    FutureOr<void> Function(
+      PendingApproval approval,
+      CodexApprovalDecision decision,
+    );
 typedef PermissionsApprovalCallback =
-    void Function(
+    FutureOr<void> Function(
       PendingApproval approval,
       Map<String, Object?> permissions,
       PermissionApprovalScope scope,
     );
 typedef McpElicitationApprovalCallback =
-    void Function(PendingApproval approval, McpElicitationAction action);
+    FutureOr<void> Function(
+      PendingApproval approval,
+      McpElicitationAction action,
+    );
 
 class ApprovalsPage extends StatelessWidget {
   const ApprovalsPage({
