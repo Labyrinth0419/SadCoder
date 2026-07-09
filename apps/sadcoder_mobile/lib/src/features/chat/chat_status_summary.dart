@@ -5,6 +5,7 @@ import '../../config/codex_config_overrides.dart';
 import '../../config/codex_config_snapshot.dart';
 import '../../config/codex_config_snapshot_controller.dart';
 import '../../i18n/app_localizations.dart';
+import '../../security/permission_risk.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_list_controller.dart';
@@ -114,6 +115,13 @@ Iterable<String> _overrideStatusLines(
   yield '${l10n.approvalPolicy}: ${_overrideStatusValue(l10n, configOverrideValueLabel(resolved.approvalPolicy), controller.sourceFor('approvalPolicy'))}';
   yield '${l10n.permissionProfile}: ${_overrideStatusValue(l10n, resolved.permissionProfile, controller.sourceFor('permissionProfile'))}';
   yield '${l10n.sandboxMode}: ${_overrideStatusValue(l10n, configOverrideValueLabel(resolved.sandboxPolicy), controller.sourceFor('sandboxPolicy'))}';
+  if (isHighRiskPermissionState(
+    approvalPolicy: resolved.approvalPolicy,
+    sandboxPolicy: resolved.sandboxPolicy,
+    permissionProfile: resolved.permissionProfile,
+  )) {
+    yield l10n.permissionsHighRiskWarning;
+  }
   yield '${l10n.cwdOverride}: ${_overrideStatusValue(l10n, resolved.cwd, controller.sourceFor('cwd'))}';
   yield '${l10n.personalityOverride}: ${_overrideStatusValue(l10n, resolved.personality, controller.sourceFor('personality'))}';
 }
@@ -132,6 +140,13 @@ Iterable<String> _serverConfigStatusLines(
     return;
   }
   yield '${l10n.serverConfigSnapshot}: ${l10n.modelOverride}=${_serverConfigValue(l10n, snapshot, 'model')}, ${l10n.effortOverride}=${_serverConfigValue(l10n, snapshot, 'model_reasoning_effort')}, ${l10n.approvalPolicy}=${_serverConfigValue(l10n, snapshot, 'approval_policy')}, ${l10n.permissionProfile}=${_serverConfigValue(l10n, snapshot, 'default_permissions')}, ${l10n.sandboxMode}=${_serverConfigValue(l10n, snapshot, 'sandbox_mode')}';
+  if (isHighRiskPermissionState(
+    approvalPolicy: snapshot.valueFor('approval_policy'),
+    sandboxPolicy: snapshot.valueFor('sandbox_mode'),
+    permissionProfile: snapshot.valueFor('default_permissions'),
+  )) {
+    yield l10n.permissionsHighRiskWarning;
+  }
 }
 
 String _serverConfigValue(

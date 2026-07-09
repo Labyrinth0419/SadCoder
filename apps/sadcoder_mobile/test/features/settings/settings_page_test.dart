@@ -81,6 +81,10 @@ void main() {
     expect(find.textContaining('Reasoning effort: high'), findsOneWidget);
     expect(find.textContaining('Approval policy: on-request'), findsOneWidget);
     expect(
+      find.textContaining('Permission profile: :workspace'),
+      findsOneWidget,
+    );
+    expect(
       find.textContaining('Sandbox mode: workspace-write'),
       findsOneWidget,
     );
@@ -88,6 +92,40 @@ void main() {
     expect(
       snapshotController.snapshot?.displayValueFor('model'),
       'gpt-5-codex',
+    );
+  });
+
+  testWidgets('flags high-risk server config permissions', (tester) async {
+    final overrideController = CodexConfigOverrideController();
+    final snapshotController = CodexConfigSnapshotController(
+      readerProvider: () => _FakeConfigSnapshotReader(
+        config: const {
+          'model': 'gpt-5-codex',
+          'approval_policy': {'type': 'never'},
+          'default_permissions': ':danger-full-access',
+          'sandbox_mode': {'type': 'dangerFullAccess'},
+        },
+      ),
+    );
+    addTearDown(overrideController.dispose);
+    addTearDown(snapshotController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      configSnapshotController: snapshotController,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('settings-server-config-refresh')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'High risk: these permissions can let Codex run with less review or broader filesystem access.',
+      ),
+      findsOneWidget,
     );
   });
 
@@ -149,19 +187,17 @@ Future<void> _pumpSettings(
 }
 
 class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {
+  const _FakeConfigSnapshotReader({this.config = _defaultConfig});
+
+  final Map<String, Object?> config;
+
   @override
   Future<CodexConfigSnapshot> readConfig({
     bool includeLayers = true,
     String? cwd,
   }) async {
     return CodexConfigSnapshot.fromJson({
-      'config': {
-        'model': 'gpt-5-codex',
-        'model_provider': 'openai',
-        'model_reasoning_effort': 'high',
-        'approval_policy': {'type': 'on-request'},
-        'sandbox_mode': {'type': 'workspace-write'},
-      },
+      'config': config,
       'origins': {
         'model': {
           'name': {'type': 'user', 'file': '/home/me/.codex/config.toml'},
@@ -177,3 +213,12 @@ class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {
     });
   }
 }
+
+const _defaultConfig = {
+  'model': 'gpt-5-codex',
+  'model_provider': 'openai',
+  'model_reasoning_effort': 'high',
+  'approval_policy': {'type': 'on-request'},
+  'default_permissions': ':workspace',
+  'sandbox_mode': {'type': 'workspace-write'},
+};

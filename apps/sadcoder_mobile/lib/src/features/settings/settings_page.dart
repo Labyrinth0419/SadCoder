@@ -6,6 +6,7 @@ import '../../config/codex_config_overrides.dart';
 import '../../config/codex_config_snapshot.dart';
 import '../../config/codex_config_snapshot_controller.dart';
 import '../../i18n/app_localizations.dart';
+import '../../security/permission_risk.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
@@ -244,9 +245,22 @@ class _LoadedServerConfig extends StatelessWidget {
         ),
         _ServerConfigField(
           snapshot: snapshot,
+          label: l10n.permissionProfile,
+          keyName: 'default_permissions',
+        ),
+        _ServerConfigField(
+          snapshot: snapshot,
           label: l10n.sandboxMode,
           keyName: 'sandbox_mode',
         ),
+        if (isHighRiskPermissionState(
+          approvalPolicy: snapshot.valueFor('approval_policy'),
+          sandboxPolicy: snapshot.valueFor('sandbox_mode'),
+          permissionProfile: snapshot.valueFor('default_permissions'),
+        )) ...[
+          const SizedBox(height: 8),
+          _ServerConfigRiskWarning(message: l10n.permissionsHighRiskWarning),
+        ],
         if (snapshot.layers.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(l10n.configLayersLoaded(snapshot.layers.length)),
@@ -275,6 +289,40 @@ class _ServerConfigField extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Text('$label: $value (${l10n.overrideSource}: $origin)'),
+    );
+  }
+}
+
+class _ServerConfigRiskWarning extends StatelessWidget {
+  const _ServerConfigRiskWarning({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      color: colorScheme.errorContainer,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.warning_amber_outlined,
+              color: colorScheme.onErrorContainer,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(color: colorScheme.onErrorContainer),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

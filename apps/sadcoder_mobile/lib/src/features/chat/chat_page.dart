@@ -19,6 +19,7 @@ import '../../models/model_list_controller.dart';
 import '../../permissions/permission_profile_list_controller.dart';
 import '../../permissions/permission_profile_list_reader.dart';
 import '../../reviews/thread_review_command.dart';
+import '../../security/permission_risk.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../theme/sadcoder_theme.dart';
 import '../../threads/agent_thread_topology.dart';
@@ -2796,9 +2797,11 @@ class _PermissionsOverrideSheetState extends State<_PermissionsOverrideSheet> {
   }
 
   bool get _isHighRisk {
-    return _approvalPolicy == 'never' ||
-        _sandboxMode == 'dangerFullAccess' ||
-        _permissionProfile == ':danger-full-access';
+    return isHighRiskPermissionValue(
+      approvalPolicy: _approvalPolicy,
+      sandboxMode: _sandboxMode,
+      permissionProfile: _permissionProfile,
+    );
   }
 
   void _apply() {
