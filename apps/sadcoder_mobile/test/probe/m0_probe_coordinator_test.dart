@@ -27,13 +27,19 @@ void main() {
         M0ProbeStep.agentStatus,
         M0ProbeStep.proxyConnect,
         M0ProbeStep.initialize,
+        M0ProbeStep.accountRead,
         M0ProbeStep.modelList,
+        M0ProbeStep.configRead,
+        M0ProbeStep.permissionProfileList,
         M0ProbeStep.threadList,
       ]);
       expect(connector.methods, [
         'initialize',
         'initialized',
+        'account/read',
         'model/list',
+        'config/read',
+        'permissionProfile/list',
         'thread/list',
       ]);
       expect(connector.closed, true);
@@ -59,7 +65,10 @@ void main() {
       M0ProbeStep.agentStart,
       M0ProbeStep.proxyConnect,
       M0ProbeStep.initialize,
+      M0ProbeStep.accountRead,
       M0ProbeStep.modelList,
+      M0ProbeStep.configRead,
+      M0ProbeStep.permissionProfileList,
       M0ProbeStep.threadList,
     ]);
     expect(connector.connectCount, 1);
@@ -86,7 +95,7 @@ void main() {
   });
 
   test('run stops after app-server request failure', () async {
-    final connector = _LineServerProxyConnector(failMethod: 'model/list');
+    final connector = _LineServerProxyConnector(failMethod: 'config/read');
     final coordinator = M0ProbeCoordinator(
       statusReader: _FakeStatusReader(_readyStatus),
       proxyConnector: connector,
@@ -99,10 +108,18 @@ void main() {
       M0ProbeStep.agentStatus,
       M0ProbeStep.proxyConnect,
       M0ProbeStep.initialize,
+      M0ProbeStep.accountRead,
       M0ProbeStep.modelList,
+      M0ProbeStep.configRead,
     ]);
     expect(report.steps.last.ok, false);
-    expect(connector.methods, ['initialize', 'initialized', 'model/list']);
+    expect(connector.methods, [
+      'initialize',
+      'initialized',
+      'account/read',
+      'model/list',
+      'config/read',
+    ]);
     expect(connector.closed, true);
   });
 
@@ -294,9 +311,12 @@ class _LineServerProxyConnector implements AgentProxyConnector {
 
   Map<String, Object?> _resultFor(String method) => switch (method) {
     'initialize' => {'serverInfo': 'test'},
+    'account/read' => {'account': null, 'requiresOpenaiAuth': false},
     'model/list' => {
       'models': ['gpt-5'],
     },
+    'config/read' => {'config': <String, Object?>{}},
+    'permissionProfile/list' => {'data': <Object?>[]},
     'thread/list' => {'threads': <Object?>[]},
     _ => {},
   };

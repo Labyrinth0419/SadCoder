@@ -37,7 +37,10 @@ void main() {
           M0ProbeStepResult(step: M0ProbeStep.agentStatus, ok: true),
           M0ProbeStepResult(step: M0ProbeStep.proxyConnect, ok: true),
           M0ProbeStepResult(step: M0ProbeStep.initialize, ok: true),
+          M0ProbeStepResult(step: M0ProbeStep.accountRead, ok: true),
           M0ProbeStepResult(step: M0ProbeStep.modelList, ok: true),
+          M0ProbeStepResult(step: M0ProbeStep.configRead, ok: true),
+          M0ProbeStepResult(step: M0ProbeStep.permissionProfileList, ok: true),
           M0ProbeStepResult(step: M0ProbeStep.threadList, ok: true),
         ],
       ),
@@ -85,6 +88,8 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Agent status'), findsOneWidget);
+    expect(find.text('Account read'), findsOneWidget);
+    expect(find.text('Permission profile list'), findsOneWidget);
     expect(find.text('Thread list'), findsOneWidget);
   });
 

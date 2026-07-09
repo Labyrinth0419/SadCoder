@@ -50,7 +50,10 @@ class AppLocalizations {
   String get agentStart => _text('agentStart');
   String get proxyConnect => _text('proxyConnect');
   String get initialize => _text('initialize');
+  String get accountRead => _text('accountRead');
   String get modelList => _text('modelList');
+  String get configRead => _text('configRead');
+  String get permissionProfileList => _text('permissionProfileList');
   String get threadList => _text('threadList');
   String get backend => _text('backend');
   String get backendDaemon => _text('backendDaemon');
@@ -298,7 +301,10 @@ const _values = <String, Map<String, String>>{
     'agentStart': 'Agent start',
     'proxyConnect': 'Proxy connect',
     'initialize': 'Initialize',
+    'accountRead': 'Account read',
     'modelList': 'Model list',
+    'configRead': 'Config read',
+    'permissionProfileList': 'Permission profile list',
     'threadList': 'Thread list',
     'backend': 'Backend',
     'backendDaemon': 'daemon',
@@ -508,7 +514,10 @@ const _values = <String, Map<String, String>>{
     'agentStart': '启动 Agent',
     'proxyConnect': '代理连接',
     'initialize': '初始化',
+    'accountRead': '账户读取',
     'modelList': '模型列表',
+    'configRead': '配置读取',
+    'permissionProfileList': '权限配置列表',
     'threadList': '会话列表',
     'backend': '后端',
     'backendDaemon': 'daemon',

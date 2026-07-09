@@ -75,7 +75,7 @@ enum AgentCommand {
         #[arg(long)]
         json: bool,
     },
-    /// Run initialize, model/list, and thread/list against a fresh app-server.
+    /// Run initialize and core read probes against a fresh app-server.
     Probe {
         #[arg(long)]
         json: bool,
@@ -397,20 +397,9 @@ fn run_probe(codex_path: &str) -> anyhow::Result<ProbeResult> {
     steps.push(probe_request(&mut stdin, &mut reader, initialize)?);
     write_notification(&mut stdin, JsonRpcNotification::new("initialized", None))?;
 
-    steps.push(probe_request(
-        &mut stdin,
-        &mut reader,
-        JsonRpcRequest::new(RequestId::Number(2), "model/list", Some(json!({}))),
-    )?);
-    steps.push(probe_request(
-        &mut stdin,
-        &mut reader,
-        JsonRpcRequest::new(
-            RequestId::Number(3),
-            "thread/list",
-            Some(json!({ "limit": 1 })),
-        ),
-    )?);
+    for request in probe_read_requests() {
+        steps.push(probe_request(&mut stdin, &mut reader, request)?);
+    }
 
     drop(stdin);
     let _ = child.kill();
@@ -423,6 +412,32 @@ fn run_probe(codex_path: &str) -> anyhow::Result<ProbeResult> {
     };
 
     Ok(ProbeResult { status, steps })
+}
+
+fn probe_read_requests() -> Vec<JsonRpcRequest> {
+    vec![
+        JsonRpcRequest::new(
+            RequestId::Number(2),
+            "account/read",
+            Some(json!({ "refreshToken": false })),
+        ),
+        JsonRpcRequest::new(RequestId::Number(3), "model/list", Some(json!({}))),
+        JsonRpcRequest::new(
+            RequestId::Number(4),
+            "config/read",
+            Some(json!({ "includeLayers": true })),
+        ),
+        JsonRpcRequest::new(
+            RequestId::Number(5),
+            "permissionProfile/list",
+            Some(json!({})),
+        ),
+        JsonRpcRequest::new(
+            RequestId::Number(6),
+            "thread/list",
+            Some(json!({ "limit": 1 })),
+        ),
+    ]
 }
 
 fn probe_request(
@@ -720,6 +735,32 @@ mod tests {
             Ok(SelectedBackend::Stdio)
         );
         assert!(select_backend(BackendMode::Daemon, false).is_err());
+    }
+
+    #[test]
+    fn probe_read_requests_cover_core_capability_checks() {
+        let requests = probe_read_requests();
+        let encoded = requests
+            .iter()
+            .map(|request| serde_json::to_value(request).expect("serialize request"))
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            encoded
+                .iter()
+                .map(|request| request["method"].as_str().expect("method"))
+                .collect::<Vec<_>>(),
+            vec![
+                "account/read",
+                "model/list",
+                "config/read",
+                "permissionProfile/list",
+                "thread/list",
+            ]
+        );
+        assert_eq!(encoded[0]["params"]["refreshToken"], false);
+        assert_eq!(encoded[2]["params"]["includeLayers"], true);
+        assert_eq!(encoded[4]["params"]["limit"], 1);
     }
 
     #[test]

@@ -873,7 +873,10 @@ class _ProbeStepTile extends StatelessWidget {
         M0ProbeStep.agentStart => l10n.agentStart,
         M0ProbeStep.proxyConnect => l10n.proxyConnect,
         M0ProbeStep.initialize => l10n.initialize,
+        M0ProbeStep.accountRead => l10n.accountRead,
         M0ProbeStep.modelList => l10n.modelList,
+        M0ProbeStep.configRead => l10n.configRead,
+        M0ProbeStep.permissionProfileList => l10n.permissionProfileList,
         M0ProbeStep.threadList => l10n.threadList,
       };
 }

@@ -10,7 +10,10 @@ enum M0ProbeStep {
   agentStart,
   proxyConnect,
   initialize,
+  accountRead,
   modelList,
+  configRead,
+  permissionProfileList,
   threadList,
 }
 
@@ -39,7 +42,10 @@ const _requiredSteps = {
   M0ProbeStep.agentStatus,
   M0ProbeStep.proxyConnect,
   M0ProbeStep.initialize,
+  M0ProbeStep.accountRead,
   M0ProbeStep.modelList,
+  M0ProbeStep.configRead,
+  M0ProbeStep.permissionProfileList,
   M0ProbeStep.threadList,
 };
 
@@ -109,7 +115,28 @@ class M0ProbeCoordinator implements M0ProbeRunner {
       )) {
         return M0ProbeReport(agentStatus: status, steps: steps);
       }
+      if (!await _recordStep(
+        steps,
+        M0ProbeStep.accountRead,
+        client.readAccount,
+      )) {
+        return M0ProbeReport(agentStatus: status, steps: steps);
+      }
       if (!await _recordStep(steps, M0ProbeStep.modelList, client.listModels)) {
+        return M0ProbeReport(agentStatus: status, steps: steps);
+      }
+      if (!await _recordStep(
+        steps,
+        M0ProbeStep.configRead,
+        client.readConfig,
+      )) {
+        return M0ProbeReport(agentStatus: status, steps: steps);
+      }
+      if (!await _recordStep(
+        steps,
+        M0ProbeStep.permissionProfileList,
+        client.listPermissionProfiles,
+      )) {
         return M0ProbeReport(agentStatus: status, steps: steps);
       }
       await _recordStep(steps, M0ProbeStep.threadList, client.listThreads);
