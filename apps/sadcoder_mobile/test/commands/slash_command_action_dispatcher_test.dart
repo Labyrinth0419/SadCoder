@@ -613,6 +613,39 @@ void main() {
     expect(result.command?.command, 'statusline');
   });
 
+  test('/ide passes inline arguments to the injected context action', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      attachIdeContext: (argument) async {
+        arguments.add(argument);
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/ide main.dart'),
+      hasActiveTurn: true,
+    );
+
+    expect(arguments, ['main.dart']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.ideContext);
+  });
+
+  test('/ide reports unavailable arguments from the injected action', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      attachIdeContext: (_) async => SlashCommandCallbackResult.unavailable,
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/ide missing'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'ide');
+  });
+
   test(
     '/keymap passes inline arguments to the injected keymap action',
     () async {
@@ -1415,7 +1448,7 @@ void main() {
         hasActiveTurn: false,
       );
       final unsupported = await dispatcher.dispatch(
-        registry.parseComposerText('/ide'),
+        registry.parseComposerText('/approve'),
         hasActiveTurn: false,
       );
       final platformOnly = await dispatcher.dispatch(
@@ -1430,7 +1463,7 @@ void main() {
       expect(unknown.outcome, SlashCommandActionOutcome.unknown);
       expect(unknown.rawCommand, 'does-not-exist');
       expect(unsupported.outcome, SlashCommandActionOutcome.unsupported);
-      expect(unsupported.command?.command, 'ide');
+      expect(unsupported.command?.command, 'approve');
       expect(platformOnly.outcome, SlashCommandActionOutcome.unsupported);
       expect(
         platformOnly.command?.mappingType,

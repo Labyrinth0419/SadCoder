@@ -498,13 +498,14 @@ void main() {
   ) async {
     final harness = await _pumpConnectedChatPage(tester);
 
-    await _submitComposerText(tester, '/ide');
+    await _submitComposerText(tester, '/approve');
 
     expect(harness.turnRunner.startedTurns, isEmpty);
     expect(
       find.text(
-        '/ide is registered but not available: mobile UI flow is not wired yet. '
-        'Planned path: mobile context attachment substitute.',
+        '/approve is registered but not available: mobile app-server handler is not wired yet. '
+        'Planned path: auto-review retry approval. '
+        'Risk: medium.',
       ),
       findsOneWidget,
     );
@@ -1773,6 +1774,94 @@ void main() {
     expect(composer.controller?.text, '@lib/main.dart');
     expect(fileSearchReader.calls.last.query, 'main');
     expect(fileSearchReader.calls.last.roots, ['/repo']);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '@lib/main.dart explain',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(turnRunner.startedTurns, [
+      (threadId: 'thr_new', text: '@lib/main.dart explain'),
+    ]);
+    expect(turnRunner.startedTurnTextElements.single.single.toJson(), {
+      'byte_range': {'start': 0, 'end': 14},
+    });
+  });
+
+  testWidgets('/ide attaches mobile context with an initial file query', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final fileSearchReader = _RecordingFileSearchReader(
+      page: const FileSearchResultPage(
+        files: [
+          FileSearchMatch(
+            root: '/repo',
+            path: 'lib/main.dart',
+            matchType: 'fuzzy',
+            fileName: 'main.dart',
+            score: 100,
+            indices: [4, 5, 6, 7],
+          ),
+        ],
+      ),
+    );
+    final overrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(cwd: '/repo'),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+      fileSearchReader: fileSearchReader,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+    );
+
+    await _submitComposerText(tester, '/ide main');
+
+    expect(find.text('Mobile context'), findsOneWidget);
+    final searchField = tester.widget<TextField>(
+      find.byKey(const ValueKey('chat-mention-search-field')),
+    );
+    expect(searchField.controller?.text, 'main');
+    expect(fileSearchReader.calls.last.query, 'main');
+    expect(fileSearchReader.calls.last.roots, ['/repo']);
+
+    await tester.tap(
+      find.byKey(const ValueKey('chat-mention-file-lib/main.dart')),
+    );
+    await tester.pumpAndSettle();
+
+    final composer = tester.widget<TextField>(
+      find.byKey(const ValueKey('chat-composer-field')),
+    );
+    expect(composer.controller?.text, '@lib/main.dart');
+    expect(find.text('Mobile context attached.'), findsOneWidget);
 
     await tester.enterText(
       find.byKey(const ValueKey('chat-composer-field')),

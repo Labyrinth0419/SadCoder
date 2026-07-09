@@ -386,8 +386,11 @@ class _ChatPageState extends State<ChatPage> {
     if (result.outcome == SlashCommandActionOutcome.ignored) {
       return;
     }
+    final preservesComposer =
+        result.effect == SlashCommandActionEffect.mention ||
+        result.effect == SlashCommandActionEffect.ideContext;
     if (result.outcome == SlashCommandActionOutcome.executed &&
-        result.effect != SlashCommandActionEffect.mention) {
+        !preservesComposer) {
       _composerMentions.clear();
       _composerController.clear();
       _handleComposerChanged('');
@@ -432,6 +435,7 @@ class _ChatPageState extends State<ChatPage> {
           configureKeymap: _configureKeymap,
           toggleComposerVimMode: _toggleComposerVimMode,
           configureTerminalPets: _configureTerminalPets,
+          attachIdeContext: _attachIdeContext,
           mentionFile: _mentionFile,
           startSideConversation: _startSideConversation,
           showAgentTopology: _showAgentTopology,
@@ -626,7 +630,38 @@ class _ChatPageState extends State<ChatPage> {
     final match = await showModalBottomSheet<FileSearchMatch>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _MentionFileSheet(reader: reader, roots: roots),
+      builder: (context) => _MentionFileSheet(
+        reader: reader,
+        roots: roots,
+        title: context.l10n.mentionCommandTitle,
+        searchHint: context.l10n.mentionSearchHint,
+      ),
+    );
+    if (!mounted || match == null) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+
+    _insertMention(match);
+    return SlashCommandCallbackResult.executed;
+  }
+
+  Future<SlashCommandCallbackResult> _attachIdeContext(String arguments) async {
+    final reader = widget.sessionController?.fileSearchReader;
+    final roots = _currentWorkspaceCwds();
+    if (reader == null || roots.isEmpty) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    final match = await showModalBottomSheet<FileSearchMatch>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _MentionFileSheet(
+        reader: reader,
+        roots: roots,
+        title: context.l10n.ideContextCommandTitle,
+        searchHint: context.l10n.ideContextSearchHint,
+        initialQuery: arguments.trim(),
+      ),
     );
     if (!mounted || match == null) {
       return SlashCommandCallbackResult.cancelled;
@@ -643,7 +678,8 @@ class _ChatPageState extends State<ChatPage> {
     final parsed = widget.registry.parseComposerText(text);
     final replaceWholeComposer =
         parsed.kind == SlashCommandParseKind.known &&
-        parsed.command?.command == 'mention';
+        (parsed.command?.command == 'mention' ||
+            parsed.command?.command == 'ide');
     final selection = value.selection.isValid
         ? value.selection
         : TextSelection.collapsed(offset: text.length);
@@ -1543,6 +1579,8 @@ class _ChatPageState extends State<ChatPage> {
           l10n.slashCommandTitleDisplayUpdated,
         SlashCommandActionEffect.statusLineDisplay =>
           l10n.slashCommandStatusLineDisplayUpdated,
+        SlashCommandActionEffect.ideContext =>
+          l10n.slashCommandIdeContextInserted,
         SlashCommandActionEffect.keymap => l10n.slashCommandKeymapUpdated,
         SlashCommandActionEffect.composerVimMode =>
           (widget.appearanceController?.composerInputMode ==
@@ -2029,10 +2067,19 @@ class _ComposerMention {
 }
 
 class _MentionFileSheet extends StatefulWidget {
-  const _MentionFileSheet({required this.reader, required this.roots});
+  const _MentionFileSheet({
+    required this.reader,
+    required this.roots,
+    required this.title,
+    required this.searchHint,
+    this.initialQuery = '',
+  });
 
   final FileSearchReader reader;
   final List<String> roots;
+  final String title;
+  final String searchHint;
+  final String initialQuery;
 
   @override
   State<_MentionFileSheet> createState() => _MentionFileSheetState();
@@ -2048,6 +2095,7 @@ class _MentionFileSheetState extends State<_MentionFileSheet> {
   @override
   void initState() {
     super.initState();
+    _queryController.text = widget.initialQuery.trim();
     unawaited(_load());
   }
 
@@ -2076,7 +2124,7 @@ class _MentionFileSheetState extends State<_MentionFileSheet> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      l10n.mentionCommandTitle,
+                      widget.title,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
@@ -2093,7 +2141,7 @@ class _MentionFileSheetState extends State<_MentionFileSheet> {
                 controller: _queryController,
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: l10n.mentionSearchHint,
+                  hintText: widget.searchHint,
                   prefixIcon: const Icon(Icons.search),
                   border: const OutlineInputBorder(),
                 ),

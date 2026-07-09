@@ -40,6 +40,8 @@ typedef SlashCommandConfigureKeymap =
     Future<SlashCommandCallbackResult> Function(String arguments);
 typedef SlashCommandConfigureTerminalPets =
     Future<SlashCommandCallbackResult> Function(String arguments);
+typedef SlashCommandAttachIdeContext =
+    Future<SlashCommandCallbackResult> Function(String arguments);
 typedef SlashCommandMentionFile = Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandStartSideConversation =
     Future<SlashCommandCallbackResult> Function(
@@ -96,6 +98,7 @@ enum SlashCommandActionEffect {
   theme,
   titleDisplay,
   statusLineDisplay,
+  ideContext,
   keymap,
   composerVimMode,
   terminalPets,
@@ -236,6 +239,7 @@ class SlashCommandActionDispatcher {
     this.configureKeymap,
     this.toggleComposerVimMode,
     this.configureTerminalPets,
+    this.attachIdeContext,
     this.mentionFile,
     this.startSideConversation,
     this.showAgentTopology,
@@ -276,6 +280,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandConfigureKeymap? configureKeymap;
   final SlashCommandToggleComposerVimMode? toggleComposerVimMode;
   final SlashCommandConfigureTerminalPets? configureTerminalPets;
+  final SlashCommandAttachIdeContext? attachIdeContext;
   final SlashCommandMentionFile? mentionFile;
   final SlashCommandStartSideConversation? startSideConversation;
   final SlashCommandShowAgentTopology? showAgentTopology;
@@ -349,6 +354,8 @@ class SlashCommandActionDispatcher {
           action: configurePermissions,
           effect: SlashCommandActionEffect.permissionsOverride,
         );
+      case 'ide':
+        return _attachIdeContext(parsed);
       case 'quit' || 'exit':
         return _disconnect(parsed);
       case 'clear':
@@ -997,6 +1004,16 @@ class SlashCommandActionDispatcher {
       parsed,
       action: configureKeymap,
       effect: SlashCommandActionEffect.keymap,
+    );
+  }
+
+  Future<SlashCommandActionResult> _attachIdeContext(
+    SlashCommandParseResult parsed,
+  ) async {
+    return _argumentCallbackAction(
+      parsed,
+      action: attachIdeContext,
+      effect: SlashCommandActionEffect.ideContext,
     );
   }
 

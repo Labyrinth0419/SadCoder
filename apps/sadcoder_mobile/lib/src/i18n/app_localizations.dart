@@ -147,6 +147,8 @@ class AppLocalizations {
       _text('slashCommandTitleDisplayUpdated');
   String get slashCommandStatusLineDisplayUpdated =>
       _text('slashCommandStatusLineDisplayUpdated');
+  String get slashCommandIdeContextInserted =>
+      _text('slashCommandIdeContextInserted');
   String get slashCommandKeymapUpdated => _text('slashCommandKeymapUpdated');
   String get slashCommandVimModeEnabled => _text('slashCommandVimModeEnabled');
   String get slashCommandVimModeDisabled =>
@@ -314,7 +316,9 @@ class AppLocalizations {
   String get diffNoChanges => _text('diffNoChanges');
   String get diffLoadFailed => _text('diffLoadFailed');
   String get mentionCommandTitle => _text('mentionCommandTitle');
+  String get ideContextCommandTitle => _text('ideContextCommandTitle');
   String get mentionSearchHint => _text('mentionSearchHint');
+  String get ideContextSearchHint => _text('ideContextSearchHint');
   String get mentionNoResults => _text('mentionNoResults');
   String get mentionLoadFailed => _text('mentionLoadFailed');
   String get sideConversationTitle => _text('sideConversationTitle');
@@ -672,6 +676,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandThemeUpdated': 'Theme updated.',
     'slashCommandTitleDisplayUpdated': 'Title display updated.',
     'slashCommandStatusLineDisplayUpdated': 'Status line display updated.',
+    'slashCommandIdeContextInserted': 'Mobile context attached.',
     'slashCommandKeymapUpdated': 'Keyboard shortcut settings updated.',
     'slashCommandVimModeEnabled': 'Composer Vim mode enabled.',
     'slashCommandVimModeDisabled': 'Composer Vim mode disabled.',
@@ -819,7 +824,9 @@ const _values = <String, Map<String, String>>{
     'diffNoChanges': 'No tracked or untracked changes.',
     'diffLoadFailed': 'Failed to compute diff',
     'mentionCommandTitle': 'Mention file',
+    'ideContextCommandTitle': 'Mobile context',
     'mentionSearchHint': 'Search files',
+    'ideContextSearchHint': 'Search files to attach',
     'mentionNoResults': 'No matching files.',
     'mentionLoadFailed': 'Failed to search files',
     'sideConversationTitle': 'Side conversation',
@@ -1128,6 +1135,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandThemeUpdated': '已更新主题。',
     'slashCommandTitleDisplayUpdated': '已更新标题显示。',
     'slashCommandStatusLineDisplayUpdated': '已更新状态栏显示。',
+    'slashCommandIdeContextInserted': '已附加移动端上下文。',
     'slashCommandKeymapUpdated': '已更新键盘快捷键设置。',
     'slashCommandVimModeEnabled': '已启用编辑器 Vim 模式。',
     'slashCommandVimModeDisabled': '已关闭编辑器 Vim 模式。',
@@ -1263,7 +1271,9 @@ const _values = <String, Map<String, String>>{
     'diffNoChanges': '没有已跟踪或未跟踪的变更。',
     'diffLoadFailed': '计算差异失败',
     'mentionCommandTitle': '提及文件',
+    'ideContextCommandTitle': '移动端上下文',
     'mentionSearchHint': '搜索文件',
+    'ideContextSearchHint': '搜索要附加的文件',
     'mentionNoResults': '没有匹配的文件。',
     'mentionLoadFailed': '搜索文件失败',
     'sideConversationTitle': '侧聊',
