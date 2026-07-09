@@ -608,6 +608,78 @@ void main() {
     expect(find.text('Copied last response.'), findsOneWidget);
   });
 
+  testWidgets('/status shows local connection and override state', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final overrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(model: 'gpt-5-codex', cwd: '/repo'),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadListController = ThreadListController(
+      readerProvider: () => sessionController.threadListReader,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => overrideController.layers,
+    );
+    addTearDown(threadListController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await threadListController.refresh();
+    await turnController.submitText('Run long task');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadListController: threadListController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/status',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(turnRunner.startedTurns, [
+      (threadId: 'thr_new', text: 'Run long task'),
+    ]);
+    expect(
+      find.text(
+        'Connection status: Connected\n'
+        'Host: tester@localhost:22\n'
+        'Thread: thr_new\n'
+        'Sessions: 0\n'
+        'Turn: Turn submitted: turn_1\n'
+        'Model: gpt-5-codex / session override\n'
+        'Reasoning effort: server default\n'
+        'Approval policy: server default\n'
+        'Sandbox mode: server default\n'
+        'Working directory: /repo / session override',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('/clear clears the local transcript without interrupting', (
     tester,
   ) async {

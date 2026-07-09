@@ -12,6 +12,7 @@ import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_list_controller.dart';
 import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
+import 'chat_status_summary.dart';
 import 'chat_timeline_controller.dart';
 import 'session_override_controls.dart';
 import 'slash_command_palette.dart';
@@ -294,8 +295,19 @@ class _ChatPageState extends State<ChatPage> {
           disconnect: widget.sessionController?.disconnect,
           clearTranscript: _clearLocalTranscript,
           copyLastResponse: _copyLastResponse,
+          showStatus: _buildStatusSummary,
         );
   }
+
+  String _buildStatusSummary() => buildChatStatusSummary(
+    l10n: context.l10n,
+    sessionController: widget.sessionController,
+    threadListController: widget.threadListController,
+    threadDetailController: widget.threadDetailController,
+    turnController: widget.turnController,
+    timelineController: widget.timelineController,
+    configOverrideController: widget.configOverrideController,
+  );
 
   Future<bool> _copyLastResponse() async {
     final markdown = widget.timelineController?.lastAssistantMessageMarkdown();
@@ -316,12 +328,19 @@ class _ChatPageState extends State<ChatPage> {
     AppLocalizations l10n,
     SlashCommandActionResult result,
   ) {
+    final message = result.message;
+    if (message != null && message.isNotEmpty) {
+      return message;
+    }
     return switch (result.outcome) {
       SlashCommandActionOutcome.ignored => '',
       SlashCommandActionOutcome.executed => switch (result.effect) {
         SlashCommandActionEffect.disconnect => l10n.slashCommandDisconnected,
         SlashCommandActionEffect.clearTranscript => l10n.slashCommandCleared,
         SlashCommandActionEffect.copy => l10n.slashCommandCopied,
+        SlashCommandActionEffect.status => l10n.slashCommandExecuted(
+          result.slash,
+        ),
         SlashCommandActionEffect.none => l10n.slashCommandExecuted(
           result.slash,
         ),
@@ -384,14 +403,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   String _connectionLabel(AppLocalizations l10n, CodexSessionStatus? status) {
-    return switch (status) {
-      CodexSessionStatus.connected => l10n.connected,
-      CodexSessionStatus.connecting => l10n.connecting,
-      CodexSessionStatus.reconnecting => l10n.reconnecting,
-      CodexSessionStatus.disconnecting => l10n.disconnecting,
-      CodexSessionStatus.failed => l10n.connectionFailed,
-      CodexSessionStatus.idle || null => l10n.disconnected,
-    };
+    return sessionStatusLabel(l10n, status);
   }
 }
 

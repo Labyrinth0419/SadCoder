@@ -95,6 +95,33 @@ void main() {
     expect(result.command?.command, 'copy');
   });
 
+  test('/status returns the injected status summary', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      showStatus: () => 'Connected\nThread: thr_1',
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/status'),
+      hasActiveTurn: true,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.status);
+    expect(result.message, 'Connected\nThread: thr_1');
+  });
+
+  test('/status is unavailable when no status summary can be built', () async {
+    final dispatcher = SlashCommandActionDispatcher(showStatus: () => '  ');
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/status'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'status');
+  });
+
   test(
     'unknown and unsupported commands never fall through as prompts',
     () async {

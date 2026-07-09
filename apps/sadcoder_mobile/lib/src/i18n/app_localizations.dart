@@ -68,6 +68,7 @@ class AppLocalizations {
   String get connecting => _text('connecting');
   String get connected => _text('connected');
   String get reconnecting => _text('reconnecting');
+  String get statusIdle => _text('statusIdle');
   String get disconnect => _text('disconnect');
   String get disconnecting => _text('disconnecting');
   String get connectionStatus => _text('connectionStatus');
@@ -266,6 +267,7 @@ const _values = <String, Map<String, String>>{
     'connecting': 'Connecting',
     'connected': 'Connected',
     'reconnecting': 'Reconnecting',
+    'statusIdle': 'Idle',
     'disconnect': 'Disconnect',
     'disconnecting': 'Disconnecting',
     'connectionStatus': 'Connection status',
@@ -432,6 +434,7 @@ const _values = <String, Map<String, String>>{
     'connecting': '连接中',
     'connected': '已连接',
     'reconnecting': '重连中',
+    'statusIdle': '空闲',
     'disconnect': '断开',
     'disconnecting': '断开中',
     'connectionStatus': '连接状态',

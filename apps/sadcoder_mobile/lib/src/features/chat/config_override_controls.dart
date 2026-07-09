@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/codex_config_overrides.dart';
 import '../../i18n/app_localizations.dart';
+import 'config_override_labels.dart';
 
 class ConfigOverrideSourceChip extends StatelessWidget {
   const ConfigOverrideSourceChip({
@@ -52,16 +53,4 @@ class ConfigOverrideField extends StatelessWidget {
       ),
     );
   }
-}
-
-String configOverrideSourceLabel(
-  AppLocalizations l10n,
-  CodexConfigOverrideSource source,
-) {
-  return switch (source) {
-    CodexConfigOverrideSource.serverDefault => l10n.sourceServerDefault,
-    CodexConfigOverrideSource.appDefault => l10n.sourceAppDefault,
-    CodexConfigOverrideSource.session => l10n.sourceSessionOverride,
-    CodexConfigOverrideSource.turn => l10n.sourceTurnOverride,
-  };
 }

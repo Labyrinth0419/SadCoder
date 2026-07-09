@@ -3,6 +3,7 @@ import 'slash_command_registry.dart';
 typedef SlashCommandDisconnect = Future<void> Function();
 typedef SlashCommandClearTranscript = void Function();
 typedef SlashCommandCopyLastResponse = Future<bool> Function();
+typedef SlashCommandShowStatus = String? Function();
 
 enum SlashCommandActionOutcome {
   ignored,
@@ -13,7 +14,13 @@ enum SlashCommandActionOutcome {
   failed,
 }
 
-enum SlashCommandActionEffect { none, disconnect, clearTranscript, copy }
+enum SlashCommandActionEffect {
+  none,
+  disconnect,
+  clearTranscript,
+  copy,
+  status,
+}
 
 class SlashCommandActionResult {
   const SlashCommandActionResult._({
@@ -22,6 +29,7 @@ class SlashCommandActionResult {
     required this.arguments,
     this.command,
     this.effect = SlashCommandActionEffect.none,
+    this.message,
     this.error,
   });
 
@@ -37,12 +45,14 @@ class SlashCommandActionResult {
     required String rawCommand,
     required String arguments,
     required SlashCommandActionEffect effect,
+    String? message,
   }) : this._(
          outcome: SlashCommandActionOutcome.executed,
          command: command,
          rawCommand: rawCommand,
          arguments: arguments,
          effect: effect,
+         message: message,
        );
 
   const SlashCommandActionResult.unknown({
@@ -94,6 +104,7 @@ class SlashCommandActionResult {
   final String rawCommand;
   final String arguments;
   final SlashCommandActionEffect effect;
+  final String? message;
   final Object? error;
 
   String get slash => command?.slash ?? '/$rawCommand';
@@ -104,11 +115,13 @@ class SlashCommandActionDispatcher {
     this.disconnect,
     this.clearTranscript,
     this.copyLastResponse,
+    this.showStatus,
   });
 
   final SlashCommandDisconnect? disconnect;
   final SlashCommandClearTranscript? clearTranscript;
   final SlashCommandCopyLastResponse? copyLastResponse;
+  final SlashCommandShowStatus? showStatus;
 
   Future<SlashCommandActionResult> dispatch(
     SlashCommandParseResult parsed, {
@@ -147,6 +160,8 @@ class SlashCommandActionDispatcher {
         return _clearTranscript(parsed);
       case 'copy':
         return _copyLastResponse(parsed);
+      case 'status':
+        return _showStatus(parsed);
       default:
         return SlashCommandActionResult.unsupported(
           command: command,
@@ -237,6 +252,41 @@ class SlashCommandActionDispatcher {
         rawCommand: parsed.rawCommand,
         arguments: parsed.arguments,
         effect: SlashCommandActionEffect.copy,
+      );
+    } on Object catch (error) {
+      return SlashCommandActionResult.failed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        error: error,
+      );
+    }
+  }
+
+  SlashCommandActionResult _showStatus(SlashCommandParseResult parsed) {
+    final showStatus = this.showStatus;
+    if (showStatus == null) {
+      return SlashCommandActionResult.unsupported(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    try {
+      final message = showStatus()?.trim();
+      if (message == null || message.isEmpty) {
+        return SlashCommandActionResult.unavailable(
+          command: parsed.command!,
+          rawCommand: parsed.rawCommand,
+          arguments: parsed.arguments,
+        );
+      }
+      return SlashCommandActionResult.executed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        effect: SlashCommandActionEffect.status,
+        message: message,
       );
     } on Object catch (error) {
       return SlashCommandActionResult.failed(
