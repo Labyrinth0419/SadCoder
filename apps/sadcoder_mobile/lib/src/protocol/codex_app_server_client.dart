@@ -147,6 +147,20 @@ class CodexAppServerClient {
     return _request('thread/backgroundTerminals/clean', {'threadId': threadId});
   }
 
+  Future<Map<String, Object?>> listSkills({
+    List<String> cwds = const [],
+    bool forceReload = false,
+  }) {
+    final normalizedCwds = [
+      for (final cwd in cwds)
+        if (cwd.trim().isNotEmpty) cwd.trim(),
+    ];
+    return _request('skills/list', {
+      if (normalizedCwds.isNotEmpty) 'cwds': normalizedCwds,
+      if (forceReload) 'forceReload': true,
+    });
+  }
+
   Future<Map<String, Object?>> getThreadGoal({required String threadId}) {
     return _request('thread/goal/get', {'threadId': threadId});
   }

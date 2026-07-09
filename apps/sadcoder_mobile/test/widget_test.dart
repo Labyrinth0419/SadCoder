@@ -22,6 +22,7 @@ import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
+import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
@@ -263,6 +264,9 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
       const _StaticPermissionProfileListReader();
 
   @override
+  SkillListReader get skillListReader => const _StaticSkillListReader();
+
+  @override
   ThreadMutationRunner get threadMutationRunner =>
       const _NoopThreadMutationRunner();
 
@@ -357,6 +361,18 @@ class _StaticPermissionProfileListReader
     String? cwd,
   }) async {
     return const PermissionProfileListPage(profiles: []);
+  }
+}
+
+class _StaticSkillListReader implements SkillListReader {
+  const _StaticSkillListReader();
+
+  @override
+  Future<SkillListPage> listSkills({
+    List<String> cwds = const [],
+    bool forceReload = false,
+  }) async {
+    return const SkillListPage(entries: []);
   }
 }
 

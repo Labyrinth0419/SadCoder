@@ -286,6 +286,17 @@ class AppLocalizations {
   String get mcpServerResourceTemplates => _text('mcpServerResourceTemplates');
   String get mcpServerInfo => _text('mcpServerInfo');
   String get mcpServersMore => _text('mcpServersMore');
+  String get skillsTitle => _text('skillsTitle');
+  String get skillsUnavailable => _text('skillsUnavailable');
+  String get skillsLoadFailed => _text('skillsLoadFailed');
+  String get skillsEmpty => _text('skillsEmpty');
+  String get skillsCwd => _text('skillsCwd');
+  String get skillDescription => _text('skillDescription');
+  String get skillPath => _text('skillPath');
+  String get skillErrors => _text('skillErrors');
+  String get skillEnabled => _text('skillEnabled');
+  String get skillDisabled => _text('skillDisabled');
+  String get skillScope => _text('skillScope');
   String get lifetimeTokens => _text('lifetimeTokens');
   String get peakDailyTokens => _text('peakDailyTokens');
   String get currentStreakDays => _text('currentStreakDays');
@@ -611,6 +622,17 @@ const _values = <String, Map<String, String>>{
     'mcpServerResourceTemplates': 'templates',
     'mcpServerInfo': 'server',
     'mcpServersMore': 'More MCP servers are available.',
+    'skillsTitle': 'Skills',
+    'skillsUnavailable': 'Connect to a host, then run /skills.',
+    'skillsLoadFailed': 'Failed to load skills',
+    'skillsEmpty': 'No skills available.',
+    'skillsCwd': 'cwd',
+    'skillDescription': 'Description',
+    'skillPath': 'Path',
+    'skillErrors': 'Errors',
+    'skillEnabled': 'enabled',
+    'skillDisabled': 'disabled',
+    'skillScope': 'scope',
     'lifetimeTokens': 'Lifetime tokens',
     'peakDailyTokens': 'Peak daily tokens',
     'currentStreakDays': 'Current streak',
@@ -889,6 +911,17 @@ const _values = <String, Map<String, String>>{
     'mcpServerResourceTemplates': '模板',
     'mcpServerInfo': '服务器',
     'mcpServersMore': '还有更多 MCP 服务器可用。',
+    'skillsTitle': '技能',
+    'skillsUnavailable': '连接主机后运行 /skills。',
+    'skillsLoadFailed': '技能加载失败',
+    'skillsEmpty': '暂无可用技能。',
+    'skillsCwd': '工作目录',
+    'skillDescription': '说明',
+    'skillPath': '路径',
+    'skillErrors': '错误',
+    'skillEnabled': '已启用',
+    'skillDisabled': '已禁用',
+    'skillScope': '范围',
     'lifetimeTokens': '累计 token',
     'peakDailyTokens': '单日峰值 token',
     'currentStreakDays': '当前连续天数',

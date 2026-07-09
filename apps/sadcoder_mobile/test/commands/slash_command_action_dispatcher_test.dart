@@ -183,6 +183,41 @@ void main() {
     expect(result.command?.command, 'mcp');
   });
 
+  test(
+    '/skills passes inline arguments to the injected skill summary',
+    () async {
+      final arguments = <String>[];
+      final dispatcher = SlashCommandActionDispatcher(
+        showSkills: (argument) async {
+          arguments.add(argument);
+          return 'Skills\nPR Babysitter (pr-review): enabled, scope: repo';
+        },
+      );
+
+      final result = await dispatcher.dispatch(
+        registry.parseComposerText('/skills reload'),
+        hasActiveTurn: true,
+      );
+
+      expect(arguments, ['reload']);
+      expect(result.outcome, SlashCommandActionOutcome.executed);
+      expect(result.effect, SlashCommandActionEffect.skills);
+      expect(result.message, contains('PR Babysitter'));
+    },
+  );
+
+  test('/skills is unavailable when arguments are not supported', () async {
+    final dispatcher = SlashCommandActionDispatcher(showSkills: (_) => null);
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/skills sideways'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'skills');
+  });
+
   test('/goal passes inline arguments to the injected goal handler', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

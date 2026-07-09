@@ -30,6 +30,7 @@ import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
+import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
@@ -2238,6 +2239,139 @@ void main() {
     expect(find.text('/mcp is unavailable right now.'), findsOneWidget);
   });
 
+  testWidgets('/skills lists skills for the selected thread cwd', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final skillReader = _RecordingSkillListReader(
+      page: SkillListPage.fromJson({
+        'data': [
+          {
+            'cwd': '/repo',
+            'skills': [
+              {
+                'name': 'pr-review',
+                'description': 'Review PRs',
+                'interface': {
+                  'displayName': 'PR Babysitter',
+                  'shortDescription': 'Review changed files',
+                },
+                'path': '/repo/.codex/skills/pr-review/SKILL.md',
+                'scope': 'repo',
+                'enabled': true,
+              },
+            ],
+            'errors': <Object?>[],
+          },
+        ],
+      }),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      skillListReader: skillReader,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_selected',
+            'sessionId': 'sess_1',
+            'preview': 'Selected thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+            'turns': <Object?>[],
+          }),
+        ),
+      ),
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(detailController.dispose);
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_selected');
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/skills',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(skillReader.cwds, [
+      ['/repo'],
+    ]);
+    expect(skillReader.forceReloadValues, [false]);
+    expect(find.textContaining('Skills'), findsOneWidget);
+    expect(find.textContaining('PR Babysitter (pr-review)'), findsOneWidget);
+    expect(
+      find.textContaining('Description: Review changed files'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('/skills reload forces a rescan and prefers cwd overrides', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final overrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(cwd: '/override'),
+      ),
+    );
+    final skillReader = _RecordingSkillListReader(
+      page: const SkillListPage(entries: []),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      skillListReader: skillReader,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+    await sessionController.connect(_profile);
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      configOverrideController: overrideController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/skills reload',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(skillReader.cwds, [
+      ['/override'],
+    ]);
+    expect(skillReader.forceReloadValues, [true]);
+    expect(find.textContaining('No skills available.'), findsOneWidget);
+  });
+
   testWidgets('/raw toggles raw timeline item JSON locally', (tester) async {
     final timelineController = ChatTimelineController();
     addTearDown(timelineController.dispose);
@@ -3281,6 +3415,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
         const _FakeThreadBackgroundTerminalRunner(),
     this.threadGoalRunner = const _FakeThreadGoalRunner(),
     this.threadReviewRunner = const _FakeThreadReviewRunner(),
+    this.skillListReader = const _FakeSkillListReader(),
   });
 
   final ThreadListReader threadListReader;
@@ -3289,6 +3424,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final ThreadBackgroundTerminalRunner threadBackgroundTerminalRunner;
   final ThreadGoalRunner threadGoalRunner;
   final ThreadReviewRunner threadReviewRunner;
+  final SkillListReader skillListReader;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -3303,6 +3439,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       threadBackgroundTerminalRunner: threadBackgroundTerminalRunner,
       threadGoalRunner: threadGoalRunner,
       threadReviewRunner: threadReviewRunner,
+      skillListReader: skillListReader,
     );
   }
 }
@@ -3316,6 +3453,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.threadBackgroundTerminalRunner,
     required this.threadGoalRunner,
     required this.threadReviewRunner,
+    required this.skillListReader,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -3340,6 +3478,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final ThreadReviewRunner threadReviewRunner;
+
+  @override
+  final SkillListReader skillListReader;
 
   @override
   ModelListReader get modelListReader => const _FakeModelListReader();
@@ -3471,6 +3612,18 @@ class _FakeMcpServerStatusReader implements McpServerStatusReader {
     McpServerStatusDetail detail = McpServerStatusDetail.toolsAndAuthOnly,
   }) async {
     return const McpServerStatusPage(servers: []);
+  }
+}
+
+class _FakeSkillListReader implements SkillListReader {
+  const _FakeSkillListReader();
+
+  @override
+  Future<SkillListPage> listSkills({
+    List<String> cwds = const [],
+    bool forceReload = false,
+  }) async {
+    return const SkillListPage(entries: []);
   }
 }
 
@@ -3695,6 +3848,24 @@ class _RecordingMcpServerStatusReader implements McpServerStatusReader {
     cursors.add(cursor);
     limits.add(limit);
     details.add(detail);
+    return page;
+  }
+}
+
+class _RecordingSkillListReader implements SkillListReader {
+  _RecordingSkillListReader({required this.page});
+
+  final SkillListPage page;
+  final cwds = <List<String>>[];
+  final forceReloadValues = <bool>[];
+
+  @override
+  Future<SkillListPage> listSkills({
+    List<String> cwds = const [],
+    bool forceReload = false,
+  }) async {
+    this.cwds.add(List.unmodifiable(cwds));
+    forceReloadValues.add(forceReload);
     return page;
   }
 }

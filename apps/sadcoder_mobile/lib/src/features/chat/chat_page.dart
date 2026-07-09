@@ -25,6 +25,7 @@ import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import 'chat_background_terminal_summary.dart';
+import 'chat_skills_summary.dart';
 import 'chat_status_summary.dart';
 import 'chat_timeline_controller.dart';
 import 'chat_goal_summary.dart';
@@ -333,6 +334,7 @@ class _ChatPageState extends State<ChatPage> {
           showStatus: _buildStatusSummary,
           showUsage: _buildUsageSummary,
           showMcp: _buildMcpSummary,
+          showSkills: _buildSkillsSummary,
           handleGoal: _handleGoalCommand,
           handleReview: _handleReviewCommand,
           showBackgroundTerminals: _buildBackgroundTerminalsSummary,
@@ -400,6 +402,30 @@ class _ChatPageState extends State<ChatPage> {
       controller: controller,
       verbose: verbose,
     );
+  }
+
+  Future<String?> _buildSkillsSummary(String arguments) async {
+    final normalized = arguments.trim().toLowerCase();
+    final forceReload = normalized == 'reload' || normalized == 'refresh';
+    if (normalized.isNotEmpty && !forceReload) {
+      return null;
+    }
+
+    final l10n = context.l10n;
+    final reader = widget.sessionController?.skillListReader;
+    if (reader == null) {
+      return [l10n.skillsTitle, l10n.skillsUnavailable].join('\n');
+    }
+
+    try {
+      final page = await reader.listSkills(
+        cwds: _currentSkillCwds(),
+        forceReload: forceReload,
+      );
+      return buildSkillsSummary(l10n: l10n, page: page);
+    } on Object catch (error) {
+      return '${l10n.skillsTitle}\n${l10n.skillsLoadFailed}: $error';
+    }
   }
 
   Future<String?> _handleGoalCommand(String arguments) async {
@@ -804,6 +830,20 @@ class _ChatPageState extends State<ChatPage> {
     return null;
   }
 
+  List<String> _currentSkillCwds() {
+    final overrideCwd = widget.configOverrideController?.resolved.cwd?.trim();
+    if (overrideCwd != null && overrideCwd.isNotEmpty) {
+      return [overrideCwd];
+    }
+
+    final threadCwd = widget.threadDetailController?.detail?.thread.cwd.trim();
+    if (threadCwd != null && threadCwd.isNotEmpty) {
+      return [threadCwd];
+    }
+
+    return const [];
+  }
+
   void _clearLocalTranscript() {
     widget.threadDetailController?.clear();
     widget.timelineController?.clear();
@@ -831,6 +871,9 @@ class _ChatPageState extends State<ChatPage> {
           result.slash,
         ),
         SlashCommandActionEffect.mcp => l10n.slashCommandExecuted(result.slash),
+        SlashCommandActionEffect.skills => l10n.slashCommandExecuted(
+          result.slash,
+        ),
         SlashCommandActionEffect.goal => l10n.slashCommandExecuted(
           result.slash,
         ),
