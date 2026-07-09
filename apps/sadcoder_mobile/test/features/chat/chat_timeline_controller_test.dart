@@ -182,6 +182,58 @@ void main() {
     expect(controller.turns.single.items.single.text, 'Done plus live delta');
   });
 
+  test('ingest maps reasoning file changes and MCP progress into timeline', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.ingest(
+      CodexEvent.fromNotification({
+        'method': 'item/reasoning/textDelta',
+        'params': {
+          'threadId': 'thr_1',
+          'turnId': 'turn_1',
+          'itemId': 'reason_1',
+          'delta': 'thinking',
+          'contentIndex': 0,
+        },
+      }),
+    );
+    controller.ingest(
+      CodexEvent.fromNotification({
+        'method': 'item/fileChange/patchUpdated',
+        'params': {
+          'threadId': 'thr_1',
+          'turnId': 'turn_1',
+          'itemId': 'file_1',
+          'changes': [
+            {'path': 'lib/main.dart', 'kind': 'modify', 'diff': '@@'},
+          ],
+        },
+      }),
+    );
+    controller.ingest(
+      CodexEvent.fromNotification({
+        'method': 'item/mcpToolCall/progress',
+        'params': {
+          'threadId': 'thr_1',
+          'turnId': 'turn_1',
+          'itemId': 'mcp_1',
+          'message': 'searching',
+        },
+      }),
+    );
+
+    final items = controller.turns.single.items;
+    expect(items.map((item) => item.itemType), [
+      'reasoning',
+      'fileChange',
+      'mcpToolCall',
+    ]);
+    expect(items[0].text, 'thinking');
+    expect(items[1].fileChanges.single.path, 'lib/main.dart');
+    expect(items[2].text, 'searching');
+  });
+
   test('attach consumes event streams asynchronously', () async {
     final events = StreamController<CodexEvent>.broadcast();
     ({String threadId, TurnSummary turn})? completed;

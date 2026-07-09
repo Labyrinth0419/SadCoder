@@ -8,6 +8,10 @@ enum CodexEventKind {
   itemCompleted,
   agentMessageDelta,
   commandExecutionOutputDelta,
+  reasoningDelta,
+  fileChangeOutputDelta,
+  fileChangePatchUpdated,
+  mcpToolCallProgress,
   planDelta,
   unknown,
 }
@@ -25,6 +29,7 @@ class CodexEvent {
     this.thread,
     this.turn,
     this.item,
+    this.fileChanges,
   });
 
   factory CodexEvent.fromNotification(Map<String, Object?> notification) {
@@ -68,6 +73,30 @@ class CodexEvent {
         notification,
         params,
       ),
+      'item/reasoning/summaryTextDelta' ||
+      'item/reasoning/textDelta' => _deltaEvent(
+        CodexEventKind.reasoningDelta,
+        method,
+        notification,
+        params,
+      ),
+      'item/fileChange/outputDelta' => _deltaEvent(
+        CodexEventKind.fileChangeOutputDelta,
+        method,
+        notification,
+        params,
+      ),
+      'item/fileChange/patchUpdated' => _fileChangePatchUpdated(
+        method,
+        notification,
+        params,
+      ),
+      'item/mcpToolCall/progress' => _messageEvent(
+        CodexEventKind.mcpToolCallProgress,
+        method,
+        notification,
+        params,
+      ),
       'item/plan/delta' => _deltaEvent(
         CodexEventKind.planDelta,
         method,
@@ -92,6 +121,7 @@ class CodexEvent {
   final ThreadSummary? thread;
   final TurnSummary? turn;
   final Map<String, Object?>? item;
+  final List<ThreadFileChangeSummary>? fileChanges;
   final Map<String, Object?> raw;
 
   static CodexEvent _threadStarted(
@@ -161,6 +191,41 @@ class CodexEvent {
       delta: _stringValue(params['delta']),
     );
   }
+
+  static CodexEvent _messageEvent(
+    CodexEventKind kind,
+    String method,
+    Map<String, Object?> raw,
+    Map<String, Object?> params,
+  ) {
+    return CodexEvent(
+      kind: kind,
+      method: method,
+      raw: Map.unmodifiable(raw),
+      threadId: _stringValue(params['threadId']),
+      turnId: _stringValue(params['turnId']),
+      itemId: _stringValue(params['itemId']),
+      delta: _stringValue(params['message']),
+    );
+  }
+
+  static CodexEvent _fileChangePatchUpdated(
+    String method,
+    Map<String, Object?> raw,
+    Map<String, Object?> params,
+  ) {
+    return CodexEvent(
+      kind: CodexEventKind.fileChangePatchUpdated,
+      method: method,
+      raw: Map.unmodifiable(raw),
+      threadId: _stringValue(params['threadId']),
+      turnId: _stringValue(params['turnId']),
+      itemId: _stringValue(params['itemId']),
+      fileChanges: _listOfMaps(
+        params['changes'],
+      ).map(ThreadFileChangeSummary.fromJson).toList(growable: false),
+    );
+  }
 }
 
 Map<String, Object?> _stringKeyedMap(Object? value) {
@@ -176,3 +241,13 @@ Map<String, Object?> _stringKeyedMap(Object? value) {
 }
 
 String? _stringValue(Object? value) => value is String ? value : null;
+
+List<Map<String, Object?>> _listOfMaps(Object? value) {
+  if (value is! List) {
+    return const [];
+  }
+  return value
+      .whereType<Map>()
+      .map((entry) => Map<String, Object?>.from(entry))
+      .toList(growable: false);
+}

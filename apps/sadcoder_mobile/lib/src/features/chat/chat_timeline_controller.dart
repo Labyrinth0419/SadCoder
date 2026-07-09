@@ -51,6 +51,14 @@ class ChatTimelineController extends ChangeNotifier {
         _appendDelta(event, fallbackType: 'agentMessage');
       case CodexEventKind.commandExecutionOutputDelta:
         _appendDelta(event, fallbackType: 'commandExecution', asOutput: true);
+      case CodexEventKind.reasoningDelta:
+        _appendDelta(event, fallbackType: 'reasoning');
+      case CodexEventKind.fileChangeOutputDelta:
+        _appendDelta(event, fallbackType: 'fileChange', asOutput: true);
+      case CodexEventKind.fileChangePatchUpdated:
+        _updateFileChanges(event);
+      case CodexEventKind.mcpToolCallProgress:
+        _appendDelta(event, fallbackType: 'mcpToolCall');
       case CodexEventKind.planDelta:
         _appendDelta(event, fallbackType: 'plan');
       case CodexEventKind.threadStarted || CodexEventKind.unknown:
@@ -214,6 +222,37 @@ class ChatTimelineController extends ChangeNotifier {
     _turns[turnIndex] = turn.copyWith(items: items);
   }
 
+  void _updateFileChanges(CodexEvent event) {
+    final turnIndex = _ensureTurn(event);
+    if (turnIndex == null) {
+      return;
+    }
+    final itemId = event.itemId;
+    if (itemId == null || itemId.isEmpty) {
+      return;
+    }
+    final turn = _turns[turnIndex];
+    final items = List<ChatTimelineItem>.from(turn.items);
+    final itemIndex = items.indexWhere((item) => item.itemId == itemId);
+    if (itemIndex == -1) {
+      items.add(
+        ChatTimelineItem(
+          itemId: itemId,
+          itemType: 'fileChange',
+          text: '',
+          output: '',
+          fileChanges: event.fileChanges ?? const [],
+          raw: event.raw,
+        ),
+      );
+    } else {
+      items[itemIndex] = items[itemIndex].copyWith(
+        fileChanges: event.fileChanges ?? const [],
+      );
+    }
+    _turns[turnIndex] = turn.copyWith(items: items);
+  }
+
   int? _ensureTurn(CodexEvent event) {
     final threadId = event.threadId;
     final turnId = event.turnId;
@@ -362,7 +401,11 @@ class ChatTimelineItem {
   final List<ThreadFileChangeSummary> fileChanges;
   final Map<String, Object?> raw;
 
-  ChatTimelineItem copyWith({String? text, String? output}) {
+  ChatTimelineItem copyWith({
+    String? text,
+    String? output,
+    List<ThreadFileChangeSummary>? fileChanges,
+  }) {
     return ChatTimelineItem(
       itemId: itemId,
       itemType: itemType,
@@ -375,7 +418,7 @@ class ChatTimelineItem {
       durationMs: durationMs,
       server: server,
       tool: tool,
-      fileChanges: fileChanges,
+      fileChanges: fileChanges ?? this.fileChanges,
       raw: raw,
     );
   }
