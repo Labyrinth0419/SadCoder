@@ -11,29 +11,53 @@ abstract interface class AgentStatusReader {
   Future<AgentStatus> readStatus(SshProfile profile);
 }
 
-class AgentRemoteService implements AgentStatusReader, AgentSnapshotReader {
+abstract interface class AgentStartRunner {
+  Future<AgentStatus> start(SshProfile profile);
+}
+
+class AgentRemoteService
+    implements AgentStatusReader, AgentStartRunner, AgentSnapshotReader {
   const AgentRemoteService(this._runner);
 
   final RemoteCommandRunner _runner;
 
   @override
   Future<AgentStatus> readStatus(SshProfile profile) async {
-    final result = await _runner.run(
+    return _readStatusCommand(
       profile,
       '${profile.agentCommand} status --json',
-      timeout: const Duration(seconds: 20),
+      failurePrefix: 'Agent status',
     );
+  }
+
+  @override
+  Future<AgentStatus> start(SshProfile profile) {
+    return _readStatusCommand(
+      profile,
+      '${profile.agentCommand} start --json',
+      failurePrefix: 'Agent start',
+      timeout: const Duration(seconds: 60),
+    );
+  }
+
+  Future<AgentStatus> _readStatusCommand(
+    SshProfile profile,
+    String command, {
+    required String failurePrefix,
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final result = await _runner.run(profile, command, timeout: timeout);
 
     if (!result.succeeded) {
       throw RemoteCommandException(
-        'Agent status failed with exit code ${result.exitCode}: ${result.stderr}',
+        '$failurePrefix failed with exit code ${result.exitCode}: ${result.stderr}',
       );
     }
 
     final decoded = jsonDecode(result.stdout);
     if (decoded is! Map<String, Object?>) {
       throw const RemoteCommandException(
-        'Agent status did not return a JSON object.',
+        'Agent command did not return a JSON object.',
       );
     }
     return AgentStatus.fromJson(decoded);

@@ -47,6 +47,7 @@ class AppLocalizations {
   String get probePassed => _text('probePassed');
   String get probeFailed => _text('probeFailed');
   String get agentStatus => _text('agentStatus');
+  String get agentStart => _text('agentStart');
   String get proxyConnect => _text('proxyConnect');
   String get initialize => _text('initialize');
   String get modelList => _text('modelList');
@@ -247,6 +248,7 @@ const _values = <String, Map<String, String>>{
     'probePassed': 'Probe passed',
     'probeFailed': 'Probe failed',
     'agentStatus': 'Agent status',
+    'agentStart': 'Agent start',
     'proxyConnect': 'Proxy connect',
     'initialize': 'Initialize',
     'modelList': 'Model list',
@@ -411,6 +413,7 @@ const _values = <String, Map<String, String>>{
     'probePassed': '测试通过',
     'probeFailed': '测试失败',
     'agentStatus': 'Agent 状态',
+    'agentStart': '启动 Agent',
     'proxyConnect': '代理连接',
     'initialize': '初始化',
     'modelList': '模型列表',

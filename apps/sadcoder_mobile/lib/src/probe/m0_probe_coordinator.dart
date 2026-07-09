@@ -7,6 +7,7 @@ import '../ssh/ssh_proxy_connector.dart';
 
 enum M0ProbeStep {
   agentStatus,
+  agentStart,
   proxyConnect,
   initialize,
   modelList,
@@ -28,9 +29,19 @@ class M0ProbeReport {
   final List<M0ProbeStepResult> steps;
 
   bool get ok =>
-      steps.length == M0ProbeStep.values.length &&
-      steps.every((step) => step.ok);
+      steps.every((step) => step.ok) &&
+      _requiredSteps.every(
+        (requiredStep) => steps.any((step) => step.step == requiredStep),
+      );
 }
+
+const _requiredSteps = {
+  M0ProbeStep.agentStatus,
+  M0ProbeStep.proxyConnect,
+  M0ProbeStep.initialize,
+  M0ProbeStep.modelList,
+  M0ProbeStep.threadList,
+};
 
 abstract interface class M0ProbeRunner {
   Future<M0ProbeReport> run(SshProfile profile);
@@ -39,11 +50,14 @@ abstract interface class M0ProbeRunner {
 class M0ProbeCoordinator implements M0ProbeRunner {
   const M0ProbeCoordinator({
     required AgentStatusReader statusReader,
+    AgentStartRunner? startRunner,
     required AgentProxyConnector proxyConnector,
   }) : _statusReader = statusReader,
+       _startRunner = startRunner,
        _proxyConnector = proxyConnector;
 
   final AgentStatusReader _statusReader;
+  final AgentStartRunner? _startRunner;
   final AgentProxyConnector _proxyConnector;
 
   @override
@@ -71,6 +85,11 @@ class M0ProbeCoordinator implements M0ProbeRunner {
           detail: error.toString(),
         ),
       );
+      return M0ProbeReport(agentStatus: status, steps: steps);
+    }
+
+    status = await _startBackendIfNeeded(profile, status, steps);
+    if (status.backendState != BackendState.ready) {
       return M0ProbeReport(agentStatus: status, steps: steps);
     }
 
@@ -125,6 +144,38 @@ class M0ProbeCoordinator implements M0ProbeRunner {
         M0ProbeStepResult(step: step, ok: false, detail: error.toString()),
       );
       return false;
+    }
+  }
+
+  Future<AgentStatus> _startBackendIfNeeded(
+    SshProfile profile,
+    AgentStatus status,
+    List<M0ProbeStepResult> steps,
+  ) async {
+    final startRunner = _startRunner;
+    if (startRunner == null || status.backendState != BackendState.notStarted) {
+      return status;
+    }
+
+    try {
+      final started = await startRunner.start(profile);
+      steps.add(
+        M0ProbeStepResult(
+          step: M0ProbeStep.agentStart,
+          ok: started.backendState == BackendState.ready,
+          detail: started.backendDetail,
+        ),
+      );
+      return started;
+    } on Object catch (error) {
+      steps.add(
+        M0ProbeStepResult(
+          step: M0ProbeStep.agentStart,
+          ok: false,
+          detail: error.toString(),
+        ),
+      );
+      return status;
     }
   }
 

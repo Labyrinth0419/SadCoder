@@ -12,6 +12,7 @@ import '../../ssh/ssh_profile_store.dart';
 
 const M0ProbeRunner _defaultProbeRunner = M0ProbeCoordinator(
   statusReader: AgentRemoteService(DartSshRemoteCommandRunner()),
+  startRunner: AgentRemoteService(DartSshRemoteCommandRunner()),
   proxyConnector: DartSshProxyConnector(),
 );
 
@@ -869,6 +870,7 @@ class _ProbeStepTile extends StatelessWidget {
   static String _labelFor(M0ProbeStep step, AppLocalizations l10n) =>
       switch (step) {
         M0ProbeStep.agentStatus => l10n.agentStatus,
+        M0ProbeStep.agentStart => l10n.agentStart,
         M0ProbeStep.proxyConnect => l10n.proxyConnect,
         M0ProbeStep.initialize => l10n.initialize,
         M0ProbeStep.modelList => l10n.modelList,

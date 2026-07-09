@@ -69,6 +69,45 @@ void main() {
     );
   });
 
+  test('start runs sadcoder-agent start and parses returned status', () async {
+    final runner = _FakeRunner(
+      result: const RemoteCommandResult(
+        exitCode: 0,
+        stdout: '''
+{
+  "agentVersion": "0.1.0",
+  "platformOs": "linux",
+  "platformArch": "x86_64",
+  "codexPath": "codex",
+  "codexAvailable": true,
+  "codexVersion": "codex-cli 0.142.5",
+  "backend": {
+    "kind": "codex-app-server-daemon",
+    "state": "ready",
+    "detail": "official daemon backend is running"
+  },
+  "reconnectCache": {
+    "statePath": "/home/tester/.sadcoder/agent-state.json",
+    "schemaVersion": 1,
+    "pendingApprovals": 0,
+    "recentEvents": 0,
+    "loadError": null
+  }
+}
+''',
+        stderr: '',
+      ),
+    );
+    final service = AgentRemoteService(runner);
+
+    final status = await service.start(_profile);
+
+    expect(runner.lastCommand, 'sadcoder-agent start --json');
+    expect(runner.lastTimeout, const Duration(seconds: 60));
+    expect(status.backendKind, BackendKind.codexAppServerDaemon);
+    expect(status.backendState, BackendState.ready);
+  });
+
   test('readSlashCommands parses shared slash command manifest JSON', () async {
     final stdout = File(
       '../../resources/slash_commands_manifest.json',
@@ -138,6 +177,7 @@ class _FakeRunner implements RemoteCommandRunner {
 
   final RemoteCommandResult result;
   String? lastCommand;
+  Duration? lastTimeout;
 
   @override
   Future<RemoteCommandResult> run(
@@ -146,6 +186,7 @@ class _FakeRunner implements RemoteCommandRunner {
     Duration timeout = const Duration(seconds: 30),
   }) async {
     lastCommand = command;
+    lastTimeout = timeout;
     return result;
   }
 }
