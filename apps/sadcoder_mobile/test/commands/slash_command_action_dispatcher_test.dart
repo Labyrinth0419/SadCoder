@@ -322,6 +322,39 @@ void main() {
     expect(deleteCalls, 0);
   });
 
+  test('/model opens the injected model configuration action', () async {
+    var opens = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      configureModel: () async {
+        opens++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/model'),
+      hasActiveTurn: true,
+    );
+
+    expect(opens, 1);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.modelOverride);
+  });
+
+  test('/model can be cancelled by the configuration UI', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      configureModel: () async => SlashCommandCallbackResult.cancelled,
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/model'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.cancelled);
+    expect(result.command?.command, 'model');
+  });
+
   test(
     'unknown and unsupported commands never fall through as prompts',
     () async {
@@ -335,14 +368,14 @@ void main() {
         hasActiveTurn: false,
       );
       final unsupported = await dispatcher.dispatch(
-        registry.parseComposerText('/model'),
+        registry.parseComposerText('/permissions'),
         hasActiveTurn: false,
       );
 
       expect(unknown.outcome, SlashCommandActionOutcome.unknown);
       expect(unknown.rawCommand, 'does-not-exist');
       expect(unsupported.outcome, SlashCommandActionOutcome.unsupported);
-      expect(unsupported.command?.command, 'model');
+      expect(unsupported.command?.command, 'permissions');
     },
   );
 

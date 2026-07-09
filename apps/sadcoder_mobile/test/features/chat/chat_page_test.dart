@@ -497,14 +497,159 @@ void main() {
 
     await tester.enterText(
       find.byKey(const ValueKey('chat-composer-field')),
-      '/model',
+      '/permissions',
     );
     await tester.pump();
     await tester.tap(find.byTooltip('Send'));
     await tester.pumpAndSettle();
 
     expect(turnRunner.startedTurns, isEmpty);
-    expect(find.text('/model is not implemented yet.'), findsOneWidget);
+    expect(find.text('/permissions is not implemented yet.'), findsOneWidget);
+  });
+
+  testWidgets('/model applies a next-turn model override', (tester) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final overrideController = CodexConfigOverrideController();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => overrideController.layers,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/model',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Model override'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-model-command-model')),
+      'gpt-5-codex',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-model-command-effort')),
+      'high',
+    );
+    await tester.tap(find.byKey(const ValueKey('chat-model-command-apply')));
+    await tester.pumpAndSettle();
+
+    expect(overrideController.layers.turn.toTurnStartParams(), {
+      'model': 'gpt-5-codex',
+      'effort': 'high',
+    });
+    expect(overrideController.layers.session.toTurnStartParams(), isEmpty);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(find.text('Model override updated.'), findsOneWidget);
+  });
+
+  testWidgets('/model can apply a session model override', (tester) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final overrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(model: 'gpt-5-codex', effort: 'medium'),
+        turn: CodexConfigOverrides(model: 'turn-model', effort: 'low'),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => overrideController.layers,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/model',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Session'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const ValueKey('chat-model-command-model')),
+          )
+          .controller
+          ?.text,
+      'gpt-5-codex',
+    );
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const ValueKey('chat-model-command-effort')),
+          )
+          .controller
+          ?.text,
+      'medium',
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-model-command-model')),
+      'gpt-5',
+    );
+    await tester.tap(find.byKey(const ValueKey('chat-model-command-apply')));
+    await tester.pumpAndSettle();
+
+    expect(overrideController.layers.session.toTurnStartParams(), {
+      'model': 'gpt-5',
+      'effort': 'medium',
+    });
+    expect(overrideController.layers.turn.toTurnStartParams(), {
+      'model': 'turn-model',
+      'effort': 'low',
+    });
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(find.text('Model override updated.'), findsOneWidget);
   });
 
   testWidgets('/quit disconnects without interrupting an active turn', (

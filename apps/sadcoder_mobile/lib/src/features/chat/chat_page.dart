@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../../commands/slash_command_action_dispatcher.dart';
 import '../../commands/slash_command_registry.dart';
 import '../../config/codex_config_override_controller.dart';
+import '../../config/codex_config_overrides.dart';
 import '../../i18n/app_localizations.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../threads/thread_detail_controller.dart';
@@ -16,6 +17,7 @@ import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
 import 'chat_status_summary.dart';
 import 'chat_timeline_controller.dart';
+import 'config_override_controls.dart';
 import 'session_override_controls.dart';
 import 'slash_command_palette.dart';
 import 'turn_override_controls.dart';
@@ -308,6 +310,7 @@ class _ChatPageState extends State<ChatPage> {
           renameThread: _renameThread,
           archiveThread: _archiveCurrentThread,
           deleteThread: _deleteCurrentThread,
+          configureModel: _configureModelOverride,
         );
   }
 
@@ -345,6 +348,34 @@ class _ChatPageState extends State<ChatPage> {
       return false;
     }
     return null;
+  }
+
+  Future<SlashCommandCallbackResult> _configureModelOverride() async {
+    final controller = widget.configOverrideController;
+    if (controller == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    final result = await showModalBottomSheet<_ModelOverrideResult>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _ModelOverrideSheet(controller: controller),
+    );
+    if (!mounted || result == null) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+    switch (result.scope) {
+      case _ModelOverrideScope.turn:
+        controller.setTurnModelEffort(
+          model: result.model,
+          effort: result.effort,
+        );
+      case _ModelOverrideScope.session:
+        controller.setSessionModelEffort(
+          model: result.model,
+          effort: result.effort,
+        );
+    }
+    return SlashCommandCallbackResult.executed;
   }
 
   Future<bool> _startNewThread() async {
@@ -499,6 +530,7 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.archiveThread =>
           l10n.slashCommandArchivedThread,
         SlashCommandActionEffect.deleteThread => l10n.slashCommandDeletedThread,
+        SlashCommandActionEffect.modelOverride => l10n.slashCommandModelUpdated,
         SlashCommandActionEffect.none => l10n.slashCommandExecuted(
           result.slash,
         ),
@@ -565,6 +597,148 @@ class _ChatPageState extends State<ChatPage> {
 
   String _connectionLabel(AppLocalizations l10n, CodexSessionStatus? status) {
     return sessionStatusLabel(l10n, status);
+  }
+}
+
+enum _ModelOverrideScope { turn, session }
+
+class _ModelOverrideResult {
+  const _ModelOverrideResult({
+    required this.scope,
+    required this.model,
+    required this.effort,
+  });
+
+  final _ModelOverrideScope scope;
+  final String model;
+  final String effort;
+}
+
+class _ModelOverrideSheet extends StatefulWidget {
+  const _ModelOverrideSheet({required this.controller});
+
+  final CodexConfigOverrideController controller;
+
+  @override
+  State<_ModelOverrideSheet> createState() => _ModelOverrideSheetState();
+}
+
+class _ModelOverrideSheetState extends State<_ModelOverrideSheet> {
+  late _ModelOverrideScope _scope;
+  late final TextEditingController _modelController;
+  late final TextEditingController _effortController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scope = _ModelOverrideScope.turn;
+    final overrides = _overridesFor(_scope);
+    _modelController = TextEditingController(text: overrides.model ?? '');
+    _effortController = TextEditingController(text: overrides.effort ?? '');
+  }
+
+  @override
+  void dispose() {
+    _modelController.dispose();
+    _effortController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.modelCommandTitle,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<_ModelOverrideScope>(
+              segments: [
+                ButtonSegment(
+                  value: _ModelOverrideScope.turn,
+                  icon: const Icon(Icons.send_outlined),
+                  label: Text(l10n.modelCommandTurnScope),
+                ),
+                ButtonSegment(
+                  value: _ModelOverrideScope.session,
+                  icon: const Icon(Icons.forum_outlined),
+                  label: Text(l10n.modelCommandSessionScope),
+                ),
+              ],
+              selected: {_scope},
+              onSelectionChanged: (selection) {
+                setState(() {
+                  _scope = selection.single;
+                  _loadScopeValues();
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+            ConfigOverrideField(
+              keyValue: 'chat-model-command-model',
+              controller: _modelController,
+              label: l10n.modelOverride,
+            ),
+            const SizedBox(height: 12),
+            ConfigOverrideField(
+              keyValue: 'chat-model-command-effort',
+              controller: _effortController,
+              label: l10n.effortOverride,
+            ),
+            const SizedBox(height: 16),
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              spacing: 8,
+              overflowSpacing: 8,
+              children: [
+                TextButton.icon(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                  label: Text(l10n.approvalCancel),
+                ),
+                FilledButton.icon(
+                  key: const ValueKey('chat-model-command-apply'),
+                  onPressed: _apply,
+                  icon: const Icon(Icons.check),
+                  label: Text(l10n.applyModelOverride),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _apply() {
+    Navigator.of(context).pop(
+      _ModelOverrideResult(
+        scope: _scope,
+        model: _modelController.text,
+        effort: _effortController.text,
+      ),
+    );
+  }
+
+  CodexConfigOverrides _overridesFor(_ModelOverrideScope scope) {
+    return switch (scope) {
+      _ModelOverrideScope.turn => widget.controller.layers.turn,
+      _ModelOverrideScope.session => widget.controller.layers.session,
+    };
+  }
+
+  void _loadScopeValues() {
+    final overrides = _overridesFor(_scope);
+    _modelController.text = overrides.model ?? '';
+    _effortController.text = overrides.effort ?? '';
   }
 }
 

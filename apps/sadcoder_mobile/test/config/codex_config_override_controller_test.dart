@@ -25,4 +25,29 @@ void main() {
       'effort': 'high',
     });
   });
+
+  test('model effort helpers preserve unrelated override fields', () {
+    final controller = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(cwd: '/repo', personality: 'pragmatic'),
+        turn: CodexConfigOverrides(cwd: '/tmp', approvalPolicy: 'on-request'),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    controller.setSessionModelEffort(model: 'gpt-5-codex', effort: 'high');
+    controller.setTurnModelEffort(model: 'gpt-5', effort: '');
+
+    expect(controller.layers.session.toTurnStartParams(), {
+      'model': 'gpt-5-codex',
+      'effort': 'high',
+      'cwd': '/repo',
+      'personality': 'pragmatic',
+    });
+    expect(controller.layers.turn.toTurnStartParams(), {
+      'model': 'gpt-5',
+      'approvalPolicy': 'on-request',
+      'cwd': '/tmp',
+    });
+  });
 }

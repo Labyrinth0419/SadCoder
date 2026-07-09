@@ -43,6 +43,14 @@ class CodexConfigOverrideController extends ChangeNotifier {
     );
   }
 
+  void setSessionModelEffort({required String model, required String effort}) {
+    setSession(_withModelEffort(_layers.session, model: model, effort: effort));
+  }
+
+  void setTurnModelEffort({required String model, required String effort}) {
+    setTurn(_withModelEffort(_layers.turn, model: model, effort: effort));
+  }
+
   void clearTurn() {
     setTurn(CodexConfigOverrides.empty);
   }
@@ -58,5 +66,22 @@ class CodexConfigOverrideController extends ChangeNotifier {
   void _setLayers(CodexConfigOverrideLayers layers) {
     _layers = layers;
     notifyListeners();
+  }
+
+  CodexConfigOverrides _withModelEffort(
+    CodexConfigOverrides overrides, {
+    required String model,
+    required String effort,
+  }) {
+    return CodexConfigOverrides(
+      model: model,
+      effort: effort,
+      summary: overrides.summary,
+      approvalPolicy: overrides.approvalPolicy,
+      sandboxPolicy: overrides.sandboxPolicy,
+      cwd: overrides.cwd,
+      personality: overrides.personality,
+      serviceTier: overrides.serviceTier,
+    );
   }
 }

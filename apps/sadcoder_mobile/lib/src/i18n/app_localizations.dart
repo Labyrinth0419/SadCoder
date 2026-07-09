@@ -131,6 +131,7 @@ class AppLocalizations {
   String get slashCommandRenamedThread => _text('slashCommandRenamedThread');
   String get slashCommandArchivedThread => _text('slashCommandArchivedThread');
   String get slashCommandDeletedThread => _text('slashCommandDeletedThread');
+  String get slashCommandModelUpdated => _text('slashCommandModelUpdated');
   String slashCommandCancelled(String slash) =>
       _text('slashCommandCancelled').replaceAll('{slash}', slash);
   String slashCommandExecuted(String slash) =>
@@ -196,6 +197,10 @@ class AppLocalizations {
   String get deleteThreadTitle => _text('deleteThreadTitle');
   String get deleteThreadBody => _text('deleteThreadBody');
   String get deleteThreadConfirm => _text('deleteThreadConfirm');
+  String get modelCommandTitle => _text('modelCommandTitle');
+  String get modelCommandTurnScope => _text('modelCommandTurnScope');
+  String get modelCommandSessionScope => _text('modelCommandSessionScope');
+  String get applyModelOverride => _text('applyModelOverride');
   String get serverConfigSnapshot => _text('serverConfigSnapshot');
   String get refreshServerConfig => _text('refreshServerConfig');
   String get serverConfigUnavailable => _text('serverConfigUnavailable');
@@ -342,6 +347,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandRenamedThread': 'Renamed thread.',
     'slashCommandArchivedThread': 'Archived thread.',
     'slashCommandDeletedThread': 'Deleted thread.',
+    'slashCommandModelUpdated': 'Model override updated.',
     'slashCommandCancelled': 'Canceled {slash}.',
     'slashCommandExecuted': 'Executed {slash}.',
     'slashCommandUnsupported': '{slash} is not implemented yet.',
@@ -405,6 +411,10 @@ const _values = <String, Map<String, String>>{
     'deleteThreadBody':
         'This permanently deletes the current thread and spawned descendant threads. This cannot be undone.',
     'deleteThreadConfirm': 'Delete',
+    'modelCommandTitle': 'Model override',
+    'modelCommandTurnScope': 'Next turn',
+    'modelCommandSessionScope': 'Session',
+    'applyModelOverride': 'Apply model override',
     'serverConfigSnapshot': 'Server config snapshot',
     'refreshServerConfig': 'Refresh server config',
     'serverConfigUnavailable': 'Connect to a host, then refresh server config.',
@@ -523,6 +533,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandRenamedThread': '已重命名会话。',
     'slashCommandArchivedThread': '已归档会话。',
     'slashCommandDeletedThread': '已删除会话。',
+    'slashCommandModelUpdated': '已更新模型覆盖。',
     'slashCommandCancelled': '已取消 {slash}。',
     'slashCommandExecuted': '已执行 {slash}。',
     'slashCommandUnsupported': '{slash} 暂未实现。',
@@ -582,6 +593,10 @@ const _values = <String, Map<String, String>>{
     'deleteThreadTitle': '删除会话？',
     'deleteThreadBody': '这会永久删除当前会话和派生的子会话，无法撤销。',
     'deleteThreadConfirm': '删除',
+    'modelCommandTitle': '模型覆盖',
+    'modelCommandTurnScope': '本次回合',
+    'modelCommandSessionScope': '本会话',
+    'applyModelOverride': '应用模型覆盖',
     'serverConfigSnapshot': '服务器配置快照',
     'refreshServerConfig': '刷新服务器配置',
     'serverConfigUnavailable': '连接主机后刷新服务器配置。',

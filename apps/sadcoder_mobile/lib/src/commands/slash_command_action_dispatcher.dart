@@ -10,6 +10,8 @@ typedef SlashCommandResumeThread = Future<bool> Function(String threadId);
 typedef SlashCommandRenameThread = Future<bool> Function(String name);
 typedef SlashCommandConfirmedThreadAction =
     Future<SlashCommandCallbackResult> Function();
+typedef SlashCommandConfiguredAction =
+    Future<SlashCommandCallbackResult> Function();
 
 enum SlashCommandCallbackResult { executed, cancelled, unavailable }
 
@@ -35,6 +37,7 @@ enum SlashCommandActionEffect {
   renameThread,
   archiveThread,
   deleteThread,
+  modelOverride,
 }
 
 class SlashCommandActionResult {
@@ -148,6 +151,7 @@ class SlashCommandActionDispatcher {
     this.renameThread,
     this.archiveThread,
     this.deleteThread,
+    this.configureModel,
   });
 
   final SlashCommandDisconnect? disconnect;
@@ -160,6 +164,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandRenameThread? renameThread;
   final SlashCommandConfirmedThreadAction? archiveThread;
   final SlashCommandConfirmedThreadAction? deleteThread;
+  final SlashCommandConfiguredAction? configureModel;
 
   Future<SlashCommandActionResult> dispatch(
     SlashCommandParseResult parsed, {
@@ -192,6 +197,12 @@ class SlashCommandActionDispatcher {
     }
 
     switch (command.command) {
+      case 'model':
+        return _configuredAction(
+          parsed,
+          action: configureModel,
+          effect: SlashCommandActionEffect.modelOverride,
+        );
       case 'quit' || 'exit':
         return _disconnect(parsed);
       case 'clear':
@@ -519,6 +530,22 @@ class SlashCommandActionDispatcher {
   Future<SlashCommandActionResult> _confirmedThreadAction(
     SlashCommandParseResult parsed, {
     required SlashCommandConfirmedThreadAction? action,
+    required SlashCommandActionEffect effect,
+  }) async {
+    return _callbackAction(parsed, action: action, effect: effect);
+  }
+
+  Future<SlashCommandActionResult> _configuredAction(
+    SlashCommandParseResult parsed, {
+    required SlashCommandConfiguredAction? action,
+    required SlashCommandActionEffect effect,
+  }) async {
+    return _callbackAction(parsed, action: action, effect: effect);
+  }
+
+  Future<SlashCommandActionResult> _callbackAction(
+    SlashCommandParseResult parsed, {
+    required Future<SlashCommandCallbackResult> Function()? action,
     required SlashCommandActionEffect effect,
   }) async {
     if (action == null) {
