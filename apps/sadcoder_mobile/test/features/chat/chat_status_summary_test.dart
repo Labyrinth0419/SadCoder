@@ -23,6 +23,7 @@ void main() {
       'Connection status: Disconnected\n'
       'Model: gpt-5 / app default\n'
       'Reasoning effort: server default\n'
+      'Collaboration mode: server default\n'
       'Approval policy: server default\n'
       'Permission profile: server default\n'
       'Sandbox mode: server default\n'

@@ -646,6 +646,44 @@ void main() {
     expect(result.command?.command, 'ide');
   });
 
+  test('/plan passes inline arguments to the injected mode action', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      configurePlanMode: (argument) async {
+        arguments.add(argument);
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/plan outline the work'),
+      hasActiveTurn: false,
+    );
+
+    expect(arguments, ['outline the work']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.planMode);
+  });
+
+  test('/plan is unavailable during an active turn', () async {
+    var called = false;
+    final dispatcher = SlashCommandActionDispatcher(
+      configurePlanMode: (_) async {
+        called = true;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/plan'),
+      hasActiveTurn: true,
+    );
+
+    expect(called, isFalse);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'plan');
+  });
+
   test(
     '/keymap passes inline arguments to the injected keymap action',
     () async {

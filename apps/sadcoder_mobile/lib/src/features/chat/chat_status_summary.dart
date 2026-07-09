@@ -110,6 +110,7 @@ Iterable<String> _overrideStatusLines(
   final resolved = controller.resolved;
   yield '${l10n.modelOverride}: ${_overrideStatusValue(l10n, resolved.model, controller.sourceFor('model'))}';
   yield '${l10n.effortOverride}: ${_overrideStatusValue(l10n, resolved.effort, controller.sourceFor('effort'))}';
+  yield '${l10n.collaborationModeOverride}: ${_overrideStatusValue(l10n, resolved.collaborationMode?.displayLabel, controller.sourceFor('collaborationMode'))}';
   yield '${l10n.approvalPolicy}: ${_overrideStatusValue(l10n, configOverrideValueLabel(resolved.approvalPolicy), controller.sourceFor('approvalPolicy'))}';
   yield '${l10n.permissionProfile}: ${_overrideStatusValue(l10n, resolved.permissionProfile, controller.sourceFor('permissionProfile'))}';
   yield '${l10n.sandboxMode}: ${_overrideStatusValue(l10n, configOverrideValueLabel(resolved.sandboxPolicy), controller.sourceFor('sandboxPolicy'))}';

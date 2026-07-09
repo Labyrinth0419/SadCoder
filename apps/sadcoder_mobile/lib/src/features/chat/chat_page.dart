@@ -436,6 +436,7 @@ class _ChatPageState extends State<ChatPage> {
           toggleComposerVimMode: _toggleComposerVimMode,
           configureTerminalPets: _configureTerminalPets,
           attachIdeContext: _attachIdeContext,
+          configurePlanMode: _configurePlanMode,
           mentionFile: _mentionFile,
           startSideConversation: _startSideConversation,
           showAgentTopology: _showAgentTopology,
@@ -971,6 +972,40 @@ class _ChatPageState extends State<ChatPage> {
     return SlashCommandCallbackResult.executed;
   }
 
+  Future<SlashCommandCallbackResult> _configurePlanMode(
+    String arguments,
+  ) async {
+    final controller = widget.configOverrideController;
+    if (controller == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    final prompt = arguments.trim();
+    final turnController = widget.turnController;
+    if (prompt.isNotEmpty &&
+        (turnController == null || !turnController.canSubmit)) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    final model = await _resolvePlanModeModel();
+    if (!mounted || model == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    controller.setTurnCollaborationMode(
+      CodexCollaborationModeOverride.plan(model: model),
+    );
+    if (prompt.isEmpty) {
+      return SlashCommandCallbackResult.executed;
+    }
+
+    await turnController!.submitText(prompt);
+    if (turnController.status == TurnControllerStatus.failed) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    controller.clearTurn();
+    return SlashCommandCallbackResult.executed;
+  }
+
   Future<bool> _startNewThread() async {
     final turnController = widget.turnController;
     if (turnController == null) {
@@ -1503,6 +1538,45 @@ class _ChatPageState extends State<ChatPage> {
     return const [];
   }
 
+  Future<String?> _resolvePlanModeModel() async {
+    final current = _currentPlanModeModel();
+    if (current != null) {
+      return current;
+    }
+
+    final configSnapshotController = widget.configSnapshotController;
+    if (configSnapshotController == null) {
+      return null;
+    }
+    final cwds = _currentWorkspaceCwds();
+    await configSnapshotController.refresh(cwd: cwds.isEmpty ? null : cwds[0]);
+    if (!mounted) {
+      return null;
+    }
+    return _currentPlanModeModel();
+  }
+
+  String? _currentPlanModeModel() {
+    final overrideModel = _normalizedText(
+      widget.configOverrideController?.resolved.model,
+    );
+    if (overrideModel != null) {
+      return overrideModel;
+    }
+
+    final snapshotModel = _normalizedText(
+      widget.configSnapshotController?.snapshot?.displayValueFor('model'),
+    );
+    if (snapshotModel != null) {
+      return snapshotModel;
+    }
+
+    final threadModel = _normalizedText(
+      widget.threadDetailController?.detail?.thread.raw['model']?.toString(),
+    );
+    return threadModel;
+  }
+
   void _clearLocalTranscript() {
     _clearSideConversation();
     widget.threadDetailController?.clear();
@@ -1602,6 +1676,7 @@ class _ChatPageState extends State<ChatPage> {
           l10n.slashCommandPersonalityUpdated,
         SlashCommandActionEffect.permissionsOverride =>
           l10n.slashCommandPermissionsUpdated,
+        SlashCommandActionEffect.planMode => l10n.slashCommandPlanModeUpdated,
         SlashCommandActionEffect.none => l10n.slashCommandExecuted(
           result.slash,
         ),
@@ -1883,6 +1958,13 @@ class _ChatPageState extends State<ChatPage> {
       SnackBar(content: Text(context.l10n.sideConversationDropped)),
     );
   }
+}
+
+String? _normalizedText(String? value) {
+  if (value == null || value.trim().isEmpty) {
+    return null;
+  }
+  return value.trim();
 }
 
 class _SideConversation {

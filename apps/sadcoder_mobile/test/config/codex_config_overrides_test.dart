@@ -97,4 +97,30 @@ void main() {
       CodexConfigOverrideSource.serverDefault,
     );
   });
+
+  test('collaboration mode serializes as turn start params', () {
+    final layers = CodexConfigOverrideLayers(
+      appDefault: const CodexConfigOverrides(model: 'gpt-5'),
+      turn: CodexConfigOverrides(
+        collaborationMode: CodexCollaborationModeOverride.plan(
+          model: 'gpt-5-codex',
+        ),
+      ),
+    );
+
+    expect(layers.resolve().toTurnStartParams(), {
+      'collaborationMode': {
+        'mode': 'plan',
+        'settings': {
+          'model': 'gpt-5-codex',
+          'reasoning_effort': 'medium',
+          'developer_instructions': null,
+        },
+      },
+    });
+    expect(
+      layers.sourceFor('collaborationMode'),
+      CodexConfigOverrideSource.turn,
+    );
+  });
 }

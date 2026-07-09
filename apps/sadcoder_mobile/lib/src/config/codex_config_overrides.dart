@@ -11,6 +11,7 @@ class CodexConfigOverrides {
     this.cwd,
     this.personality,
     this.serviceTier,
+    this.collaborationMode,
   });
 
   static const empty = CodexConfigOverrides();
@@ -24,6 +25,7 @@ class CodexConfigOverrides {
   final String? cwd;
   final String? personality;
   final String? serviceTier;
+  final CodexCollaborationModeOverride? collaborationMode;
 
   bool get isEmpty => toTurnStartParams().isEmpty;
 
@@ -53,13 +55,19 @@ class CodexConfigOverrides {
       cwd: _stringOverride(cwd, higherPriority.cwd),
       personality: _stringOverride(personality, higherPriority.personality),
       serviceTier: _stringOverride(serviceTier, higherPriority.serviceTier),
+      collaborationMode: _collaborationModeOverride(
+        collaborationMode,
+        higherPriority.collaborationMode,
+      ),
     );
   }
 
   Map<String, Object?> toTurnStartParams() {
+    final collaborationModeJson = collaborationMode?.toJson();
+    final hasCollaborationMode = collaborationModeJson != null;
     return {
-      if (_hasText(model)) 'model': model,
-      if (_hasText(effort)) 'effort': effort,
+      if (!hasCollaborationMode && _hasText(model)) 'model': model,
+      if (!hasCollaborationMode && _hasText(effort)) 'effort': effort,
       if (_hasText(summary)) 'summary': summary,
       if (_hasObjectOverride(approvalPolicy)) 'approvalPolicy': approvalPolicy,
       if (_hasText(permissionProfile)) 'permissions': permissionProfile!.trim(),
@@ -68,6 +76,56 @@ class CodexConfigOverrides {
       if (_hasText(cwd)) 'cwd': cwd,
       if (_hasText(personality)) 'personality': personality,
       if (_hasText(serviceTier)) 'serviceTier': serviceTier,
+      if (hasCollaborationMode) 'collaborationMode': collaborationModeJson,
+    };
+  }
+}
+
+class CodexCollaborationModeOverride {
+  const CodexCollaborationModeOverride({
+    required this.mode,
+    required this.model,
+    this.reasoningEffort,
+    this.developerInstructions,
+  });
+
+  factory CodexCollaborationModeOverride.plan({required String model}) {
+    return CodexCollaborationModeOverride(
+      mode: 'plan',
+      model: model,
+      reasoningEffort: 'medium',
+    );
+  }
+
+  final String mode;
+  final String model;
+  final String? reasoningEffort;
+  final String? developerInstructions;
+
+  String? get displayLabel {
+    final normalizedMode = _normalizeText(mode);
+    if (normalizedMode == null) {
+      return null;
+    }
+    final normalizedEffort = _normalizeText(reasoningEffort);
+    return normalizedEffort == null
+        ? normalizedMode
+        : '$normalizedMode / $normalizedEffort';
+  }
+
+  Map<String, Object?>? toJson() {
+    final normalizedMode = _normalizeText(mode);
+    final normalizedModel = _normalizeText(model);
+    if (normalizedMode == null || normalizedModel == null) {
+      return null;
+    }
+    return {
+      'mode': normalizedMode,
+      'settings': {
+        'model': normalizedModel,
+        'reasoning_effort': _normalizeText(reasoningEffort),
+        'developer_instructions': developerInstructions,
+      },
     };
   }
 }
@@ -97,6 +155,10 @@ class CodexConfigOverrideLayers {
       return CodexConfigOverrideSource.serverDefault;
     }
     if (fieldName == 'sandboxPolicy' && !_hasMap(resolved.sandboxPolicy)) {
+      return CodexConfigOverrideSource.serverDefault;
+    }
+    if (fieldName == 'collaborationMode' &&
+        resolved.collaborationMode?.toJson() == null) {
       return CodexConfigOverrideSource.serverDefault;
     }
     final wireFieldName = fieldName == 'permissionProfile'
@@ -163,3 +225,23 @@ bool _hasObjectOverride(Object? value) {
 }
 
 bool _hasMap(Map<String, Object?>? value) => value != null && value.isNotEmpty;
+
+CodexCollaborationModeOverride? _collaborationModeOverride(
+  CodexCollaborationModeOverride? lowerPriority,
+  CodexCollaborationModeOverride? higherPriority,
+) {
+  if (higherPriority?.toJson() != null) {
+    return higherPriority;
+  }
+  if (lowerPriority?.toJson() != null) {
+    return lowerPriority;
+  }
+  return null;
+}
+
+String? _normalizeText(String? value) {
+  if (!_hasText(value)) {
+    return null;
+  }
+  return value!.trim();
+}

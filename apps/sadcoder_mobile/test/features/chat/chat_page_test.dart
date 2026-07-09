@@ -1189,6 +1189,132 @@ void main() {
     expect(find.text('Personality override updated.'), findsOneWidget);
   });
 
+  testWidgets('/plan applies a next-turn collaboration mode override', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final configOverrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        appDefault: CodexConfigOverrides(model: 'gpt-5-codex'),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => configOverrideController.layers,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(configOverrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: configOverrideController,
+    );
+
+    await _submitComposerText(tester, '/plan');
+
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(configOverrideController.layers.turn.toTurnStartParams(), {
+      'collaborationMode': {
+        'mode': 'plan',
+        'settings': {
+          'model': 'gpt-5-codex',
+          'reasoning_effort': 'medium',
+          'developer_instructions': null,
+        },
+      },
+    });
+    expect(find.text('Plan mode applied.'), findsOneWidget);
+
+    await _submitComposerText(tester, 'outline the fix');
+
+    expect(turnRunner.startedTurns, [
+      (threadId: 'thr_new', text: 'outline the fix'),
+    ]);
+    expect(turnRunner.startedTurnOverrides.single.toTurnStartParams(), {
+      'collaborationMode': {
+        'mode': 'plan',
+        'settings': {
+          'model': 'gpt-5-codex',
+          'reasoning_effort': 'medium',
+          'developer_instructions': null,
+        },
+      },
+    });
+    expect(configOverrideController.layers.turn.toTurnStartParams(), isEmpty);
+  });
+
+  testWidgets('/plan with inline prompt submits that prompt in Plan mode', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final configOverrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        appDefault: CodexConfigOverrides(model: 'gpt-5-codex'),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => configOverrideController.layers,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(configOverrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: configOverrideController,
+    );
+
+    await _submitComposerText(tester, '/plan build a patch plan');
+
+    expect(turnRunner.startedTurns, [
+      (threadId: 'thr_new', text: 'build a patch plan'),
+    ]);
+    expect(turnRunner.startedTurnOverrides.single.toTurnStartParams(), {
+      'collaborationMode': {
+        'mode': 'plan',
+        'settings': {
+          'model': 'gpt-5-codex',
+          'reasoning_effort': 'medium',
+          'developer_instructions': null,
+        },
+      },
+    });
+    expect(configOverrideController.layers.turn.toTurnStartParams(), isEmpty);
+    expect(find.text('Plan mode applied.'), findsOneWidget);
+  });
+
   testWidgets('/quit disconnects without interrupting an active turn', (
     tester,
   ) async {
@@ -1355,6 +1481,7 @@ void main() {
         'Turn: Turn submitted: turn_1\n'
         'Model: gpt-5-codex / session override\n'
         'Reasoning effort: server default\n'
+        'Collaboration mode: server default\n'
         'Approval policy: server default\n'
         'Permission profile: server default\n'
         'Sandbox mode: server default\n'

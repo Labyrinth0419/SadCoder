@@ -42,6 +42,8 @@ typedef SlashCommandConfigureTerminalPets =
     Future<SlashCommandCallbackResult> Function(String arguments);
 typedef SlashCommandAttachIdeContext =
     Future<SlashCommandCallbackResult> Function(String arguments);
+typedef SlashCommandConfigurePlanMode =
+    Future<SlashCommandCallbackResult> Function(String arguments);
 typedef SlashCommandMentionFile = Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandStartSideConversation =
     Future<SlashCommandCallbackResult> Function(
@@ -108,6 +110,7 @@ enum SlashCommandActionEffect {
   modelOverride,
   personalityOverride,
   permissionsOverride,
+  planMode,
 }
 
 class SlashCommandActionResult {
@@ -240,6 +243,7 @@ class SlashCommandActionDispatcher {
     this.toggleComposerVimMode,
     this.configureTerminalPets,
     this.attachIdeContext,
+    this.configurePlanMode,
     this.mentionFile,
     this.startSideConversation,
     this.showAgentTopology,
@@ -281,6 +285,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandToggleComposerVimMode? toggleComposerVimMode;
   final SlashCommandConfigureTerminalPets? configureTerminalPets;
   final SlashCommandAttachIdeContext? attachIdeContext;
+  final SlashCommandConfigurePlanMode? configurePlanMode;
   final SlashCommandMentionFile? mentionFile;
   final SlashCommandStartSideConversation? startSideConversation;
   final SlashCommandShowAgentTopology? showAgentTopology;
@@ -356,6 +361,8 @@ class SlashCommandActionDispatcher {
         );
       case 'ide':
         return _attachIdeContext(parsed);
+      case 'plan':
+        return _configurePlanMode(parsed);
       case 'quit' || 'exit':
         return _disconnect(parsed);
       case 'clear':
@@ -1014,6 +1021,16 @@ class SlashCommandActionDispatcher {
       parsed,
       action: attachIdeContext,
       effect: SlashCommandActionEffect.ideContext,
+    );
+  }
+
+  Future<SlashCommandActionResult> _configurePlanMode(
+    SlashCommandParseResult parsed,
+  ) async {
+    return _argumentCallbackAction(
+      parsed,
+      action: configurePlanMode,
+      effect: SlashCommandActionEffect.planMode,
     );
   }
 

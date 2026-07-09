@@ -59,6 +59,28 @@ class CodexConfigOverrideController extends ChangeNotifier {
     setTurn(_withPersonality(_layers.turn, personality: personality));
   }
 
+  void setSessionCollaborationMode(
+    CodexCollaborationModeOverride collaborationMode,
+  ) {
+    setSession(
+      _withCollaborationMode(
+        _layers.session,
+        collaborationMode: collaborationMode,
+      ),
+    );
+  }
+
+  void setTurnCollaborationMode(
+    CodexCollaborationModeOverride collaborationMode,
+  ) {
+    setTurn(
+      _withCollaborationMode(
+        _layers.turn,
+        collaborationMode: collaborationMode,
+      ),
+    );
+  }
+
   void setSessionPermissions({
     required Object? approvalPolicy,
     required Map<String, Object?> sandboxPolicy,
@@ -121,6 +143,7 @@ class CodexConfigOverrideController extends ChangeNotifier {
       cwd: overrides.cwd,
       personality: overrides.personality,
       serviceTier: overrides.serviceTier,
+      collaborationMode: overrides.collaborationMode,
     );
   }
 
@@ -138,6 +161,25 @@ class CodexConfigOverrideController extends ChangeNotifier {
       cwd: overrides.cwd,
       personality: personality,
       serviceTier: overrides.serviceTier,
+      collaborationMode: overrides.collaborationMode,
+    );
+  }
+
+  CodexConfigOverrides _withCollaborationMode(
+    CodexConfigOverrides overrides, {
+    required CodexCollaborationModeOverride collaborationMode,
+  }) {
+    return CodexConfigOverrides(
+      model: overrides.model,
+      effort: overrides.effort,
+      summary: overrides.summary,
+      approvalPolicy: overrides.approvalPolicy,
+      sandboxPolicy: overrides.sandboxPolicy,
+      permissionProfile: overrides.permissionProfile,
+      cwd: overrides.cwd,
+      personality: overrides.personality,
+      serviceTier: overrides.serviceTier,
+      collaborationMode: collaborationMode,
     );
   }
 
@@ -158,6 +200,7 @@ class CodexConfigOverrideController extends ChangeNotifier {
       cwd: overrides.cwd,
       personality: overrides.personality,
       serviceTier: overrides.serviceTier,
+      collaborationMode: overrides.collaborationMode,
     );
   }
 }

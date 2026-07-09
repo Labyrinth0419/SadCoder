@@ -106,4 +106,45 @@ void main() {
       'effort': 'high',
     });
   });
+
+  test('collaboration mode helpers preserve unrelated override fields', () {
+    final controller = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(cwd: '/repo', personality: 'concise'),
+        turn: CodexConfigOverrides(approvalPolicy: 'on-request'),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    controller.setSessionCollaborationMode(
+      CodexCollaborationModeOverride.plan(model: 'gpt-5-codex'),
+    );
+    controller.setTurnCollaborationMode(
+      CodexCollaborationModeOverride.plan(model: 'gpt-5'),
+    );
+
+    expect(controller.layers.session.toTurnStartParams(), {
+      'cwd': '/repo',
+      'personality': 'concise',
+      'collaborationMode': {
+        'mode': 'plan',
+        'settings': {
+          'model': 'gpt-5-codex',
+          'reasoning_effort': 'medium',
+          'developer_instructions': null,
+        },
+      },
+    });
+    expect(controller.layers.turn.toTurnStartParams(), {
+      'approvalPolicy': 'on-request',
+      'collaborationMode': {
+        'mode': 'plan',
+        'settings': {
+          'model': 'gpt-5',
+          'reasoning_effort': 'medium',
+          'developer_instructions': null,
+        },
+      },
+    });
+  });
 }

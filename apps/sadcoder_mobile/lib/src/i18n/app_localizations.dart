@@ -168,6 +168,8 @@ class AppLocalizations {
       _text('slashCommandPersonalityUpdated');
   String get slashCommandPermissionsUpdated =>
       _text('slashCommandPermissionsUpdated');
+  String get slashCommandPlanModeUpdated =>
+      _text('slashCommandPlanModeUpdated');
   String slashCommandCancelled(String slash) =>
       _text('slashCommandCancelled').replaceAll('{slash}', slash);
   String slashCommandExecuted(String slash) =>
@@ -238,6 +240,7 @@ class AppLocalizations {
   String get modelProvider => _text('modelProvider');
   String get effortOverride => _text('effortOverride');
   String get personalityOverride => _text('personalityOverride');
+  String get collaborationModeOverride => _text('collaborationModeOverride');
   String get approvalPolicy => _text('approvalPolicy');
   String get permissionProfile => _text('permissionProfile');
   String get sandboxMode => _text('sandboxMode');
@@ -689,6 +692,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandModelUpdated': 'Model override updated.',
     'slashCommandPersonalityUpdated': 'Personality override updated.',
     'slashCommandPermissionsUpdated': 'Permission override updated.',
+    'slashCommandPlanModeUpdated': 'Plan mode applied.',
     'slashCommandCancelled': 'Canceled {slash}.',
     'slashCommandExecuted': 'Executed {slash}.',
     'slashCommandUnsupported': '{slash} is not implemented yet.',
@@ -745,6 +749,7 @@ const _values = <String, Map<String, String>>{
     'modelProvider': 'Model provider',
     'effortOverride': 'Reasoning effort',
     'personalityOverride': 'Personality',
+    'collaborationModeOverride': 'Collaboration mode',
     'approvalPolicy': 'Approval policy',
     'permissionProfile': 'Permission profile',
     'sandboxMode': 'Sandbox mode',
@@ -1148,6 +1153,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandModelUpdated': '已更新模型覆盖。',
     'slashCommandPersonalityUpdated': '已更新协作风格覆盖。',
     'slashCommandPermissionsUpdated': '已更新权限覆盖。',
+    'slashCommandPlanModeUpdated': '已应用计划模式。',
     'slashCommandCancelled': '已取消 {slash}。',
     'slashCommandExecuted': '已执行 {slash}。',
     'slashCommandUnsupported': '{slash} 暂未实现。',
@@ -1197,6 +1203,7 @@ const _values = <String, Map<String, String>>{
     'modelProvider': '模型提供方',
     'effortOverride': '推理强度',
     'personalityOverride': '协作风格',
+    'collaborationModeOverride': '协作模式',
     'approvalPolicy': '审批策略',
     'permissionProfile': '权限配置',
     'sandboxMode': '沙盒模式',
