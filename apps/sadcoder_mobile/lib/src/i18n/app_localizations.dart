@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 
 class AppLocalizations {
   const AppLocalizations(this.locale);
@@ -8,7 +10,10 @@ class AppLocalizations {
 
   static const delegate = _AppLocalizationsDelegate();
 
-  static const supportedLocales = [Locale('en'), Locale('zh')];
+  static const supportedLocales = [Locale('en', 'US'), Locale('zh', 'CN')];
+
+  @visibleForTesting
+  static Map<String, Map<String, String>> get debugValues => _values;
 
   static AppLocalizations of(BuildContext context) {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
@@ -62,8 +67,8 @@ class AppLocalizations {
   String get backendUnknown => _text('backendUnknown');
   String reconnectCacheSummary(int pendingApprovals, int recentEvents) =>
       _text('reconnectCacheSummary')
-          .replaceAll('{pendingApprovals}', pendingApprovals.toString())
-          .replaceAll('{recentEvents}', recentEvents.toString());
+          .replaceAll('{pendingApprovals}', formatNumber(pendingApprovals))
+          .replaceAll('{recentEvents}', formatNumber(recentEvents));
   String statePath(String path) =>
       _text('statePath').replaceAll('{path}', path);
   String reconnectCacheLoadError(String error) =>
@@ -93,7 +98,7 @@ class AppLocalizations {
   String get threadDetail => _text('threadDetail');
   String get threadDetailFailed => _text('threadDetailFailed');
   String turnCount(int count) =>
-      _text('turnCount').replaceAll('{count}', count.toString());
+      _text('turnCount').replaceAll('{count}', formatNumber(count));
   String get noTurns => _text('noTurns');
   String get startingThread => _text('startingThread');
   String get resumingThread => _text('resumingThread');
@@ -499,19 +504,20 @@ class AppLocalizations {
   String get creditsUnavailable => _text('creditsUnavailable');
   String get individualLimit => _text('individualLimit');
   String tokenCount(int count) =>
-      _text('tokenCount').replaceAll('{count}', count.toString());
+      _text('tokenCount').replaceAll('{count}', formatNumber(count));
   String dayCount(int count) =>
-      _text('dayCount').replaceAll('{count}', count.toString());
+      _text('dayCount').replaceAll('{count}', formatNumber(count));
   String secondCount(int count) =>
-      _text('secondCount').replaceAll('{count}', count.toString());
-  String rateLimitUsedPercent(int percent) =>
-      _text('rateLimitUsedPercent').replaceAll('{percent}', percent.toString());
+      _text('secondCount').replaceAll('{count}', formatNumber(count));
+  String rateLimitUsedPercent(int percent) => _text(
+    'rateLimitUsedPercent',
+  ).replaceAll('{percent}', formatNumber(percent));
   String rateLimitWindowMinutes(int minutes) => _text(
     'rateLimitWindowMinutes',
-  ).replaceAll('{minutes}', minutes.toString());
+  ).replaceAll('{minutes}', formatNumber(minutes));
   String rateLimitResetsAt(int timestamp) => _text(
     'rateLimitResetsAt',
-  ).replaceAll('{timestamp}', timestamp.toString());
+  ).replaceAll('{timestamp}', formatUnixTimestampSeconds(timestamp));
   String rateLimitReached(String type) =>
       _text('rateLimitReached').replaceAll('{type}', type);
   String creditsBalance(String balance) =>
@@ -520,15 +526,15 @@ class AppLocalizations {
       _text('individualLimitUsed').replaceAll('{used}', used);
   String individualLimitRemaining(int percent) => _text(
     'individualLimitRemaining',
-  ).replaceAll('{percent}', percent.toString());
+  ).replaceAll('{percent}', formatNumber(percent));
   String resetCreditsAvailable(int count) =>
-      _text('resetCreditsAvailable').replaceAll('{count}', count.toString());
+      _text('resetCreditsAvailable').replaceAll('{count}', formatNumber(count));
   String configLayersLoaded(int count) =>
-      _text('configLayersLoaded').replaceAll('{count}', count.toString());
+      _text('configLayersLoaded').replaceAll('{count}', formatNumber(count));
   String debugConfigLayers(int count) =>
-      _text('debugConfigLayers').replaceAll('{count}', count.toString());
+      _text('debugConfigLayers').replaceAll('{count}', formatNumber(count));
   String debugConfigLayer(int index) =>
-      _text('debugConfigLayer').replaceAll('{index}', index.toString());
+      _text('debugConfigLayer').replaceAll('{index}', formatNumber(index));
   String get theme => _text('theme');
   String get themeBody => _text('themeBody');
   String get workspaceFilesTitle => _text('workspaceFilesTitle');
@@ -563,11 +569,52 @@ class AppLocalizations {
   String get workspaceFilesRetry => _text('workspaceFilesRetry');
   String workspaceFilesLoadedBytes(int loaded, int total) =>
       _text('workspaceFilesLoadedBytes')
-          .replaceAll('{loaded}', loaded.toString())
-          .replaceAll('{total}', total.toString());
+          .replaceAll('{loaded}', formatFileSize(loaded))
+          .replaceAll('{total}', formatFileSize(total));
+
+  String formatNumber(num value) =>
+      NumberFormat.decimalPattern(_intlLocale).format(value);
+
+  String formatUnixTimestampSeconds(int timestamp) {
+    initializeDateFormatting(_intlLocale);
+    final dateTime = DateTime.fromMillisecondsSinceEpoch(
+      timestamp * 1000,
+      isUtc: true,
+    );
+    return DateFormat.yMd(_intlLocale).add_Hm().format(dateTime);
+  }
+
+  String formatFileSize(int bytes) {
+    final safeBytes = bytes < 0 ? 0 : bytes;
+    if (safeBytes < 1024) {
+      return '${formatNumber(safeBytes)} B';
+    }
+
+    var value = safeBytes / 1024;
+    var unit = 'KB';
+    if (value >= 1024) {
+      value /= 1024;
+      unit = 'MB';
+    }
+    if (value >= 1024) {
+      value /= 1024;
+      unit = 'GB';
+    }
+
+    final pattern = value < 10 && value.truncateToDouble() != value
+        ? '#,##0.#'
+        : '#,##0';
+    return '${NumberFormat(pattern, _intlLocale).format(value)} $unit';
+  }
 
   String _text(String key) {
-    return _values[locale.languageCode]?[key] ?? _values['en']![key] ?? key;
+    final languageCode = _supportedLanguageCode(locale);
+    return _values[languageCode]?[key] ?? _values['en']![key] ?? key;
+  }
+
+  String get _intlLocale {
+    final languageCode = _supportedLanguageCode(locale);
+    return _intlLocaleForLanguage(languageCode);
   }
 }
 
@@ -580,14 +627,28 @@ class _AppLocalizationsDelegate
 
   @override
   Future<AppLocalizations> load(Locale locale) {
-    final languageCode = _values.containsKey(locale.languageCode)
-        ? locale.languageCode
-        : 'en';
-    return SynchronousFuture(AppLocalizations(Locale(languageCode)));
+    final languageCode = _supportedLanguageCode(locale);
+    final resolvedLocale = switch (languageCode) {
+      'zh' => const Locale('zh', 'CN'),
+      _ => const Locale('en', 'US'),
+    };
+    initializeDateFormatting(_intlLocaleForLanguage(languageCode));
+    return SynchronousFuture(AppLocalizations(resolvedLocale));
   }
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
+}
+
+String _supportedLanguageCode(Locale locale) {
+  return _values.containsKey(locale.languageCode) ? locale.languageCode : 'en';
+}
+
+String _intlLocaleForLanguage(String languageCode) {
+  return switch (languageCode) {
+    'zh' => 'zh_CN',
+    _ => 'en_US',
+  };
 }
 
 const _values = <String, Map<String, String>>{
@@ -1081,7 +1142,7 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesTooLarge': 'File is too large to preview.',
     'workspaceFilesDirectoryLoadFailed': 'Failed to load directory.',
     'workspaceFilesRetry': 'Retry',
-    'workspaceFilesLoadedBytes': '{loaded} / {total} bytes loaded',
+    'workspaceFilesLoadedBytes': '{loaded} / {total} loaded',
   },
   'zh': {
     'appTitle': 'SadCoder',
@@ -1514,7 +1575,7 @@ const _values = <String, Map<String, String>>{
     'creditsAvailable': '可用',
     'creditsUnavailable': '不可用',
     'individualLimit': '月度限制',
-    'tokenCount': '{count} token',
+    'tokenCount': '{count} 个 token',
     'dayCount': '{count} 天',
     'secondCount': '{count} 秒',
     'rateLimitUsedPercent': '已用 {percent}%',
@@ -1555,7 +1616,7 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesTooLarge': '文件过大，无法预览。',
     'workspaceFilesDirectoryLoadFailed': '目录加载失败。',
     'workspaceFilesRetry': '重试',
-    'workspaceFilesLoadedBytes': '已加载 {loaded} / {total} 字节',
+    'workspaceFilesLoadedBytes': '已加载 {loaded} / {total}',
   },
 };
 

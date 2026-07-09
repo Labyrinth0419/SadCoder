@@ -1633,7 +1633,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.textContaining('Usage: Lifetime tokens=1234 tokens'),
+      find.textContaining('Usage: Lifetime tokens=1,234 tokens'),
       findsOneWidget,
     );
     expect(
@@ -2061,7 +2061,7 @@ void main() {
 
     expect(usageReader.calls, 1);
     expect(
-      find.textContaining('Token usage: Lifetime tokens=1234 tokens'),
+      find.textContaining('Token usage: Lifetime tokens=1,234 tokens'),
       findsOneWidget,
     );
     expect(
