@@ -136,7 +136,10 @@ class AppLocalizations {
   String get serverDefaultsBody => _text('serverDefaultsBody');
   String get appDefaultOverrides => _text('appDefaultOverrides');
   String get modelOverride => _text('modelOverride');
+  String get modelProvider => _text('modelProvider');
   String get effortOverride => _text('effortOverride');
+  String get approvalPolicy => _text('approvalPolicy');
+  String get sandboxMode => _text('sandboxMode');
   String get cwdOverride => _text('cwdOverride');
   String get applyOverrides => _text('applyOverrides');
   String get clearOverrides => _text('clearOverrides');
@@ -149,6 +152,13 @@ class AppLocalizations {
   String get editTurnOverrides => _text('editTurnOverrides');
   String get applyTurnOverrides => _text('applyTurnOverrides');
   String get clearTurnOverrides => _text('clearTurnOverrides');
+  String get serverConfigSnapshot => _text('serverConfigSnapshot');
+  String get refreshServerConfig => _text('refreshServerConfig');
+  String get serverConfigUnavailable => _text('serverConfigUnavailable');
+  String get serverConfigLoadFailed => _text('serverConfigLoadFailed');
+  String get serverValueUnset => _text('serverValueUnset');
+  String configLayersLoaded(int count) =>
+      _text('configLayersLoaded').replaceAll('{count}', count.toString());
   String get theme => _text('theme');
   String get themeBody => _text('themeBody');
 
@@ -295,7 +305,10 @@ const _values = <String, Map<String, String>>{
         'Codex configuration is inherited from the server unless an override is explicitly set.',
     'appDefaultOverrides': 'App default overrides',
     'modelOverride': 'Model',
+    'modelProvider': 'Model provider',
     'effortOverride': 'Reasoning effort',
+    'approvalPolicy': 'Approval policy',
+    'sandboxMode': 'Sandbox mode',
     'cwdOverride': 'Working directory',
     'applyOverrides': 'Apply overrides',
     'clearOverrides': 'Clear overrides',
@@ -308,6 +321,12 @@ const _values = <String, Map<String, String>>{
     'editTurnOverrides': 'Edit next turn overrides',
     'applyTurnOverrides': 'Apply to next turn',
     'clearTurnOverrides': 'Clear next turn overrides',
+    'serverConfigSnapshot': 'Server config snapshot',
+    'refreshServerConfig': 'Refresh server config',
+    'serverConfigUnavailable': 'Connect to a host, then refresh server config.',
+    'serverConfigLoadFailed': 'Failed to load server config',
+    'serverValueUnset': 'not set',
+    'configLayersLoaded': 'Config layers loaded: {count}',
     'theme': 'Theme',
     'themeBody': 'System, light, and dark modes are supported.',
   },
@@ -426,7 +445,10 @@ const _values = <String, Map<String, String>>{
     'serverDefaultsBody': '默认沿用服务器上的 Codex 配置，只有显式设置时才覆盖。',
     'appDefaultOverrides': 'App 默认覆盖',
     'modelOverride': '模型',
+    'modelProvider': '模型提供方',
     'effortOverride': '推理强度',
+    'approvalPolicy': '审批策略',
+    'sandboxMode': '沙盒模式',
     'cwdOverride': '工作目录',
     'applyOverrides': '应用覆盖',
     'clearOverrides': '清除覆盖',
@@ -439,6 +461,12 @@ const _values = <String, Map<String, String>>{
     'editTurnOverrides': '编辑本次回合覆盖',
     'applyTurnOverrides': '应用到本次回合',
     'clearTurnOverrides': '清除本次回合覆盖',
+    'serverConfigSnapshot': '服务器配置快照',
+    'refreshServerConfig': '刷新服务器配置',
+    'serverConfigUnavailable': '连接主机后刷新服务器配置。',
+    'serverConfigLoadFailed': '服务器配置加载失败',
+    'serverValueUnset': '未设置',
+    'configLayersLoaded': '已加载配置层：{count}',
     'theme': '主题',
     'themeBody': '支持跟随系统、浅色和深色模式。',
   },

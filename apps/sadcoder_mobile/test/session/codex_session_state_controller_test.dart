@@ -8,6 +8,8 @@ import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_session.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
@@ -43,6 +45,7 @@ void main() {
     expect(controller.profile, _profile);
     expect(controller.threadListReader, isNotNull);
     expect(controller.threadDetailReader, isNotNull);
+    expect(controller.configSnapshotReader, isNotNull);
     expect(controller.turnRunner, isNotNull);
     expect(connector.connectedProfiles, [_profile]);
     expect(approvalController.canRespond, true);
@@ -394,6 +397,7 @@ void main() {
     expect(controller.status, CodexSessionStatus.idle);
     expect(controller.threadListReader, isNull);
     expect(controller.threadDetailReader, isNull);
+    expect(controller.configSnapshotReader, isNull);
     expect(controller.turnRunner, isNull);
     expect(connector.connectCount, 1);
     expect(connector.closeCount, 1);
@@ -472,6 +476,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       session: session,
       threadListReader: const _FakeThreadListReader(),
       threadDetailReader: const _FakeThreadDetailReader(),
+      configSnapshotReader: const _FakeConfigSnapshotReader(),
       turnRunner: const _FakeTurnRunner(),
       proxyConnection: AgentProxyConnection(
         input: const Stream<Uint8List>.empty(),
@@ -483,6 +488,18 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
         },
       ),
     );
+  }
+}
+
+class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {
+  const _FakeConfigSnapshotReader();
+
+  @override
+  Future<CodexConfigSnapshot> readConfig({
+    bool includeLayers = true,
+    String? cwd,
+  }) async {
+    return const CodexConfigSnapshot(config: {}, origins: {}, layers: []);
   }
 }
 

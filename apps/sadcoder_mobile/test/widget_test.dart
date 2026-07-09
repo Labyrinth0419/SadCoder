@@ -7,6 +7,8 @@ import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/app/sadcoder_app.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
@@ -221,6 +223,10 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
   final ThreadDetailReader threadDetailReader;
 
   @override
+  CodexConfigSnapshotReader get configSnapshotReader =>
+      const _StaticConfigSnapshotReader();
+
+  @override
   TurnRunner get turnRunner => const _NoopTurnRunner();
 
   @override
@@ -231,6 +237,18 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   Future<void> close({bool notifyApprovalController = true}) async {}
+}
+
+class _StaticConfigSnapshotReader implements CodexConfigSnapshotReader {
+  const _StaticConfigSnapshotReader();
+
+  @override
+  Future<CodexConfigSnapshot> readConfig({
+    bool includeLayers = true,
+    String? cwd,
+  }) async {
+    return const CodexConfigSnapshot(config: {}, origins: {}, layers: []);
+  }
 }
 
 class _StaticThreadListReader implements ThreadListReader {

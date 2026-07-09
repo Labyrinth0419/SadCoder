@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../agent/agent_remote_service.dart';
 import '../approvals/approval_state_controller.dart';
 import '../config/codex_config_override_controller.dart';
+import '../config/codex_config_snapshot_controller.dart';
 import '../features/approvals/approvals_page.dart';
 import '../features/chat/chat_page.dart';
 import '../features/chat/chat_timeline_controller.dart';
@@ -43,6 +46,7 @@ class _AppShellState extends State<AppShell> {
   late TurnController _turnController;
   late ChatTimelineController _timelineController;
   late CodexConfigOverrideController _configOverrideController;
+  late CodexConfigSnapshotController _configSnapshotController;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
 
@@ -144,6 +148,9 @@ class _AppShellState extends State<AppShell> {
       readerProvider: () => _sessionController.threadDetailReader,
     );
     _configOverrideController = CodexConfigOverrideController();
+    _configSnapshotController = CodexConfigSnapshotController(
+      readerProvider: () => _sessionController.configSnapshotReader,
+    );
     _turnController = TurnController(
       runnerProvider: () => _sessionController.turnRunner,
       activeThreadIdProvider: () => _threadDetailController.selectedThreadId,
@@ -164,6 +171,7 @@ class _AppShellState extends State<AppShell> {
     _threadDetailController.removeListener(_handleThreadDetailChanged);
     _timelineController.dispose();
     _configOverrideController.dispose();
+    _configSnapshotController.dispose();
     _turnController.dispose();
     _threadDetailController.dispose();
     _threadListController.dispose();
@@ -198,13 +206,19 @@ class _AppShellState extends State<AppShell> {
             ? _approvalController.sendMcpElicitationResponse
             : null,
       ),
-      3 => SettingsPage(configOverrideController: _configOverrideController),
+      3 => SettingsPage(
+        configOverrideController: _configOverrideController,
+        configSnapshotController: _configSnapshotController,
+      ),
       _ => HostsPage(sessionController: _sessionController),
     };
   }
 
   void _handleSessionChanged() {
     _timelineController.attach(_sessionController.events);
+    if (_sessionController.isConnected) {
+      unawaited(_configSnapshotController.refresh());
+    }
   }
 
   void _handleThreadDetailChanged() {

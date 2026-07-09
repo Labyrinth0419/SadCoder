@@ -8,6 +8,8 @@ import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/agent/agent_status.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/hosts/hosts_page.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
@@ -363,6 +365,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   ThreadDetailReader get threadDetailReader => const _FakeThreadDetailReader();
 
   @override
+  CodexConfigSnapshotReader get configSnapshotReader =>
+      const _FakeConfigSnapshotReader();
+
+  @override
   TurnRunner get turnRunner => const _FakeTurnRunner();
 
   @override
@@ -387,6 +393,18 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     }
     _closed = true;
     onClose();
+  }
+}
+
+class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {
+  const _FakeConfigSnapshotReader();
+
+  @override
+  Future<CodexConfigSnapshot> readConfig({
+    bool includeLayers = true,
+    String? cwd,
+  }) async {
+    return const CodexConfigSnapshot(config: {}, origins: {}, layers: []);
   }
 }
 

@@ -27,6 +27,16 @@ class CodexAppServerClient {
     return _request('thread/list', {'limit': limit});
   }
 
+  Future<Map<String, Object?>> readConfig({
+    bool includeLayers = true,
+    String? cwd,
+  }) {
+    return _request('config/read', {
+      if (includeLayers) 'includeLayers': true,
+      if (cwd != null && cwd.trim().isNotEmpty) 'cwd': cwd.trim(),
+    });
+  }
+
   Future<Map<String, Object?>> readThread({
     required String threadId,
     bool includeTurns = true,

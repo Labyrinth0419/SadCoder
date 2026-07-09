@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../agent/agent_snapshot_reader.dart';
 import '../approvals/approval_state_controller.dart';
+import '../config/codex_config_snapshot_reader.dart';
 import '../events/codex_event.dart';
 import '../ssh/ssh_profile.dart';
 import '../threads/thread_detail_reader.dart';
@@ -62,6 +63,9 @@ class CodexSessionStateController extends ChangeNotifier {
   ThreadListReader? get threadListReader => _connection?.threadListReader;
 
   ThreadDetailReader? get threadDetailReader => _connection?.threadDetailReader;
+
+  CodexConfigSnapshotReader? get configSnapshotReader =>
+      _connection?.configSnapshotReader;
 
   TurnRunner? get turnRunner => _connection?.turnRunner;
 

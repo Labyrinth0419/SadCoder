@@ -2,12 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../../config/codex_config_override_controller.dart';
 import '../../config/codex_config_overrides.dart';
+import '../../config/codex_config_snapshot.dart';
+import '../../config/codex_config_snapshot_controller.dart';
 import '../../i18n/app_localizations.dart';
 
 class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key, this.configOverrideController});
+  const SettingsPage({
+    super.key,
+    this.configOverrideController,
+    this.configSnapshotController,
+  });
 
   final CodexConfigOverrideController? configOverrideController;
+  final CodexConfigSnapshotController? configSnapshotController;
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +31,8 @@ class SettingsPage extends StatelessWidget {
             subtitle: Text(l10n.serverDefaultsBody),
           ),
         ),
+        if (configSnapshotController != null)
+          _ServerConfigSnapshotCard(controller: configSnapshotController!),
         if (configOverrideController != null)
           _AppDefaultOverridesCard(controller: configOverrideController!),
         Card(
@@ -34,6 +43,150 @@ class SettingsPage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ServerConfigSnapshotCard extends StatelessWidget {
+  const _ServerConfigSnapshotCard({required this.controller});
+
+  final CodexConfigSnapshotController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) =>
+          _ServerConfigSnapshotContent(controller: controller),
+    );
+  }
+}
+
+class _ServerConfigSnapshotContent extends StatelessWidget {
+  const _ServerConfigSnapshotContent({required this.controller});
+
+  final CodexConfigSnapshotController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final snapshot = controller.snapshot;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.fact_check_outlined),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.serverConfigSnapshot,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                IconButton(
+                  key: const ValueKey('settings-server-config-refresh'),
+                  onPressed:
+                      controller.status == CodexConfigSnapshotStatus.loading
+                      ? null
+                      : () => controller.refresh(),
+                  icon: const Icon(Icons.refresh),
+                  tooltip: l10n.refreshServerConfig,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            switch (controller.status) {
+              CodexConfigSnapshotStatus.idle => Text(
+                l10n.serverConfigUnavailable,
+              ),
+              CodexConfigSnapshotStatus.loading =>
+                const LinearProgressIndicator(),
+              CodexConfigSnapshotStatus.failed => Text(
+                controller.error?.toString() ?? l10n.serverConfigLoadFailed,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              CodexConfigSnapshotStatus.loaded when snapshot == null => Text(
+                l10n.serverConfigUnavailable,
+              ),
+              CodexConfigSnapshotStatus.loaded => _LoadedServerConfig(
+                snapshot: snapshot!,
+              ),
+            },
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadedServerConfig extends StatelessWidget {
+  const _LoadedServerConfig({required this.snapshot});
+
+  final CodexConfigSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ServerConfigField(
+          snapshot: snapshot,
+          label: l10n.modelOverride,
+          keyName: 'model',
+        ),
+        _ServerConfigField(
+          snapshot: snapshot,
+          label: l10n.modelProvider,
+          keyName: 'model_provider',
+        ),
+        _ServerConfigField(
+          snapshot: snapshot,
+          label: l10n.effortOverride,
+          keyName: 'model_reasoning_effort',
+        ),
+        _ServerConfigField(
+          snapshot: snapshot,
+          label: l10n.approvalPolicy,
+          keyName: 'approval_policy',
+        ),
+        _ServerConfigField(
+          snapshot: snapshot,
+          label: l10n.sandboxMode,
+          keyName: 'sandbox_mode',
+        ),
+        if (snapshot.layers.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(l10n.configLayersLoaded(snapshot.layers.length)),
+        ],
+      ],
+    );
+  }
+}
+
+class _ServerConfigField extends StatelessWidget {
+  const _ServerConfigField({
+    required this.snapshot,
+    required this.label,
+    required this.keyName,
+  });
+
+  final CodexConfigSnapshot snapshot;
+  final String label;
+  final String keyName;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final value = snapshot.displayValueFor(keyName) ?? l10n.serverValueUnset;
+    final origin = snapshot.originLabelFor(keyName) ?? l10n.sourceServerDefault;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Text('$label: $value (${l10n.overrideSource}: $origin)'),
     );
   }
 }
