@@ -265,6 +265,17 @@ class AppLocalizations {
       _text('threadReviewDeliveryDetached');
   String get threadReviewThread => _text('threadReviewThread');
   String get threadReviewTurn => _text('threadReviewTurn');
+  String get backgroundTerminalsTitle => _text('backgroundTerminalsTitle');
+  String get backgroundTerminalsEmpty => _text('backgroundTerminalsEmpty');
+  String get backgroundTerminalsMore => _text('backgroundTerminalsMore');
+  String get backgroundTerminalsCleanRequested =>
+      _text('backgroundTerminalsCleanRequested');
+  String get backgroundTerminalProcess => _text('backgroundTerminalProcess');
+  String get backgroundTerminalItem => _text('backgroundTerminalItem');
+  String get backgroundTerminalCwd => _text('backgroundTerminalCwd');
+  String get backgroundTerminalOsPid => _text('backgroundTerminalOsPid');
+  String get backgroundTerminalCpu => _text('backgroundTerminalCpu');
+  String get backgroundTerminalRss => _text('backgroundTerminalRss');
   String get mcpServersStatus => _text('mcpServersStatus');
   String get mcpServersUnavailable => _text('mcpServersUnavailable');
   String get mcpServersLoadFailed => _text('mcpServersLoadFailed');
@@ -580,6 +591,16 @@ const _values = <String, Map<String, String>>{
     'threadReviewDeliveryDetached': 'detached',
     'threadReviewThread': 'Thread',
     'threadReviewTurn': 'Turn',
+    'backgroundTerminalsTitle': 'Background terminals',
+    'backgroundTerminalsEmpty': 'No background terminals running.',
+    'backgroundTerminalsMore': 'More background terminals are available.',
+    'backgroundTerminalsCleanRequested': 'Stopping all background terminals.',
+    'backgroundTerminalProcess': 'process',
+    'backgroundTerminalItem': 'item',
+    'backgroundTerminalCwd': 'cwd',
+    'backgroundTerminalOsPid': 'OS pid',
+    'backgroundTerminalCpu': 'CPU',
+    'backgroundTerminalRss': 'memory',
     'mcpServersStatus': 'MCP servers',
     'mcpServersUnavailable': 'Connect to a host, then run /mcp.',
     'mcpServersLoadFailed': 'Failed to load MCP servers',
@@ -848,6 +869,16 @@ const _values = <String, Map<String, String>>{
     'threadReviewDeliveryDetached': '独立审查会话',
     'threadReviewThread': '会话',
     'threadReviewTurn': '回合',
+    'backgroundTerminalsTitle': '后台终端',
+    'backgroundTerminalsEmpty': '没有正在运行的后台终端。',
+    'backgroundTerminalsMore': '还有更多后台终端。',
+    'backgroundTerminalsCleanRequested': '正在停止所有后台终端。',
+    'backgroundTerminalProcess': '进程',
+    'backgroundTerminalItem': '条目',
+    'backgroundTerminalCwd': '工作目录',
+    'backgroundTerminalOsPid': '系统进程 ID',
+    'backgroundTerminalCpu': 'CPU',
+    'backgroundTerminalRss': '内存',
     'mcpServersStatus': 'MCP 服务器',
     'mcpServersUnavailable': '连接主机后运行 /mcp。',
     'mcpServersLoadFailed': 'MCP 服务器加载失败',

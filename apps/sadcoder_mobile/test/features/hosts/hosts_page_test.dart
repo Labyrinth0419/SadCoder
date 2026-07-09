@@ -8,6 +8,8 @@ import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/agent/agent_status.dart';
+import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal.dart';
+import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal_runner.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
@@ -690,6 +692,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
       const _FakeThreadMutationRunner();
 
   @override
+  ThreadBackgroundTerminalRunner get threadBackgroundTerminalRunner =>
+      const _FakeThreadBackgroundTerminalRunner();
+
+  @override
   ThreadGoalRunner get threadGoalRunner => const _FakeThreadGoalRunner();
 
   @override
@@ -905,6 +911,23 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
 
   @override
   Future<void> deleteThread({required String threadId}) async {}
+}
+
+class _FakeThreadBackgroundTerminalRunner
+    implements ThreadBackgroundTerminalRunner {
+  const _FakeThreadBackgroundTerminalRunner();
+
+  @override
+  Future<ThreadBackgroundTerminalPage> listTerminals({
+    required String threadId,
+    String? cursor,
+    int? limit,
+  }) async {
+    return const ThreadBackgroundTerminalPage(terminals: []);
+  }
+
+  @override
+  Future<void> cleanTerminals({required String threadId}) async {}
 }
 
 class _FakeThreadGoalRunner implements ThreadGoalRunner {

@@ -24,6 +24,7 @@ import '../../threads/thread_mutation_runner.dart';
 import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
+import 'chat_background_terminal_summary.dart';
 import 'chat_status_summary.dart';
 import 'chat_timeline_controller.dart';
 import 'chat_goal_summary.dart';
@@ -334,6 +335,8 @@ class _ChatPageState extends State<ChatPage> {
           showMcp: _buildMcpSummary,
           handleGoal: _handleGoalCommand,
           handleReview: _handleReviewCommand,
+          showBackgroundTerminals: _buildBackgroundTerminalsSummary,
+          cleanBackgroundTerminals: _cleanBackgroundTerminals,
           toggleRawTranscript: _toggleRawTranscript,
           startNewThread: _startNewThread,
           resumeThread: _resumeThread,
@@ -477,6 +480,34 @@ class _ChatPageState extends State<ChatPage> {
       target: command.target,
       delivery: command.delivery,
     );
+  }
+
+  Future<String?> _buildBackgroundTerminalsSummary(String arguments) async {
+    if (arguments.trim().isNotEmpty) {
+      return null;
+    }
+    final runner = widget.sessionController?.threadBackgroundTerminalRunner;
+    final threadId = _currentThreadId();
+    if (runner == null || threadId == null) {
+      return null;
+    }
+    final l10n = context.l10n;
+    final page = await runner.listTerminals(threadId: threadId, limit: 25);
+    return buildThreadBackgroundTerminalsSummary(l10n: l10n, page: page);
+  }
+
+  Future<String?> _cleanBackgroundTerminals(String arguments) async {
+    if (arguments.trim().isNotEmpty) {
+      return null;
+    }
+    final runner = widget.sessionController?.threadBackgroundTerminalRunner;
+    final threadId = _currentThreadId();
+    if (runner == null || threadId == null) {
+      return null;
+    }
+    final l10n = context.l10n;
+    await runner.cleanTerminals(threadId: threadId);
+    return buildThreadBackgroundTerminalsCleanSummary(l10n);
   }
 
   Future<void> _refreshStatusSources() async {
@@ -806,6 +837,10 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.review => l10n.slashCommandExecuted(
           result.slash,
         ),
+        SlashCommandActionEffect.backgroundTerminals =>
+          l10n.slashCommandExecuted(result.slash),
+        SlashCommandActionEffect.backgroundTerminalCleanup =>
+          l10n.backgroundTerminalsCleanRequested,
         SlashCommandActionEffect.rawTranscript =>
           _showRawTranscript
               ? l10n.slashCommandRawEnabled

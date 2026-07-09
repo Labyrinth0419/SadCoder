@@ -193,4 +193,33 @@ void main() {
       });
     },
   );
+
+  test('background terminal methods use app-server method names', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return request.method == 'thread/backgroundTerminals/list'
+          ? {'data': <Object?>[], 'nextCursor': null}
+          : {};
+    });
+    final client = CodexAppServerClient(transport);
+
+    await client.listThreadBackgroundTerminals(
+      threadId: 'thr_1',
+      cursor: 'cursor_1',
+      limit: 25,
+    );
+    await client.cleanThreadBackgroundTerminals(threadId: 'thr_1');
+
+    expect(requests.map((request) => request.method), [
+      'thread/backgroundTerminals/list',
+      'thread/backgroundTerminals/clean',
+    ]);
+    expect(requests[0].params, {
+      'threadId': 'thr_1',
+      'cursor': 'cursor_1',
+      'limit': 25,
+    });
+    expect(requests[1].params, {'threadId': 'thr_1'});
+  });
 }

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../accounts/account_snapshot_reader.dart';
 import '../agent/agent_snapshot_reader.dart';
 import '../approvals/approval_state_controller.dart';
+import '../background_terminals/thread_background_terminal_runner.dart';
 import '../config/codex_config_snapshot_reader.dart';
 import '../events/codex_event.dart';
 import '../goals/thread_goal_runner.dart';
@@ -97,6 +98,9 @@ class CodexSessionStateController extends ChangeNotifier {
 
   ThreadMutationRunner? get threadMutationRunner =>
       _connection?.threadMutationRunner;
+
+  ThreadBackgroundTerminalRunner? get threadBackgroundTerminalRunner =>
+      _connection?.threadBackgroundTerminalRunner;
 
   ThreadGoalRunner? get threadGoalRunner => _connection?.threadGoalRunner;
 

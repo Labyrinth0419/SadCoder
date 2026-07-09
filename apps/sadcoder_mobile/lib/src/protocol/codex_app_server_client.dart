@@ -126,6 +126,27 @@ class CodexAppServerClient {
     return _request('thread/compact/start', {'threadId': threadId});
   }
 
+  Future<Map<String, Object?>> listThreadBackgroundTerminals({
+    required String threadId,
+    String? cursor,
+    int? limit,
+  }) {
+    final params = <String, Object?>{'threadId': threadId};
+    if (cursor != null && cursor.trim().isNotEmpty) {
+      params['cursor'] = cursor.trim();
+    }
+    if (limit != null) {
+      params['limit'] = limit;
+    }
+    return _request('thread/backgroundTerminals/list', params);
+  }
+
+  Future<Map<String, Object?>> cleanThreadBackgroundTerminals({
+    required String threadId,
+  }) {
+    return _request('thread/backgroundTerminals/clean', {'threadId': threadId});
+  }
+
   Future<Map<String, Object?>> getThreadGoal({required String threadId}) {
     return _request('thread/goal/get', {'threadId': threadId});
   }

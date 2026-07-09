@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
+import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal.dart';
+import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal_runner.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
@@ -1970,6 +1972,129 @@ void main() {
     expect(find.text('/review is unavailable right now.'), findsOneWidget);
   });
 
+  testWidgets('/ps lists background terminals for the selected thread', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final backgroundRunner = _RecordingThreadBackgroundTerminalRunner(
+      page: ThreadBackgroundTerminalPage.fromJson({
+        'data': [
+          {
+            'itemId': 'item_1',
+            'processId': 'proc_1',
+            'command': 'python3 -m http.server',
+            'cwd': '/repo',
+            'osPid': 1234,
+            'cpuPercent': 12.5,
+            'rssKb': 2048,
+          },
+        ],
+      }),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      threadBackgroundTerminalRunner: backgroundRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(thread: _thread('thr_selected')),
+      ),
+    );
+    addTearDown(detailController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_selected');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/ps',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(backgroundRunner.listCalls.single.threadId, 'thr_selected');
+    expect(backgroundRunner.listCalls.single.limit, 25);
+    expect(backgroundRunner.cleanCalls, isEmpty);
+    expect(find.textContaining('Background terminals'), findsOneWidget);
+    expect(
+      find.textContaining('process proc_1: python3 -m http.server'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('cwd: /repo'), findsOneWidget);
+    expect(find.textContaining('item: item_1'), findsOneWidget);
+    expect(find.textContaining('OS pid: 1234'), findsOneWidget);
+    expect(find.textContaining('CPU: 12.5%'), findsOneWidget);
+    expect(find.textContaining('memory: 2048 KB'), findsOneWidget);
+  });
+
+  testWidgets('/stop cleans background terminals without interrupting a turn', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final backgroundRunner = _RecordingThreadBackgroundTerminalRunner();
+    final turnRunner = _FakeTurnRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+      threadBackgroundTerminalRunner: backgroundRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await turnController.resumeThread('thr_active');
+    final tracked = turnController.trackStartedTurn(
+      threadId: 'thr_active',
+      turn: _reviewTurn('turn_running'),
+    );
+    expect(tracked, true);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/stop',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(backgroundRunner.cleanCalls, ['thr_active']);
+    expect(backgroundRunner.listCalls, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(
+      find.textContaining('Stopping all background terminals.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('/mcp lists MCP servers with compact detail by default', (
     tester,
   ) async {
@@ -3152,6 +3277,8 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     required this.threadListReader,
     this.turnRunner = const _ConstantTurnRunner(),
     this.threadMutationRunner = const _NoopThreadMutationRunner(),
+    this.threadBackgroundTerminalRunner =
+        const _FakeThreadBackgroundTerminalRunner(),
     this.threadGoalRunner = const _FakeThreadGoalRunner(),
     this.threadReviewRunner = const _FakeThreadReviewRunner(),
   });
@@ -3159,6 +3286,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final ThreadListReader threadListReader;
   final TurnRunner turnRunner;
   final ThreadMutationRunner threadMutationRunner;
+  final ThreadBackgroundTerminalRunner threadBackgroundTerminalRunner;
   final ThreadGoalRunner threadGoalRunner;
   final ThreadReviewRunner threadReviewRunner;
 
@@ -3172,6 +3300,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       threadListReader: threadListReader,
       turnRunner: turnRunner,
       threadMutationRunner: threadMutationRunner,
+      threadBackgroundTerminalRunner: threadBackgroundTerminalRunner,
       threadGoalRunner: threadGoalRunner,
       threadReviewRunner: threadReviewRunner,
     );
@@ -3184,6 +3313,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.threadListReader,
     required this.turnRunner,
     required this.threadMutationRunner,
+    required this.threadBackgroundTerminalRunner,
     required this.threadGoalRunner,
     required this.threadReviewRunner,
   }) : _doneCompleter = Completer<void>();
@@ -3201,6 +3331,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final ThreadMutationRunner threadMutationRunner;
+
+  @override
+  final ThreadBackgroundTerminalRunner threadBackgroundTerminalRunner;
 
   @override
   final ThreadGoalRunner threadGoalRunner;
@@ -3338,6 +3471,49 @@ class _FakeMcpServerStatusReader implements McpServerStatusReader {
     McpServerStatusDetail detail = McpServerStatusDetail.toolsAndAuthOnly,
   }) async {
     return const McpServerStatusPage(servers: []);
+  }
+}
+
+class _FakeThreadBackgroundTerminalRunner
+    implements ThreadBackgroundTerminalRunner {
+  const _FakeThreadBackgroundTerminalRunner();
+
+  @override
+  Future<ThreadBackgroundTerminalPage> listTerminals({
+    required String threadId,
+    String? cursor,
+    int? limit,
+  }) async {
+    return const ThreadBackgroundTerminalPage(terminals: []);
+  }
+
+  @override
+  Future<void> cleanTerminals({required String threadId}) async {}
+}
+
+class _RecordingThreadBackgroundTerminalRunner
+    implements ThreadBackgroundTerminalRunner {
+  _RecordingThreadBackgroundTerminalRunner({
+    this.page = const ThreadBackgroundTerminalPage(terminals: []),
+  });
+
+  final ThreadBackgroundTerminalPage page;
+  final listCalls = <({String threadId, String? cursor, int? limit})>[];
+  final cleanCalls = <String>[];
+
+  @override
+  Future<ThreadBackgroundTerminalPage> listTerminals({
+    required String threadId,
+    String? cursor,
+    int? limit,
+  }) async {
+    listCalls.add((threadId: threadId, cursor: cursor, limit: limit));
+    return page;
+  }
+
+  @override
+  Future<void> cleanTerminals({required String threadId}) async {
+    cleanCalls.add(threadId);
   }
 }
 

@@ -250,6 +250,64 @@ void main() {
     expect(result.command?.command, 'review');
   });
 
+  test('/ps lists background terminals during an active turn', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      showBackgroundTerminals: (argument) {
+        arguments.add(argument);
+        return 'Background terminals\nNo background terminals running.';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/ps'),
+      hasActiveTurn: true,
+    );
+
+    expect(arguments, ['']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.backgroundTerminals);
+    expect(result.message, contains('Background terminals'));
+  });
+
+  test('/stop cleans background terminals during an active turn', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      cleanBackgroundTerminals: (argument) {
+        arguments.add(argument);
+        return 'Stopping all background terminals.';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/stop'),
+      hasActiveTurn: true,
+    );
+
+    expect(arguments, ['']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.backgroundTerminalCleanup);
+  });
+
+  test('/clean aliases to /stop background terminal cleanup', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      cleanBackgroundTerminals: (_) {
+        calls++;
+        return 'Stopping all background terminals.';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/clean'),
+      hasActiveTurn: true,
+    );
+
+    expect(calls, 1);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.command?.command, 'stop');
+  });
+
   test('/raw delegates to the injected raw transcript toggle', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

@@ -8,6 +8,8 @@ import 'package:sadcoder_mobile/src/agent/agent_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
+import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal.dart';
+import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal_runner.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
@@ -61,6 +63,7 @@ void main() {
     expect(controller.modelListReader, isNotNull);
     expect(controller.permissionProfileListReader, isNotNull);
     expect(controller.turnRunner, isNotNull);
+    expect(controller.threadBackgroundTerminalRunner, isNotNull);
     expect(controller.threadReviewRunner, isNotNull);
     expect(connector.connectedProfiles, [_profile]);
     expect(approvalController.canRespond, true);
@@ -579,6 +582,8 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       modelListReader: const _FakeModelListReader(),
       permissionProfileListReader: const _FakePermissionProfileListReader(),
       threadMutationRunner: const _FakeThreadMutationRunner(),
+      threadBackgroundTerminalRunner:
+          const _FakeThreadBackgroundTerminalRunner(),
       threadGoalRunner: const _FakeThreadGoalRunner(),
       threadReviewRunner: const _FakeThreadReviewRunner(),
       turnRunner: const _FakeTurnRunner(),
@@ -777,6 +782,23 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
 
   @override
   Future<void> deleteThread({required String threadId}) async {}
+}
+
+class _FakeThreadBackgroundTerminalRunner
+    implements ThreadBackgroundTerminalRunner {
+  const _FakeThreadBackgroundTerminalRunner();
+
+  @override
+  Future<ThreadBackgroundTerminalPage> listTerminals({
+    required String threadId,
+    String? cursor,
+    int? limit,
+  }) async {
+    return const ThreadBackgroundTerminalPage(terminals: []);
+  }
+
+  @override
+  Future<void> cleanTerminals({required String threadId}) async {}
 }
 
 class _FakeThreadGoalRunner implements ThreadGoalRunner {

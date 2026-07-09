@@ -10,6 +10,10 @@ typedef SlashCommandShowUsage = FutureOr<String?> Function();
 typedef SlashCommandShowMcp = FutureOr<String?> Function(String arguments);
 typedef SlashCommandHandleGoal = FutureOr<String?> Function(String arguments);
 typedef SlashCommandHandleReview = FutureOr<String?> Function(String arguments);
+typedef SlashCommandShowBackgroundTerminals =
+    FutureOr<String?> Function(String arguments);
+typedef SlashCommandCleanBackgroundTerminals =
+    FutureOr<String?> Function(String arguments);
 typedef SlashCommandToggleRawTranscript = bool? Function(String arguments);
 typedef SlashCommandStartNewThread = Future<bool> Function();
 typedef SlashCommandResumeThread = Future<bool> Function(String threadId);
@@ -41,6 +45,8 @@ enum SlashCommandActionEffect {
   mcp,
   goal,
   review,
+  backgroundTerminals,
+  backgroundTerminalCleanup,
   rawTranscript,
   newThread,
   resumeThread,
@@ -163,6 +169,8 @@ class SlashCommandActionDispatcher {
     this.showMcp,
     this.handleGoal,
     this.handleReview,
+    this.showBackgroundTerminals,
+    this.cleanBackgroundTerminals,
     this.toggleRawTranscript,
     this.startNewThread,
     this.resumeThread,
@@ -184,6 +192,8 @@ class SlashCommandActionDispatcher {
   final SlashCommandShowMcp? showMcp;
   final SlashCommandHandleGoal? handleGoal;
   final SlashCommandHandleReview? handleReview;
+  final SlashCommandShowBackgroundTerminals? showBackgroundTerminals;
+  final SlashCommandCleanBackgroundTerminals? cleanBackgroundTerminals;
   final SlashCommandToggleRawTranscript? toggleRawTranscript;
   final SlashCommandStartNewThread? startNewThread;
   final SlashCommandResumeThread? resumeThread;
@@ -261,6 +271,10 @@ class SlashCommandActionDispatcher {
         return _handleGoal(parsed);
       case 'review':
         return _handleReview(parsed);
+      case 'ps':
+        return _showBackgroundTerminals(parsed);
+      case 'stop':
+        return _cleanBackgroundTerminals(parsed);
       case 'raw':
         return _toggleRawTranscript(parsed);
       case 'new':
@@ -441,6 +455,26 @@ class SlashCommandActionDispatcher {
       parsed,
       action: handleReview,
       effect: SlashCommandActionEffect.review,
+    );
+  }
+
+  Future<SlashCommandActionResult> _showBackgroundTerminals(
+    SlashCommandParseResult parsed,
+  ) async {
+    return _showMessageWithArguments(
+      parsed,
+      action: showBackgroundTerminals,
+      effect: SlashCommandActionEffect.backgroundTerminals,
+    );
+  }
+
+  Future<SlashCommandActionResult> _cleanBackgroundTerminals(
+    SlashCommandParseResult parsed,
+  ) async {
+    return _showMessageWithArguments(
+      parsed,
+      action: cleanBackgroundTerminals,
+      effect: SlashCommandActionEffect.backgroundTerminalCleanup,
     );
   }
 

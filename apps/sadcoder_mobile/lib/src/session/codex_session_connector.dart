@@ -1,5 +1,7 @@
 import '../agent/agent_remote_service.dart';
 import '../agent/agent_status.dart';
+import '../background_terminals/codex_thread_background_terminal_runner.dart';
+import '../background_terminals/thread_background_terminal_runner.dart';
 import '../accounts/account_snapshot_reader.dart';
 import '../accounts/codex_account_snapshot_reader.dart';
 import '../approvals/approval_state_controller.dart';
@@ -50,6 +52,8 @@ abstract interface class CodexSessionConnectionHandle {
   PermissionProfileListReader get permissionProfileListReader;
 
   ThreadMutationRunner get threadMutationRunner;
+
+  ThreadBackgroundTerminalRunner get threadBackgroundTerminalRunner;
 
   ThreadGoalRunner get threadGoalRunner;
 
@@ -122,6 +126,9 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
           session.client,
         ),
         threadMutationRunner: CodexThreadMutationRunner(session.client),
+        threadBackgroundTerminalRunner: CodexThreadBackgroundTerminalRunner(
+          session.client,
+        ),
         threadGoalRunner: CodexThreadGoalRunner(session.client),
         threadReviewRunner: CodexThreadReviewRunner(session.client),
         turnRunner: CodexTurnRunner(session.client),
@@ -178,6 +185,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.modelListReader,
     required this.permissionProfileListReader,
     required this.threadMutationRunner,
+    required this.threadBackgroundTerminalRunner,
     required this.threadGoalRunner,
     required this.threadReviewRunner,
     required this.turnRunner,
@@ -207,6 +215,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final PermissionProfileListReader permissionProfileListReader;
   @override
   final ThreadMutationRunner threadMutationRunner;
+  @override
+  final ThreadBackgroundTerminalRunner threadBackgroundTerminalRunner;
   @override
   final ThreadGoalRunner threadGoalRunner;
   @override
