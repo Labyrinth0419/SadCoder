@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_page.dart';
+import 'package:sadcoder_mobile/src/features/chat/chat_timeline_controller.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
@@ -291,6 +292,58 @@ void main() {
     expect(find.text('Turn interrupted'), findsOneWidget);
   });
 
+  testWidgets('renders timeline events and completed turns', (tester) async {
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+
+    await _pumpChatPage(tester, timelineController: timelineController);
+    timelineController.ingest(
+      CodexEvent.fromNotification({
+        'method': 'turn/started',
+        'params': {
+          'threadId': 'thr_1',
+          'turn': {
+            'id': 'turn_1',
+            'status': 'inProgress',
+            'items': <Object?>[],
+            'itemsView': 'notLoaded',
+          },
+        },
+      }),
+    );
+    timelineController.ingest(
+      CodexEvent.fromNotification({
+        'method': 'item/agentMessage/delta',
+        'params': {
+          'threadId': 'thr_1',
+          'turnId': 'turn_1',
+          'itemId': 'item_1',
+          'delta': 'hello',
+        },
+      }),
+    );
+    timelineController.ingest(
+      CodexEvent.fromNotification({
+        'method': 'turn/completed',
+        'params': {
+          'threadId': 'thr_1',
+          'turn': {
+            'id': 'turn_1',
+            'status': 'completed',
+            'items': <Object?>[],
+            'itemsView': 'full',
+          },
+        },
+      }),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Timeline'), findsOneWidget);
+    expect(find.text('Turn: turn_1 / completed'), findsOneWidget);
+    expect(find.text('Item: agentMessage'), findsOneWidget);
+    expect(find.text('hello'), findsOneWidget);
+  });
+
   testWidgets('refreshes threads when the session becomes connected', (
     tester,
   ) async {
@@ -342,6 +395,7 @@ Future<void> _pumpChatPage(
   ThreadListController? threadListController,
   ThreadDetailController? threadDetailController,
   TurnController? turnController,
+  ChatTimelineController? timelineController,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -358,6 +412,7 @@ Future<void> _pumpChatPage(
           threadListController: threadListController,
           threadDetailController: threadDetailController,
           turnController: turnController,
+          timelineController: timelineController,
         ),
       ),
     ),

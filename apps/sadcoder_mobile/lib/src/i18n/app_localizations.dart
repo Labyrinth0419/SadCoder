@@ -86,10 +86,14 @@ class AppLocalizations {
   String get sendingTurn => _text('sendingTurn');
   String turnSubmitted(String turnId) =>
       _text('turnSubmitted').replaceAll('{turnId}', turnId);
+  String get turnCompleted => _text('turnCompleted');
   String get interruptTurn => _text('interruptTurn');
   String get interruptingTurn => _text('interruptingTurn');
   String get turnInterrupted => _text('turnInterrupted');
   String get turnFailed => _text('turnFailed');
+  String get timeline => _text('timeline');
+  String get noTimelineEvents => _text('noTimelineEvents');
+  String get timelineItem => _text('timelineItem');
   String get forkedThread => _text('forkedThread');
   String get subagentThread => _text('subagentThread');
   String get send => _text('send');
@@ -221,10 +225,14 @@ const _values = <String, Map<String, String>>{
     'resumingThread': 'Resuming thread',
     'sendingTurn': 'Sending turn',
     'turnSubmitted': 'Turn submitted: {turnId}',
+    'turnCompleted': 'Turn completed',
     'interruptTurn': 'Interrupt turn',
     'interruptingTurn': 'Interrupting turn',
     'turnInterrupted': 'Turn interrupted',
     'turnFailed': 'Turn failed',
+    'timeline': 'Timeline',
+    'noTimelineEvents': 'No events yet',
+    'timelineItem': 'Item',
     'forkedThread': 'fork',
     'subagentThread': 'subagent',
     'send': 'Send',
@@ -330,10 +338,14 @@ const _values = <String, Map<String, String>>{
     'resumingThread': '正在恢复会话',
     'sendingTurn': '正在发送回合',
     'turnSubmitted': '回合已发送：{turnId}',
+    'turnCompleted': '回合已完成',
     'interruptTurn': '中断回合',
     'interruptingTurn': '正在中断回合',
     'turnInterrupted': '回合已中断',
     'turnFailed': '回合失败',
+    'timeline': '事件流',
+    'noTimelineEvents': '暂无事件',
+    'timelineItem': '条目',
     'forkedThread': '分叉',
     'subagentThread': '子 agent',
     'send': '发送',

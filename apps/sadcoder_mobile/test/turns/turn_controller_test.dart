@@ -70,6 +70,53 @@ void main() {
     },
   );
 
+  test('finishTurn clears active turn and restores submit ability', () async {
+    final runner = _FakeTurnRunner();
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+
+    await controller.submitText('Run task');
+    controller.finishTurn(
+      threadId: 'thr_new',
+      turn: TurnSummary.fromJson({
+        'id': 'turn_1',
+        'status': 'completed',
+        'items': <Object?>[],
+        'itemsView': 'full',
+      }),
+    );
+
+    expect(controller.status, TurnControllerStatus.completed);
+    expect(controller.activeTurnId, isNull);
+    expect(controller.canSubmit, true);
+  });
+
+  test(
+    'finishTurn records failed turns without blocking next submit',
+    () async {
+      final runner = _FakeTurnRunner();
+      final controller = TurnController(runnerProvider: () => runner);
+      addTearDown(controller.dispose);
+
+      await controller.submitText('Run task');
+      controller.finishTurn(
+        threadId: 'thr_new',
+        turn: TurnSummary.fromJson({
+          'id': 'turn_1',
+          'status': 'failed',
+          'items': <Object?>[],
+          'itemsView': 'full',
+          'error': {'message': 'model failed'},
+        }),
+      );
+
+      expect(controller.status, TurnControllerStatus.failed);
+      expect(controller.error, 'model failed');
+      expect(controller.activeTurnId, isNull);
+      expect(controller.canSubmit, true);
+    },
+  );
+
   test('submitText without runner records failure', () async {
     final controller = TurnController(runnerProvider: () => null);
     addTearDown(controller.dispose);

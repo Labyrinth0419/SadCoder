@@ -4,6 +4,7 @@ import '../agent/agent_remote_service.dart';
 import '../approvals/approval_state_controller.dart';
 import '../features/approvals/approvals_page.dart';
 import '../features/chat/chat_page.dart';
+import '../features/chat/chat_timeline_controller.dart';
 import '../features/hosts/hosts_page.dart';
 import '../features/settings/settings_page.dart';
 import '../i18n/app_localizations.dart';
@@ -39,6 +40,7 @@ class _AppShellState extends State<AppShell> {
   late ThreadListController _threadListController;
   late ThreadDetailController _threadDetailController;
   late TurnController _turnController;
+  late ChatTimelineController _timelineController;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
 
@@ -143,9 +145,18 @@ class _AppShellState extends State<AppShell> {
       runnerProvider: () => _sessionController.turnRunner,
       activeThreadIdProvider: () => _threadDetailController.selectedThreadId,
     );
+    _timelineController = ChatTimelineController(
+      onTurnCompleted: ({required threadId, required turn}) {
+        _turnController.finishTurn(threadId: threadId, turn: turn);
+      },
+    );
+    _sessionController.addListener(_handleSessionChanged);
+    _timelineController.attach(_sessionController.events);
   }
 
   void _disposeOwnedControllers() {
+    _sessionController.removeListener(_handleSessionChanged);
+    _timelineController.dispose();
     _turnController.dispose();
     _threadDetailController.dispose();
     _threadListController.dispose();
@@ -165,6 +176,7 @@ class _AppShellState extends State<AppShell> {
         threadListController: _threadListController,
         threadDetailController: _threadDetailController,
         turnController: _turnController,
+        timelineController: _timelineController,
       ),
       2 => ApprovalsPage(
         approvals: _approvalController.approvals,
@@ -181,5 +193,9 @@ class _AppShellState extends State<AppShell> {
       3 => const SettingsPage(),
       _ => HostsPage(sessionController: _sessionController),
     };
+  }
+
+  void _handleSessionChanged() {
+    _timelineController.attach(_sessionController.events);
   }
 }

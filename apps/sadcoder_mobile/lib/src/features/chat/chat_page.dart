@@ -9,6 +9,7 @@ import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_list_controller.dart';
 import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
+import 'chat_timeline_controller.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({
@@ -18,6 +19,7 @@ class ChatPage extends StatefulWidget {
     this.threadListController,
     this.threadDetailController,
     this.turnController,
+    this.timelineController,
   });
 
   final SlashCommandRegistry registry;
@@ -25,6 +27,7 @@ class ChatPage extends StatefulWidget {
   final ThreadListController? threadListController;
   final ThreadDetailController? threadDetailController;
   final TurnController? turnController;
+  final ChatTimelineController? timelineController;
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -120,6 +123,7 @@ class _ChatPageState extends State<ChatPage> {
                 detailController: threadDetailController,
               ),
               _ThreadDetailPanel(controller: threadDetailController),
+              _ChatTimelinePanel(controller: widget.timelineController),
               _TurnStatusPanel(controller: turnController),
               _SlashCommandPreview(result: _slashCommand),
             ],
@@ -523,6 +527,7 @@ class _TurnStatusCard extends StatelessWidget {
       TurnControllerStatus.submitted => l10n.turnSubmitted(
         controller.activeTurnId ?? '',
       ),
+      TurnControllerStatus.completed => l10n.turnCompleted,
       TurnControllerStatus.interrupting => l10n.interruptingTurn,
       TurnControllerStatus.interrupted => l10n.turnInterrupted,
       TurnControllerStatus.failed =>
@@ -555,6 +560,104 @@ class _TurnStatusCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _ChatTimelinePanel extends StatelessWidget {
+  const _ChatTimelinePanel({required this.controller});
+
+  final ChatTimelineController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = this.controller;
+    if (controller == null) {
+      return const SizedBox.shrink();
+    }
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) => _ChatTimelineContent(controller: controller),
+    );
+  }
+}
+
+class _ChatTimelineContent extends StatelessWidget {
+  const _ChatTimelineContent({required this.controller});
+
+  final ChatTimelineController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final turns = controller.turns;
+    if (turns.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              context.l10n.timeline,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            for (final turn in turns) _TimelineTurnView(turn: turn),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TimelineTurnView extends StatelessWidget {
+  const _TimelineTurnView({required this.turn});
+
+  final ChatTimelineTurn turn;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('${context.l10n.approvalTurn}: ${turn.turnId} / ${turn.status}'),
+        if (turn.items.isEmpty)
+          Text(context.l10n.noTimelineEvents)
+        else
+          for (final item in turn.items) _TimelineItemView(item: item),
+      ],
+    );
+  }
+}
+
+class _TimelineItemView extends StatelessWidget {
+  const _TimelineItemView({required this.item});
+
+  final ChatTimelineItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final body = item.output.isNotEmpty
+        ? item.output
+        : item.text.isNotEmpty
+        ? item.text
+        : item.itemId;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(_iconFor(item.itemType)),
+      title: Text('${context.l10n.timelineItem}: ${item.itemType}'),
+      subtitle: Text(body),
+    );
+  }
+
+  IconData _iconFor(String itemType) {
+    return switch (itemType) {
+      'agentMessage' => Icons.smart_toy_outlined,
+      'commandExecution' => Icons.terminal,
+      'plan' => Icons.checklist,
+      _ => Icons.notes_outlined,
+    };
   }
 }
 

@@ -12,6 +12,7 @@ enum TurnControllerStatus {
   resumingThread,
   sendingTurn,
   submitted,
+  completed,
   interrupting,
   interrupted,
   failed,
@@ -51,6 +52,27 @@ class TurnController extends ChangeNotifier {
       !isBusy && _activeThreadId != null && _activeTurnId != null;
 
   bool get canSubmit => !isBusy && _activeTurnId == null;
+
+  void finishTurn({required String threadId, required TurnSummary turn}) {
+    if (_activeThreadId != threadId || _activeTurnId != turn.id) {
+      return;
+    }
+    _lastTurn = turn;
+    _activeTurnId = null;
+    if (turn.status == 'failed') {
+      _setState(
+        status: TurnControllerStatus.failed,
+        error: turn.errorMessage ?? StateError('Turn failed'),
+      );
+      return;
+    }
+    _setState(
+      status: turn.status == 'interrupted'
+          ? TurnControllerStatus.interrupted
+          : TurnControllerStatus.completed,
+      error: null,
+    );
+  }
 
   Future<void> submitText(String text) async {
     final trimmed = text.trim();
