@@ -680,6 +680,70 @@ void main() {
     );
   });
 
+  testWidgets('/raw toggles raw timeline item JSON locally', (tester) async {
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    timelineController.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Thread',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': [
+          {
+            'id': 'turn_1',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': [
+              {'id': 'assistant_1', 'type': 'agentMessage', 'text': 'Done'},
+            ],
+          },
+        ],
+      }),
+    );
+
+    await _pumpChatPage(tester, timelineController: timelineController);
+    expect(
+      find.byKey(const ValueKey('timeline-raw-assistant_1')),
+      findsNothing,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/raw on',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Raw transcript view enabled.'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('timeline-raw-assistant_1')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('"id": "assistant_1"'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/raw off',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Raw transcript view disabled.'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('timeline-raw-assistant_1')),
+      findsNothing,
+    );
+  });
+
   testWidgets('/clear clears the local transcript without interrupting', (
     tester,
   ) async {

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -50,6 +51,7 @@ class _ChatPageState extends State<ChatPage> {
   final TextEditingController _composerController = TextEditingController();
   CodexSessionStatus? _lastSessionStatus;
   bool _slashPaletteOpen = false;
+  bool _showRawTranscript = false;
 
   @override
   void initState() {
@@ -135,7 +137,10 @@ class _ChatPageState extends State<ChatPage> {
                 detailController: threadDetailController,
               ),
               _ThreadDetailPanel(controller: threadDetailController),
-              _ChatTimelinePanel(controller: widget.timelineController),
+              _ChatTimelinePanel(
+                controller: widget.timelineController,
+                showRaw: _showRawTranscript,
+              ),
               _TurnStatusPanel(controller: turnController),
               _SlashCommandPreview(result: _slashCommand),
             ],
@@ -296,6 +301,7 @@ class _ChatPageState extends State<ChatPage> {
           clearTranscript: _clearLocalTranscript,
           copyLastResponse: _copyLastResponse,
           showStatus: _buildStatusSummary,
+          toggleRawTranscript: _toggleRawTranscript,
         );
   }
 
@@ -316,6 +322,23 @@ class _ChatPageState extends State<ChatPage> {
     }
     await Clipboard.setData(ClipboardData(text: markdown));
     return true;
+  }
+
+  bool? _toggleRawTranscript(String arguments) {
+    final normalized = arguments.trim().toLowerCase();
+    if (normalized.isEmpty || normalized == 'toggle') {
+      setState(() => _showRawTranscript = !_showRawTranscript);
+      return _showRawTranscript;
+    }
+    if (normalized == 'on' || normalized == 'true' || normalized == '1') {
+      setState(() => _showRawTranscript = true);
+      return true;
+    }
+    if (normalized == 'off' || normalized == 'false' || normalized == '0') {
+      setState(() => _showRawTranscript = false);
+      return false;
+    }
+    return null;
   }
 
   void _clearLocalTranscript() {
@@ -341,6 +364,10 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.status => l10n.slashCommandExecuted(
           result.slash,
         ),
+        SlashCommandActionEffect.rawTranscript =>
+          _showRawTranscript
+              ? l10n.slashCommandRawEnabled
+              : l10n.slashCommandRawDisabled,
         SlashCommandActionEffect.none => l10n.slashCommandExecuted(
           result.slash,
         ),
@@ -738,9 +765,10 @@ class _TurnStatusCard extends StatelessWidget {
 }
 
 class _ChatTimelinePanel extends StatelessWidget {
-  const _ChatTimelinePanel({required this.controller});
+  const _ChatTimelinePanel({required this.controller, required this.showRaw});
 
   final ChatTimelineController? controller;
+  final bool showRaw;
 
   @override
   Widget build(BuildContext context) {
@@ -750,15 +778,17 @@ class _ChatTimelinePanel extends StatelessWidget {
     }
     return AnimatedBuilder(
       animation: controller,
-      builder: (context, _) => _ChatTimelineContent(controller: controller),
+      builder: (context, _) =>
+          _ChatTimelineContent(controller: controller, showRaw: showRaw),
     );
   }
 }
 
 class _ChatTimelineContent extends StatelessWidget {
-  const _ChatTimelineContent({required this.controller});
+  const _ChatTimelineContent({required this.controller, required this.showRaw});
 
   final ChatTimelineController controller;
+  final bool showRaw;
 
   @override
   Widget build(BuildContext context) {
@@ -777,7 +807,8 @@ class _ChatTimelineContent extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
-            for (final turn in turns) _TimelineTurnView(turn: turn),
+            for (final turn in turns)
+              _TimelineTurnView(turn: turn, showRaw: showRaw),
           ],
         ),
       ),
@@ -786,9 +817,10 @@ class _ChatTimelineContent extends StatelessWidget {
 }
 
 class _TimelineTurnView extends StatelessWidget {
-  const _TimelineTurnView({required this.turn});
+  const _TimelineTurnView({required this.turn, required this.showRaw});
 
   final ChatTimelineTurn turn;
+  final bool showRaw;
 
   @override
   Widget build(BuildContext context) {
@@ -799,16 +831,18 @@ class _TimelineTurnView extends StatelessWidget {
         if (turn.items.isEmpty)
           Text(context.l10n.noTimelineEvents)
         else
-          for (final item in turn.items) _TimelineItemView(item: item),
+          for (final item in turn.items)
+            _TimelineItemView(item: item, showRaw: showRaw),
       ],
     );
   }
 }
 
 class _TimelineItemView extends StatelessWidget {
-  const _TimelineItemView({required this.item});
+  const _TimelineItemView({required this.item, required this.showRaw});
 
   final ChatTimelineItem item;
+  final bool showRaw;
 
   @override
   Widget build(BuildContext context) {
@@ -823,9 +857,29 @@ class _TimelineItemView extends StatelessWidget {
         children: [
           if (details.isNotEmpty) Text(details.join('\n')),
           if (body.isNotEmpty) ...[const SizedBox(height: 4), Text(body)],
+          if (showRaw) ...[
+            const SizedBox(height: 8),
+            SelectableText(
+              _rawJson,
+              key: ValueKey('timeline-raw-${item.itemId}'),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  String get _rawJson {
+    const encoder = JsonEncoder.withIndent('  ');
+    final raw = item.raw.isEmpty
+        ? <String, Object?>{
+            'id': item.itemId,
+            'type': item.itemType,
+            if (item.text.isNotEmpty) 'text': item.text,
+            if (item.output.isNotEmpty) 'output': item.output,
+          }
+        : item.raw;
+    return encoder.convert(raw);
   }
 
   String _title(BuildContext context) {

@@ -122,6 +122,39 @@ void main() {
     expect(result.command?.command, 'status');
   });
 
+  test('/raw delegates to the injected raw transcript toggle', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      toggleRawTranscript: (argument) {
+        arguments.add(argument);
+        return true;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/raw on'),
+      hasActiveTurn: true,
+    );
+
+    expect(arguments, ['on']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.rawTranscript);
+  });
+
+  test('/raw is unavailable for unsupported arguments', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      toggleRawTranscript: (_) => null,
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/raw sideways'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'raw');
+  });
+
   test(
     'unknown and unsupported commands never fall through as prompts',
     () async {

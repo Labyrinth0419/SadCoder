@@ -4,6 +4,7 @@ typedef SlashCommandDisconnect = Future<void> Function();
 typedef SlashCommandClearTranscript = void Function();
 typedef SlashCommandCopyLastResponse = Future<bool> Function();
 typedef SlashCommandShowStatus = String? Function();
+typedef SlashCommandToggleRawTranscript = bool? Function(String arguments);
 
 enum SlashCommandActionOutcome {
   ignored,
@@ -20,6 +21,7 @@ enum SlashCommandActionEffect {
   clearTranscript,
   copy,
   status,
+  rawTranscript,
 }
 
 class SlashCommandActionResult {
@@ -116,12 +118,14 @@ class SlashCommandActionDispatcher {
     this.clearTranscript,
     this.copyLastResponse,
     this.showStatus,
+    this.toggleRawTranscript,
   });
 
   final SlashCommandDisconnect? disconnect;
   final SlashCommandClearTranscript? clearTranscript;
   final SlashCommandCopyLastResponse? copyLastResponse;
   final SlashCommandShowStatus? showStatus;
+  final SlashCommandToggleRawTranscript? toggleRawTranscript;
 
   Future<SlashCommandActionResult> dispatch(
     SlashCommandParseResult parsed, {
@@ -162,6 +166,8 @@ class SlashCommandActionDispatcher {
         return _copyLastResponse(parsed);
       case 'status':
         return _showStatus(parsed);
+      case 'raw':
+        return _toggleRawTranscript(parsed);
       default:
         return SlashCommandActionResult.unsupported(
           command: command,
@@ -287,6 +293,42 @@ class SlashCommandActionDispatcher {
         arguments: parsed.arguments,
         effect: SlashCommandActionEffect.status,
         message: message,
+      );
+    } on Object catch (error) {
+      return SlashCommandActionResult.failed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        error: error,
+      );
+    }
+  }
+
+  SlashCommandActionResult _toggleRawTranscript(
+    SlashCommandParseResult parsed,
+  ) {
+    final toggleRawTranscript = this.toggleRawTranscript;
+    if (toggleRawTranscript == null) {
+      return SlashCommandActionResult.unsupported(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    try {
+      final enabled = toggleRawTranscript(parsed.arguments);
+      if (enabled == null) {
+        return SlashCommandActionResult.unavailable(
+          command: parsed.command!,
+          rawCommand: parsed.rawCommand,
+          arguments: parsed.arguments,
+        );
+      }
+      return SlashCommandActionResult.executed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        effect: SlashCommandActionEffect.rawTranscript,
       );
     } on Object catch (error) {
       return SlashCommandActionResult.failed(

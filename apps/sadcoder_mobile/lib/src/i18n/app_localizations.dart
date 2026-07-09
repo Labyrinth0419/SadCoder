@@ -124,6 +124,8 @@ class AppLocalizations {
   String get slashCommandDisconnected => _text('slashCommandDisconnected');
   String get slashCommandCleared => _text('slashCommandCleared');
   String get slashCommandCopied => _text('slashCommandCopied');
+  String get slashCommandRawEnabled => _text('slashCommandRawEnabled');
+  String get slashCommandRawDisabled => _text('slashCommandRawDisabled');
   String slashCommandExecuted(String slash) =>
       _text('slashCommandExecuted').replaceAll('{slash}', slash);
   String slashCommandUnsupported(String slash) =>
@@ -320,6 +322,8 @@ const _values = <String, Map<String, String>>{
         'Disconnected from the mobile proxy. Server tasks were not interrupted.',
     'slashCommandCleared': 'Local transcript cleared.',
     'slashCommandCopied': 'Copied last response.',
+    'slashCommandRawEnabled': 'Raw transcript view enabled.',
+    'slashCommandRawDisabled': 'Raw transcript view disabled.',
     'slashCommandExecuted': 'Executed {slash}.',
     'slashCommandUnsupported': '{slash} is not implemented yet.',
     'slashCommandUnavailable': '{slash} is unavailable right now.',
@@ -485,6 +489,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandDisconnected': '已断开移动端代理连接，服务器任务未被中断。',
     'slashCommandCleared': '已清除本地事件流。',
     'slashCommandCopied': '已复制最后一条回复。',
+    'slashCommandRawEnabled': '已开启原始事件视图。',
+    'slashCommandRawDisabled': '已关闭原始事件视图。',
     'slashCommandExecuted': '已执行 {slash}。',
     'slashCommandUnsupported': '{slash} 暂未实现。',
     'slashCommandUnavailable': '{slash} 当前不可用。',
