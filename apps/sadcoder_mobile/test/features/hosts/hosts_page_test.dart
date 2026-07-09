@@ -16,6 +16,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
+import 'package:sadcoder_mobile/src/feedback/feedback_upload_runner.dart';
 import 'package:sadcoder_mobile/src/features/hosts/hosts_page.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
@@ -686,6 +687,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
       const _FakeAccountUsageSnapshotReader();
 
   @override
+  FeedbackUploadRunner get feedbackUploadRunner =>
+      const _FakeFeedbackUploadRunner();
+
+  @override
   McpServerStatusReader get mcpServerStatusReader =>
       const _FakeMcpServerStatusReader();
 
@@ -776,6 +781,21 @@ class _FakeAccountLogoutRunner implements AccountLogoutRunner {
 
   @override
   Future<void> logout() async {}
+}
+
+class _FakeFeedbackUploadRunner implements FeedbackUploadRunner {
+  const _FakeFeedbackUploadRunner();
+
+  @override
+  Future<FeedbackUploadResult> uploadFeedback({
+    required String classification,
+    String? reason,
+    String? threadId,
+    String? turnId,
+    bool includeLogs = false,
+  }) async {
+    return const FeedbackUploadResult(threadId: 'feedback_thread');
+  }
 }
 
 class _FakeAccountUsageSnapshotReader implements AccountUsageSnapshotReader {

@@ -12,6 +12,8 @@ import '../approvals/approval_state_controller.dart';
 import '../config/codex_config_snapshot_reader.dart';
 import '../config/codex_config_snapshot_remote_reader.dart';
 import '../events/codex_event.dart';
+import '../feedback/codex_feedback_upload_runner.dart';
+import '../feedback/feedback_upload_runner.dart';
 import '../goals/codex_thread_goal_runner.dart';
 import '../goals/thread_goal_runner.dart';
 import '../hooks/codex_hook_list_reader.dart';
@@ -56,6 +58,8 @@ abstract interface class CodexSessionConnectionHandle {
   AccountLogoutRunner get accountLogoutRunner;
 
   AccountUsageSnapshotReader get accountUsageSnapshotReader;
+
+  FeedbackUploadRunner get feedbackUploadRunner;
 
   McpServerStatusReader get mcpServerStatusReader;
 
@@ -141,6 +145,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         accountUsageSnapshotReader: CodexAccountUsageSnapshotReader(
           session.client,
         ),
+        feedbackUploadRunner: CodexFeedbackUploadRunner(session.client),
         mcpServerStatusReader: CodexMcpServerStatusReader(session.client),
         modelListReader: CodexModelListReader(session.client),
         permissionProfileListReader: CodexPermissionProfileListReader(
@@ -207,6 +212,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.accountSnapshotReader,
     required this.accountLogoutRunner,
     required this.accountUsageSnapshotReader,
+    required this.feedbackUploadRunner,
     required this.mcpServerStatusReader,
     required this.modelListReader,
     required this.permissionProfileListReader,
@@ -239,6 +245,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final AccountLogoutRunner accountLogoutRunner;
   @override
   final AccountUsageSnapshotReader accountUsageSnapshotReader;
+  @override
+  final FeedbackUploadRunner feedbackUploadRunner;
   @override
   final McpServerStatusReader mcpServerStatusReader;
   @override

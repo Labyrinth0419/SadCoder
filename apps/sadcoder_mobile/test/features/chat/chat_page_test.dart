@@ -17,6 +17,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
+import 'package:sadcoder_mobile/src/feedback/feedback_upload_runner.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_page.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_timeline_controller.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
@@ -1731,6 +1732,77 @@ void main() {
     expect(usageReader.calls, 1);
     expect(sessionController.status, CodexSessionStatus.connected);
     expect(find.text('Signed out of Codex account.'), findsOneWidget);
+  });
+
+  testWidgets('/feedback submits category note and log consent', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final feedbackRunner = _RecordingFeedbackUploadRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      feedbackUploadRunner: feedbackRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_selected',
+            'sessionId': 'sess_1',
+            'preview': 'Selected thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+            'turns': <Object?>[],
+          }),
+        ),
+      ),
+    );
+    addTearDown(detailController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_selected');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/feedback',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+    expect(find.text('Send feedback'), findsWidgets);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-feedback-note')),
+      'The command output was confusing.',
+    );
+    await tester.tap(find.text('Include server logs'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Send feedback'));
+    await tester.pumpAndSettle();
+
+    expect(feedbackRunner.calls.single, (
+      classification: 'bug',
+      reason: 'The command output was confusing.',
+      threadId: 'thr_selected',
+      turnId: null,
+      includeLogs: true,
+    ));
+    expect(find.text('Feedback submitted.'), findsOneWidget);
   });
 
   testWidgets('/goal reads the selected thread goal', (tester) async {
@@ -3985,6 +4057,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.hookListReader = const _FakeHookListReader(),
     this.appListReader = const _FakeAppListReader(),
     this.accountLogoutRunner = const _FakeAccountLogoutRunner(),
+    this.feedbackUploadRunner = const _FakeFeedbackUploadRunner(),
   });
 
   final ThreadListReader threadListReader;
@@ -3998,6 +4071,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final HookListReader hookListReader;
   final AppListReader appListReader;
   final AccountLogoutRunner accountLogoutRunner;
+  final FeedbackUploadRunner feedbackUploadRunner;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -4017,6 +4091,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       hookListReader: hookListReader,
       appListReader: appListReader,
       accountLogoutRunner: accountLogoutRunner,
+      feedbackUploadRunner: feedbackUploadRunner,
     );
   }
 }
@@ -4035,6 +4110,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.hookListReader,
     required this.appListReader,
     required this.accountLogoutRunner,
+    required this.feedbackUploadRunner,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -4074,6 +4150,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final AccountLogoutRunner accountLogoutRunner;
+
+  @override
+  final FeedbackUploadRunner feedbackUploadRunner;
 
   @override
   ModelListReader get modelListReader => const _FakeModelListReader();
@@ -4184,6 +4263,21 @@ class _FakeAccountLogoutRunner implements AccountLogoutRunner {
 
   @override
   Future<void> logout() async {}
+}
+
+class _FakeFeedbackUploadRunner implements FeedbackUploadRunner {
+  const _FakeFeedbackUploadRunner();
+
+  @override
+  Future<FeedbackUploadResult> uploadFeedback({
+    required String classification,
+    String? reason,
+    String? threadId,
+    String? turnId,
+    bool includeLogs = false,
+  }) async {
+    return const FeedbackUploadResult(threadId: 'feedback_thread');
+  }
 }
 
 class _FakeAccountUsageSnapshotReader implements AccountUsageSnapshotReader {
@@ -4593,6 +4687,37 @@ class _RecordingAccountLogoutRunner implements AccountLogoutRunner {
   @override
   Future<void> logout() async {
     calls++;
+  }
+}
+
+class _RecordingFeedbackUploadRunner implements FeedbackUploadRunner {
+  final calls =
+      <
+        ({
+          String classification,
+          String? reason,
+          String? threadId,
+          String? turnId,
+          bool includeLogs,
+        })
+      >[];
+
+  @override
+  Future<FeedbackUploadResult> uploadFeedback({
+    required String classification,
+    String? reason,
+    String? threadId,
+    String? turnId,
+    bool includeLogs = false,
+  }) async {
+    calls.add((
+      classification: classification,
+      reason: reason,
+      threadId: threadId,
+      turnId: turnId,
+      includeLogs: includeLogs,
+    ));
+    return const FeedbackUploadResult(threadId: 'feedback_thread');
   }
 }
 

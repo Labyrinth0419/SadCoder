@@ -16,6 +16,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
+import 'package:sadcoder_mobile/src/feedback/feedback_upload_runner.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
@@ -66,6 +67,7 @@ void main() {
     expect(controller.configSnapshotReader, isNotNull);
     expect(controller.accountSnapshotReader, isNotNull);
     expect(controller.accountLogoutRunner, isNotNull);
+    expect(controller.feedbackUploadRunner, isNotNull);
     expect(controller.modelListReader, isNotNull);
     expect(controller.permissionProfileListReader, isNotNull);
     expect(controller.skillListReader, isNotNull);
@@ -593,6 +595,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       accountSnapshotReader: const _FakeAccountSnapshotReader(),
       accountLogoutRunner: const _FakeAccountLogoutRunner(),
       accountUsageSnapshotReader: const _FakeAccountUsageSnapshotReader(),
+      feedbackUploadRunner: const _FakeFeedbackUploadRunner(),
       mcpServerStatusReader: const _FakeMcpServerStatusReader(),
       modelListReader: const _FakeModelListReader(),
       permissionProfileListReader: const _FakePermissionProfileListReader(),
@@ -645,6 +648,21 @@ class _FakeAccountLogoutRunner implements AccountLogoutRunner {
 
   @override
   Future<void> logout() async {}
+}
+
+class _FakeFeedbackUploadRunner implements FeedbackUploadRunner {
+  const _FakeFeedbackUploadRunner();
+
+  @override
+  Future<FeedbackUploadResult> uploadFeedback({
+    required String classification,
+    String? reason,
+    String? threadId,
+    String? turnId,
+    bool includeLogs = false,
+  }) async {
+    return const FeedbackUploadResult(threadId: 'feedback_thread');
+  }
 }
 
 class _FakeAccountUsageSnapshotReader implements AccountUsageSnapshotReader {

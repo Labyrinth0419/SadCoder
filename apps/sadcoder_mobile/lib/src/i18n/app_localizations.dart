@@ -138,6 +138,8 @@ class AppLocalizations {
   String get slashCommandArchivedThread => _text('slashCommandArchivedThread');
   String get slashCommandDeletedThread => _text('slashCommandDeletedThread');
   String get slashCommandLoggedOut => _text('slashCommandLoggedOut');
+  String get slashCommandFeedbackSubmitted =>
+      _text('slashCommandFeedbackSubmitted');
   String get slashCommandModelUpdated => _text('slashCommandModelUpdated');
   String get slashCommandPersonalityUpdated =>
       _text('slashCommandPersonalityUpdated');
@@ -216,6 +218,19 @@ class AppLocalizations {
   String get logoutAccountTitle => _text('logoutAccountTitle');
   String get logoutAccountBody => _text('logoutAccountBody');
   String get logoutAccountConfirm => _text('logoutAccountConfirm');
+  String get feedbackCommandTitle => _text('feedbackCommandTitle');
+  String get feedbackCategoryLabel => _text('feedbackCategoryLabel');
+  String get feedbackCategoryBug => _text('feedbackCategoryBug');
+  String get feedbackCategoryBadResult => _text('feedbackCategoryBadResult');
+  String get feedbackCategoryGoodResult => _text('feedbackCategoryGoodResult');
+  String get feedbackCategorySafetyCheck =>
+      _text('feedbackCategorySafetyCheck');
+  String get feedbackCategoryOther => _text('feedbackCategoryOther');
+  String get feedbackNoteLabel => _text('feedbackNoteLabel');
+  String get feedbackNoteHint => _text('feedbackNoteHint');
+  String get feedbackIncludeLogs => _text('feedbackIncludeLogs');
+  String get feedbackLogsDisclosure => _text('feedbackLogsDisclosure');
+  String get feedbackSubmit => _text('feedbackSubmit');
   String get modelCommandTitle => _text('modelCommandTitle');
   String get modelCommandTurnScope => _text('modelCommandTurnScope');
   String get modelCommandSessionScope => _text('modelCommandSessionScope');
@@ -552,6 +567,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandArchivedThread': 'Archived thread.',
     'slashCommandDeletedThread': 'Deleted thread.',
     'slashCommandLoggedOut': 'Signed out of Codex account.',
+    'slashCommandFeedbackSubmitted': 'Feedback submitted.',
     'slashCommandModelUpdated': 'Model override updated.',
     'slashCommandPersonalityUpdated': 'Personality override updated.',
     'slashCommandPermissionsUpdated': 'Permission override updated.',
@@ -627,6 +643,19 @@ const _values = <String, Map<String, String>>{
     'logoutAccountBody':
         'This signs the server Codex account out for every client using the same CODEX_HOME. Server tasks are not interrupted.',
     'logoutAccountConfirm': 'Sign out',
+    'feedbackCommandTitle': 'Send feedback',
+    'feedbackCategoryLabel': 'Category',
+    'feedbackCategoryBug': 'Bug',
+    'feedbackCategoryBadResult': 'Bad result',
+    'feedbackCategoryGoodResult': 'Good result',
+    'feedbackCategorySafetyCheck': 'Safety check',
+    'feedbackCategoryOther': 'Other',
+    'feedbackNoteLabel': 'Note',
+    'feedbackNoteHint': 'Optional details',
+    'feedbackIncludeLogs': 'Include server logs',
+    'feedbackLogsDisclosure':
+        'Logs may include prompts, paths, commands, and diagnostic details from this server.',
+    'feedbackSubmit': 'Send feedback',
     'modelCommandTitle': 'Model override',
     'modelCommandTurnScope': 'Next turn',
     'modelCommandSessionScope': 'Session',
@@ -914,6 +943,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandArchivedThread': '已归档会话。',
     'slashCommandDeletedThread': '已删除会话。',
     'slashCommandLoggedOut': '已退出服务器 Codex 账户。',
+    'slashCommandFeedbackSubmitted': '已提交反馈。',
     'slashCommandModelUpdated': '已更新模型覆盖。',
     'slashCommandPersonalityUpdated': '已更新协作风格覆盖。',
     'slashCommandPermissionsUpdated': '已更新权限覆盖。',
@@ -984,6 +1014,18 @@ const _values = <String, Map<String, String>>{
     'logoutAccountTitle': '退出 Codex 账户？',
     'logoutAccountBody': '这会让使用同一 CODEX_HOME 的服务器 Codex 账户退出登录，服务器任务不会被中断。',
     'logoutAccountConfirm': '退出登录',
+    'feedbackCommandTitle': '发送反馈',
+    'feedbackCategoryLabel': '类别',
+    'feedbackCategoryBug': 'Bug',
+    'feedbackCategoryBadResult': '结果不理想',
+    'feedbackCategoryGoodResult': '结果很好',
+    'feedbackCategorySafetyCheck': '安全检查',
+    'feedbackCategoryOther': '其他',
+    'feedbackNoteLabel': '说明',
+    'feedbackNoteHint': '可选补充信息',
+    'feedbackIncludeLogs': '包含服务器日志',
+    'feedbackLogsDisclosure': '日志可能包含提示词、路径、命令和此服务器上的诊断信息。',
+    'feedbackSubmit': '发送反馈',
     'modelCommandTitle': '模型覆盖',
     'modelCommandTurnScope': '本次回合',
     'modelCommandSessionScope': '本会话',

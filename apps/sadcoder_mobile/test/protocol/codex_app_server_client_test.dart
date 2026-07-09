@@ -83,6 +83,13 @@ void main() {
     await client.archiveThread(threadId: 'thr_1');
     await client.deleteThread(threadId: 'thr_1');
     await client.logoutAccount();
+    await client.uploadFeedback(
+      classification: 'bug',
+      reason: ' broken ',
+      threadId: ' thr_1 ',
+      turnId: ' turn_1 ',
+      includeLogs: true,
+    );
     await client.startTurn(threadId: 'thr_1', text: 'Fix bug');
     await client.interruptTurn(threadId: 'thr_1', turnId: 'turn_1');
 
@@ -112,6 +119,7 @@ void main() {
       'thread/archive',
       'thread/delete',
       'account/logout',
+      'feedback/upload',
       'turn/start',
       'turn/interrupt',
     ]);
@@ -175,6 +183,13 @@ void main() {
     expect(requests[23].params, {'threadId': 'thr_1'});
     expect(requests[24].params, isNull);
     expect(requests[25].params, {
+      'classification': 'bug',
+      'reason': 'broken',
+      'threadId': 'thr_1',
+      'includeLogs': true,
+      'tags': {'turn_id': 'turn_1'},
+    });
+    expect(requests[26].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},

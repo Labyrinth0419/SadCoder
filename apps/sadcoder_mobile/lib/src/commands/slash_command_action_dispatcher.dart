@@ -25,6 +25,8 @@ typedef SlashCommandStartNewThread = Future<bool> Function();
 typedef SlashCommandResumeThread = Future<bool> Function(String threadId);
 typedef SlashCommandRenameThread = Future<bool> Function(String name);
 typedef SlashCommandLogout = Future<SlashCommandCallbackResult> Function();
+typedef SlashCommandSubmitFeedback =
+    Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfirmedThreadAction =
     Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfiguredAction =
@@ -68,6 +70,7 @@ enum SlashCommandActionEffect {
   archiveThread,
   deleteThread,
   logout,
+  feedback,
   modelOverride,
   personalityOverride,
   permissionsOverride,
@@ -194,6 +197,7 @@ class SlashCommandActionDispatcher {
     this.resumeThread,
     this.renameThread,
     this.logout,
+    this.submitFeedback,
     this.forkThread,
     this.compactThread,
     this.archiveThread,
@@ -223,6 +227,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandResumeThread? resumeThread;
   final SlashCommandRenameThread? renameThread;
   final SlashCommandLogout? logout;
+  final SlashCommandSubmitFeedback? submitFeedback;
   final SlashCommandConfiguredAction? forkThread;
   final SlashCommandConfiguredAction? compactThread;
   final SlashCommandConfirmedThreadAction? archiveThread;
@@ -344,6 +349,8 @@ class SlashCommandActionDispatcher {
         );
       case 'logout':
         return _logout(parsed);
+      case 'feedback':
+        return _submitFeedback(parsed);
       default:
         return SlashCommandActionResult.unsupported(
           command: command,
@@ -797,6 +804,23 @@ class SlashCommandActionDispatcher {
       parsed,
       action: logout,
       effect: SlashCommandActionEffect.logout,
+    );
+  }
+
+  Future<SlashCommandActionResult> _submitFeedback(
+    SlashCommandParseResult parsed,
+  ) async {
+    if (parsed.arguments.trim().isNotEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    return _callbackAction(
+      parsed,
+      action: submitFeedback,
+      effect: SlashCommandActionEffect.feedback,
     );
   }
 

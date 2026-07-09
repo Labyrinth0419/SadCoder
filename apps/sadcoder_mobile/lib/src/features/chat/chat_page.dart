@@ -352,6 +352,7 @@ class _ChatPageState extends State<ChatPage> {
           resumeThread: _resumeThread,
           renameThread: _renameThread,
           logout: _logoutAccount,
+          submitFeedback: _submitFeedback,
           forkThread: _forkCurrentThread,
           compactThread: _compactCurrentThread,
           archiveThread: _archiveCurrentThread,
@@ -842,6 +843,31 @@ class _ChatPageState extends State<ChatPage> {
     return SlashCommandCallbackResult.executed;
   }
 
+  Future<SlashCommandCallbackResult> _submitFeedback() async {
+    final runner = widget.sessionController?.feedbackUploadRunner;
+    if (runner == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    final result = await showModalBottomSheet<_FeedbackFormResult>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => const _FeedbackSheet(),
+    );
+    if (!mounted || result == null) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+
+    await runner.uploadFeedback(
+      classification: result.category.classification,
+      reason: result.note,
+      threadId: _currentThreadId(),
+      turnId: widget.turnController?.activeTurnId,
+      includeLogs: result.includeLogs,
+    );
+    return SlashCommandCallbackResult.executed;
+  }
+
   Future<SlashCommandCallbackResult> _logoutAccount() async {
     final runner = widget.sessionController?.accountLogoutRunner;
     if (runner == null) {
@@ -1031,6 +1057,7 @@ class _ChatPageState extends State<ChatPage> {
           l10n.slashCommandArchivedThread,
         SlashCommandActionEffect.deleteThread => l10n.slashCommandDeletedThread,
         SlashCommandActionEffect.logout => l10n.slashCommandLoggedOut,
+        SlashCommandActionEffect.feedback => l10n.slashCommandFeedbackSubmitted,
         SlashCommandActionEffect.modelOverride => l10n.slashCommandModelUpdated,
         SlashCommandActionEffect.personalityOverride =>
           l10n.slashCommandPersonalityUpdated,
@@ -1172,6 +1199,158 @@ const _goalStatuses = {
   'budgetLimited',
   'complete',
 };
+
+class _FeedbackFormResult {
+  const _FeedbackFormResult({
+    required this.category,
+    required this.includeLogs,
+    this.note,
+  });
+
+  final _FeedbackCategory category;
+  final bool includeLogs;
+  final String? note;
+}
+
+enum _FeedbackCategory { bug, badResult, goodResult, safetyCheck, other }
+
+extension _FeedbackCategoryLabels on _FeedbackCategory {
+  String get classification {
+    return switch (this) {
+      _FeedbackCategory.bug => 'bug',
+      _FeedbackCategory.badResult => 'bad_result',
+      _FeedbackCategory.goodResult => 'good_result',
+      _FeedbackCategory.safetyCheck => 'safety_check',
+      _FeedbackCategory.other => 'other',
+    };
+  }
+
+  String label(AppLocalizations l10n) {
+    return switch (this) {
+      _FeedbackCategory.bug => l10n.feedbackCategoryBug,
+      _FeedbackCategory.badResult => l10n.feedbackCategoryBadResult,
+      _FeedbackCategory.goodResult => l10n.feedbackCategoryGoodResult,
+      _FeedbackCategory.safetyCheck => l10n.feedbackCategorySafetyCheck,
+      _FeedbackCategory.other => l10n.feedbackCategoryOther,
+    };
+  }
+}
+
+class _FeedbackSheet extends StatefulWidget {
+  const _FeedbackSheet();
+
+  @override
+  State<_FeedbackSheet> createState() => _FeedbackSheetState();
+}
+
+class _FeedbackSheetState extends State<_FeedbackSheet> {
+  final TextEditingController _noteController = TextEditingController();
+  _FeedbackCategory _category = _FeedbackCategory.bug;
+  bool _includeLogs = false;
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          MediaQuery.viewInsetsOf(context).bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.feedbackCommandTitle, style: theme.textTheme.titleLarge),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<_FeedbackCategory>(
+              key: const ValueKey('chat-feedback-category'),
+              initialValue: _category,
+              decoration: InputDecoration(
+                labelText: l10n.feedbackCategoryLabel,
+                border: const OutlineInputBorder(),
+              ),
+              items: [
+                for (final category in _FeedbackCategory.values)
+                  DropdownMenuItem(
+                    value: category,
+                    child: Text(category.label(l10n)),
+                  ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _category = value);
+                }
+              },
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const ValueKey('chat-feedback-note'),
+              controller: _noteController,
+              minLines: 3,
+              maxLines: 5,
+              decoration: InputDecoration(
+                labelText: l10n.feedbackNoteLabel,
+                hintText: l10n.feedbackNoteHint,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.feedbackIncludeLogs),
+              value: _includeLogs,
+              onChanged: (value) => setState(() => _includeLogs = value),
+            ),
+            if (_includeLogs)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  l10n.feedbackLogsDisclosure,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(l10n.approvalCancel),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _submit,
+                  child: Text(l10n.feedbackSubmit),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _submit() {
+    final note = _noteController.text.trim();
+    Navigator.of(context).pop(
+      _FeedbackFormResult(
+        category: _category,
+        includeLogs: _includeLogs,
+        note: note.isEmpty ? null : note,
+      ),
+    );
+  }
+}
 
 enum _OverrideScope { turn, session }
 

@@ -71,6 +71,28 @@ class CodexAppServerClient {
     return _request('account/logout');
   }
 
+  Future<Map<String, Object?>> uploadFeedback({
+    required String classification,
+    String? reason,
+    String? threadId,
+    String? turnId,
+    bool includeLogs = false,
+  }) {
+    final trimmedReason = reason?.trim();
+    final trimmedThreadId = threadId?.trim();
+    final trimmedTurnId = turnId?.trim();
+    return _request('feedback/upload', {
+      'classification': classification,
+      if (trimmedReason != null && trimmedReason.isNotEmpty)
+        'reason': trimmedReason,
+      if (trimmedThreadId != null && trimmedThreadId.isNotEmpty)
+        'threadId': trimmedThreadId,
+      if (includeLogs) 'includeLogs': true,
+      if (trimmedTurnId != null && trimmedTurnId.isNotEmpty)
+        'tags': {'turn_id': trimmedTurnId},
+    });
+  }
+
   Future<Map<String, Object?>> readAccountRateLimits() {
     return _request('account/rateLimits/read');
   }

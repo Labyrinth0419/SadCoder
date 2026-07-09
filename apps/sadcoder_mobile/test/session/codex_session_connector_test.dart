@@ -27,6 +27,7 @@ void main() {
     await connection.appListReader.listApps();
     await connection.accountSnapshotReader.readAccount();
     await connection.accountLogoutRunner.logout();
+    await connection.feedbackUploadRunner.uploadFeedback(classification: 'bug');
     await connection.turnRunner.startThread();
     await connection.turnRunner.startTurn(threadId: 'thr_1', text: 'Fix bug');
     await connection.turnRunner.interruptTurn(
@@ -45,6 +46,7 @@ void main() {
       'app/list',
       'account/read',
       'account/logout',
+      'feedback/upload',
       'thread/start',
       'turn/start',
       'turn/interrupt',
