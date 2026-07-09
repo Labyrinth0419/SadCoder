@@ -20,6 +20,8 @@ import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
 import 'package:sadcoder_mobile/src/probe/m0_probe_coordinator.dart';
+import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
+import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/reconnect_policy.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
@@ -691,6 +693,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   ThreadGoalRunner get threadGoalRunner => const _FakeThreadGoalRunner();
 
   @override
+  ThreadReviewRunner get threadReviewRunner => const _FakeThreadReviewRunner();
+
+  @override
   TurnRunner get turnRunner => const _FakeTurnRunner();
 
   @override
@@ -935,6 +940,27 @@ class _FakeThreadGoalRunner implements ThreadGoalRunner {
   @override
   Future<ThreadGoalClearResult> clearGoal({required String threadId}) async {
     return const ThreadGoalClearResult(cleared: false);
+  }
+}
+
+class _FakeThreadReviewRunner implements ThreadReviewRunner {
+  const _FakeThreadReviewRunner();
+
+  @override
+  Future<ThreadReviewStartResult> startReview({
+    required String threadId,
+    required ThreadReviewTarget target,
+    ThreadReviewDelivery? delivery,
+  }) async {
+    return ThreadReviewStartResult(
+      reviewThreadId: threadId,
+      turn: TurnSummary.fromJson({
+        'id': 'turn_review',
+        'status': 'inProgress',
+        'items': <Object?>[],
+        'itemsView': 'notLoaded',
+      }),
+    );
   }
 }
 

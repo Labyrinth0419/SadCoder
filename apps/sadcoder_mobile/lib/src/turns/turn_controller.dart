@@ -234,6 +234,22 @@ class TurnController extends ChangeNotifier {
     return true;
   }
 
+  bool trackStartedTurn({required String threadId, required TurnSummary turn}) {
+    final trimmedThreadId = threadId.trim();
+    if (trimmedThreadId.isEmpty || turn.id.isEmpty || isBusy) {
+      return false;
+    }
+    if (_activeTurnId != null) {
+      return false;
+    }
+    _generation++;
+    _activeThreadId = trimmedThreadId;
+    _activeTurnId = turn.id;
+    _lastTurn = turn;
+    _setState(status: TurnControllerStatus.submitted, error: null);
+    return true;
+  }
+
   Future<void> interruptActiveTurn() async {
     if (isBusy) {
       throw StateError('A turn transition is already in progress');

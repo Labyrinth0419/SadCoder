@@ -193,6 +193,53 @@ void main() {
     expect(controller.turns.single.items.single.text, 'Done plus live delta');
   });
 
+  test('showTurn displays an externally started review turn', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_parent',
+        'sessionId': 'sess_1',
+        'preview': 'Parent',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': [
+          {
+            'id': 'turn_parent',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': <Object?>[],
+          },
+        ],
+      }),
+    );
+    controller.showTurn(
+      threadId: 'thr_review',
+      turn: TurnSummary.fromJson({
+        'id': 'turn_review',
+        'status': 'inProgress',
+        'itemsView': 'notLoaded',
+        'items': [
+          {
+            'id': 'review_started',
+            'type': 'enteredReviewMode',
+            'review': 'current changes',
+          },
+        ],
+      }),
+    );
+
+    expect(controller.selectedThreadId, 'thr_review');
+    expect(controller.turns, hasLength(1));
+    expect(controller.turns.single.turnId, 'turn_review');
+    expect(controller.turns.single.status, 'inProgress');
+    expect(controller.turns.single.items.single.itemType, 'enteredReviewMode');
+    expect(controller.turns.single.items.single.text, 'current changes');
+  });
+
   test('ingest maps reasoning file changes and MCP progress into timeline', () {
     final controller = ChatTimelineController();
     addTearDown(controller.dispose);

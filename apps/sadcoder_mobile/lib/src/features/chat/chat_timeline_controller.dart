@@ -116,6 +116,24 @@ class ChatTimelineController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void showTurn({required String threadId, required TurnSummary turn}) {
+    final normalizedThreadId = threadId.trim();
+    if (normalizedThreadId.isEmpty || turn.id.isEmpty) {
+      return;
+    }
+    if (_selectedThreadId != normalizedThreadId) {
+      _turns.clear();
+    }
+    _selectedThreadId = normalizedThreadId;
+    _mergeTurn(
+      ChatTimelineTurn.fromTurnSummary(
+        threadId: normalizedThreadId,
+        turn: turn,
+      ),
+    );
+    notifyListeners();
+  }
+
   void clear() {
     _selectedThreadId = null;
     _turns.clear();

@@ -12,6 +12,7 @@ import '../goals/thread_goal_runner.dart';
 import '../mcp/mcp_server_status_reader.dart';
 import '../models/model_list_reader.dart';
 import '../permissions/permission_profile_list_reader.dart';
+import '../reviews/thread_review_runner.dart';
 import '../ssh/ssh_profile.dart';
 import '../threads/thread_detail_reader.dart';
 import '../threads/thread_list_reader.dart';
@@ -98,6 +99,8 @@ class CodexSessionStateController extends ChangeNotifier {
       _connection?.threadMutationRunner;
 
   ThreadGoalRunner? get threadGoalRunner => _connection?.threadGoalRunner;
+
+  ThreadReviewRunner? get threadReviewRunner => _connection?.threadReviewRunner;
 
   TurnRunner? get turnRunner => _connection?.turnRunner;
 

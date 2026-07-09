@@ -278,6 +278,8 @@ String _itemText(String type, Map<String, Object?> json) {
     'dynamicToolCall' => _stringValue(json['tool']) ?? '',
     'webSearch' => _stringValue(json['query']) ?? '',
     'imageView' => _stringValue(json['path']) ?? '',
+    'enteredReviewMode' ||
+    'exitedReviewMode' => _stringValue(json['review']) ?? '',
     _ => _stringValue(json['text']) ?? '',
   };
 }

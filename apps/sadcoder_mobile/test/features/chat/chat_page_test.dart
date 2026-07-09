@@ -24,6 +24,8 @@ import 'package:sadcoder_mobile/src/models/model_list_controller.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_controller.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
+import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
+import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
@@ -1821,6 +1823,153 @@ void main() {
     expect(find.text('/goal is unavailable right now.'), findsOneWidget);
   });
 
+  testWidgets('/review starts an inline current changes review', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final reviewRunner = _RecordingThreadReviewRunner();
+    final turnRunner = _FakeTurnRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+      threadReviewRunner: reviewRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await turnController.resumeThread('thr_active');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/review',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(reviewRunner.calls.single.threadId, 'thr_active');
+    expect(
+      reviewRunner.calls.single.target.kind,
+      ThreadReviewTargetKind.uncommittedChanges,
+    );
+    expect(reviewRunner.calls.single.delivery, isNull);
+    expect(turnController.activeThreadId, 'thr_active');
+    expect(turnController.activeTurnId, 'turn_review_1');
+    expect(find.textContaining('Review started.'), findsOneWidget);
+    expect(find.textContaining('Target: current changes'), findsOneWidget);
+  });
+
+  testWidgets('/review detached commit tracks the returned review thread', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final reviewRunner = _RecordingThreadReviewRunner(
+      reviewThreadId: 'thr_review',
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      threadReviewRunner: reviewRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await turnController.resumeThread('thr_active');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/review detached commit abc123 Polish colors',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    final call = reviewRunner.calls.single;
+    expect(call.threadId, 'thr_active');
+    expect(call.delivery, ThreadReviewDelivery.detached);
+    expect(call.target.kind, ThreadReviewTargetKind.commit);
+    expect(call.target.sha, 'abc123');
+    expect(call.target.title, 'Polish colors');
+    expect(turnController.activeThreadId, 'thr_review');
+    expect(turnController.activeTurnId, 'turn_review_1');
+    expect(find.textContaining('Delivery: detached'), findsOneWidget);
+    expect(find.textContaining('Thread: thr_review'), findsOneWidget);
+  });
+
+  testWidgets('/review unsupported arguments do not call app-server', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final reviewRunner = _RecordingThreadReviewRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      threadReviewRunner: reviewRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await turnController.resumeThread('thr_active');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/review commit',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(reviewRunner.calls, isEmpty);
+    expect(find.text('/review is unavailable right now.'), findsOneWidget);
+  });
+
   testWidgets('/mcp lists MCP servers with compact detail by default', (
     tester,
   ) async {
@@ -3004,12 +3153,14 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.turnRunner = const _ConstantTurnRunner(),
     this.threadMutationRunner = const _NoopThreadMutationRunner(),
     this.threadGoalRunner = const _FakeThreadGoalRunner(),
+    this.threadReviewRunner = const _FakeThreadReviewRunner(),
   });
 
   final ThreadListReader threadListReader;
   final TurnRunner turnRunner;
   final ThreadMutationRunner threadMutationRunner;
   final ThreadGoalRunner threadGoalRunner;
+  final ThreadReviewRunner threadReviewRunner;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -3022,6 +3173,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       turnRunner: turnRunner,
       threadMutationRunner: threadMutationRunner,
       threadGoalRunner: threadGoalRunner,
+      threadReviewRunner: threadReviewRunner,
     );
   }
 }
@@ -3033,6 +3185,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.turnRunner,
     required this.threadMutationRunner,
     required this.threadGoalRunner,
+    required this.threadReviewRunner,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -3051,6 +3204,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final ThreadGoalRunner threadGoalRunner;
+
+  @override
+  final ThreadReviewRunner threadReviewRunner;
 
   @override
   ModelListReader get modelListReader => const _FakeModelListReader();
@@ -3279,6 +3435,66 @@ ThreadGoal _goal({
     updatedAtSeconds: 2,
     raw: const {},
   );
+}
+
+class _FakeThreadReviewRunner implements ThreadReviewRunner {
+  const _FakeThreadReviewRunner();
+
+  @override
+  Future<ThreadReviewStartResult> startReview({
+    required String threadId,
+    required ThreadReviewTarget target,
+    ThreadReviewDelivery? delivery,
+  }) async {
+    return ThreadReviewStartResult(
+      reviewThreadId: threadId,
+      turn: _reviewTurn('turn_review'),
+    );
+  }
+}
+
+class _RecordingThreadReviewRunner implements ThreadReviewRunner {
+  _RecordingThreadReviewRunner({this.reviewThreadId});
+
+  final String? reviewThreadId;
+  final calls =
+      <
+        ({
+          String threadId,
+          ThreadReviewTarget target,
+          ThreadReviewDelivery? delivery,
+        })
+      >[];
+
+  @override
+  Future<ThreadReviewStartResult> startReview({
+    required String threadId,
+    required ThreadReviewTarget target,
+    ThreadReviewDelivery? delivery,
+  }) async {
+    calls.add((threadId: threadId, target: target, delivery: delivery));
+    return ThreadReviewStartResult(
+      reviewThreadId: reviewThreadId ?? threadId,
+      turn: _reviewTurn('turn_review_${calls.length}'),
+    );
+  }
+}
+
+TurnSummary _reviewTurn(String turnId) {
+  return TurnSummary.fromJson({
+    'id': turnId,
+    'status': 'inProgress',
+    'itemsView': 'notLoaded',
+    'items': [
+      {
+        'id': '${turnId}_user',
+        'type': 'userMessage',
+        'content': [
+          {'type': 'text', 'text': 'Review current changes'},
+        ],
+      },
+    ],
+  });
 }
 
 class _RecordingMcpServerStatusReader implements McpServerStatusReader {

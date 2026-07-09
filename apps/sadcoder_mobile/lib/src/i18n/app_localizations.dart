@@ -251,6 +251,20 @@ class AppLocalizations {
   String get threadGoalTokenBudget => _text('threadGoalTokenBudget');
   String get threadGoalTimeUsed => _text('threadGoalTimeUsed');
   String get threadGoalCleared => _text('threadGoalCleared');
+  String get threadReviewStarted => _text('threadReviewStarted');
+  String get threadReviewTarget => _text('threadReviewTarget');
+  String get threadReviewTargetUncommitted =>
+      _text('threadReviewTargetUncommitted');
+  String get threadReviewTargetBaseBranch =>
+      _text('threadReviewTargetBaseBranch');
+  String get threadReviewTargetCommit => _text('threadReviewTargetCommit');
+  String get threadReviewTargetCustom => _text('threadReviewTargetCustom');
+  String get threadReviewDelivery => _text('threadReviewDelivery');
+  String get threadReviewDeliveryInline => _text('threadReviewDeliveryInline');
+  String get threadReviewDeliveryDetached =>
+      _text('threadReviewDeliveryDetached');
+  String get threadReviewThread => _text('threadReviewThread');
+  String get threadReviewTurn => _text('threadReviewTurn');
   String get mcpServersStatus => _text('mcpServersStatus');
   String get mcpServersUnavailable => _text('mcpServersUnavailable');
   String get mcpServersLoadFailed => _text('mcpServersLoadFailed');
@@ -555,6 +569,17 @@ const _values = <String, Map<String, String>>{
     'threadGoalTokenBudget': 'Token budget',
     'threadGoalTimeUsed': 'Time used',
     'threadGoalCleared': 'Goal cleared.',
+    'threadReviewStarted': 'Review started.',
+    'threadReviewTarget': 'Target',
+    'threadReviewTargetUncommitted': 'current changes',
+    'threadReviewTargetBaseBranch': 'base branch',
+    'threadReviewTargetCommit': 'commit',
+    'threadReviewTargetCustom': 'custom instructions',
+    'threadReviewDelivery': 'Delivery',
+    'threadReviewDeliveryInline': 'inline',
+    'threadReviewDeliveryDetached': 'detached',
+    'threadReviewThread': 'Thread',
+    'threadReviewTurn': 'Turn',
     'mcpServersStatus': 'MCP servers',
     'mcpServersUnavailable': 'Connect to a host, then run /mcp.',
     'mcpServersLoadFailed': 'Failed to load MCP servers',
@@ -812,6 +837,17 @@ const _values = <String, Map<String, String>>{
     'threadGoalTokenBudget': 'Token 预算',
     'threadGoalTimeUsed': '已用时间',
     'threadGoalCleared': '已清除目标。',
+    'threadReviewStarted': '已开始代码审查。',
+    'threadReviewTarget': '审查目标',
+    'threadReviewTargetUncommitted': '当前改动',
+    'threadReviewTargetBaseBranch': '基准分支',
+    'threadReviewTargetCommit': '提交',
+    'threadReviewTargetCustom': '自定义说明',
+    'threadReviewDelivery': '运行方式',
+    'threadReviewDeliveryInline': '当前会话内',
+    'threadReviewDeliveryDetached': '独立审查会话',
+    'threadReviewThread': '会话',
+    'threadReviewTurn': '回合',
     'mcpServersStatus': 'MCP 服务器',
     'mcpServersUnavailable': '连接主机后运行 /mcp。',
     'mcpServersLoadFailed': 'MCP 服务器加载失败',

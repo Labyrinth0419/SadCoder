@@ -105,6 +105,11 @@ void main() {
                 'tool': 'search_issues',
                 'status': 'completed',
               },
+              {
+                'id': 'item_5',
+                'type': 'exitedReviewMode',
+                'review': 'Looks solid overall.',
+              },
             ],
             'itemsView': 'full',
             'startedAt': 10,
@@ -125,7 +130,7 @@ void main() {
     expect(detail.thread.id, 'thr_1');
     expect(detail.turns, hasLength(2));
     expect(detail.turns.first.id, 'turn_1');
-    expect(detail.turns.first.itemCount, 4);
+    expect(detail.turns.first.itemCount, 5);
     expect(detail.turns.first.itemsView, 'full');
     expect(detail.turns.first.durationMs, 1000);
     expect(detail.turns.first.items.first.type, 'userMessage');
@@ -143,6 +148,8 @@ void main() {
     );
     expect(detail.turns.first.items[3].server, 'github');
     expect(detail.turns.first.items[3].tool, 'search_issues');
+    expect(detail.turns.first.items[4].type, 'exitedReviewMode');
+    expect(detail.turns.first.items[4].text, 'Looks solid overall.');
     expect(detail.turns.last.errorMessage, 'failed turn');
   });
 }

@@ -153,6 +153,18 @@ class CodexAppServerClient {
     return _request('thread/goal/clear', {'threadId': threadId});
   }
 
+  Future<Map<String, Object?>> startReview({
+    required String threadId,
+    required Map<String, Object?> target,
+    String? delivery,
+  }) {
+    final params = <String, Object?>{'threadId': threadId, 'target': target};
+    if (delivery != null && delivery.trim().isNotEmpty) {
+      params['delivery'] = delivery.trim();
+    }
+    return _request('review/start', params);
+  }
+
   Future<Map<String, Object?>> setThreadName({
     required String threadId,
     required String name,

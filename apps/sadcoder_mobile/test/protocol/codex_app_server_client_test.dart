@@ -62,6 +62,11 @@ void main() {
       tokenBudget: 5000,
     );
     await client.clearThreadGoal(threadId: 'thr_1');
+    await client.startReview(
+      threadId: 'thr_1',
+      target: {'type': 'commit', 'sha': 'abc123', 'title': 'Polish colors'},
+      delivery: 'detached',
+    );
     await client.setThreadName(threadId: 'thr_1', name: 'Renamed thread');
     await client.archiveThread(threadId: 'thr_1');
     await client.deleteThread(threadId: 'thr_1');
@@ -85,6 +90,7 @@ void main() {
       'thread/goal/get',
       'thread/goal/set',
       'thread/goal/clear',
+      'review/start',
       'thread/name/set',
       'thread/archive',
       'thread/delete',
@@ -123,11 +129,16 @@ void main() {
     expect(requests[15].params, {'threadId': 'thr_1'});
     expect(requests[16].params, {
       'threadId': 'thr_1',
+      'target': {'type': 'commit', 'sha': 'abc123', 'title': 'Polish colors'},
+      'delivery': 'detached',
+    });
+    expect(requests[17].params, {
+      'threadId': 'thr_1',
       'name': 'Renamed thread',
     });
-    expect(requests[17].params, {'threadId': 'thr_1'});
     expect(requests[18].params, {'threadId': 'thr_1'});
-    expect(requests[19].params, {
+    expect(requests[19].params, {'threadId': 'thr_1'});
+    expect(requests[20].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},

@@ -186,6 +186,30 @@ void main() {
     expect(controller.activeTurnId, 'turn_1');
   });
 
+  test('trackStartedTurn records an externally started active turn', () {
+    final runner = _FakeTurnRunner();
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+    final turn = TurnSummary.fromJson({
+      'id': 'turn_review',
+      'status': 'inProgress',
+      'items': <Object?>[],
+      'itemsView': 'notLoaded',
+    });
+
+    final tracked = controller.trackStartedTurn(
+      threadId: ' thr_review ',
+      turn: turn,
+    );
+
+    expect(tracked, true);
+    expect(runner.startedTurns, isEmpty);
+    expect(controller.status, TurnControllerStatus.submitted);
+    expect(controller.activeThreadId, 'thr_review');
+    expect(controller.activeTurnId, 'turn_review');
+    expect(controller.lastTurn, turn);
+  });
+
   test('startNewThread is unavailable while a turn is active', () async {
     final runner = _FakeTurnRunner();
     final controller = TurnController(runnerProvider: () => runner);

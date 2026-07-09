@@ -19,6 +19,8 @@ import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_session.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
+import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
+import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/reconnect_policy.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
@@ -59,6 +61,7 @@ void main() {
     expect(controller.modelListReader, isNotNull);
     expect(controller.permissionProfileListReader, isNotNull);
     expect(controller.turnRunner, isNotNull);
+    expect(controller.threadReviewRunner, isNotNull);
     expect(connector.connectedProfiles, [_profile]);
     expect(approvalController.canRespond, true);
   });
@@ -577,6 +580,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       permissionProfileListReader: const _FakePermissionProfileListReader(),
       threadMutationRunner: const _FakeThreadMutationRunner(),
       threadGoalRunner: const _FakeThreadGoalRunner(),
+      threadReviewRunner: const _FakeThreadReviewRunner(),
       turnRunner: const _FakeTurnRunner(),
       proxyConnection: AgentProxyConnection(
         input: const Stream<Uint8List>.empty(),
@@ -808,6 +812,27 @@ class _FakeThreadGoalRunner implements ThreadGoalRunner {
   @override
   Future<ThreadGoalClearResult> clearGoal({required String threadId}) async {
     return const ThreadGoalClearResult(cleared: false);
+  }
+}
+
+class _FakeThreadReviewRunner implements ThreadReviewRunner {
+  const _FakeThreadReviewRunner();
+
+  @override
+  Future<ThreadReviewStartResult> startReview({
+    required String threadId,
+    required ThreadReviewTarget target,
+    ThreadReviewDelivery? delivery,
+  }) async {
+    return ThreadReviewStartResult(
+      reviewThreadId: threadId,
+      turn: TurnSummary.fromJson({
+        'id': 'turn_review',
+        'status': 'inProgress',
+        'items': <Object?>[],
+        'itemsView': 'notLoaded',
+      }),
+    );
   }
 }
 

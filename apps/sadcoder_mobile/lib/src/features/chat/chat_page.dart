@@ -16,6 +16,7 @@ import '../../mcp/mcp_server_status_reader.dart';
 import '../../models/model_list_controller.dart';
 import '../../permissions/permission_profile_list_controller.dart';
 import '../../permissions/permission_profile_list_reader.dart';
+import '../../reviews/thread_review_command.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_list_controller.dart';
@@ -27,6 +28,7 @@ import 'chat_status_summary.dart';
 import 'chat_timeline_controller.dart';
 import 'chat_goal_summary.dart';
 import 'chat_mcp_summary.dart';
+import 'chat_review_summary.dart';
 import 'chat_usage_summary.dart';
 import 'config_override_controls.dart';
 import 'config_override_labels.dart';
@@ -331,6 +333,7 @@ class _ChatPageState extends State<ChatPage> {
           showUsage: _buildUsageSummary,
           showMcp: _buildMcpSummary,
           handleGoal: _handleGoalCommand,
+          handleReview: _handleReviewCommand,
           toggleRawTranscript: _toggleRawTranscript,
           startNewThread: _startNewThread,
           resumeThread: _resumeThread,
@@ -429,6 +432,51 @@ class _ChatPageState extends State<ChatPage> {
           )).goal,
         ),
     };
+  }
+
+  Future<String?> _handleReviewCommand(String arguments) async {
+    final runner = widget.sessionController?.threadReviewRunner;
+    final turnController = widget.turnController;
+    final threadId = _currentThreadId();
+    if (runner == null || turnController == null || threadId == null) {
+      return null;
+    }
+    if (!turnController.canSubmit) {
+      return null;
+    }
+
+    final command = parseThreadReviewCommand(arguments);
+    if (command == null) {
+      return null;
+    }
+
+    final l10n = context.l10n;
+    final result = await runner.startReview(
+      threadId: threadId,
+      target: command.target,
+      delivery: command.delivery,
+    );
+    final reviewThreadId = result.reviewThreadId;
+    final tracked = turnController.trackStartedTurn(
+      threadId: reviewThreadId,
+      turn: result.turn,
+    );
+    if (!tracked) {
+      return null;
+    }
+
+    widget.timelineController?.showTurn(
+      threadId: reviewThreadId,
+      turn: result.turn,
+    );
+    unawaited(widget.threadListController?.refresh());
+    unawaited(widget.threadDetailController?.readThread(reviewThreadId));
+    return buildThreadReviewStartedSummary(
+      l10n: l10n,
+      result: result,
+      target: command.target,
+      delivery: command.delivery,
+    );
   }
 
   Future<void> _refreshStatusSources() async {
@@ -753,6 +801,9 @@ class _ChatPageState extends State<ChatPage> {
         ),
         SlashCommandActionEffect.mcp => l10n.slashCommandExecuted(result.slash),
         SlashCommandActionEffect.goal => l10n.slashCommandExecuted(
+          result.slash,
+        ),
+        SlashCommandActionEffect.review => l10n.slashCommandExecuted(
           result.slash,
         ),
         SlashCommandActionEffect.rawTranscript =>

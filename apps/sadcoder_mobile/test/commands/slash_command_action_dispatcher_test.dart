@@ -215,6 +215,41 @@ void main() {
     expect(result.command?.command, 'goal');
   });
 
+  test(
+    '/review passes inline arguments to the injected review handler',
+    () async {
+      final arguments = <String>[];
+      final dispatcher = SlashCommandActionDispatcher(
+        handleReview: (argument) async {
+          arguments.add(argument);
+          return 'Review started.\nTarget: current changes';
+        },
+      );
+
+      final result = await dispatcher.dispatch(
+        registry.parseComposerText('/review detached commit abc123'),
+        hasActiveTurn: false,
+      );
+
+      expect(arguments, ['detached commit abc123']);
+      expect(result.outcome, SlashCommandActionOutcome.executed);
+      expect(result.effect, SlashCommandActionEffect.review);
+      expect(result.message, contains('Review started'));
+    },
+  );
+
+  test('/review is unavailable when arguments are not supported', () async {
+    final dispatcher = SlashCommandActionDispatcher(handleReview: (_) => null);
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/review commit'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'review');
+  });
+
   test('/raw delegates to the injected raw transcript toggle', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(
