@@ -22,6 +22,17 @@ class ChatTimelineController extends ChangeNotifier {
 
   String? get selectedThreadId => _selectedThreadId;
 
+  String? lastAssistantMessageMarkdown() {
+    for (final turn in _turns.reversed) {
+      for (final item in turn.items.reversed) {
+        if (item.itemType == 'agentMessage' && item.text.trim().isNotEmpty) {
+          return item.text.trim();
+        }
+      }
+    }
+    return null;
+  }
+
   void attach(Stream<CodexEvent>? events) {
     if (identical(_attachedEvents, events)) {
       return;

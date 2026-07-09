@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
@@ -551,6 +552,60 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('/copy copies the latest assistant message', (tester) async {
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    timelineController.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Thread',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': [
+          {
+            'id': 'turn_1',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': [
+              {
+                'id': 'assistant_1',
+                'type': 'agentMessage',
+                'text': 'Copied response',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    Object? clipboardText;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        clipboardText = (call.arguments as Map)['text'];
+      }
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    await _pumpChatPage(tester, timelineController: timelineController);
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/copy',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(clipboardText, 'Copied response');
+    expect(find.text('Copied last response.'), findsOneWidget);
   });
 
   testWidgets('/clear clears the local transcript without interrupting', (

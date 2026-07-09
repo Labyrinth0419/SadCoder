@@ -2,6 +2,7 @@ import 'slash_command_registry.dart';
 
 typedef SlashCommandDisconnect = Future<void> Function();
 typedef SlashCommandClearTranscript = void Function();
+typedef SlashCommandCopyLastResponse = Future<bool> Function();
 
 enum SlashCommandActionOutcome {
   ignored,
@@ -12,7 +13,7 @@ enum SlashCommandActionOutcome {
   failed,
 }
 
-enum SlashCommandActionEffect { none, disconnect, clearTranscript }
+enum SlashCommandActionEffect { none, disconnect, clearTranscript, copy }
 
 class SlashCommandActionResult {
   const SlashCommandActionResult._({
@@ -99,10 +100,15 @@ class SlashCommandActionResult {
 }
 
 class SlashCommandActionDispatcher {
-  const SlashCommandActionDispatcher({this.disconnect, this.clearTranscript});
+  const SlashCommandActionDispatcher({
+    this.disconnect,
+    this.clearTranscript,
+    this.copyLastResponse,
+  });
 
   final SlashCommandDisconnect? disconnect;
   final SlashCommandClearTranscript? clearTranscript;
+  final SlashCommandCopyLastResponse? copyLastResponse;
 
   Future<SlashCommandActionResult> dispatch(
     SlashCommandParseResult parsed, {
@@ -139,6 +145,8 @@ class SlashCommandActionDispatcher {
         return _disconnect(parsed);
       case 'clear':
         return _clearTranscript(parsed);
+      case 'copy':
+        return _copyLastResponse(parsed);
       default:
         return SlashCommandActionResult.unsupported(
           command: command,
@@ -193,6 +201,42 @@ class SlashCommandActionDispatcher {
         rawCommand: parsed.rawCommand,
         arguments: parsed.arguments,
         effect: SlashCommandActionEffect.clearTranscript,
+      );
+    } on Object catch (error) {
+      return SlashCommandActionResult.failed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        error: error,
+      );
+    }
+  }
+
+  Future<SlashCommandActionResult> _copyLastResponse(
+    SlashCommandParseResult parsed,
+  ) async {
+    final copyLastResponse = this.copyLastResponse;
+    if (copyLastResponse == null) {
+      return SlashCommandActionResult.unsupported(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    try {
+      final copied = await copyLastResponse();
+      if (!copied) {
+        return SlashCommandActionResult.unavailable(
+          command: parsed.command!,
+          rawCommand: parsed.rawCommand,
+          arguments: parsed.arguments,
+        );
+      }
+      return SlashCommandActionResult.executed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        effect: SlashCommandActionEffect.copy,
       );
     } on Object catch (error) {
       return SlashCommandActionResult.failed(

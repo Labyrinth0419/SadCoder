@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../commands/slash_command_action_dispatcher.dart';
 import '../../commands/slash_command_registry.dart';
@@ -292,7 +293,17 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionDispatcher(
           disconnect: widget.sessionController?.disconnect,
           clearTranscript: _clearLocalTranscript,
+          copyLastResponse: _copyLastResponse,
         );
+  }
+
+  Future<bool> _copyLastResponse() async {
+    final markdown = widget.timelineController?.lastAssistantMessageMarkdown();
+    if (markdown == null || markdown.isEmpty) {
+      return false;
+    }
+    await Clipboard.setData(ClipboardData(text: markdown));
+    return true;
   }
 
   void _clearLocalTranscript() {
@@ -310,6 +321,7 @@ class _ChatPageState extends State<ChatPage> {
       SlashCommandActionOutcome.executed => switch (result.effect) {
         SlashCommandActionEffect.disconnect => l10n.slashCommandDisconnected,
         SlashCommandActionEffect.clearTranscript => l10n.slashCommandCleared,
+        SlashCommandActionEffect.copy => l10n.slashCommandCopied,
         SlashCommandActionEffect.none => l10n.slashCommandExecuted(
           result.slash,
         ),

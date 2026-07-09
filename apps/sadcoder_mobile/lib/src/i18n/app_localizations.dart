@@ -122,6 +122,7 @@ class AppLocalizations {
   String get slashCommandRisk => _text('slashCommandRisk');
   String get slashCommandDisconnected => _text('slashCommandDisconnected');
   String get slashCommandCleared => _text('slashCommandCleared');
+  String get slashCommandCopied => _text('slashCommandCopied');
   String slashCommandExecuted(String slash) =>
       _text('slashCommandExecuted').replaceAll('{slash}', slash);
   String slashCommandUnsupported(String slash) =>
@@ -316,6 +317,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandDisconnected':
         'Disconnected from the mobile proxy. Server tasks were not interrupted.',
     'slashCommandCleared': 'Local transcript cleared.',
+    'slashCommandCopied': 'Copied last response.',
     'slashCommandExecuted': 'Executed {slash}.',
     'slashCommandUnsupported': '{slash} is not implemented yet.',
     'slashCommandUnavailable': '{slash} is unavailable right now.',
@@ -479,6 +481,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandRisk': '风险',
     'slashCommandDisconnected': '已断开移动端代理连接，服务器任务未被中断。',
     'slashCommandCleared': '已清除本地事件流。',
+    'slashCommandCopied': '已复制最后一条回复。',
     'slashCommandExecuted': '已执行 {slash}。',
     'slashCommandUnsupported': '{slash} 暂未实现。',
     'slashCommandUnavailable': '{slash} 当前不可用。',

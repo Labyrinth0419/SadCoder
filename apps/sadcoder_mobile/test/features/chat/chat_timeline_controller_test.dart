@@ -66,6 +66,17 @@ void main() {
     expect(completed?.turn.id, 'turn_1');
   });
 
+  test('lastAssistantMessageMarkdown returns the latest assistant text', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.ingest(_agentDelta('item_1', 'first'));
+    controller.ingest(_commandDelta('cmd_1', 'command output'));
+    controller.ingest(_agentDelta('item_2', 'second'));
+
+    expect(controller.lastAssistantMessageMarkdown(), 'second');
+  });
+
   test('showThread backfills turns and items from thread read detail', () {
     final controller = ChatTimelineController();
     addTearDown(controller.dispose);

@@ -62,6 +62,39 @@ void main() {
     expect(result.command?.command, 'clear');
   });
 
+  test('/copy delegates to the injected clipboard action', () async {
+    var copies = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      copyLastResponse: () async {
+        copies++;
+        return true;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/copy'),
+      hasActiveTurn: true,
+    );
+
+    expect(copies, 1);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.copy);
+  });
+
+  test('/copy is unavailable when there is no response to copy', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      copyLastResponse: () async => false,
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/copy'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'copy');
+  });
+
   test(
     'unknown and unsupported commands never fall through as prompts',
     () async {
