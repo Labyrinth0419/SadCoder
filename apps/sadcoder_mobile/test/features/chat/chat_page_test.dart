@@ -21,6 +21,9 @@ import 'package:sadcoder_mobile/src/diffs/git_diff_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/feedback/feedback_upload_runner.dart';
 import 'package:sadcoder_mobile/src/files/file_search_reader.dart';
+import 'package:sadcoder_mobile/src/files/workspace_directory_reader.dart';
+import 'package:sadcoder_mobile/src/files/workspace_file_kind.dart';
+import 'package:sadcoder_mobile/src/files/workspace_file_reader.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_page.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_timeline_controller.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
@@ -5516,6 +5519,8 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       feedbackUploadRunner: feedbackUploadRunner,
       gitDiffReader: gitDiffReader,
       fileSearchReader: fileSearchReader,
+      workspaceDirectoryReader: const _FakeWorkspaceDirectoryReader(),
+      workspaceFileReader: const _FakeWorkspaceFileReader(),
     );
   }
 }
@@ -5537,6 +5542,8 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.feedbackUploadRunner,
     required this.gitDiffReader,
     required this.fileSearchReader,
+    required this.workspaceDirectoryReader,
+    required this.workspaceFileReader,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -5585,6 +5592,12 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final FileSearchReader fileSearchReader;
+
+  @override
+  final WorkspaceDirectoryReader workspaceDirectoryReader;
+
+  @override
+  final WorkspaceFileReader workspaceFileReader;
 
   @override
   ModelListReader get modelListReader => const _FakeModelListReader();
@@ -6185,6 +6198,59 @@ class _RecordingGitDiffReader implements GitDiffReader {
   Future<GitDiffResult> readDiff({String? cwd}) async {
     cwdValues.add(cwd);
     return result;
+  }
+}
+
+class _FakeWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
+  const _FakeWorkspaceDirectoryReader();
+
+  @override
+  Future<WorkspaceDirectoryPage> listDirectory({
+    required String root,
+    String path = '',
+    int limit = 100,
+    String? cursor,
+    bool includeHidden = false,
+  }) async {
+    return WorkspaceDirectoryPage(root: root, path: path, entries: const []);
+  }
+}
+
+class _FakeWorkspaceFileReader implements WorkspaceFileReader {
+  const _FakeWorkspaceFileReader();
+
+  @override
+  Future<WorkspaceFileStat> statFile({
+    required String root,
+    required String path,
+  }) async {
+    return WorkspaceFileStat(
+      root: root,
+      path: path,
+      kind: WorkspaceFileKind.file,
+    );
+  }
+
+  @override
+  Future<WorkspaceFileReadChunk> readFile({
+    required String root,
+    required String path,
+    int offset = 0,
+    int limitBytes = 64 * 1024,
+    String encoding = 'utf-8',
+  }) async {
+    return WorkspaceFileReadChunk(
+      root: root,
+      path: path,
+      sizeBytes: 0,
+      offset: offset,
+      bytesRead: 0,
+      nextOffset: null,
+      hasMore: false,
+      encoding: encoding,
+      isBinary: false,
+      content: '',
+    );
   }
 }
 

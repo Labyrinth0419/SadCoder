@@ -14,6 +14,8 @@ import '../diffs/git_diff_reader.dart';
 import '../events/codex_event.dart';
 import '../feedback/feedback_upload_runner.dart';
 import '../files/file_search_reader.dart';
+import '../files/workspace_directory_reader.dart';
+import '../files/workspace_file_reader.dart';
 import '../goals/thread_goal_runner.dart';
 import '../hooks/hook_list_reader.dart';
 import '../mcp/mcp_server_status_reader.dart';
@@ -105,6 +107,12 @@ class CodexSessionStateController extends ChangeNotifier {
   GitDiffReader? get gitDiffReader => _connection?.gitDiffReader;
 
   FileSearchReader? get fileSearchReader => _connection?.fileSearchReader;
+
+  WorkspaceDirectoryReader? get workspaceDirectoryReader =>
+      _connection?.workspaceDirectoryReader;
+
+  WorkspaceFileReader? get workspaceFileReader =>
+      _connection?.workspaceFileReader;
 
   McpServerStatusReader? get mcpServerStatusReader =>
       _connection?.mcpServerStatusReader;

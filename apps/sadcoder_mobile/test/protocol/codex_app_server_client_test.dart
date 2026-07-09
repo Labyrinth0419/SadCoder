@@ -292,6 +292,30 @@ void main() {
     },
   );
 
+  test('filesystem methods use app-server fs request names', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
+
+    final client = CodexAppServerClient(transport);
+    await client.fsReadDirectory(path: ' /repo/lib ');
+    await client.fsGetMetadata(path: ' /repo/lib/main.dart ');
+    await client.fsReadFile(path: ' /repo/lib/main.dart ');
+
+    expect(requests.map((request) => request.method), [
+      'fs/readDirectory',
+      'fs/getMetadata',
+      'fs/readFile',
+    ]);
+    expect(requests.map((request) => request.params), [
+      {'path': '/repo/lib'},
+      {'path': '/repo/lib/main.dart'},
+      {'path': '/repo/lib/main.dart'},
+    ]);
+  });
+
   test(
     'forkThread sends side conversation fork options when provided',
     () async {

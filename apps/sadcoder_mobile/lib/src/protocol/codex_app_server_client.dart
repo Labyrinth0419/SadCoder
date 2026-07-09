@@ -144,6 +144,18 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> fsReadFile({required String path}) {
+    return _request('fs/readFile', {'path': path.trim()});
+  }
+
+  Future<Map<String, Object?>> fsGetMetadata({required String path}) {
+    return _request('fs/getMetadata', {'path': path.trim()});
+  }
+
+  Future<Map<String, Object?>> fsReadDirectory({required String path}) {
+    return _request('fs/readDirectory', {'path': path.trim()});
+  }
+
   Future<Map<String, Object?>> readAccountRateLimits() {
     return _request('account/rateLimits/read');
   }

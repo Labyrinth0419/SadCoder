@@ -17,7 +17,11 @@ import '../events/codex_event.dart';
 import '../feedback/codex_feedback_upload_runner.dart';
 import '../feedback/feedback_upload_runner.dart';
 import '../files/codex_file_search_reader.dart';
+import '../files/codex_workspace_directory_reader.dart';
+import '../files/codex_workspace_file_reader.dart';
 import '../files/file_search_reader.dart';
+import '../files/workspace_directory_reader.dart';
+import '../files/workspace_file_reader.dart';
 import '../goals/codex_thread_goal_runner.dart';
 import '../goals/thread_goal_runner.dart';
 import '../hooks/codex_hook_list_reader.dart';
@@ -69,6 +73,10 @@ abstract interface class CodexSessionConnectionHandle {
   GitDiffReader get gitDiffReader;
 
   FileSearchReader get fileSearchReader;
+
+  WorkspaceDirectoryReader get workspaceDirectoryReader;
+
+  WorkspaceFileReader get workspaceFileReader;
 
   McpServerStatusReader get mcpServerStatusReader;
 
@@ -156,6 +164,8 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         ),
         feedbackUploadRunner: CodexFeedbackUploadRunner(session.client),
         fileSearchReader: CodexFileSearchReader(session.client),
+        workspaceDirectoryReader: CodexWorkspaceDirectoryReader(session.client),
+        workspaceFileReader: CodexWorkspaceFileReader(session.client),
         gitDiffReader: CodexGitDiffReader(
           CodexWorkspaceCommandRunner(session.client),
         ),
@@ -227,6 +237,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.accountUsageSnapshotReader,
     required this.feedbackUploadRunner,
     required this.fileSearchReader,
+    required this.workspaceDirectoryReader,
+    required this.workspaceFileReader,
     required this.gitDiffReader,
     required this.mcpServerStatusReader,
     required this.modelListReader,
@@ -264,6 +276,10 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final FeedbackUploadRunner feedbackUploadRunner;
   @override
   final FileSearchReader fileSearchReader;
+  @override
+  final WorkspaceDirectoryReader workspaceDirectoryReader;
+  @override
+  final WorkspaceFileReader workspaceFileReader;
   @override
   final GitDiffReader gitDiffReader;
   @override

@@ -19,6 +19,9 @@ import 'package:sadcoder_mobile/src/diffs/git_diff_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/feedback/feedback_upload_runner.dart';
 import 'package:sadcoder_mobile/src/files/file_search_reader.dart';
+import 'package:sadcoder_mobile/src/files/workspace_directory_reader.dart';
+import 'package:sadcoder_mobile/src/files/workspace_file_kind.dart';
+import 'package:sadcoder_mobile/src/files/workspace_file_reader.dart';
 import 'package:sadcoder_mobile/src/features/hosts/hosts_page.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
@@ -700,6 +703,14 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   FileSearchReader get fileSearchReader => const _FakeFileSearchReader();
 
   @override
+  WorkspaceDirectoryReader get workspaceDirectoryReader =>
+      const _FakeWorkspaceDirectoryReader();
+
+  @override
+  WorkspaceFileReader get workspaceFileReader =>
+      const _FakeWorkspaceFileReader();
+
+  @override
   McpServerStatusReader get mcpServerStatusReader =>
       const _FakeMcpServerStatusReader();
 
@@ -826,6 +837,59 @@ class _FakeFileSearchReader implements FileSearchReader {
     String? cancellationToken,
   }) async {
     return const FileSearchResultPage(files: []);
+  }
+}
+
+class _FakeWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
+  const _FakeWorkspaceDirectoryReader();
+
+  @override
+  Future<WorkspaceDirectoryPage> listDirectory({
+    required String root,
+    String path = '',
+    int limit = 100,
+    String? cursor,
+    bool includeHidden = false,
+  }) async {
+    return WorkspaceDirectoryPage(root: root, path: path, entries: const []);
+  }
+}
+
+class _FakeWorkspaceFileReader implements WorkspaceFileReader {
+  const _FakeWorkspaceFileReader();
+
+  @override
+  Future<WorkspaceFileStat> statFile({
+    required String root,
+    required String path,
+  }) async {
+    return WorkspaceFileStat(
+      root: root,
+      path: path,
+      kind: WorkspaceFileKind.file,
+    );
+  }
+
+  @override
+  Future<WorkspaceFileReadChunk> readFile({
+    required String root,
+    required String path,
+    int offset = 0,
+    int limitBytes = 64 * 1024,
+    String encoding = 'utf-8',
+  }) async {
+    return WorkspaceFileReadChunk(
+      root: root,
+      path: path,
+      sizeBytes: 0,
+      offset: offset,
+      bytesRead: 0,
+      nextOffset: null,
+      hasMore: false,
+      encoding: encoding,
+      isBinary: false,
+      content: '',
+    );
   }
 }
 
