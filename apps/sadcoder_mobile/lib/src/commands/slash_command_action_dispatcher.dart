@@ -27,6 +27,8 @@ typedef SlashCommandRenameThread = Future<bool> Function(String name);
 typedef SlashCommandLogout = Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandSubmitFeedback =
     Future<SlashCommandCallbackResult> Function();
+typedef SlashCommandConfigureTheme =
+    Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfirmedThreadAction =
     Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfiguredAction =
@@ -71,6 +73,7 @@ enum SlashCommandActionEffect {
   deleteThread,
   logout,
   feedback,
+  theme,
   modelOverride,
   personalityOverride,
   permissionsOverride,
@@ -198,6 +201,7 @@ class SlashCommandActionDispatcher {
     this.renameThread,
     this.logout,
     this.submitFeedback,
+    this.configureTheme,
     this.forkThread,
     this.compactThread,
     this.archiveThread,
@@ -228,6 +232,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandRenameThread? renameThread;
   final SlashCommandLogout? logout;
   final SlashCommandSubmitFeedback? submitFeedback;
+  final SlashCommandConfigureTheme? configureTheme;
   final SlashCommandConfiguredAction? forkThread;
   final SlashCommandConfiguredAction? compactThread;
   final SlashCommandConfirmedThreadAction? archiveThread;
@@ -351,6 +356,8 @@ class SlashCommandActionDispatcher {
         return _logout(parsed);
       case 'feedback':
         return _submitFeedback(parsed);
+      case 'theme':
+        return _configureTheme(parsed);
       default:
         return SlashCommandActionResult.unsupported(
           command: command,
@@ -821,6 +828,23 @@ class SlashCommandActionDispatcher {
       parsed,
       action: submitFeedback,
       effect: SlashCommandActionEffect.feedback,
+    );
+  }
+
+  Future<SlashCommandActionResult> _configureTheme(
+    SlashCommandParseResult parsed,
+  ) async {
+    if (parsed.arguments.trim().isNotEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    return _callbackAction(
+      parsed,
+      action: configureTheme,
+      effect: SlashCommandActionEffect.theme,
     );
   }
 

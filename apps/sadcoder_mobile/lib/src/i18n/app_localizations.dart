@@ -140,6 +140,7 @@ class AppLocalizations {
   String get slashCommandLoggedOut => _text('slashCommandLoggedOut');
   String get slashCommandFeedbackSubmitted =>
       _text('slashCommandFeedbackSubmitted');
+  String get slashCommandThemeUpdated => _text('slashCommandThemeUpdated');
   String get slashCommandModelUpdated => _text('slashCommandModelUpdated');
   String get slashCommandPersonalityUpdated =>
       _text('slashCommandPersonalityUpdated');
@@ -231,6 +232,11 @@ class AppLocalizations {
   String get feedbackIncludeLogs => _text('feedbackIncludeLogs');
   String get feedbackLogsDisclosure => _text('feedbackLogsDisclosure');
   String get feedbackSubmit => _text('feedbackSubmit');
+  String get themeCommandTitle => _text('themeCommandTitle');
+  String get themeSystem => _text('themeSystem');
+  String get themeLight => _text('themeLight');
+  String get themeDark => _text('themeDark');
+  String get applyTheme => _text('applyTheme');
   String get modelCommandTitle => _text('modelCommandTitle');
   String get modelCommandTurnScope => _text('modelCommandTurnScope');
   String get modelCommandSessionScope => _text('modelCommandSessionScope');
@@ -568,6 +574,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandDeletedThread': 'Deleted thread.',
     'slashCommandLoggedOut': 'Signed out of Codex account.',
     'slashCommandFeedbackSubmitted': 'Feedback submitted.',
+    'slashCommandThemeUpdated': 'Theme updated.',
     'slashCommandModelUpdated': 'Model override updated.',
     'slashCommandPersonalityUpdated': 'Personality override updated.',
     'slashCommandPermissionsUpdated': 'Permission override updated.',
@@ -656,6 +663,11 @@ const _values = <String, Map<String, String>>{
     'feedbackLogsDisclosure':
         'Logs may include prompts, paths, commands, and diagnostic details from this server.',
     'feedbackSubmit': 'Send feedback',
+    'themeCommandTitle': 'Theme',
+    'themeSystem': 'System',
+    'themeLight': 'Light',
+    'themeDark': 'Dark',
+    'applyTheme': 'Apply theme',
     'modelCommandTitle': 'Model override',
     'modelCommandTurnScope': 'Next turn',
     'modelCommandSessionScope': 'Session',
@@ -944,6 +956,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandDeletedThread': '已删除会话。',
     'slashCommandLoggedOut': '已退出服务器 Codex 账户。',
     'slashCommandFeedbackSubmitted': '已提交反馈。',
+    'slashCommandThemeUpdated': '已更新主题。',
     'slashCommandModelUpdated': '已更新模型覆盖。',
     'slashCommandPersonalityUpdated': '已更新协作风格覆盖。',
     'slashCommandPermissionsUpdated': '已更新权限覆盖。',
@@ -1026,6 +1039,11 @@ const _values = <String, Map<String, String>>{
     'feedbackIncludeLogs': '包含服务器日志',
     'feedbackLogsDisclosure': '日志可能包含提示词、路径、命令和此服务器上的诊断信息。',
     'feedbackSubmit': '发送反馈',
+    'themeCommandTitle': '主题',
+    'themeSystem': '跟随系统',
+    'themeLight': '浅色',
+    'themeDark': '深色',
+    'applyTheme': '应用主题',
     'modelCommandTitle': '模型覆盖',
     'modelCommandTurnScope': '本次回合',
     'modelCommandSessionScope': '本会话',

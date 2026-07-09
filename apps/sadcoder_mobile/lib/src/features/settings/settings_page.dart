@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../appearance/app_appearance_controller.dart';
 import '../../config/codex_config_override_controller.dart';
 import '../../config/codex_config_overrides.dart';
 import '../../config/codex_config_snapshot.dart';
@@ -9,10 +10,12 @@ import '../../i18n/app_localizations.dart';
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
     super.key,
+    this.appearanceController,
     this.configOverrideController,
     this.configSnapshotController,
   });
 
+  final AppAppearanceController? appearanceController;
   final CodexConfigOverrideController? configOverrideController;
   final CodexConfigSnapshotController? configSnapshotController;
 
@@ -35,14 +38,99 @@ class SettingsPage extends StatelessWidget {
           _ServerConfigSnapshotCard(controller: configSnapshotController!),
         if (configOverrideController != null)
           _AppDefaultOverridesCard(controller: configOverrideController!),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.dark_mode_outlined),
-            title: Text(l10n.theme),
-            subtitle: Text(l10n.themeBody),
-          ),
-        ),
+        if (appearanceController == null)
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.dark_mode_outlined),
+              title: Text(l10n.theme),
+              subtitle: Text(l10n.themeBody),
+            ),
+          )
+        else
+          _AppearanceSettingsCard(controller: appearanceController!),
       ],
+    );
+  }
+}
+
+class _AppearanceSettingsCard extends StatelessWidget {
+  const _AppearanceSettingsCard({required this.controller});
+
+  final AppAppearanceController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) =>
+          _AppearanceSettingsContent(controller: controller),
+    );
+  }
+}
+
+class _AppearanceSettingsContent extends StatelessWidget {
+  const _AppearanceSettingsContent({required this.controller});
+
+  final AppAppearanceController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.dark_mode_outlined),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.theme,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Text(
+                        l10n.themeBody,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<AppThemePreference>(
+              key: const ValueKey('settings-theme-selector'),
+              segments: [
+                ButtonSegment(
+                  value: AppThemePreference.system,
+                  icon: const Icon(Icons.brightness_auto_outlined),
+                  label: Text(l10n.themeSystem),
+                ),
+                ButtonSegment(
+                  value: AppThemePreference.light,
+                  icon: const Icon(Icons.light_mode_outlined),
+                  label: Text(l10n.themeLight),
+                ),
+                ButtonSegment(
+                  value: AppThemePreference.dark,
+                  icon: const Icon(Icons.dark_mode_outlined),
+                  label: Text(l10n.themeDark),
+                ),
+              ],
+              selected: {controller.theme},
+              onSelectionChanged: (selection) {
+                controller.setTheme(selection.single);
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

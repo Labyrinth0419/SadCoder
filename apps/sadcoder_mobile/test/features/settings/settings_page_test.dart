@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/appearance/app_appearance_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_controller.dart';
@@ -89,11 +90,42 @@ void main() {
       'gpt-5-codex',
     );
   });
+
+  testWidgets('updates app theme preference from settings', (tester) async {
+    final overrideController = CodexConfigOverrideController();
+    final appearanceController = AppAppearanceController(
+      theme: AppThemePreference.light,
+    );
+    addTearDown(overrideController.dispose);
+    addTearDown(appearanceController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      appearanceController: appearanceController,
+    );
+
+    expect(appearanceController.theme, AppThemePreference.light);
+    expect(
+      find.byKey(const ValueKey('settings-theme-selector')),
+      findsOneWidget,
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('settings-theme-selector')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dark').last);
+    await tester.pumpAndSettle();
+
+    expect(appearanceController.theme, AppThemePreference.dark);
+  });
 }
 
 Future<void> _pumpSettings(
   WidgetTester tester,
   CodexConfigOverrideController controller, {
+  AppAppearanceController? appearanceController,
   CodexConfigSnapshotController? configSnapshotController,
 }) {
   return tester.pumpWidget(
@@ -107,6 +139,7 @@ Future<void> _pumpSettings(
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SettingsPage(
+          appearanceController: appearanceController,
           configOverrideController: controller,
           configSnapshotController: configSnapshotController,
         ),

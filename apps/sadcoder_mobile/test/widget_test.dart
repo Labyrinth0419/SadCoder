@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/accounts/account_logout_runner.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
+import 'package:sadcoder_mobile/src/appearance/app_appearance_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
@@ -55,6 +56,30 @@ void main() {
     expect(find.text('对话'), findsWidgets);
     expect(find.text('审批'), findsWidgets);
     expect(find.text('设置'), findsWidgets);
+  });
+
+  testWidgets('applies injected appearance theme mode', (tester) async {
+    final appearanceController = AppAppearanceController(
+      theme: AppThemePreference.dark,
+    );
+    addTearDown(appearanceController.dispose);
+
+    await tester.pumpWidget(
+      SadCoderApp(appearanceController: appearanceController),
+    );
+
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.dark,
+    );
+
+    appearanceController.setTheme(AppThemePreference.light);
+    await tester.pump();
+
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.light,
+    );
   });
 
   testWidgets('renders injected pending approvals in the shell', (

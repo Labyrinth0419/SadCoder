@@ -8,6 +8,7 @@ import 'package:sadcoder_mobile/src/accounts/account_logout_runner.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/apps/app_list_reader.dart';
+import 'package:sadcoder_mobile/src/appearance/app_appearance_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal_runner.dart';
@@ -1803,6 +1804,30 @@ void main() {
       includeLogs: true,
     ));
     expect(find.text('Feedback submitted.'), findsOneWidget);
+  });
+
+  testWidgets('/theme applies mobile theme preference', (tester) async {
+    final appearanceController = AppAppearanceController();
+    addTearDown(appearanceController.dispose);
+
+    await _pumpChatPage(tester, appearanceController: appearanceController);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/theme',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Theme'), findsWidgets);
+    await tester.tap(find.text('Dark').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('chat-theme-command-apply')));
+    await tester.pumpAndSettle();
+
+    expect(appearanceController.theme, AppThemePreference.dark);
+    expect(find.text('Theme updated.'), findsOneWidget);
   });
 
   testWidgets('/goal reads the selected thread goal', (tester) async {
@@ -3948,6 +3973,7 @@ Future<void> _pumpChatPage(
   ThreadDetailController? threadDetailController,
   TurnController? turnController,
   ChatTimelineController? timelineController,
+  AppAppearanceController? appearanceController,
   CodexConfigOverrideController? configOverrideController,
   CodexConfigSnapshotController? configSnapshotController,
   AccountSnapshotController? accountSnapshotController,
@@ -3972,6 +3998,7 @@ Future<void> _pumpChatPage(
           threadDetailController: threadDetailController,
           turnController: turnController,
           timelineController: timelineController,
+          appearanceController: appearanceController,
           configOverrideController: configOverrideController,
           configSnapshotController: configSnapshotController,
           accountSnapshotController: accountSnapshotController,

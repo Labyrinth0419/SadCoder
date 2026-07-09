@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../accounts/account_snapshot_controller.dart';
+import '../../appearance/app_appearance_controller.dart';
 import '../../commands/slash_command_action_dispatcher.dart';
 import '../../commands/slash_command_registry.dart';
 import '../../config/codex_config_override_controller.dart';
@@ -51,6 +52,7 @@ class ChatPage extends StatefulWidget {
     this.threadDetailController,
     this.turnController,
     this.timelineController,
+    this.appearanceController,
     this.configOverrideController,
     this.configSnapshotController,
     this.accountSnapshotController,
@@ -67,6 +69,7 @@ class ChatPage extends StatefulWidget {
   final ThreadDetailController? threadDetailController;
   final TurnController? turnController;
   final ChatTimelineController? timelineController;
+  final AppAppearanceController? appearanceController;
   final CodexConfigOverrideController? configOverrideController;
   final CodexConfigSnapshotController? configSnapshotController;
   final AccountSnapshotController? accountSnapshotController;
@@ -353,6 +356,7 @@ class _ChatPageState extends State<ChatPage> {
           renameThread: _renameThread,
           logout: _logoutAccount,
           submitFeedback: _submitFeedback,
+          configureTheme: _configureTheme,
           forkThread: _forkCurrentThread,
           compactThread: _compactCurrentThread,
           archiveThread: _archiveCurrentThread,
@@ -843,6 +847,25 @@ class _ChatPageState extends State<ChatPage> {
     return SlashCommandCallbackResult.executed;
   }
 
+  Future<SlashCommandCallbackResult> _configureTheme() async {
+    final controller = widget.appearanceController;
+    if (controller == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    final theme = await showModalBottomSheet<AppThemePreference>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _ThemeSheet(initialTheme: controller.theme),
+    );
+    if (!mounted || theme == null) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+
+    controller.setTheme(theme);
+    return SlashCommandCallbackResult.executed;
+  }
+
   Future<SlashCommandCallbackResult> _submitFeedback() async {
     final runner = widget.sessionController?.feedbackUploadRunner;
     if (runner == null) {
@@ -1058,6 +1081,7 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.deleteThread => l10n.slashCommandDeletedThread,
         SlashCommandActionEffect.logout => l10n.slashCommandLoggedOut,
         SlashCommandActionEffect.feedback => l10n.slashCommandFeedbackSubmitted,
+        SlashCommandActionEffect.theme => l10n.slashCommandThemeUpdated,
         SlashCommandActionEffect.modelOverride => l10n.slashCommandModelUpdated,
         SlashCommandActionEffect.personalityOverride =>
           l10n.slashCommandPersonalityUpdated,
@@ -1199,6 +1223,89 @@ const _goalStatuses = {
   'budgetLimited',
   'complete',
 };
+
+class _ThemeSheet extends StatefulWidget {
+  const _ThemeSheet({required this.initialTheme});
+
+  final AppThemePreference initialTheme;
+
+  @override
+  State<_ThemeSheet> createState() => _ThemeSheetState();
+}
+
+class _ThemeSheetState extends State<_ThemeSheet> {
+  late AppThemePreference _theme;
+
+  @override
+  void initState() {
+    super.initState();
+    _theme = widget.initialTheme;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.themeCommandTitle,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<AppThemePreference>(
+              segments: [
+                ButtonSegment(
+                  value: AppThemePreference.system,
+                  icon: const Icon(Icons.brightness_auto_outlined),
+                  label: Text(l10n.themeSystem),
+                ),
+                ButtonSegment(
+                  value: AppThemePreference.light,
+                  icon: const Icon(Icons.light_mode_outlined),
+                  label: Text(l10n.themeLight),
+                ),
+                ButtonSegment(
+                  value: AppThemePreference.dark,
+                  icon: const Icon(Icons.dark_mode_outlined),
+                  label: Text(l10n.themeDark),
+                ),
+              ],
+              selected: {_theme},
+              onSelectionChanged: (selection) {
+                setState(() => _theme = selection.single);
+              },
+            ),
+            const SizedBox(height: 16),
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              spacing: 8,
+              overflowSpacing: 8,
+              children: [
+                TextButton.icon(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                  label: Text(l10n.approvalCancel),
+                ),
+                FilledButton.icon(
+                  key: const ValueKey('chat-theme-command-apply'),
+                  onPressed: () => Navigator.of(context).pop(_theme),
+                  icon: const Icon(Icons.check),
+                  label: Text(l10n.applyTheme),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _FeedbackFormResult {
   const _FeedbackFormResult({

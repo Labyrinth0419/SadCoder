@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../accounts/account_snapshot_controller.dart';
 import '../agent/agent_remote_service.dart';
+import '../appearance/app_appearance_controller.dart';
 import '../approvals/approval_state_controller.dart';
 import '../config/codex_config_override_controller.dart';
 import '../config/codex_config_snapshot_controller.dart';
@@ -38,11 +39,13 @@ const _defaultAgentRemoteService = AgentRemoteService(
 class AppShell extends StatefulWidget {
   const AppShell({
     super.key,
+    this.appearanceController,
     this.approvalController,
     this.sessionController,
     this.profileStore,
   });
 
+  final AppAppearanceController? appearanceController;
   final ApprovalStateController? approvalController;
   final CodexSessionStateController? sessionController;
   final SshProfileStore? profileStore;
@@ -234,6 +237,7 @@ class _AppShellState extends State<AppShell> {
         threadDetailController: _threadDetailController,
         turnController: _turnController,
         timelineController: _timelineController,
+        appearanceController: widget.appearanceController,
         configOverrideController: _configOverrideController,
         configSnapshotController: _configSnapshotController,
         accountSnapshotController: _accountSnapshotController,
@@ -255,6 +259,7 @@ class _AppShellState extends State<AppShell> {
             : null,
       ),
       3 => SettingsPage(
+        appearanceController: widget.appearanceController,
         configOverrideController: _configOverrideController,
         configSnapshotController: _configSnapshotController,
       ),
