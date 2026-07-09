@@ -197,7 +197,7 @@ class _AppShellState extends State<AppShell> {
             ? _approvalController.sendMcpElicitationResponse
             : null,
       ),
-      3 => const SettingsPage(),
+      3 => SettingsPage(configOverrideController: _configOverrideController),
       _ => HostsPage(sessionController: _sessionController),
     };
   }

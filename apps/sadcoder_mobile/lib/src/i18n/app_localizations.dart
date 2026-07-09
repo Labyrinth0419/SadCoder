@@ -134,6 +134,17 @@ class AppLocalizations {
   String get approvalNoDirectActions => _text('approvalNoDirectActions');
   String get serverDefaults => _text('serverDefaults');
   String get serverDefaultsBody => _text('serverDefaultsBody');
+  String get appDefaultOverrides => _text('appDefaultOverrides');
+  String get modelOverride => _text('modelOverride');
+  String get effortOverride => _text('effortOverride');
+  String get cwdOverride => _text('cwdOverride');
+  String get applyOverrides => _text('applyOverrides');
+  String get clearOverrides => _text('clearOverrides');
+  String get overrideSource => _text('overrideSource');
+  String get sourceServerDefault => _text('sourceServerDefault');
+  String get sourceAppDefault => _text('sourceAppDefault');
+  String get sourceSessionOverride => _text('sourceSessionOverride');
+  String get sourceTurnOverride => _text('sourceTurnOverride');
   String get theme => _text('theme');
   String get themeBody => _text('themeBody');
 
@@ -278,6 +289,17 @@ const _values = <String, Map<String, String>>{
     'serverDefaults': 'Server defaults',
     'serverDefaultsBody':
         'Codex configuration is inherited from the server unless an override is explicitly set.',
+    'appDefaultOverrides': 'App default overrides',
+    'modelOverride': 'Model',
+    'effortOverride': 'Reasoning effort',
+    'cwdOverride': 'Working directory',
+    'applyOverrides': 'Apply overrides',
+    'clearOverrides': 'Clear overrides',
+    'overrideSource': 'Source',
+    'sourceServerDefault': 'server default',
+    'sourceAppDefault': 'app default',
+    'sourceSessionOverride': 'session override',
+    'sourceTurnOverride': 'turn override',
     'theme': 'Theme',
     'themeBody': 'System, light, and dark modes are supported.',
   },
@@ -394,6 +416,17 @@ const _values = <String, Map<String, String>>{
     'approvalNoDirectActions': '暂无可直接执行的操作',
     'serverDefaults': '服务器默认配置',
     'serverDefaultsBody': '默认沿用服务器上的 Codex 配置，只有显式设置时才覆盖。',
+    'appDefaultOverrides': 'App 默认覆盖',
+    'modelOverride': '模型',
+    'effortOverride': '推理强度',
+    'cwdOverride': '工作目录',
+    'applyOverrides': '应用覆盖',
+    'clearOverrides': '清除覆盖',
+    'overrideSource': '来源',
+    'sourceServerDefault': '服务器默认',
+    'sourceAppDefault': 'App 默认',
+    'sourceSessionOverride': '会话覆盖',
+    'sourceTurnOverride': '本次覆盖',
     'theme': '主题',
     'themeBody': '支持跟随系统、浅色和深色模式。',
   },
