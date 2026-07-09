@@ -263,6 +263,19 @@
       "riskLevel": "low"
     },
     {
+      "command": "rewind",
+      "aliases": [],
+      "description": "fork the current chat from a turn checkpoint",
+      "supportsInlineArgs": true,
+      "availableDuringTask": false,
+      "availableInSideConversation": false,
+      "platformVisibility": "all",
+      "mappingType": "appServer",
+      "mappingTarget": "thread/fork lastTurnId",
+      "phase": "secondStage",
+      "riskLevel": "low"
+    },
+    {
       "command": "app",
       "aliases": [],
       "description": "continue this session in Codex Desktop",

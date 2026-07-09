@@ -1190,6 +1190,44 @@ void main() {
     expect(result.effect, SlashCommandActionEffect.forkThread);
   });
 
+  test('/rewind runs the injected rewind action with a turn id', () async {
+    final rewindCalls = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      rewindThread: (lastTurnId) async {
+        rewindCalls.add(lastTurnId);
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/rewind  turn_2  '),
+      hasActiveTurn: false,
+    );
+
+    expect(rewindCalls, ['turn_2']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.rewindThread);
+  });
+
+  test('/rewind requires a turn id', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      rewindThread: (_) async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/rewind'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, 0);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'rewind');
+  });
+
   test('/compact runs the injected compaction action', () async {
     var compactions = 0;
     final dispatcher = SlashCommandActionDispatcher(
@@ -1275,12 +1313,17 @@ void main() {
     'thread lifecycle commands are unavailable during an active turn',
     () async {
       var forkCalls = 0;
+      var rewindCalls = 0;
       var compactCalls = 0;
       var archiveCalls = 0;
       var deleteCalls = 0;
       final dispatcher = SlashCommandActionDispatcher(
         forkThread: () async {
           forkCalls++;
+          return SlashCommandCallbackResult.executed;
+        },
+        rewindThread: (_) async {
+          rewindCalls++;
           return SlashCommandCallbackResult.executed;
         },
         compactThread: () async {
@@ -1309,6 +1352,10 @@ void main() {
         registry.parseComposerText('/fork'),
         hasActiveTurn: true,
       );
+      final rewind = await dispatcher.dispatch(
+        registry.parseComposerText('/rewind turn_2'),
+        hasActiveTurn: true,
+      );
       final compact = await dispatcher.dispatch(
         registry.parseComposerText('/compact'),
         hasActiveTurn: true,
@@ -1317,8 +1364,10 @@ void main() {
       expect(archive.outcome, SlashCommandActionOutcome.unavailable);
       expect(delete.outcome, SlashCommandActionOutcome.unavailable);
       expect(fork.outcome, SlashCommandActionOutcome.unavailable);
+      expect(rewind.outcome, SlashCommandActionOutcome.unavailable);
       expect(compact.outcome, SlashCommandActionOutcome.unavailable);
       expect(forkCalls, 0);
+      expect(rewindCalls, 0);
       expect(compactCalls, 0);
       expect(archiveCalls, 0);
       expect(deleteCalls, 0);

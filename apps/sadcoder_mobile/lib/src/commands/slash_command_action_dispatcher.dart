@@ -28,6 +28,8 @@ typedef SlashCommandRenameThread = Future<bool> Function(String name);
 typedef SlashCommandLogout = Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandSubmitFeedback =
     Future<SlashCommandCallbackResult> Function();
+typedef SlashCommandArgumentAction =
+    Future<SlashCommandCallbackResult> Function(String arguments);
 typedef SlashCommandConfigureTheme =
     Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfigureTitleDisplay =
@@ -92,6 +94,7 @@ enum SlashCommandActionEffect {
   resumeThread,
   renameThread,
   forkThread,
+  rewindThread,
   compactThread,
   archiveThread,
   deleteThread,
@@ -248,6 +251,7 @@ class SlashCommandActionDispatcher {
     this.startSideConversation,
     this.showAgentTopology,
     this.forkThread,
+    this.rewindThread,
     this.compactThread,
     this.archiveThread,
     this.deleteThread,
@@ -290,6 +294,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandStartSideConversation? startSideConversation;
   final SlashCommandShowAgentTopology? showAgentTopology;
   final SlashCommandConfiguredAction? forkThread;
+  final SlashCommandArgumentAction? rewindThread;
   final SlashCommandConfiguredAction? compactThread;
   final SlashCommandConfirmedThreadAction? archiveThread;
   final SlashCommandConfirmedThreadAction? deleteThread;
@@ -412,6 +417,12 @@ class SlashCommandActionDispatcher {
           parsed,
           action: forkThread,
           effect: SlashCommandActionEffect.forkThread,
+        );
+      case 'rewind':
+        return _configuredArgumentAction(
+          parsed,
+          action: rewindThread,
+          effect: SlashCommandActionEffect.rewindThread,
         );
       case 'compact':
         return _configuredAction(
@@ -1210,6 +1221,59 @@ class SlashCommandActionDispatcher {
     required SlashCommandActionEffect effect,
   }) async {
     return _callbackAction(parsed, action: action, effect: effect);
+  }
+
+  Future<SlashCommandActionResult> _configuredArgumentAction(
+    SlashCommandParseResult parsed, {
+    required SlashCommandArgumentAction? action,
+    required SlashCommandActionEffect effect,
+  }) async {
+    if (action == null) {
+      return SlashCommandActionResult.unsupported(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    final arguments = parsed.arguments.trim();
+    if (arguments.isEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    try {
+      final result = await action(arguments);
+      return switch (result) {
+        SlashCommandCallbackResult.executed =>
+          SlashCommandActionResult.executed(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+            effect: effect,
+          ),
+        SlashCommandCallbackResult.cancelled =>
+          SlashCommandActionResult.cancelled(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+          ),
+        SlashCommandCallbackResult.unavailable =>
+          SlashCommandActionResult.unavailable(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+          ),
+      };
+    } on Object catch (error) {
+      return SlashCommandActionResult.failed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        error: error,
+      );
+    }
   }
 
   Future<SlashCommandActionResult> _callbackAction(

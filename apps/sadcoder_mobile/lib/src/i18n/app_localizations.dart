@@ -177,6 +177,7 @@ class AppLocalizations {
   String get slashCommandResumedThread => _text('slashCommandResumedThread');
   String get slashCommandRenamedThread => _text('slashCommandRenamedThread');
   String get slashCommandForkedThread => _text('slashCommandForkedThread');
+  String get slashCommandRewoundThread => _text('slashCommandRewoundThread');
   String get slashCommandCompactionStarted =>
       _text('slashCommandCompactionStarted');
   String get slashCommandArchivedThread => _text('slashCommandArchivedThread');
@@ -858,6 +859,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandResumedThread': 'Resumed thread.',
     'slashCommandRenamedThread': 'Renamed thread.',
     'slashCommandForkedThread': 'Forked thread.',
+    'slashCommandRewoundThread': 'Rewound thread.',
     'slashCommandCompactionStarted': 'Started thread compaction.',
     'slashCommandArchivedThread': 'Archived thread.',
     'slashCommandDeletedThread': 'Deleted thread.',
@@ -1392,6 +1394,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandResumedThread': '已恢复会话。',
     'slashCommandRenamedThread': '已重命名会话。',
     'slashCommandForkedThread': '已派生会话。',
+    'slashCommandRewoundThread': '已回退会话。',
     'slashCommandCompactionStarted': '已开始压缩会话。',
     'slashCommandArchivedThread': '已归档会话。',
     'slashCommandDeletedThread': '已删除会话。',

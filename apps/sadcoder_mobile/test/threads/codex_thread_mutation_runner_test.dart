@@ -36,6 +36,40 @@ void main() {
     },
   );
 
+  test('rewindThread forks from the requested turn checkpoint', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {
+        'thread': {
+          'id': 'thr_rewind',
+          'sessionId': 'sess_1',
+          'preview': 'Rewound work',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 2,
+          'forkedFromId': 'thr_source',
+          'turns': <Object?>[],
+        },
+      };
+    });
+    final runner = CodexThreadMutationRunner(CodexAppServerClient(transport));
+
+    final thread = await runner.rewindThread(
+      threadId: 'thr_source',
+      lastTurnId: 'turn_2',
+    );
+
+    expect(thread.id, 'thr_rewind');
+    expect(thread.forkedFromId, 'thr_source');
+    expect(requests.single.method, 'thread/fork');
+    expect(requests.single.params, {
+      'threadId': 'thr_source',
+      'lastTurnId': 'turn_2',
+    });
+  });
+
   test('compactThread starts server compaction for the thread', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {

@@ -443,6 +443,7 @@ class _ChatPageState extends State<ChatPage> {
           startSideConversation: _startSideConversation,
           showAgentTopology: _showAgentTopology,
           forkThread: _forkCurrentThread,
+          rewindThread: _rewindCurrentThread,
           compactThread: _compactCurrentThread,
           archiveThread: _archiveCurrentThread,
           deleteThread: _deleteCurrentThread,
@@ -1069,16 +1070,40 @@ class _ChatPageState extends State<ChatPage> {
       return SlashCommandCallbackResult.unavailable;
     }
     final forked = await runner.forkThread(threadId: threadId);
-    if (forked.id.trim().isEmpty) {
+    return _activateForkedThread(forked);
+  }
+
+  Future<SlashCommandCallbackResult> _rewindCurrentThread(
+    String lastTurnId,
+  ) async {
+    final runner = widget.sessionController?.threadMutationRunner;
+    final threadId = _currentThreadId();
+    final checkpoint = lastTurnId.trim();
+    final turnController = widget.turnController;
+    if (runner == null || threadId == null || checkpoint.isEmpty) {
       return SlashCommandCallbackResult.unavailable;
     }
-    final activated = turnController?.activateThread(forked.id) ?? true;
+    if (turnController != null && !turnController.canSubmit) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    final rewound = await runner.rewindThread(
+      threadId: threadId,
+      lastTurnId: checkpoint,
+    );
+    return _activateForkedThread(rewound);
+  }
+
+  SlashCommandCallbackResult _activateForkedThread(ThreadSummary thread) {
+    if (thread.id.trim().isEmpty) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    final activated = widget.turnController?.activateThread(thread.id) ?? true;
     if (!activated) {
       return SlashCommandCallbackResult.unavailable;
     }
     _clearSideConversation();
-    widget.timelineController?.showThread(forked);
-    unawaited(widget.threadDetailController?.readThread(forked.id));
+    widget.timelineController?.showThread(thread);
+    unawaited(widget.threadDetailController?.readThread(thread.id));
     unawaited(widget.threadListController?.refresh());
     return SlashCommandCallbackResult.executed;
   }
@@ -1643,6 +1668,7 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.resumeThread => l10n.slashCommandResumedThread,
         SlashCommandActionEffect.renameThread => l10n.slashCommandRenamedThread,
         SlashCommandActionEffect.forkThread => l10n.slashCommandForkedThread,
+        SlashCommandActionEffect.rewindThread => l10n.slashCommandRewoundThread,
         SlashCommandActionEffect.compactThread =>
           l10n.slashCommandCompactionStarted,
         SlashCommandActionEffect.archiveThread =>

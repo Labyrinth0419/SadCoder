@@ -4181,6 +4181,110 @@ void main() {
     expect(find.text('Forked thread.'), findsOneWidget);
   });
 
+  testWidgets('/rewind forks from a turn and selects the rewound thread', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final mutationRunner = _FakeThreadMutationRunner(
+      rewoundThread: ThreadSummary.fromJson({
+        'id': 'thr_rewind',
+        'sessionId': 'sess_1',
+        'preview': 'Rewound thread',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 3,
+        'forkedFromId': 'thr_selected',
+        'turns': [
+          {
+            'id': 'turn_rewound',
+            'status': 'completed',
+            'items': <Object?>[],
+            'itemsView': 'full',
+          },
+        ],
+      }),
+    );
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(
+        thread: ThreadSummary.fromJson({
+          'id': 'thr_rewind',
+          'sessionId': 'sess_1',
+          'preview': 'Rewound thread',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 3,
+          'forkedFromId': 'thr_selected',
+          'turns': <Object?>[],
+        }),
+      ),
+    );
+    final listReader = _CountingThreadListReader(
+      page: const ThreadListPage(threads: []),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: listReader,
+      turnRunner: turnRunner,
+      threadMutationRunner: mutationRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadListController = ThreadListController(
+      readerProvider: () => sessionController.threadListReader,
+    );
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    addTearDown(threadDetailController.dispose);
+    addTearDown(threadListController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await threadDetailController.readThread('thr_selected');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadListController: threadListController,
+      threadDetailController: threadDetailController,
+      turnController: turnController,
+      timelineController: timelineController,
+    );
+    await tester.pumpAndSettle();
+    final callsBeforeRewind = listReader.calls;
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/rewind turn_selected',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(mutationRunner.rewoundThreads, [
+      (threadId: 'thr_selected', lastTurnId: 'turn_selected'),
+    ]);
+    expect(mutationRunner.forkedThreads, isEmpty);
+    expect(turnRunner.resumedThreads, isEmpty);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(turnController.activeThreadId, 'thr_rewind');
+    expect(threadDetailController.selectedThreadId, 'thr_rewind');
+    expect(timelineController.selectedThreadId, 'thr_rewind');
+    expect(listReader.calls, callsBeforeRewind + 1);
+    expect(find.text('Rewound thread.'), findsOneWidget);
+  });
+
   testWidgets('/side starts a side conversation and returns to main thread', (
     tester,
   ) async {
@@ -6446,14 +6550,18 @@ class _FakeTurnRunner implements TurnRunner {
 class _FakeThreadMutationRunner implements ThreadMutationRunner {
   _FakeThreadMutationRunner({
     ThreadSummary? forkedThread,
+    ThreadSummary? rewoundThread,
     ThreadSummary? sideThread,
   }) : forkedThread = forkedThread ?? _thread('thr_fork'),
+       rewoundThread = rewoundThread ?? _thread('thr_rewind'),
        sideThread = sideThread ?? _thread('thr_side');
 
   final ThreadSummary forkedThread;
+  final ThreadSummary rewoundThread;
   final ThreadSummary sideThread;
   final forkedThreads =
       <({String threadId, String? lastTurnId, bool ephemeral})>[];
+  final rewoundThreads = <({String threadId, String lastTurnId})>[];
   final sideStartedThreads = <String>[];
   final compactedThreads = <String>[];
   final renamedThreads = <({String threadId, String name})>[];
@@ -6472,6 +6580,15 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
       ephemeral: ephemeral,
     ));
     return forkedThread;
+  }
+
+  @override
+  Future<ThreadSummary> rewindThread({
+    required String threadId,
+    required String lastTurnId,
+  }) async {
+    rewoundThreads.add((threadId: threadId, lastTurnId: lastTurnId));
+    return rewoundThread;
   }
 
   @override
@@ -6515,6 +6632,12 @@ class _NoopThreadMutationRunner implements ThreadMutationRunner {
     String? lastTurnId,
     bool ephemeral = false,
   }) async => _thread('thr_fork');
+
+  @override
+  Future<ThreadSummary> rewindThread({
+    required String threadId,
+    required String lastTurnId,
+  }) async => _thread('thr_rewind');
 
   @override
   Future<ThreadSummary> startSideConversation({

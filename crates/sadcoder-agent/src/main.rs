@@ -768,7 +768,7 @@ mod tests {
         let manifest = load_slash_command_manifest().expect("manifest loads");
 
         assert_eq!(manifest.schema_version, 1);
-        assert_eq!(manifest.commands.len(), 55);
+        assert_eq!(manifest.commands.len(), 56);
         assert_eq!(
             manifest
                 .commands
@@ -783,6 +783,14 @@ mod tests {
             .find(|command| command.command == "stop")
             .expect("stop command");
         assert_eq!(stop.aliases, vec!["clean".to_string()]);
+
+        let rewind = manifest
+            .commands
+            .iter()
+            .find(|command| command.command == "rewind")
+            .expect("rewind command");
+        assert!(rewind.supports_inline_args);
+        assert_eq!(rewind.mapping_target, "thread/fork lastTurnId");
 
         let side = manifest
             .commands

@@ -399,6 +399,15 @@ const builtInSlashCommands = <SlashCommandSpec>[
     phase: SlashCommandPhase.secondStage,
   ),
   SlashCommandSpec(
+    command: 'rewind',
+    description: 'fork the current chat from a turn checkpoint',
+    supportsInlineArgs: true,
+    availableDuringTask: false,
+    mappingType: SlashCommandMappingType.appServer,
+    mappingTarget: 'thread/fork lastTurnId',
+    phase: SlashCommandPhase.secondStage,
+  ),
+  SlashCommandSpec(
     command: 'app',
     description: 'continue this session in Codex Desktop',
     platformVisibility: SlashPlatformVisibility.desktopOnly,

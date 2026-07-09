@@ -1078,6 +1078,23 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
   }
 
   @override
+  Future<ThreadSummary> rewindThread({
+    required String threadId,
+    required String lastTurnId,
+  }) async {
+    return ThreadSummary.fromJson({
+      'id': 'thr_rewind',
+      'sessionId': 'sess_1',
+      'preview': 'Rewound thread',
+      'ephemeral': false,
+      'status': 'idle',
+      'cwd': '/repo',
+      'updatedAt': 1,
+      'forkedFromId': threadId,
+    });
+  }
+
+  @override
   Future<ThreadSummary> startSideConversation({
     required String threadId,
   }) async {
