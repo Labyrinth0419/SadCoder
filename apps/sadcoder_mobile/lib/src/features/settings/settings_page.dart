@@ -6,6 +6,7 @@ import '../../config/codex_config_override_controller.dart';
 import '../../config/codex_config_overrides.dart';
 import '../../config/codex_config_snapshot.dart';
 import '../../config/codex_config_snapshot_controller.dart';
+import '../../diagnostics/diagnostic_log_export_controller.dart';
 import '../../i18n/app_localizations.dart';
 import '../../security/permission_risk.dart';
 
@@ -16,12 +17,14 @@ class SettingsPage extends StatelessWidget {
     this.configOverrideController,
     this.configSnapshotController,
     this.backgroundConnectionPreferences,
+    this.diagnosticLogExportController,
   });
 
   final AppAppearanceController? appearanceController;
   final CodexConfigOverrideController? configOverrideController;
   final CodexConfigSnapshotController? configSnapshotController;
   final BackgroundConnectionPreferences? backgroundConnectionPreferences;
+  final DiagnosticLogExportController? diagnosticLogExportController;
 
   @override
   Widget build(BuildContext context) {
@@ -56,8 +59,91 @@ class SettingsPage extends StatelessWidget {
           _BackgroundConnectionSettingsCard(
             preferences: backgroundConnectionPreferences!,
           ),
+        if (diagnosticLogExportController != null)
+          _DiagnosticLogExportCard(controller: diagnosticLogExportController!),
       ],
     );
+  }
+}
+
+class _DiagnosticLogExportCard extends StatefulWidget {
+  const _DiagnosticLogExportCard({required this.controller});
+
+  final DiagnosticLogExportController controller;
+
+  @override
+  State<_DiagnosticLogExportCard> createState() =>
+      _DiagnosticLogExportCardState();
+}
+
+class _DiagnosticLogExportCardState extends State<_DiagnosticLogExportCard> {
+  bool _copying = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.article_outlined),
+        title: Text(l10n.diagnosticLogs),
+        subtitle: Text(l10n.diagnosticLogsBody),
+        trailing: FilledButton.icon(
+          key: const ValueKey('settings-copy-diagnostic-logs'),
+          onPressed: _copying ? null : _copyLogs,
+          icon: const Icon(Icons.copy),
+          label: Text(l10n.copyDiagnosticLogs),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _copyLogs() async {
+    final l10n = context.l10n;
+    if (widget.controller.entryCount == 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.diagnosticLogsEmpty)));
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.diagnosticLogsConfirmTitle),
+        content: Text(l10n.diagnosticLogsConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.copyDiagnosticLogs),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() => _copying = true);
+    try {
+      final result = await widget.controller.copyLogs();
+      if (!mounted) {
+        return;
+      }
+      final message = result.copied
+          ? l10n.diagnosticLogsCopied(result.entryCount)
+          : l10n.diagnosticLogsEmpty;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) {
+        setState(() => _copying = false);
+      }
+    }
   }
 }
 

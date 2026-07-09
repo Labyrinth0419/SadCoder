@@ -9,6 +9,7 @@ import '../approvals/approval_state_controller.dart';
 import '../background/background_connection_policy.dart';
 import '../config/codex_config_override_controller.dart';
 import '../config/codex_config_snapshot_controller.dart';
+import '../diagnostics/diagnostic_log_export_controller.dart';
 import '../features/approvals/approvals_page.dart';
 import '../features/chat/chat_page.dart';
 import '../features/chat/chat_timeline_controller.dart';
@@ -79,6 +80,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late PermissionProfileListController _permissionProfileListController;
   late BackgroundConnectionPreferences _backgroundConnectionPreferences;
   late AppSessionRecoveryCoordinator _sessionRecoveryCoordinator;
+  late DiagnosticLogExportController _diagnosticLogExportController;
   AppLifecycleConnectionCoordinator? _lifecycleConnectionCoordinator;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
@@ -239,6 +241,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       threadDetailController: _threadDetailController,
       turnController: _turnController,
     );
+    _diagnosticLogExportController = DiagnosticLogExportController(
+      entriesProvider: () => _sessionController.diagnosticLogs,
+    );
     _lifecycleConnectionCoordinator = AppLifecycleConnectionCoordinator(
       sessionListenable: _sessionController,
       turnListenable: _turnController,
@@ -329,6 +334,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         configOverrideController: _configOverrideController,
         configSnapshotController: _configSnapshotController,
         backgroundConnectionPreferences: _backgroundConnectionPreferences,
+        diagnosticLogExportController: _diagnosticLogExportController,
       ),
       _ => HostsPage(
         sessionController: _sessionController,

@@ -7,8 +7,10 @@ import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
+import 'package:sadcoder_mobile/src/diagnostics/diagnostic_log_export_controller.dart';
 import 'package:sadcoder_mobile/src/features/settings/settings_page.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/protocol/json_rpc_diagnostic_log.dart';
 
 void main() {
   testWidgets('applies and clears app default config overrides', (
@@ -193,6 +195,88 @@ void main() {
 
     expect(preferences.keepConnectionDuringActiveTurn, false);
   });
+
+  testWidgets('confirms before copying diagnostic logs', (tester) async {
+    final overrideController = CodexConfigOverrideController();
+    final copied = <String>[];
+    final exportController = DiagnosticLogExportController(
+      entriesProvider: () => [
+        JsonRpcDiagnosticLogEntry(
+          direction: JsonRpcDiagnosticLogDirection.outgoing,
+          capturedAt: DateTime.utc(2026, 1, 2, 3),
+          redactedJson: const {
+            'jsonrpc': '2.0',
+            'method': 'account/login',
+            'params': {'password': '[REDACTED]', 'cwd': '/repo'},
+          },
+        ),
+      ],
+      clipboardSetter: (text) async => copied.add(text),
+    );
+    addTearDown(overrideController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      diagnosticLogExportController: exportController,
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-copy-diagnostic-logs')),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-copy-diagnostic-logs')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Copy diagnostic logs?'), findsOneWidget);
+    expect(
+      find.textContaining('exported logs may still include paths'),
+      findsOneWidget,
+    );
+    expect(copied, isEmpty);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Copy logs').last);
+    await tester.pumpAndSettle();
+
+    expect(copied.single, contains('"direction":"outgoing"'));
+    expect(copied.single, contains('"password":"[REDACTED]"'));
+    expect(find.text('Copied 1 diagnostic log entries.'), findsOneWidget);
+  });
+
+  testWidgets('reports empty diagnostic logs without opening confirmation', (
+    tester,
+  ) async {
+    final overrideController = CodexConfigOverrideController();
+    final exportController = DiagnosticLogExportController(
+      entriesProvider: () => const [],
+      clipboardSetter: (_) async => fail('clipboard should not be written'),
+    );
+    addTearDown(overrideController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      diagnosticLogExportController: exportController,
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-copy-diagnostic-logs')),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-copy-diagnostic-logs')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('No diagnostic logs captured yet.'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
 }
 
 Future<void> _pumpSettings(
@@ -201,6 +285,7 @@ Future<void> _pumpSettings(
   AppAppearanceController? appearanceController,
   CodexConfigSnapshotController? configSnapshotController,
   BackgroundConnectionPreferences? backgroundConnectionPreferences,
+  DiagnosticLogExportController? diagnosticLogExportController,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -217,6 +302,7 @@ Future<void> _pumpSettings(
           configOverrideController: controller,
           configSnapshotController: configSnapshotController,
           backgroundConnectionPreferences: backgroundConnectionPreferences,
+          diagnosticLogExportController: diagnosticLogExportController,
         ),
       ),
     ),

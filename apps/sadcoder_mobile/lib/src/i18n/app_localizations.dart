@@ -342,6 +342,14 @@ class AppLocalizations {
       _text('backgroundConnectionKeepActiveTurn');
   String get backgroundConnectionKeepActiveTurnBody =>
       _text('backgroundConnectionKeepActiveTurnBody');
+  String get diagnosticLogs => _text('diagnosticLogs');
+  String get diagnosticLogsBody => _text('diagnosticLogsBody');
+  String get copyDiagnosticLogs => _text('copyDiagnosticLogs');
+  String get diagnosticLogsEmpty => _text('diagnosticLogsEmpty');
+  String get diagnosticLogsConfirmTitle => _text('diagnosticLogsConfirmTitle');
+  String get diagnosticLogsConfirmBody => _text('diagnosticLogsConfirmBody');
+  String diagnosticLogsCopied(int count) =>
+      _text('diagnosticLogsCopied').replaceAll('{count}', formatNumber(count));
   String get applyTheme => _text('applyTheme');
   String get titleCommandTitle => _text('titleCommandTitle');
   String get titleDisplayThread => _text('titleDisplayThread');
@@ -992,6 +1000,15 @@ const _values = <String, Map<String, String>>{
         'Keep active turns connected in background',
     'backgroundConnectionKeepActiveTurnBody':
         'When enabled, SadCoder keeps observing an active turn while the app is backgrounded. When disabled, it disconnects and backfills on the next connection.',
+    'diagnosticLogs': 'Diagnostic logs',
+    'diagnosticLogsBody':
+        'Redacted JSON-RPC messages from the current connection.',
+    'copyDiagnosticLogs': 'Copy logs',
+    'diagnosticLogsEmpty': 'No diagnostic logs captured yet.',
+    'diagnosticLogsConfirmTitle': 'Copy diagnostic logs?',
+    'diagnosticLogsConfirmBody':
+        'SadCoder redacts captured JSON-RPC logs, but exported logs may still include paths, commands, project names, and prompt text.',
+    'diagnosticLogsCopied': 'Copied {count} diagnostic log entries.',
     'applyTheme': 'Apply theme',
     'titleCommandTitle': 'Title display',
     'titleDisplayThread': 'Current thread title',
@@ -1504,6 +1521,14 @@ const _values = <String, Map<String, String>>{
     'backgroundConnectionKeepActiveTurn': '后台保持 active turn 连接',
     'backgroundConnectionKeepActiveTurnBody':
         '开启后，App 进入后台时会尽量继续观察 active turn。关闭后会断开观察连接，下次连接时回填状态。',
+    'diagnosticLogs': '诊断日志',
+    'diagnosticLogsBody': '当前连接中已脱敏的 JSON-RPC 消息。',
+    'copyDiagnosticLogs': '复制日志',
+    'diagnosticLogsEmpty': '暂无已捕获的诊断日志。',
+    'diagnosticLogsConfirmTitle': '复制诊断日志？',
+    'diagnosticLogsConfirmBody':
+        'SadCoder 会脱敏已捕获的 JSON-RPC 日志，但导出的日志仍可能包含路径、命令、项目名和提示词文本。',
+    'diagnosticLogsCopied': '已复制 {count} 条诊断日志。',
     'applyTheme': '应用主题',
     'titleCommandTitle': '标题显示',
     'titleDisplayThread': '当前会话标题',
