@@ -90,6 +90,13 @@ void main() {
       turnId: ' turn_1 ',
       includeLogs: true,
     );
+    await client.execCommand(
+      command: ['git', 'diff'],
+      cwd: ' /repo ',
+      env: {' GIT_CONFIG_COUNT ': '0', '': 'ignored'},
+      timeoutMs: 30000,
+      outputBytesCap: 1024,
+    );
     await client.startTurn(threadId: 'thr_1', text: 'Fix bug');
     await client.interruptTurn(threadId: 'thr_1', turnId: 'turn_1');
 
@@ -120,6 +127,7 @@ void main() {
       'thread/delete',
       'account/logout',
       'feedback/upload',
+      'command/exec',
       'turn/start',
       'turn/interrupt',
     ]);
@@ -190,6 +198,13 @@ void main() {
       'tags': {'turn_id': 'turn_1'},
     });
     expect(requests[26].params, {
+      'command': ['git', 'diff'],
+      'cwd': '/repo',
+      'env': {'GIT_CONFIG_COUNT': '0'},
+      'timeoutMs': 30000,
+      'outputBytesCap': 1024,
+    });
+    expect(requests[27].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},

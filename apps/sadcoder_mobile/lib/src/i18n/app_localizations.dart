@@ -237,6 +237,11 @@ class AppLocalizations {
   String get themeLight => _text('themeLight');
   String get themeDark => _text('themeDark');
   String get applyTheme => _text('applyTheme');
+  String get diffTitle => _text('diffTitle');
+  String get diffUnavailable => _text('diffUnavailable');
+  String get diffNotGitRepository => _text('diffNotGitRepository');
+  String get diffNoChanges => _text('diffNoChanges');
+  String get diffLoadFailed => _text('diffLoadFailed');
   String get modelCommandTitle => _text('modelCommandTitle');
   String get modelCommandTurnScope => _text('modelCommandTurnScope');
   String get modelCommandSessionScope => _text('modelCommandSessionScope');
@@ -668,6 +673,12 @@ const _values = <String, Map<String, String>>{
     'themeLight': 'Light',
     'themeDark': 'Dark',
     'applyTheme': 'Apply theme',
+    'diffTitle': 'Git diff',
+    'diffUnavailable': 'Connect to a host to compute git diff.',
+    'diffNotGitRepository':
+        'The current workspace is not inside a Git repository.',
+    'diffNoChanges': 'No tracked or untracked changes.',
+    'diffLoadFailed': 'Failed to compute diff',
     'modelCommandTitle': 'Model override',
     'modelCommandTurnScope': 'Next turn',
     'modelCommandSessionScope': 'Session',
@@ -1044,6 +1055,11 @@ const _values = <String, Map<String, String>>{
     'themeLight': '浅色',
     'themeDark': '深色',
     'applyTheme': '应用主题',
+    'diffTitle': 'Git 差异',
+    'diffUnavailable': '连接到主机后才能计算 Git 差异。',
+    'diffNotGitRepository': '当前工作区不在 Git 仓库中。',
+    'diffNoChanges': '没有已跟踪或未跟踪的变更。',
+    'diffLoadFailed': '计算差异失败',
     'modelCommandTitle': '模型覆盖',
     'modelCommandTurnScope': '本次回合',
     'modelCommandSessionScope': '本会话',

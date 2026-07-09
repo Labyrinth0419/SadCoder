@@ -28,6 +28,7 @@ void main() {
     await connection.accountSnapshotReader.readAccount();
     await connection.accountLogoutRunner.logout();
     await connection.feedbackUploadRunner.uploadFeedback(classification: 'bug');
+    await connection.gitDiffReader.readDiff();
     await connection.turnRunner.startThread();
     await connection.turnRunner.startTurn(threadId: 'thr_1', text: 'Fix bug');
     await connection.turnRunner.interruptTurn(
@@ -47,6 +48,7 @@ void main() {
       'account/read',
       'account/logout',
       'feedback/upload',
+      'command/exec',
       'thread/start',
       'turn/start',
       'turn/interrupt',
@@ -252,6 +254,7 @@ class _LineServerProxyConnector implements AgentProxyConnector {
     'hooks/list' => {'data': <Object?>[]},
     'app/list' => {'data': <Object?>[]},
     'account/read' => {'account': null, 'requiresOpenaiAuth': false},
+    'command/exec' => {'exitCode': 128, 'stdout': '', 'stderr': ''},
     'thread/start' => {
       'thread': {
         'id': 'thr_1',

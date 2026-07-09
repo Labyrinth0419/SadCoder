@@ -15,6 +15,7 @@ import 'package:sadcoder_mobile/src/background_terminals/thread_background_termi
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
+import 'package:sadcoder_mobile/src/diffs/git_diff_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/feedback/feedback_upload_runner.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
@@ -68,6 +69,7 @@ void main() {
     expect(controller.accountSnapshotReader, isNotNull);
     expect(controller.accountLogoutRunner, isNotNull);
     expect(controller.feedbackUploadRunner, isNotNull);
+    expect(controller.gitDiffReader, isNotNull);
     expect(controller.modelListReader, isNotNull);
     expect(controller.permissionProfileListReader, isNotNull);
     expect(controller.skillListReader, isNotNull);
@@ -596,6 +598,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       accountLogoutRunner: const _FakeAccountLogoutRunner(),
       accountUsageSnapshotReader: const _FakeAccountUsageSnapshotReader(),
       feedbackUploadRunner: const _FakeFeedbackUploadRunner(),
+      gitDiffReader: const _FakeGitDiffReader(),
       mcpServerStatusReader: const _FakeMcpServerStatusReader(),
       modelListReader: const _FakeModelListReader(),
       permissionProfileListReader: const _FakePermissionProfileListReader(),
@@ -662,6 +665,15 @@ class _FakeFeedbackUploadRunner implements FeedbackUploadRunner {
     bool includeLogs = false,
   }) async {
     return const FeedbackUploadResult(threadId: 'feedback_thread');
+  }
+}
+
+class _FakeGitDiffReader implements GitDiffReader {
+  const _FakeGitDiffReader();
+
+  @override
+  Future<GitDiffResult> readDiff({String? cwd}) async {
+    return const GitDiffResult(isGitRepository: true, stat: '', diff: '');
   }
 }
 

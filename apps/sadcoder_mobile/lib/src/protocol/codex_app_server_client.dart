@@ -93,6 +93,37 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> execCommand({
+    required List<String> command,
+    String? cwd,
+    Map<String, String?> env = const {},
+    int? timeoutMs,
+    int? outputBytesCap,
+    bool disableOutputCap = false,
+  }) {
+    final trimmedCwd = cwd?.trim();
+    final normalizedEnv = <String, Object?>{
+      for (final entry in env.entries)
+        if (entry.key.trim().isNotEmpty) entry.key.trim(): entry.value,
+    };
+    final params = <String, Object?>{'command': command};
+    if (trimmedCwd != null && trimmedCwd.isNotEmpty) {
+      params['cwd'] = trimmedCwd;
+    }
+    if (normalizedEnv.isNotEmpty) {
+      params['env'] = normalizedEnv;
+    }
+    if (timeoutMs != null) {
+      params['timeoutMs'] = timeoutMs;
+    }
+    if (disableOutputCap) {
+      params['disableOutputCap'] = true;
+    } else if (outputBytesCap != null) {
+      params['outputBytesCap'] = outputBytesCap;
+    }
+    return _request('command/exec', params);
+  }
+
   Future<Map<String, Object?>> readAccountRateLimits() {
     return _request('account/rateLimits/read');
   }

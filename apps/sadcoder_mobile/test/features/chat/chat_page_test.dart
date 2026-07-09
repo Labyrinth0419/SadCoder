@@ -17,6 +17,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
+import 'package:sadcoder_mobile/src/diffs/git_diff_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/feedback/feedback_upload_runner.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_page.dart';
@@ -1605,6 +1606,67 @@ void main() {
       find.text('/debug-config is unavailable right now.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('/diff renders selected workspace git diff', (tester) async {
+    final approvalController = ApprovalStateController();
+    final diffReader = _RecordingGitDiffReader(
+      result: const GitDiffResult(
+        isGitRepository: true,
+        stat: ' lib/main.dart | 2 +-',
+        diff: 'diff --git a/lib/main.dart b/lib/main.dart',
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      gitDiffReader: diffReader,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_selected',
+            'sessionId': 'sess_1',
+            'preview': 'Selected thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+            'turns': <Object?>[],
+          }),
+        ),
+      ),
+    );
+    addTearDown(detailController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_selected');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/diff',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(diffReader.cwdValues, ['/repo']);
+    expect(find.textContaining('Git diff'), findsOneWidget);
+    expect(find.textContaining('lib/main.dart | 2 +-'), findsOneWidget);
+    expect(find.textContaining('diff --git'), findsOneWidget);
   });
 
   testWidgets('/usage refreshes account usage and rate-limit snapshots', (
@@ -4085,6 +4147,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.appListReader = const _FakeAppListReader(),
     this.accountLogoutRunner = const _FakeAccountLogoutRunner(),
     this.feedbackUploadRunner = const _FakeFeedbackUploadRunner(),
+    this.gitDiffReader = const _FakeGitDiffReader(),
   });
 
   final ThreadListReader threadListReader;
@@ -4099,6 +4162,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final AppListReader appListReader;
   final AccountLogoutRunner accountLogoutRunner;
   final FeedbackUploadRunner feedbackUploadRunner;
+  final GitDiffReader gitDiffReader;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -4119,6 +4183,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       appListReader: appListReader,
       accountLogoutRunner: accountLogoutRunner,
       feedbackUploadRunner: feedbackUploadRunner,
+      gitDiffReader: gitDiffReader,
     );
   }
 }
@@ -4138,6 +4203,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.appListReader,
     required this.accountLogoutRunner,
     required this.feedbackUploadRunner,
+    required this.gitDiffReader,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -4180,6 +4246,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final FeedbackUploadRunner feedbackUploadRunner;
+
+  @override
+  final GitDiffReader gitDiffReader;
 
   @override
   ModelListReader get modelListReader => const _FakeModelListReader();
@@ -4304,6 +4373,15 @@ class _FakeFeedbackUploadRunner implements FeedbackUploadRunner {
     bool includeLogs = false,
   }) async {
     return const FeedbackUploadResult(threadId: 'feedback_thread');
+  }
+}
+
+class _FakeGitDiffReader implements GitDiffReader {
+  const _FakeGitDiffReader();
+
+  @override
+  Future<GitDiffResult> readDiff({String? cwd}) async {
+    return const GitDiffResult(isGitRepository: true, stat: '', diff: '');
   }
 }
 
@@ -4745,6 +4823,19 @@ class _RecordingFeedbackUploadRunner implements FeedbackUploadRunner {
       includeLogs: includeLogs,
     ));
     return const FeedbackUploadResult(threadId: 'feedback_thread');
+  }
+}
+
+class _RecordingGitDiffReader implements GitDiffReader {
+  _RecordingGitDiffReader({required this.result});
+
+  final GitDiffResult result;
+  final cwdValues = <String?>[];
+
+  @override
+  Future<GitDiffResult> readDiff({String? cwd}) async {
+    cwdValues.add(cwd);
+    return result;
   }
 }
 

@@ -351,6 +351,40 @@ void main() {
     },
   );
 
+  test('/diff returns the injected diff summary', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      showDiff: (_) => 'diff --git a/lib/main.dart b/lib/main.dart',
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/diff'),
+      hasActiveTurn: true,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.diff);
+    expect(result.message, contains('diff --git'));
+  });
+
+  test('/diff is unavailable when arguments are not supported', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      showDiff: (arguments) {
+        calls++;
+        return arguments.trim().isEmpty ? 'diff' : null;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/diff --cached'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, 1);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'diff');
+  });
+
   test('/logout runs the injected confirmed account action', () async {
     var calls = 0;
     final dispatcher = SlashCommandActionDispatcher(

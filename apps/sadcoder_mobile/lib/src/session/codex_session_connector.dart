@@ -11,6 +11,8 @@ import '../apps/codex_app_list_reader.dart';
 import '../approvals/approval_state_controller.dart';
 import '../config/codex_config_snapshot_reader.dart';
 import '../config/codex_config_snapshot_remote_reader.dart';
+import '../diffs/codex_git_diff_reader.dart';
+import '../diffs/git_diff_reader.dart';
 import '../events/codex_event.dart';
 import '../feedback/codex_feedback_upload_runner.dart';
 import '../feedback/feedback_upload_runner.dart';
@@ -43,6 +45,7 @@ import '../turns/codex_turn_runner.dart';
 import '../turns/turn_runner.dart';
 import '../usage/account_usage_snapshot_reader.dart';
 import '../usage/codex_account_usage_snapshot_reader.dart';
+import '../workspace/codex_workspace_command_runner.dart';
 
 abstract interface class CodexSessionConnectionHandle {
   SshProfile get profile;
@@ -60,6 +63,8 @@ abstract interface class CodexSessionConnectionHandle {
   AccountUsageSnapshotReader get accountUsageSnapshotReader;
 
   FeedbackUploadRunner get feedbackUploadRunner;
+
+  GitDiffReader get gitDiffReader;
 
   McpServerStatusReader get mcpServerStatusReader;
 
@@ -146,6 +151,9 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
           session.client,
         ),
         feedbackUploadRunner: CodexFeedbackUploadRunner(session.client),
+        gitDiffReader: CodexGitDiffReader(
+          CodexWorkspaceCommandRunner(session.client),
+        ),
         mcpServerStatusReader: CodexMcpServerStatusReader(session.client),
         modelListReader: CodexModelListReader(session.client),
         permissionProfileListReader: CodexPermissionProfileListReader(
@@ -213,6 +221,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.accountLogoutRunner,
     required this.accountUsageSnapshotReader,
     required this.feedbackUploadRunner,
+    required this.gitDiffReader,
     required this.mcpServerStatusReader,
     required this.modelListReader,
     required this.permissionProfileListReader,
@@ -247,6 +256,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final AccountUsageSnapshotReader accountUsageSnapshotReader;
   @override
   final FeedbackUploadRunner feedbackUploadRunner;
+  @override
+  final GitDiffReader gitDiffReader;
   @override
   final McpServerStatusReader mcpServerStatusReader;
   @override

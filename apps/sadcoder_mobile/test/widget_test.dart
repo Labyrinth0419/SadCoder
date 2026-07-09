@@ -15,6 +15,7 @@ import 'package:sadcoder_mobile/src/background_terminals/thread_background_termi
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
+import 'package:sadcoder_mobile/src/diffs/git_diff_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/feedback/feedback_upload_runner.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
@@ -291,6 +292,9 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
       const _NoopFeedbackUploadRunner();
 
   @override
+  GitDiffReader get gitDiffReader => const _NoopGitDiffReader();
+
+  @override
   McpServerStatusReader get mcpServerStatusReader =>
       const _StaticMcpServerStatusReader();
 
@@ -380,6 +384,15 @@ class _NoopFeedbackUploadRunner implements FeedbackUploadRunner {
     bool includeLogs = false,
   }) async {
     return const FeedbackUploadResult(threadId: 'feedback_thread');
+  }
+}
+
+class _NoopGitDiffReader implements GitDiffReader {
+  const _NoopGitDiffReader();
+
+  @override
+  Future<GitDiffResult> readDiff({String? cwd}) async {
+    return const GitDiffResult(isGitRepository: true, stat: '', diff: '');
   }
 }
 
