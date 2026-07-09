@@ -7,6 +7,7 @@ import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/agent/agent_status.dart';
+import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/hosts/hosts_page.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/probe/m0_probe_coordinator.dart';
@@ -362,6 +363,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   TurnRunner get turnRunner => const _FakeTurnRunner();
+
+  @override
+  Stream<CodexEvent> get events => const Stream.empty();
 
   final VoidCallback onClose;
   bool _closed = false;

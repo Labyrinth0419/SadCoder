@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
+import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_session.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
 
@@ -51,6 +52,31 @@ void main() {
     );
     expect(session.approvalController.approvals.single.command, 'cargo test');
     expect(notifications, 1);
+  });
+
+  test('maps app-server notifications into session events', () async {
+    final transport = MemoryJsonRpcTransport((_) async => {});
+    final session = CodexAppSession(transport);
+    addTearDown(session.close);
+    final event = session.events.first;
+
+    transport.emitNotification({
+      'method': 'turn/started',
+      'params': {
+        'threadId': 'thr_1',
+        'turn': {
+          'id': 'turn_1',
+          'status': 'inProgress',
+          'items': <Object?>[],
+          'itemsView': 'notLoaded',
+        },
+      },
+    });
+
+    final mapped = await event;
+    expect(mapped.kind, CodexEventKind.turnStarted);
+    expect(mapped.threadId, 'thr_1');
+    expect(mapped.turnId, 'turn_1');
   });
 
   test(

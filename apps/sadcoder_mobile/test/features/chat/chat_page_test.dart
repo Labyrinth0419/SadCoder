@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
+import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_page.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
@@ -434,6 +435,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final TurnRunner turnRunner;
+
+  @override
+  Stream<CodexEvent> get events => const Stream.empty();
 
   @override
   ThreadDetailReader get threadDetailReader => _FakeThreadDetailReader(

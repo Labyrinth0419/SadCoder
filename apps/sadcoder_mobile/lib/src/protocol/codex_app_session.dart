@@ -1,5 +1,6 @@
 import '../approvals/approval_coordinator.dart';
 import '../approvals/approval_state_controller.dart';
+import '../events/codex_event.dart';
 import 'codex_app_server_client.dart';
 import 'json_rpc.dart';
 
@@ -19,6 +20,9 @@ class CodexAppSession {
       CodexAppServerClient(transport),
       coordinator,
       controller,
+      events: transport.notifications
+          .map(CodexEvent.fromNotification)
+          .asBroadcastStream(),
       ownsApprovalController: approvalController == null,
     );
   }
@@ -28,6 +32,7 @@ class CodexAppSession {
     this.client,
     this.approvalCoordinator,
     this.approvalController, {
+    required this.events,
     required bool ownsApprovalController,
   }) : _ownsApprovalController = ownsApprovalController;
 
@@ -36,6 +41,7 @@ class CodexAppSession {
   final CodexAppServerClient client;
   final ApprovalCoordinator approvalCoordinator;
   final ApprovalStateController approvalController;
+  final Stream<CodexEvent> events;
 
   Future<Map<String, Object?>> initialize({
     String clientName = 'sadcoder-mobile',

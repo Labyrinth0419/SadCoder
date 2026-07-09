@@ -1,4 +1,5 @@
 import '../approvals/approval_state_controller.dart';
+import '../events/codex_event.dart';
 import '../protocol/codex_app_session.dart';
 import '../ssh/ssh_profile.dart';
 import '../ssh/ssh_proxy_connector.dart';
@@ -17,6 +18,8 @@ abstract interface class CodexSessionConnectionHandle {
   ThreadDetailReader get threadDetailReader;
 
   TurnRunner get turnRunner;
+
+  Stream<CodexEvent> get events;
 
   Future<void> get done;
 
@@ -94,6 +97,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final ThreadDetailReader threadDetailReader;
   @override
   final TurnRunner turnRunner;
+  @override
+  Stream<CodexEvent> get events => session.events;
   final CodexAppSession session;
   final AgentProxyConnection _proxyConnection;
   bool _closed = false;
