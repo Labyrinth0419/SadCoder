@@ -19,7 +19,7 @@ void main() {
 
     final connection = await connector.connect(_profile);
     addTearDown(connection.close);
-    await connection.session.client.listModels();
+    await connection.modelListReader.listModels();
     await connection.turnRunner.startThread();
     await connection.turnRunner.startTurn(threadId: 'thr_1', text: 'Fix bug');
     await connection.turnRunner.interruptTurn(

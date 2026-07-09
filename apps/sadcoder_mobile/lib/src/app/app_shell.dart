@@ -12,6 +12,7 @@ import '../features/chat/chat_timeline_controller.dart';
 import '../features/hosts/hosts_page.dart';
 import '../features/settings/settings_page.dart';
 import '../i18n/app_localizations.dart';
+import '../models/model_list_controller.dart';
 import '../session/codex_session_connector.dart';
 import '../session/codex_session_state_controller.dart';
 import '../ssh/dart_ssh_proxy_connector.dart';
@@ -56,6 +57,7 @@ class _AppShellState extends State<AppShell> {
   late ChatTimelineController _timelineController;
   late CodexConfigOverrideController _configOverrideController;
   late CodexConfigSnapshotController _configSnapshotController;
+  late ModelListController _modelListController;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
 
@@ -160,6 +162,9 @@ class _AppShellState extends State<AppShell> {
     _configSnapshotController = CodexConfigSnapshotController(
       readerProvider: () => _sessionController.configSnapshotReader,
     );
+    _modelListController = ModelListController(
+      readerProvider: () => _sessionController.modelListReader,
+    );
     _turnController = TurnController(
       runnerProvider: () => _sessionController.turnRunner,
       activeThreadIdProvider: () => _threadDetailController.selectedThreadId,
@@ -181,6 +186,7 @@ class _AppShellState extends State<AppShell> {
     _timelineController.dispose();
     _configOverrideController.dispose();
     _configSnapshotController.dispose();
+    _modelListController.dispose();
     _turnController.dispose();
     _threadDetailController.dispose();
     _threadListController.dispose();
@@ -206,6 +212,7 @@ class _AppShellState extends State<AppShell> {
         timelineController: _timelineController,
         configOverrideController: _configOverrideController,
         configSnapshotController: _configSnapshotController,
+        modelListController: _modelListController,
       ),
       2 => ApprovalsPage(
         approvals: _approvalController.approvals,

@@ -13,6 +13,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/hosts/hosts_page.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/probe/m0_probe_coordinator.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/reconnect_policy.dart';
@@ -653,6 +654,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
       const _FakeConfigSnapshotReader();
 
   @override
+  ModelListReader get modelListReader => const _FakeModelListReader();
+
+  @override
   ThreadMutationRunner get threadMutationRunner =>
       const _FakeThreadMutationRunner();
 
@@ -693,6 +697,15 @@ class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {
     String? cwd,
   }) async {
     return const CodexConfigSnapshot(config: {}, origins: {}, layers: []);
+  }
+}
+
+class _FakeModelListReader implements ModelListReader {
+  const _FakeModelListReader();
+
+  @override
+  Future<ModelListPage> listModels() async {
+    return const ModelListPage(models: []);
   }
 }
 

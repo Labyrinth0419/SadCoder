@@ -10,6 +10,7 @@ import '../../config/codex_config_override_controller.dart';
 import '../../config/codex_config_overrides.dart';
 import '../../config/codex_config_snapshot_controller.dart';
 import '../../i18n/app_localizations.dart';
+import '../../models/model_list_controller.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_list_controller.dart';
@@ -35,6 +36,7 @@ class ChatPage extends StatefulWidget {
     this.timelineController,
     this.configOverrideController,
     this.configSnapshotController,
+    this.modelListController,
     this.slashCommandDispatcher,
   });
 
@@ -46,6 +48,7 @@ class ChatPage extends StatefulWidget {
   final ChatTimelineController? timelineController;
   final CodexConfigOverrideController? configOverrideController;
   final CodexConfigSnapshotController? configSnapshotController;
+  final ModelListController? modelListController;
   final SlashCommandActionDispatcher? slashCommandDispatcher;
 
   @override
@@ -389,7 +392,10 @@ class _ChatPageState extends State<ChatPage> {
     final result = await showModalBottomSheet<_ModelOverrideResult>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _ModelOverrideSheet(controller: controller),
+      builder: (context) => _ModelOverrideSheet(
+        controller: controller,
+        modelListController: widget.modelListController,
+      ),
     );
     if (!mounted || result == null) {
       return SlashCommandCallbackResult.cancelled;
@@ -976,9 +982,13 @@ class _ModelOverrideResult {
 }
 
 class _ModelOverrideSheet extends StatefulWidget {
-  const _ModelOverrideSheet({required this.controller});
+  const _ModelOverrideSheet({
+    required this.controller,
+    this.modelListController,
+  });
 
   final CodexConfigOverrideController controller;
+  final ModelListController? modelListController;
 
   @override
   State<_ModelOverrideSheet> createState() => _ModelOverrideSheetState();
@@ -996,6 +1006,7 @@ class _ModelOverrideSheetState extends State<_ModelOverrideSheet> {
     final overrides = _overridesForScope(widget.controller, _scope);
     _modelController = TextEditingController(text: overrides.model ?? '');
     _effortController = TextEditingController(text: overrides.effort ?? '');
+    unawaited(widget.modelListController?.refresh());
   }
 
   @override
@@ -1029,6 +1040,11 @@ class _ModelOverrideSheetState extends State<_ModelOverrideSheet> {
                   _loadScopeValues();
                 });
               },
+            ),
+            const SizedBox(height: 12),
+            _ModelListPicker(
+              controller: widget.modelListController,
+              modelController: _modelController,
             ),
             const SizedBox(height: 12),
             ConfigOverrideField(
@@ -1081,6 +1097,58 @@ class _ModelOverrideSheetState extends State<_ModelOverrideSheet> {
     final overrides = _overridesForScope(widget.controller, _scope);
     _modelController.text = overrides.model ?? '';
     _effortController.text = overrides.effort ?? '';
+  }
+}
+
+class _ModelListPicker extends StatelessWidget {
+  const _ModelListPicker({
+    required this.controller,
+    required this.modelController,
+  });
+
+  final ModelListController? controller;
+  final TextEditingController modelController;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = this.controller;
+    if (controller == null) {
+      return const SizedBox.shrink();
+    }
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        if (controller.models.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final selectedModel =
+            controller.models.any((model) => model.id == modelController.text)
+            ? modelController.text
+            : null;
+        return InputDecorator(
+          decoration: InputDecoration(
+            labelText: context.l10n.modelList,
+            border: const OutlineInputBorder(),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              key: const ValueKey('chat-model-command-model-list'),
+              value: selectedModel,
+              isExpanded: true,
+              items: [
+                for (final model in controller.models)
+                  DropdownMenuItem(value: model.id, child: Text(model.label)),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  modelController.text = value;
+                }
+              },
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 

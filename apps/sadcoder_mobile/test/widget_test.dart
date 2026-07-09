@@ -10,6 +10,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
+import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
@@ -233,6 +234,9 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
       const _StaticConfigSnapshotReader();
 
   @override
+  ModelListReader get modelListReader => const _StaticModelListReader();
+
+  @override
   ThreadMutationRunner get threadMutationRunner =>
       const _NoopThreadMutationRunner();
 
@@ -258,6 +262,15 @@ class _StaticConfigSnapshotReader implements CodexConfigSnapshotReader {
     String? cwd,
   }) async {
     return const CodexConfigSnapshot(config: {}, origins: {}, layers: []);
+  }
+}
+
+class _StaticModelListReader implements ModelListReader {
+  const _StaticModelListReader();
+
+  @override
+  Future<ModelListPage> listModels() async {
+    return const ModelListPage(models: []);
   }
 }
 

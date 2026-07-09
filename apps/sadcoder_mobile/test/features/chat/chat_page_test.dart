@@ -14,6 +14,8 @@ import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_page.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_timeline_controller.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/models/model_list_controller.dart';
+import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
@@ -732,6 +734,94 @@ void main() {
     expect(turnRunner.startedTurns, isEmpty);
     expect(turnRunner.interruptedTurns, isEmpty);
     expect(find.text('Model override updated.'), findsOneWidget);
+  });
+
+  testWidgets('/model can select models from model/list', (tester) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final overrideController = CodexConfigOverrideController();
+    final modelReader = _RecordingModelListReader(
+      page: const ModelListPage(
+        models: [
+          CodexModelSummary(
+            id: 'gpt-5-codex',
+            name: 'GPT-5 Codex',
+            provider: 'openai',
+          ),
+        ],
+      ),
+    );
+    final modelListController = ModelListController(
+      readerProvider: () => modelReader,
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => overrideController.layers,
+    );
+    addTearDown(modelListController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+      modelListController: modelListController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/model',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(modelReader.calls, 1);
+    expect(
+      find.byKey(const ValueKey('chat-model-command-model-list')),
+      findsOneWidget,
+    );
+
+    await _selectDropdownOption(
+      tester,
+      const ValueKey('chat-model-command-model-list'),
+      'GPT-5 Codex (openai)',
+    );
+
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const ValueKey('chat-model-command-model')),
+          )
+          .controller
+          ?.text,
+      'gpt-5-codex',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('chat-model-command-apply')));
+    await tester.pumpAndSettle();
+
+    expect(overrideController.layers.turn.toTurnStartParams(), {
+      'model': 'gpt-5-codex',
+    });
+    expect(overrideController.layers.session.toTurnStartParams(), isEmpty);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
   });
 
   testWidgets('/model can apply a session model override', (tester) async {
@@ -1996,6 +2086,7 @@ Future<void> _pumpChatPage(
   ChatTimelineController? timelineController,
   CodexConfigOverrideController? configOverrideController,
   CodexConfigSnapshotController? configSnapshotController,
+  ModelListController? modelListController,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -2015,6 +2106,7 @@ Future<void> _pumpChatPage(
           timelineController: timelineController,
           configOverrideController: configOverrideController,
           configSnapshotController: configSnapshotController,
+          modelListController: modelListController,
         ),
       ),
     ),
@@ -2127,6 +2219,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   final ThreadMutationRunner threadMutationRunner;
 
   @override
+  ModelListReader get modelListReader => const _FakeModelListReader();
+
+  @override
   CodexConfigSnapshotReader get configSnapshotReader =>
       const _FakeConfigSnapshotReader();
 
@@ -2181,6 +2276,26 @@ class _RecordingConfigSnapshotReader implements CodexConfigSnapshotReader {
   }) async {
     cwdValues.add(cwd);
     return snapshot;
+  }
+}
+
+class _FakeModelListReader implements ModelListReader {
+  const _FakeModelListReader();
+
+  @override
+  Future<ModelListPage> listModels() async => const ModelListPage(models: []);
+}
+
+class _RecordingModelListReader implements ModelListReader {
+  _RecordingModelListReader({required this.page});
+
+  final ModelListPage page;
+  int calls = 0;
+
+  @override
+  Future<ModelListPage> listModels() async {
+    calls++;
+    return page;
   }
 }
 

@@ -11,6 +11,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
+import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_session.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
@@ -48,6 +49,7 @@ void main() {
     expect(controller.threadListReader, isNotNull);
     expect(controller.threadDetailReader, isNotNull);
     expect(controller.configSnapshotReader, isNotNull);
+    expect(controller.modelListReader, isNotNull);
     expect(controller.turnRunner, isNotNull);
     expect(connector.connectedProfiles, [_profile]);
     expect(approvalController.canRespond, true);
@@ -437,6 +439,7 @@ void main() {
     expect(controller.threadListReader, isNull);
     expect(controller.threadDetailReader, isNull);
     expect(controller.configSnapshotReader, isNull);
+    expect(controller.modelListReader, isNull);
     expect(controller.turnRunner, isNull);
     expect(connector.connectCount, 1);
     expect(connector.closeCount, 1);
@@ -557,6 +560,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       threadListReader: const _FakeThreadListReader(),
       threadDetailReader: const _FakeThreadDetailReader(),
       configSnapshotReader: const _FakeConfigSnapshotReader(),
+      modelListReader: const _FakeModelListReader(),
       threadMutationRunner: const _FakeThreadMutationRunner(),
       turnRunner: const _FakeTurnRunner(),
       proxyConnection: AgentProxyConnection(
@@ -581,6 +585,15 @@ class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {
     String? cwd,
   }) async {
     return const CodexConfigSnapshot(config: {}, origins: {}, layers: []);
+  }
+}
+
+class _FakeModelListReader implements ModelListReader {
+  const _FakeModelListReader();
+
+  @override
+  Future<ModelListPage> listModels() async {
+    return const ModelListPage(models: []);
   }
 }
 
