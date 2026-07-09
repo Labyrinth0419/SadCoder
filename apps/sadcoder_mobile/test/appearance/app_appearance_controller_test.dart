@@ -79,6 +79,39 @@ void main() {
     expect(notifications, 1);
   });
 
+  test('composer send shortcut parses command values', () {
+    expect(
+      AppComposerSendShortcut.parseCommandValue('enter'),
+      AppComposerSendShortcut.enter,
+    );
+    expect(
+      AppComposerSendShortcut.parseCommandValue('default'),
+      AppComposerSendShortcut.enter,
+    );
+    expect(
+      AppComposerSendShortcut.parseCommandValue('ctrl-enter'),
+      AppComposerSendShortcut.ctrlEnter,
+    );
+    expect(
+      AppComposerSendShortcut.parseCommandValue('ctrl+enter'),
+      AppComposerSendShortcut.ctrlEnter,
+    );
+    expect(AppComposerSendShortcut.parseCommandValue('space'), isNull);
+  });
+
+  test('controller notifies when composer send shortcut changes', () {
+    final controller = AppAppearanceController();
+    addTearDown(controller.dispose);
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+
+    controller.setComposerSendShortcut(AppComposerSendShortcut.ctrlEnter);
+    controller.setComposerSendShortcut(AppComposerSendShortcut.ctrlEnter);
+
+    expect(controller.composerSendShortcut, AppComposerSendShortcut.ctrlEnter);
+    expect(notifications, 1);
+  });
+
   test('terminal pet preference parses command values', () {
     expect(
       AppTerminalPetPreference.parseCommandValue('show'),

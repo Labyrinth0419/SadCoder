@@ -498,13 +498,13 @@ void main() {
   ) async {
     final harness = await _pumpConnectedChatPage(tester);
 
-    await _submitComposerText(tester, '/keymap');
+    await _submitComposerText(tester, '/ide');
 
     expect(harness.turnRunner.startedTurns, isEmpty);
     expect(
       find.text(
-        '/keymap is registered but not available: mobile UI flow is not wired yet. '
-        'Planned path: mobile keyboard shortcut settings.',
+        '/ide is registered but not available: mobile UI flow is not wired yet. '
+        'Planned path: mobile context attachment substitute.',
       ),
       findsOneWidget,
     );
@@ -2097,6 +2097,113 @@ void main() {
     expect(find.text('Model: gpt-5-codex'), findsOneWidget);
     expect(find.text('Reasoning effort: high'), findsOneWidget);
     expect(find.text('Status line display updated.'), findsOneWidget);
+  });
+
+  testWidgets('/keymap applies mobile keyboard shortcut settings', (
+    tester,
+  ) async {
+    final appearanceController = AppAppearanceController();
+    addTearDown(appearanceController.dispose);
+
+    await _pumpChatPage(tester, appearanceController: appearanceController);
+
+    expect(
+      appearanceController.composerSendShortcut,
+      AppComposerSendShortcut.enter,
+    );
+    expect(find.textContaining('Send: Enter'), findsOneWidget);
+
+    var composer = tester.widget<TextField>(
+      find.byKey(const ValueKey('chat-composer-field')),
+    );
+    expect(composer.textInputAction, TextInputAction.send);
+    expect(composer.maxLines, 1);
+
+    await _submitComposerText(tester, '/keymap');
+
+    expect(find.text('Keyboard shortcuts'), findsOneWidget);
+    await tester.tap(find.text('Ctrl+Enter sends'));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('chat-keymap-command-apply')));
+    await tester.pumpAndSettle();
+
+    expect(
+      appearanceController.composerSendShortcut,
+      AppComposerSendShortcut.ctrlEnter,
+    );
+    expect(find.textContaining('Send: Ctrl+Enter'), findsOneWidget);
+    expect(find.text('Keyboard shortcut settings updated.'), findsOneWidget);
+
+    composer = tester.widget<TextField>(
+      find.byKey(const ValueKey('chat-composer-field')),
+    );
+    expect(composer.textInputAction, TextInputAction.newline);
+    expect(composer.maxLines, 4);
+  });
+
+  testWidgets('/keymap inline argument restores Enter send shortcut', (
+    tester,
+  ) async {
+    final appearanceController = AppAppearanceController(
+      composerSendShortcut: AppComposerSendShortcut.ctrlEnter,
+    );
+    addTearDown(appearanceController.dispose);
+
+    await _pumpChatPage(tester, appearanceController: appearanceController);
+
+    expect(find.textContaining('Send: Ctrl+Enter'), findsOneWidget);
+
+    await _submitComposerText(tester, '/keymap enter');
+
+    expect(
+      appearanceController.composerSendShortcut,
+      AppComposerSendShortcut.enter,
+    );
+    expect(find.textContaining('Send: Enter'), findsOneWidget);
+    expect(find.text('Keyboard shortcut settings updated.'), findsOneWidget);
+  });
+
+  testWidgets('Enter action submits when keymap uses Enter to send', (
+    tester,
+  ) async {
+    final appearanceController = AppAppearanceController();
+    final harness = await _pumpConnectedChatPage(
+      tester,
+      appearanceController: appearanceController,
+    );
+    addTearDown(appearanceController.dispose);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      'Ship shortcut handling',
+    );
+    await tester.pump();
+    await tester.testTextInput.receiveAction(TextInputAction.send);
+    await tester.pumpAndSettle();
+
+    expect(harness.turnRunner.startedTurns, [
+      (threadId: 'thr_new', text: 'Ship shortcut handling'),
+    ]);
+  });
+
+  testWidgets('/keymap unsupported arguments do not send a prompt', (
+    tester,
+  ) async {
+    final appearanceController = AppAppearanceController();
+    final harness = await _pumpConnectedChatPage(
+      tester,
+      appearanceController: appearanceController,
+    );
+    addTearDown(appearanceController.dispose);
+
+    await _submitComposerText(tester, '/keymap space');
+
+    expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(
+      appearanceController.composerSendShortcut,
+      AppComposerSendShortcut.enter,
+    );
+    expect(find.text('/keymap is unavailable right now.'), findsOneWidget);
   });
 
   testWidgets('/vim enables the mobile composer Vim mode', (tester) async {

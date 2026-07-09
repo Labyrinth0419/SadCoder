@@ -229,6 +229,85 @@ class _StatusLineOption extends StatelessWidget {
   }
 }
 
+class ComposerKeymapSheet extends StatefulWidget {
+  const ComposerKeymapSheet({super.key, required this.initialShortcut});
+
+  final AppComposerSendShortcut initialShortcut;
+
+  @override
+  State<ComposerKeymapSheet> createState() => _ComposerKeymapSheetState();
+}
+
+class _ComposerKeymapSheetState extends State<ComposerKeymapSheet> {
+  late AppComposerSendShortcut _shortcut;
+
+  @override
+  void initState() {
+    super.initState();
+    _shortcut = widget.initialShortcut;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.keymapCommandTitle,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<AppComposerSendShortcut>(
+              key: const ValueKey('chat-keymap-command-shortcut'),
+              segments: [
+                ButtonSegment(
+                  value: AppComposerSendShortcut.enter,
+                  icon: const Icon(Icons.keyboard_return),
+                  label: Text(l10n.keymapSendShortcutEnter),
+                ),
+                ButtonSegment(
+                  value: AppComposerSendShortcut.ctrlEnter,
+                  icon: const Icon(Icons.keyboard_command_key),
+                  label: Text(l10n.keymapSendShortcutCtrlEnter),
+                ),
+              ],
+              selected: {_shortcut},
+              onSelectionChanged: (selection) {
+                setState(() => _shortcut = selection.single);
+              },
+            ),
+            const SizedBox(height: 16),
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              spacing: 8,
+              overflowSpacing: 8,
+              children: [
+                TextButton.icon(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                  label: Text(l10n.approvalCancel),
+                ),
+                FilledButton.icon(
+                  key: const ValueKey('chat-keymap-command-apply'),
+                  onPressed: () => Navigator.of(context).pop(_shortcut),
+                  icon: const Icon(Icons.check),
+                  label: Text(l10n.applyKeymap),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class TerminalPetDisplaySheet extends StatefulWidget {
   const TerminalPetDisplaySheet({super.key, required this.initialPreference});
 

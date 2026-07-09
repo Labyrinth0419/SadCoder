@@ -36,6 +36,8 @@ typedef SlashCommandConfigureStatusLineDisplay =
     Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandToggleComposerVimMode =
     Future<SlashCommandCallbackResult> Function();
+typedef SlashCommandConfigureKeymap =
+    Future<SlashCommandCallbackResult> Function(String arguments);
 typedef SlashCommandConfigureTerminalPets =
     Future<SlashCommandCallbackResult> Function(String arguments);
 typedef SlashCommandMentionFile = Future<SlashCommandCallbackResult> Function();
@@ -94,6 +96,7 @@ enum SlashCommandActionEffect {
   theme,
   titleDisplay,
   statusLineDisplay,
+  keymap,
   composerVimMode,
   terminalPets,
   mention,
@@ -230,6 +233,7 @@ class SlashCommandActionDispatcher {
     this.configureTheme,
     this.configureTitleDisplay,
     this.configureStatusLineDisplay,
+    this.configureKeymap,
     this.toggleComposerVimMode,
     this.configureTerminalPets,
     this.mentionFile,
@@ -269,6 +273,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandConfigureTheme? configureTheme;
   final SlashCommandConfigureTitleDisplay? configureTitleDisplay;
   final SlashCommandConfigureStatusLineDisplay? configureStatusLineDisplay;
+  final SlashCommandConfigureKeymap? configureKeymap;
   final SlashCommandToggleComposerVimMode? toggleComposerVimMode;
   final SlashCommandConfigureTerminalPets? configureTerminalPets;
   final SlashCommandMentionFile? mentionFile;
@@ -422,6 +427,8 @@ class SlashCommandActionDispatcher {
         return _configureTitleDisplay(parsed);
       case 'statusline':
         return _configureStatusLineDisplay(parsed);
+      case 'keymap':
+        return _configureKeymap(parsed);
       case 'vim':
         return _toggleComposerVimMode(parsed);
       case 'pets':
@@ -983,11 +990,33 @@ class SlashCommandActionDispatcher {
     );
   }
 
+  Future<SlashCommandActionResult> _configureKeymap(
+    SlashCommandParseResult parsed,
+  ) async {
+    return _argumentCallbackAction(
+      parsed,
+      action: configureKeymap,
+      effect: SlashCommandActionEffect.keymap,
+    );
+  }
+
   Future<SlashCommandActionResult> _configureTerminalPets(
     SlashCommandParseResult parsed,
   ) async {
-    final configureTerminalPets = this.configureTerminalPets;
-    if (configureTerminalPets == null) {
+    return _argumentCallbackAction(
+      parsed,
+      action: configureTerminalPets,
+      effect: SlashCommandActionEffect.terminalPets,
+    );
+  }
+
+  Future<SlashCommandActionResult> _argumentCallbackAction(
+    SlashCommandParseResult parsed, {
+    required Future<SlashCommandCallbackResult> Function(String arguments)?
+    action,
+    required SlashCommandActionEffect effect,
+  }) async {
+    if (action == null) {
       return SlashCommandActionResult.unsupported(
         command: parsed.command!,
         rawCommand: parsed.rawCommand,
@@ -995,14 +1024,14 @@ class SlashCommandActionDispatcher {
       );
     }
     try {
-      final result = await configureTerminalPets(parsed.arguments);
+      final result = await action(parsed.arguments);
       return switch (result) {
         SlashCommandCallbackResult.executed =>
           SlashCommandActionResult.executed(
             command: parsed.command!,
             rawCommand: parsed.rawCommand,
             arguments: parsed.arguments,
-            effect: SlashCommandActionEffect.terminalPets,
+            effect: effect,
           ),
         SlashCommandCallbackResult.cancelled =>
           SlashCommandActionResult.cancelled(

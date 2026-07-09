@@ -153,6 +153,9 @@ class _ChatPageState extends State<ChatPage> {
     final composerInputMode =
         widget.appearanceController?.composerInputMode ??
         AppComposerInputMode.standard;
+    final composerSendShortcut =
+        widget.appearanceController?.composerSendShortcut ??
+        AppComposerSendShortcut.enter;
     final terminalPetPreference =
         widget.appearanceController?.terminalPetPreference ??
         AppTerminalPetPreference.tuiOnly;
@@ -214,42 +217,77 @@ class _ChatPageState extends State<ChatPage> {
                   ),
                   const SizedBox(height: 8),
                 ],
-                TextField(
-                  key: const ValueKey('chat-composer-field'),
-                  controller: _composerController,
-                  onChanged: _handleComposerChanged,
-                  decoration: InputDecoration(
-                    hintText: l10n.connectBeforeTurn,
-                    helperText: _composerHelperText(
-                      l10n,
-                      composerInputMode,
-                      terminalPetPreference,
+                CallbackShortcuts(
+                  bindings: <ShortcutActivator, VoidCallback>{
+                    if (composerSendShortcut ==
+                        AppComposerSendShortcut.ctrlEnter)
+                      const SingleActivator(
+                        LogicalKeyboardKey.enter,
+                        control: true,
+                      ): () {
+                        if (canSend) {
+                          unawaited(_sendComposerText());
+                        }
+                      },
+                  },
+                  child: TextField(
+                    key: const ValueKey('chat-composer-field'),
+                    controller: _composerController,
+                    onChanged: _handleComposerChanged,
+                    keyboardType:
+                        composerSendShortcut ==
+                            AppComposerSendShortcut.ctrlEnter
+                        ? TextInputType.multiline
+                        : TextInputType.text,
+                    minLines: 1,
+                    maxLines:
+                        composerSendShortcut ==
+                            AppComposerSendShortcut.ctrlEnter
+                        ? 4
+                        : 1,
+                    textInputAction:
+                        composerSendShortcut == AppComposerSendShortcut.enter
+                        ? TextInputAction.send
+                        : TextInputAction.newline,
+                    onSubmitted:
+                        composerSendShortcut == AppComposerSendShortcut.enter &&
+                            canSend
+                        ? (_) => unawaited(_sendComposerText())
+                        : null,
+                    decoration: InputDecoration(
+                      hintText: l10n.connectBeforeTurn,
+                      helperText: _composerHelperText(
+                        l10n,
+                        composerInputMode,
+                        composerSendShortcut,
+                        terminalPetPreference,
+                      ),
+                      helperMaxLines: 2,
+                      prefixIcon: IconButton(
+                        key: const ValueKey('chat-slash-command-button'),
+                        onPressed: _openSlashCommandPalette,
+                        icon: const Icon(Icons.manage_search),
+                        tooltip: l10n.slashCommands,
+                      ),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: turnController?.canInterrupt == true
+                                ? _interruptActiveTurn
+                                : null,
+                            icon: const Icon(Icons.stop_circle_outlined),
+                            tooltip: l10n.interruptTurn,
+                          ),
+                          IconButton(
+                            onPressed: canSend ? _sendComposerText : null,
+                            icon: const Icon(Icons.send),
+                            tooltip: l10n.send,
+                          ),
+                        ],
+                      ),
+                      border: const OutlineInputBorder(),
                     ),
-                    helperMaxLines: 2,
-                    prefixIcon: IconButton(
-                      key: const ValueKey('chat-slash-command-button'),
-                      onPressed: _openSlashCommandPalette,
-                      icon: const Icon(Icons.manage_search),
-                      tooltip: l10n.slashCommands,
-                    ),
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          onPressed: turnController?.canInterrupt == true
-                              ? _interruptActiveTurn
-                              : null,
-                          icon: const Icon(Icons.stop_circle_outlined),
-                          tooltip: l10n.interruptTurn,
-                        ),
-                        IconButton(
-                          onPressed: canSend ? _sendComposerText : null,
-                          icon: const Icon(Icons.send),
-                          tooltip: l10n.send,
-                        ),
-                      ],
-                    ),
-                    border: const OutlineInputBorder(),
                   ),
                 ),
               ],
@@ -391,6 +429,7 @@ class _ChatPageState extends State<ChatPage> {
           configureTheme: _configureTheme,
           configureTitleDisplay: _configureTitleDisplay,
           configureStatusLineDisplay: _configureStatusLineDisplay,
+          configureKeymap: _configureKeymap,
           toggleComposerVimMode: _toggleComposerVimMode,
           configureTerminalPets: _configureTerminalPets,
           mentionFile: _mentionFile,
@@ -1217,6 +1256,36 @@ class _ChatPageState extends State<ChatPage> {
     return SlashCommandCallbackResult.executed;
   }
 
+  Future<SlashCommandCallbackResult> _configureKeymap(String arguments) async {
+    final controller = widget.appearanceController;
+    if (controller == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    final trimmed = arguments.trim();
+    if (trimmed.isNotEmpty) {
+      final shortcut = AppComposerSendShortcut.parseCommandValue(trimmed);
+      if (shortcut == null) {
+        return SlashCommandCallbackResult.unavailable;
+      }
+      controller.setComposerSendShortcut(shortcut);
+      return SlashCommandCallbackResult.executed;
+    }
+
+    final shortcut = await showModalBottomSheet<AppComposerSendShortcut>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) =>
+          ComposerKeymapSheet(initialShortcut: controller.composerSendShortcut),
+    );
+    if (!mounted || shortcut == null) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+
+    controller.setComposerSendShortcut(shortcut);
+    return SlashCommandCallbackResult.executed;
+  }
+
   Future<SlashCommandCallbackResult> _configureTerminalPets(
     String arguments,
   ) async {
@@ -1474,6 +1543,7 @@ class _ChatPageState extends State<ChatPage> {
           l10n.slashCommandTitleDisplayUpdated,
         SlashCommandActionEffect.statusLineDisplay =>
           l10n.slashCommandStatusLineDisplayUpdated,
+        SlashCommandActionEffect.keymap => l10n.slashCommandKeymapUpdated,
         SlashCommandActionEffect.composerVimMode =>
           (widget.appearanceController?.composerInputMode ==
                   AppComposerInputMode.vim)
@@ -1684,10 +1754,12 @@ class _ChatPageState extends State<ChatPage> {
   String _composerHelperText(
     AppLocalizations l10n,
     AppComposerInputMode inputMode,
+    AppComposerSendShortcut sendShortcut,
     AppTerminalPetPreference terminalPetPreference,
   ) {
     return [
       _composerInputModeLabel(l10n, inputMode),
+      _composerSendShortcutLabel(l10n, sendShortcut),
       _terminalPetPreferenceLabel(l10n, terminalPetPreference),
     ].join(' | ');
   }
@@ -1699,6 +1771,16 @@ class _ChatPageState extends State<ChatPage> {
     return switch (mode) {
       AppComposerInputMode.standard => l10n.composerInputModeStandard,
       AppComposerInputMode.vim => l10n.composerInputModeVim,
+    };
+  }
+
+  String _composerSendShortcutLabel(
+    AppLocalizations l10n,
+    AppComposerSendShortcut shortcut,
+  ) {
+    return switch (shortcut) {
+      AppComposerSendShortcut.enter => l10n.composerSendShortcutEnter,
+      AppComposerSendShortcut.ctrlEnter => l10n.composerSendShortcutCtrlEnter,
     };
   }
 

@@ -613,6 +613,64 @@ void main() {
     expect(result.command?.command, 'statusline');
   });
 
+  test(
+    '/keymap passes inline arguments to the injected keymap action',
+    () async {
+      final arguments = <String>[];
+      final dispatcher = SlashCommandActionDispatcher(
+        configureKeymap: (argument) async {
+          arguments.add(argument);
+          return SlashCommandCallbackResult.executed;
+        },
+      );
+
+      final result = await dispatcher.dispatch(
+        registry.parseComposerText('/keymap ctrl-enter'),
+        hasActiveTurn: false,
+      );
+
+      expect(arguments, ['ctrl-enter']);
+      expect(result.outcome, SlashCommandActionOutcome.executed);
+      expect(result.effect, SlashCommandActionEffect.keymap);
+    },
+  );
+
+  test(
+    '/keymap reports unavailable arguments from the injected action',
+    () async {
+      final dispatcher = SlashCommandActionDispatcher(
+        configureKeymap: (_) async => SlashCommandCallbackResult.unavailable,
+      );
+
+      final result = await dispatcher.dispatch(
+        registry.parseComposerText('/keymap space'),
+        hasActiveTurn: false,
+      );
+
+      expect(result.outcome, SlashCommandActionOutcome.unavailable);
+      expect(result.command?.command, 'keymap');
+    },
+  );
+
+  test('/keymap is unavailable during an active turn', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      configureKeymap: (_) async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/keymap ctrl-enter'),
+      hasActiveTurn: true,
+    );
+
+    expect(calls, 0);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'keymap');
+  });
+
   test('/vim toggles the injected composer mode action', () async {
     var calls = 0;
     final dispatcher = SlashCommandActionDispatcher(
@@ -1357,7 +1415,7 @@ void main() {
         hasActiveTurn: false,
       );
       final unsupported = await dispatcher.dispatch(
-        registry.parseComposerText('/keymap'),
+        registry.parseComposerText('/ide'),
         hasActiveTurn: false,
       );
       final platformOnly = await dispatcher.dispatch(
@@ -1372,7 +1430,7 @@ void main() {
       expect(unknown.outcome, SlashCommandActionOutcome.unknown);
       expect(unknown.rawCommand, 'does-not-exist');
       expect(unsupported.outcome, SlashCommandActionOutcome.unsupported);
-      expect(unsupported.command?.command, 'keymap');
+      expect(unsupported.command?.command, 'ide');
       expect(platformOnly.outcome, SlashCommandActionOutcome.unsupported);
       expect(
         platformOnly.command?.mappingType,

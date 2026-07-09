@@ -147,6 +147,7 @@ class AppLocalizations {
       _text('slashCommandTitleDisplayUpdated');
   String get slashCommandStatusLineDisplayUpdated =>
       _text('slashCommandStatusLineDisplayUpdated');
+  String get slashCommandKeymapUpdated => _text('slashCommandKeymapUpdated');
   String get slashCommandVimModeEnabled => _text('slashCommandVimModeEnabled');
   String get slashCommandVimModeDisabled =>
       _text('slashCommandVimModeDisabled');
@@ -293,6 +294,14 @@ class AppLocalizations {
   String get applyStatusLineDisplay => _text('applyStatusLineDisplay');
   String get composerInputModeStandard => _text('composerInputModeStandard');
   String get composerInputModeVim => _text('composerInputModeVim');
+  String get composerSendShortcutEnter => _text('composerSendShortcutEnter');
+  String get composerSendShortcutCtrlEnter =>
+      _text('composerSendShortcutCtrlEnter');
+  String get keymapCommandTitle => _text('keymapCommandTitle');
+  String get keymapSendShortcutEnter => _text('keymapSendShortcutEnter');
+  String get keymapSendShortcutCtrlEnter =>
+      _text('keymapSendShortcutCtrlEnter');
+  String get applyKeymap => _text('applyKeymap');
   String get composerTerminalPetTuiOnly => _text('composerTerminalPetTuiOnly');
   String get composerTerminalPetHidden => _text('composerTerminalPetHidden');
   String get terminalPetCommandTitle => _text('terminalPetCommandTitle');
@@ -663,6 +672,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandThemeUpdated': 'Theme updated.',
     'slashCommandTitleDisplayUpdated': 'Title display updated.',
     'slashCommandStatusLineDisplayUpdated': 'Status line display updated.',
+    'slashCommandKeymapUpdated': 'Keyboard shortcut settings updated.',
     'slashCommandVimModeEnabled': 'Composer Vim mode enabled.',
     'slashCommandVimModeDisabled': 'Composer Vim mode disabled.',
     'slashCommandPetsTuiOnly': 'Terminal pet remains TUI-only on mobile.',
@@ -790,6 +800,12 @@ const _values = <String, Map<String, String>>{
     'applyStatusLineDisplay': 'Apply status line',
     'composerInputModeStandard': 'Input mode: Standard',
     'composerInputModeVim': 'Input mode: Vim',
+    'composerSendShortcutEnter': 'Send: Enter',
+    'composerSendShortcutCtrlEnter': 'Send: Ctrl+Enter',
+    'keymapCommandTitle': 'Keyboard shortcuts',
+    'keymapSendShortcutEnter': 'Enter sends',
+    'keymapSendShortcutCtrlEnter': 'Ctrl+Enter sends',
+    'applyKeymap': 'Apply shortcuts',
     'composerTerminalPetTuiOnly': 'Pet: TUI-only',
     'composerTerminalPetHidden': 'Pet: hidden',
     'terminalPetCommandTitle': 'Terminal pet',
@@ -1112,6 +1128,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandThemeUpdated': '已更新主题。',
     'slashCommandTitleDisplayUpdated': '已更新标题显示。',
     'slashCommandStatusLineDisplayUpdated': '已更新状态栏显示。',
+    'slashCommandKeymapUpdated': '已更新键盘快捷键设置。',
     'slashCommandVimModeEnabled': '已启用编辑器 Vim 模式。',
     'slashCommandVimModeDisabled': '已关闭编辑器 Vim 模式。',
     'slashCommandPetsTuiOnly': '终端宠物在移动端保持为 TUI 专属。',
@@ -1228,6 +1245,12 @@ const _values = <String, Map<String, String>>{
     'applyStatusLineDisplay': '应用状态栏',
     'composerInputModeStandard': '输入模式：标准',
     'composerInputModeVim': '输入模式：Vim',
+    'composerSendShortcutEnter': '发送：Enter',
+    'composerSendShortcutCtrlEnter': '发送：Ctrl+Enter',
+    'keymapCommandTitle': '键盘快捷键',
+    'keymapSendShortcutEnter': 'Enter 发送',
+    'keymapSendShortcutCtrlEnter': 'Ctrl+Enter 发送',
+    'applyKeymap': '应用快捷键',
     'composerTerminalPetTuiOnly': '终端宠物：仅 TUI',
     'composerTerminalPetHidden': '终端宠物：已隐藏',
     'terminalPetCommandTitle': '终端宠物',

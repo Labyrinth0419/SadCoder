@@ -36,6 +36,31 @@ extension AppThemePreferenceMode on AppThemePreference {
 
 enum AppComposerInputMode { standard, vim }
 
+enum AppComposerSendShortcut {
+  enter,
+  ctrlEnter;
+
+  static AppComposerSendShortcut? parseCommandValue(String value) {
+    return switch (value.trim().toLowerCase()) {
+      '' => null,
+      'enter' ||
+      'return' ||
+      'default' ||
+      'send' ||
+      'enter-to-send' => AppComposerSendShortcut.enter,
+      'ctrl-enter' ||
+      'ctrl+enter' ||
+      'control-enter' ||
+      'control+enter' ||
+      'cmd-enter' ||
+      'cmd+enter' ||
+      'meta-enter' ||
+      'meta+enter' => AppComposerSendShortcut.ctrlEnter,
+      _ => null,
+    };
+  }
+}
+
 enum AppTerminalPetPreference {
   tuiOnly,
   hidden;
@@ -67,18 +92,22 @@ class AppAppearanceController extends ChangeNotifier {
     AppStatusLineDisplaySettings statusLineDisplay =
         AppStatusLineDisplaySettings.defaults,
     AppComposerInputMode composerInputMode = AppComposerInputMode.standard,
+    AppComposerSendShortcut composerSendShortcut =
+        AppComposerSendShortcut.enter,
     AppTerminalPetPreference terminalPetPreference =
         AppTerminalPetPreference.tuiOnly,
   }) : _theme = theme,
        _titleDisplay = titleDisplay,
        _statusLineDisplay = statusLineDisplay,
        _composerInputMode = composerInputMode,
+       _composerSendShortcut = composerSendShortcut,
        _terminalPetPreference = terminalPetPreference;
 
   AppThemePreference _theme;
   AppTitleDisplaySettings _titleDisplay;
   AppStatusLineDisplaySettings _statusLineDisplay;
   AppComposerInputMode _composerInputMode;
+  AppComposerSendShortcut _composerSendShortcut;
   AppTerminalPetPreference _terminalPetPreference;
 
   AppThemePreference get theme => _theme;
@@ -90,6 +119,8 @@ class AppAppearanceController extends ChangeNotifier {
   AppStatusLineDisplaySettings get statusLineDisplay => _statusLineDisplay;
 
   AppComposerInputMode get composerInputMode => _composerInputMode;
+
+  AppComposerSendShortcut get composerSendShortcut => _composerSendShortcut;
 
   AppTerminalPetPreference get terminalPetPreference => _terminalPetPreference;
 
@@ -122,6 +153,14 @@ class AppAppearanceController extends ChangeNotifier {
       return;
     }
     _composerInputMode = mode;
+    notifyListeners();
+  }
+
+  void setComposerSendShortcut(AppComposerSendShortcut shortcut) {
+    if (_composerSendShortcut == shortcut) {
+      return;
+    }
+    _composerSendShortcut = shortcut;
     notifyListeners();
   }
 
