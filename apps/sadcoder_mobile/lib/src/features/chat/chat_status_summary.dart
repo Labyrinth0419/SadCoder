@@ -1,5 +1,7 @@
 import '../../config/codex_config_override_controller.dart';
 import '../../config/codex_config_overrides.dart';
+import '../../config/codex_config_snapshot.dart';
+import '../../config/codex_config_snapshot_controller.dart';
 import '../../i18n/app_localizations.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../threads/thread_detail_controller.dart';
@@ -16,6 +18,7 @@ String buildChatStatusSummary({
   TurnController? turnController,
   ChatTimelineController? timelineController,
   CodexConfigOverrideController? configOverrideController,
+  CodexConfigSnapshotController? configSnapshotController,
 }) {
   final lines = <String>[
     '${l10n.connectionStatus}: ${sessionStatusLabel(l10n, sessionController?.status)}',
@@ -49,6 +52,10 @@ String buildChatStatusSummary({
 
   if (configOverrideController != null) {
     lines.addAll(_overrideStatusLines(l10n, configOverrideController));
+  }
+
+  if (configSnapshotController != null) {
+    lines.addAll(_serverConfigStatusLines(l10n, configSnapshotController));
   }
 
   return lines.join('\n');
@@ -93,6 +100,30 @@ Iterable<String> _overrideStatusLines(
   yield '${l10n.sandboxMode}: ${_overrideStatusValue(l10n, configOverrideValueLabel(resolved.sandboxPolicy), controller.sourceFor('sandboxPolicy'))}';
   yield '${l10n.cwdOverride}: ${_overrideStatusValue(l10n, resolved.cwd, controller.sourceFor('cwd'))}';
   yield '${l10n.personalityOverride}: ${_overrideStatusValue(l10n, resolved.personality, controller.sourceFor('personality'))}';
+}
+
+Iterable<String> _serverConfigStatusLines(
+  AppLocalizations l10n,
+  CodexConfigSnapshotController controller,
+) sync* {
+  final snapshot = controller.snapshot;
+  if (controller.status == CodexConfigSnapshotStatus.failed) {
+    final error = controller.error;
+    yield '${l10n.serverConfigSnapshot}: ${l10n.serverConfigLoadFailed}${error == null ? '' : ': $error'}';
+    return;
+  }
+  if (snapshot == null) {
+    return;
+  }
+  yield '${l10n.serverConfigSnapshot}: ${l10n.modelOverride}=${_serverConfigValue(l10n, snapshot, 'model')}, ${l10n.effortOverride}=${_serverConfigValue(l10n, snapshot, 'model_reasoning_effort')}, ${l10n.approvalPolicy}=${_serverConfigValue(l10n, snapshot, 'approval_policy')}, ${l10n.sandboxMode}=${_serverConfigValue(l10n, snapshot, 'sandbox_mode')}';
+}
+
+String _serverConfigValue(
+  AppLocalizations l10n,
+  CodexConfigSnapshot snapshot,
+  String key,
+) {
+  return snapshot.displayValueFor(key) ?? l10n.serverValueUnset;
 }
 
 String _overrideStatusValue(

@@ -8,6 +8,7 @@ import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_page.dart';
@@ -1129,6 +1130,97 @@ void main() {
     );
   });
 
+  testWidgets('/status refreshes thread detail and server config snapshot', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(
+        thread: ThreadSummary.fromJson({
+          'id': 'thr_new',
+          'sessionId': 'sess_1',
+          'preview': 'Active thread',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 1,
+          'turns': <Object?>[],
+        }),
+      ),
+    );
+    final configReader = _RecordingConfigSnapshotReader(
+      snapshot: CodexConfigSnapshot.fromJson({
+        'config': {
+          'model': 'gpt-5-codex',
+          'model_reasoning_effort': 'high',
+          'approval_policy': {'type': 'on-request'},
+          'sandbox_mode': {'type': 'workspace-write'},
+        },
+      }),
+    );
+    final overrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(cwd: '/repo'),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    final configSnapshotController = CodexConfigSnapshotController(
+      readerProvider: () => configReader,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => overrideController.layers,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(configSnapshotController.dispose);
+    addTearDown(threadDetailController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await turnController.submitText('Run status refresh');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: threadDetailController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+      configSnapshotController: configSnapshotController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/status',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(detailReader.threadIds, ['thr_new']);
+    expect(detailReader.includeTurnsValues, [false]);
+    expect(configReader.cwdValues, ['/repo']);
+    expect(
+      find.textContaining(
+        'Server config snapshot: Model=gpt-5-codex, Reasoning effort=high, Approval policy=on-request, Sandbox mode=workspace-write',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('/raw toggles raw timeline item JSON locally', (tester) async {
     final timelineController = ChatTimelineController();
     addTearDown(timelineController.dispose);
@@ -1903,6 +1995,7 @@ Future<void> _pumpChatPage(
   TurnController? turnController,
   ChatTimelineController? timelineController,
   CodexConfigOverrideController? configOverrideController,
+  CodexConfigSnapshotController? configSnapshotController,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -1921,6 +2014,7 @@ Future<void> _pumpChatPage(
           turnController: turnController,
           timelineController: timelineController,
           configOverrideController: configOverrideController,
+          configSnapshotController: configSnapshotController,
         ),
       ),
     ),
@@ -1972,6 +2066,7 @@ class _FakeThreadDetailReader implements ThreadDetailReader {
 
   final ThreadDetail detail;
   final threadIds = <String>[];
+  final includeTurnsValues = <bool>[];
 
   @override
   Future<ThreadDetail> readThread({
@@ -1979,6 +2074,7 @@ class _FakeThreadDetailReader implements ThreadDetailReader {
     bool includeTurns = true,
   }) async {
     threadIds.add(threadId);
+    includeTurnsValues.add(includeTurns);
     return detail;
   }
 }
@@ -2069,6 +2165,22 @@ class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {
     String? cwd,
   }) async {
     return const CodexConfigSnapshot(config: {}, origins: {}, layers: []);
+  }
+}
+
+class _RecordingConfigSnapshotReader implements CodexConfigSnapshotReader {
+  _RecordingConfigSnapshotReader({required this.snapshot});
+
+  final CodexConfigSnapshot snapshot;
+  final cwdValues = <String?>[];
+
+  @override
+  Future<CodexConfigSnapshot> readConfig({
+    bool includeLayers = true,
+    String? cwd,
+  }) async {
+    cwdValues.add(cwd);
+    return snapshot;
   }
 }
 

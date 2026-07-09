@@ -8,6 +8,7 @@ import '../../commands/slash_command_action_dispatcher.dart';
 import '../../commands/slash_command_registry.dart';
 import '../../config/codex_config_override_controller.dart';
 import '../../config/codex_config_overrides.dart';
+import '../../config/codex_config_snapshot_controller.dart';
 import '../../i18n/app_localizations.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../threads/thread_detail_controller.dart';
@@ -33,6 +34,7 @@ class ChatPage extends StatefulWidget {
     this.turnController,
     this.timelineController,
     this.configOverrideController,
+    this.configSnapshotController,
     this.slashCommandDispatcher,
   });
 
@@ -43,6 +45,7 @@ class ChatPage extends StatefulWidget {
   final TurnController? turnController;
   final ChatTimelineController? timelineController;
   final CodexConfigOverrideController? configOverrideController;
+  final CodexConfigSnapshotController? configSnapshotController;
   final SlashCommandActionDispatcher? slashCommandDispatcher;
 
   @override
@@ -317,15 +320,40 @@ class _ChatPageState extends State<ChatPage> {
         );
   }
 
-  String _buildStatusSummary() => buildChatStatusSummary(
-    l10n: context.l10n,
-    sessionController: widget.sessionController,
-    threadListController: widget.threadListController,
-    threadDetailController: widget.threadDetailController,
-    turnController: widget.turnController,
-    timelineController: widget.timelineController,
-    configOverrideController: widget.configOverrideController,
-  );
+  Future<String> _buildStatusSummary() async {
+    final l10n = context.l10n;
+    await _refreshStatusSources();
+    return buildChatStatusSummary(
+      l10n: l10n,
+      sessionController: widget.sessionController,
+      threadListController: widget.threadListController,
+      threadDetailController: widget.threadDetailController,
+      turnController: widget.turnController,
+      timelineController: widget.timelineController,
+      configOverrideController: widget.configOverrideController,
+      configSnapshotController: widget.configSnapshotController,
+    );
+  }
+
+  Future<void> _refreshStatusSources() async {
+    final futures = <Future<void>>[];
+    final threadId = _currentThreadId();
+    final threadDetailController = widget.threadDetailController;
+    if (threadId != null && threadDetailController != null) {
+      futures.add(
+        threadDetailController.readThread(threadId, includeTurns: false),
+      );
+    }
+    final configSnapshotController = widget.configSnapshotController;
+    if (configSnapshotController != null) {
+      futures.add(
+        configSnapshotController.refresh(
+          cwd: widget.configOverrideController?.resolved.cwd,
+        ),
+      );
+    }
+    await Future.wait(futures);
+  }
 
   Future<bool> _copyLastResponse() async {
     final markdown = widget.timelineController?.lastAssistantMessageMarkdown();

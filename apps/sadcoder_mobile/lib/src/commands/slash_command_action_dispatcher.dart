@@ -1,9 +1,11 @@
+import 'dart:async';
+
 import 'slash_command_registry.dart';
 
 typedef SlashCommandDisconnect = Future<void> Function();
 typedef SlashCommandClearTranscript = void Function();
 typedef SlashCommandCopyLastResponse = Future<bool> Function();
-typedef SlashCommandShowStatus = String? Function();
+typedef SlashCommandShowStatus = FutureOr<String?> Function();
 typedef SlashCommandToggleRawTranscript = bool? Function(String arguments);
 typedef SlashCommandStartNewThread = Future<bool> Function();
 typedef SlashCommandResumeThread = Future<bool> Function(String threadId);
@@ -350,7 +352,9 @@ class SlashCommandActionDispatcher {
     }
   }
 
-  SlashCommandActionResult _showStatus(SlashCommandParseResult parsed) {
+  Future<SlashCommandActionResult> _showStatus(
+    SlashCommandParseResult parsed,
+  ) async {
     final showStatus = this.showStatus;
     if (showStatus == null) {
       return SlashCommandActionResult.unsupported(
@@ -360,7 +364,7 @@ class SlashCommandActionDispatcher {
       );
     }
     try {
-      final message = showStatus()?.trim();
+      final message = (await showStatus())?.trim();
       if (message == null || message.isEmpty) {
         return SlashCommandActionResult.unavailable(
           command: parsed.command!,

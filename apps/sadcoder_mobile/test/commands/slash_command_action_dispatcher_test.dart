@@ -110,6 +110,20 @@ void main() {
     expect(result.message, 'Connected\nThread: thr_1');
   });
 
+  test('/status awaits asynchronous status summaries', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      showStatus: () async => 'Remote status',
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/status'),
+      hasActiveTurn: true,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.message, 'Remote status');
+  });
+
   test('/status is unavailable when no status summary can be built', () async {
     final dispatcher = SlashCommandActionDispatcher(showStatus: () => '  ');
 
