@@ -344,6 +344,70 @@ void main() {
     expect(find.text('hello'), findsOneWidget);
   });
 
+  testWidgets('renders structured command file and MCP timeline items', (
+    tester,
+  ) async {
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+
+    timelineController.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Fix login bug',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': [
+          {
+            'id': 'turn_1',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': [
+              {
+                'id': 'cmd_1',
+                'type': 'commandExecution',
+                'command': 'cargo test',
+                'cwd': '/repo',
+                'status': 'completed',
+                'exitCode': 0,
+                'durationMs': 1200,
+                'aggregatedOutput': 'tests passed',
+              },
+              {
+                'id': 'file_1',
+                'type': 'fileChange',
+                'status': 'completed',
+                'changes': [
+                  {'path': 'lib/main.dart', 'kind': 'modify', 'diff': '@@'},
+                ],
+              },
+              {
+                'id': 'mcp_1',
+                'type': 'mcpToolCall',
+                'server': 'github',
+                'tool': 'search_issues',
+                'status': 'completed',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    await _pumpChatPage(tester, timelineController: timelineController);
+
+    expect(find.text('cargo test'), findsOneWidget);
+    expect(find.textContaining('Working directory: /repo'), findsOneWidget);
+    expect(find.textContaining('Exit code: 0'), findsOneWidget);
+    expect(find.text('tests passed'), findsOneWidget);
+    expect(find.text('File changes'), findsOneWidget);
+    expect(find.textContaining('modify lib/main.dart'), findsOneWidget);
+    expect(find.text('github/search_issues'), findsOneWidget);
+    expect(find.textContaining('Tool: search_issues'), findsOneWidget);
+  });
+
   testWidgets('refreshes threads when the session becomes connected', (
     tester,
   ) async {

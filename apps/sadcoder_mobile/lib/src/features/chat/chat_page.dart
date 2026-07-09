@@ -638,23 +638,81 @@ class _TimelineItemView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final body = item.output.isNotEmpty
-        ? item.output
-        : item.text.isNotEmpty
-        ? item.text
-        : item.itemId;
+    final details = _details(context);
+    final body = _body;
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(_iconFor(item.itemType)),
-      title: Text('${context.l10n.timelineItem}: ${item.itemType}'),
-      subtitle: Text(body),
+      title: Text(_title(context)),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (details.isNotEmpty) Text(details.join('\n')),
+          if (body.isNotEmpty) ...[const SizedBox(height: 4), Text(body)],
+        ],
+      ),
     );
+  }
+
+  String _title(BuildContext context) {
+    final l10n = context.l10n;
+    return switch (item.itemType) {
+      'commandExecution' when item.command != null => item.command!,
+      'fileChange' => l10n.timelineFileChanges,
+      'mcpToolCall' when item.server != null && item.tool != null =>
+        '${item.server}/${item.tool}',
+      'mcpToolCall' when item.tool != null => item.tool!,
+      _ => '${l10n.timelineItem}: ${item.itemType}',
+    };
+  }
+
+  String get _body {
+    if (item.output.isNotEmpty) {
+      return item.output;
+    }
+    if (item.text.isNotEmpty) {
+      return item.text;
+    }
+    if (item.itemType == 'commandExecution' ||
+        item.itemType == 'fileChange' ||
+        item.itemType == 'mcpToolCall') {
+      return '';
+    }
+    return item.itemId;
+  }
+
+  List<String> _details(BuildContext context) {
+    final l10n = context.l10n;
+    return [
+      if (item.cwd != null && item.cwd!.isNotEmpty)
+        '${l10n.approvalWorkingDirectory}: ${item.cwd}',
+      if (item.status != null && item.status!.isNotEmpty)
+        '${l10n.timelineStatus}: ${item.status}',
+      if (item.exitCode != null) '${l10n.timelineExitCode}: ${item.exitCode}',
+      if (item.durationMs != null)
+        '${l10n.timelineDuration}: ${item.durationMs} ms',
+      if (item.server != null && item.server!.isNotEmpty)
+        '${l10n.approvalServer}: ${item.server}',
+      if (item.tool != null && item.tool!.isNotEmpty)
+        '${l10n.timelineTool}: ${item.tool}',
+      if (item.fileChanges.isNotEmpty)
+        '${l10n.timelineFileChanges}: ${item.fileChanges.map(_fileChangeLabel).join(', ')}',
+    ];
+  }
+
+  String _fileChangeLabel(ThreadFileChangeSummary change) {
+    if (change.path.isEmpty) {
+      return change.kind;
+    }
+    return '${change.kind} ${change.path}';
   }
 
   IconData _iconFor(String itemType) {
     return switch (itemType) {
       'agentMessage' => Icons.smart_toy_outlined,
       'commandExecution' => Icons.terminal,
+      'fileChange' => Icons.difference_outlined,
+      'mcpToolCall' => Icons.extension_outlined,
       'plan' => Icons.checklist,
       _ => Icons.notes_outlined,
     };

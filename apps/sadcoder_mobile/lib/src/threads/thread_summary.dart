@@ -160,6 +160,14 @@ class ThreadItemSummary {
     required this.type,
     required this.text,
     required this.output,
+    this.command,
+    this.cwd,
+    this.status,
+    this.exitCode,
+    this.durationMs,
+    this.server,
+    this.tool,
+    this.fileChanges = const [],
     this.raw = const {},
   });
 
@@ -170,6 +178,16 @@ class ThreadItemSummary {
       type: type,
       text: _itemText(type, json),
       output: _stringValue(json['aggregatedOutput']) ?? '',
+      command: _stringValue(json['command']),
+      cwd: _stringValue(json['cwd']),
+      status: _stringValue(json['status']),
+      exitCode: _intValue(json['exitCode']),
+      durationMs: _intValue(json['durationMs']),
+      server: _stringValue(json['server']),
+      tool: _stringValue(json['tool']),
+      fileChanges: _listOfMaps(
+        json['changes'],
+      ).map(ThreadFileChangeSummary.fromJson).toList(growable: false),
       raw: Map.unmodifiable(json),
     );
   }
@@ -178,6 +196,37 @@ class ThreadItemSummary {
   final String type;
   final String text;
   final String output;
+  final String? command;
+  final String? cwd;
+  final String? status;
+  final int? exitCode;
+  final int? durationMs;
+  final String? server;
+  final String? tool;
+  final List<ThreadFileChangeSummary> fileChanges;
+  final Map<String, Object?> raw;
+}
+
+class ThreadFileChangeSummary {
+  const ThreadFileChangeSummary({
+    required this.path,
+    required this.kind,
+    required this.diff,
+    this.raw = const {},
+  });
+
+  factory ThreadFileChangeSummary.fromJson(Map<String, Object?> json) {
+    return ThreadFileChangeSummary(
+      path: _stringValue(json['path']) ?? '',
+      kind: _stringValue(json['kind']) ?? 'unknown',
+      diff: _stringValue(json['diff']) ?? '',
+      raw: Map.unmodifiable(json),
+    );
+  }
+
+  final String path;
+  final String kind;
+  final String diff;
   final Map<String, Object?> raw;
 }
 
@@ -225,10 +274,7 @@ String _itemText(String type, Map<String, Object?> json) {
       ..._listOfStrings(json['summary']),
       ..._listOfStrings(json['content']),
     ].join('\n'),
-    'mcpToolCall' => [
-      _stringValue(json['server']),
-      _stringValue(json['tool']),
-    ].whereType<String>().where((value) => value.isNotEmpty).join('/'),
+    'mcpToolCall' => '',
     'dynamicToolCall' => _stringValue(json['tool']) ?? '',
     'webSearch' => _stringValue(json['query']) ?? '',
     'imageView' => _stringValue(json['path']) ?? '',

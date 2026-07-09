@@ -94,6 +94,11 @@ class AppLocalizations {
   String get timeline => _text('timeline');
   String get noTimelineEvents => _text('noTimelineEvents');
   String get timelineItem => _text('timelineItem');
+  String get timelineStatus => _text('timelineStatus');
+  String get timelineExitCode => _text('timelineExitCode');
+  String get timelineDuration => _text('timelineDuration');
+  String get timelineFileChanges => _text('timelineFileChanges');
+  String get timelineTool => _text('timelineTool');
   String get forkedThread => _text('forkedThread');
   String get subagentThread => _text('subagentThread');
   String get send => _text('send');
@@ -233,6 +238,11 @@ const _values = <String, Map<String, String>>{
     'timeline': 'Timeline',
     'noTimelineEvents': 'No events yet',
     'timelineItem': 'Item',
+    'timelineStatus': 'Status',
+    'timelineExitCode': 'Exit code',
+    'timelineDuration': 'Duration',
+    'timelineFileChanges': 'File changes',
+    'timelineTool': 'Tool',
     'forkedThread': 'fork',
     'subagentThread': 'subagent',
     'send': 'Send',
@@ -346,6 +356,11 @@ const _values = <String, Map<String, String>>{
     'timeline': '事件流',
     'noTimelineEvents': '暂无事件',
     'timelineItem': '条目',
+    'timelineStatus': '状态',
+    'timelineExitCode': '退出码',
+    'timelineDuration': '耗时',
+    'timelineFileChanges': '文件变更',
+    'timelineTool': '工具',
     'forkedThread': '分叉',
     'subagentThread': '子 agent',
     'send': '发送',

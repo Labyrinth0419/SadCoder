@@ -299,16 +299,33 @@ class ChatTimelineItem {
     required this.itemType,
     required this.text,
     required this.output,
+    this.command,
+    this.cwd,
+    this.status,
+    this.exitCode,
+    this.durationMs,
+    this.server,
+    this.tool,
+    this.fileChanges = const [],
     required this.raw,
   });
 
   factory ChatTimelineItem.fromEvent(CodexEvent event) {
     final raw = event.item ?? const <String, Object?>{};
+    final threadItem = ThreadItemSummary.fromJson(raw);
     return ChatTimelineItem(
       itemId: event.itemId ?? '',
-      itemType: event.itemType ?? 'unknown',
-      text: _stringValue(raw['text']) ?? '',
-      output: _stringValue(raw['aggregatedOutput']) ?? '',
+      itemType: event.itemType ?? threadItem.type,
+      text: threadItem.text,
+      output: threadItem.output,
+      command: threadItem.command,
+      cwd: threadItem.cwd,
+      status: threadItem.status,
+      exitCode: threadItem.exitCode,
+      durationMs: threadItem.durationMs,
+      server: threadItem.server,
+      tool: threadItem.tool,
+      fileChanges: threadItem.fileChanges,
       raw: raw,
     );
   }
@@ -319,6 +336,14 @@ class ChatTimelineItem {
       itemType: item.type,
       text: item.text,
       output: item.output,
+      command: item.command,
+      cwd: item.cwd,
+      status: item.status,
+      exitCode: item.exitCode,
+      durationMs: item.durationMs,
+      server: item.server,
+      tool: item.tool,
+      fileChanges: item.fileChanges,
       raw: item.raw,
     );
   }
@@ -327,6 +352,14 @@ class ChatTimelineItem {
   final String itemType;
   final String text;
   final String output;
+  final String? command;
+  final String? cwd;
+  final String? status;
+  final int? exitCode;
+  final int? durationMs;
+  final String? server;
+  final String? tool;
+  final List<ThreadFileChangeSummary> fileChanges;
   final Map<String, Object?> raw;
 
   ChatTimelineItem copyWith({String? text, String? output}) {
@@ -335,6 +368,14 @@ class ChatTimelineItem {
       itemType: itemType,
       text: text ?? this.text,
       output: output ?? this.output,
+      command: command,
+      cwd: cwd,
+      status: status,
+      exitCode: exitCode,
+      durationMs: durationMs,
+      server: server,
+      tool: tool,
+      fileChanges: fileChanges,
       raw: raw,
     );
   }
@@ -345,6 +386,14 @@ class ChatTimelineItem {
       itemType: next.itemType == 'unknown' ? itemType : next.itemType,
       text: next.text.isEmpty ? text : next.text,
       output: next.output.isEmpty ? output : next.output,
+      command: next.command ?? command,
+      cwd: next.cwd ?? cwd,
+      status: next.status ?? status,
+      exitCode: next.exitCode ?? exitCode,
+      durationMs: next.durationMs ?? durationMs,
+      server: next.server ?? server,
+      tool: next.tool ?? tool,
+      fileChanges: next.fileChanges.isEmpty ? fileChanges : next.fileChanges,
       raw: next.raw.isEmpty ? raw : next.raw,
     );
   }
@@ -355,12 +404,18 @@ class ChatTimelineItem {
       itemType: itemType == 'unknown' ? liveItem.itemType : itemType,
       text: _mergeText(text, liveItem.text),
       output: _mergeText(output, liveItem.output),
+      command: command ?? liveItem.command,
+      cwd: cwd ?? liveItem.cwd,
+      status: liveItem.status ?? status,
+      exitCode: liveItem.exitCode ?? exitCode,
+      durationMs: liveItem.durationMs ?? durationMs,
+      server: server ?? liveItem.server,
+      tool: tool ?? liveItem.tool,
+      fileChanges: fileChanges.isEmpty ? liveItem.fileChanges : fileChanges,
       raw: raw.isEmpty ? liveItem.raw : raw,
     );
   }
 }
-
-String? _stringValue(Object? value) => value is String ? value : null;
 
 String _mergeStatus(String snapshotStatus, String liveStatus) {
   if (_isTerminalStatus(snapshotStatus)) {

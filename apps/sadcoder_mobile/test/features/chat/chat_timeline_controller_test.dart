@@ -28,6 +28,9 @@ void main() {
           'id': 'item_2',
           'type': 'commandExecution',
           'command': 'cargo test',
+          'cwd': '/repo',
+          'status': 'completed',
+          'exitCode': 0,
           'aggregatedOutput': '',
         },
       ),
@@ -39,6 +42,10 @@ void main() {
     expect(controller.turns.single.status, 'inProgress');
     expect(controller.turns.single.items, hasLength(2));
     expect(controller.turns.single.items.first.text, 'hello world');
+    expect(controller.turns.single.items.last.command, 'cargo test');
+    expect(controller.turns.single.items.last.cwd, '/repo');
+    expect(controller.turns.single.items.last.status, 'completed');
+    expect(controller.turns.single.items.last.exitCode, 0);
     expect(controller.turns.single.items.last.output, 'ok');
   });
 

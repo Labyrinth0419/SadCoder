@@ -85,7 +85,25 @@ void main() {
                 'type': 'commandExecution',
                 'command': 'cargo test',
                 'cwd': '/repo',
+                'status': 'completed',
+                'exitCode': 0,
+                'durationMs': 1200,
                 'aggregatedOutput': 'ok',
+              },
+              {
+                'id': 'item_3',
+                'type': 'fileChange',
+                'status': 'completed',
+                'changes': [
+                  {'path': 'lib/main.dart', 'kind': 'modify', 'diff': '@@'},
+                ],
+              },
+              {
+                'id': 'item_4',
+                'type': 'mcpToolCall',
+                'server': 'github',
+                'tool': 'search_issues',
+                'status': 'completed',
               },
             ],
             'itemsView': 'full',
@@ -107,13 +125,24 @@ void main() {
     expect(detail.thread.id, 'thr_1');
     expect(detail.turns, hasLength(2));
     expect(detail.turns.first.id, 'turn_1');
-    expect(detail.turns.first.itemCount, 2);
+    expect(detail.turns.first.itemCount, 4);
     expect(detail.turns.first.itemsView, 'full');
     expect(detail.turns.first.durationMs, 1000);
     expect(detail.turns.first.items.first.type, 'userMessage');
     expect(detail.turns.first.items.first.text, 'Fix this bug');
-    expect(detail.turns.first.items.last.type, 'commandExecution');
-    expect(detail.turns.first.items.last.output, 'ok');
+    expect(detail.turns.first.items[1].type, 'commandExecution');
+    expect(detail.turns.first.items[1].command, 'cargo test');
+    expect(detail.turns.first.items[1].cwd, '/repo');
+    expect(detail.turns.first.items[1].status, 'completed');
+    expect(detail.turns.first.items[1].exitCode, 0);
+    expect(detail.turns.first.items[1].durationMs, 1200);
+    expect(detail.turns.first.items[1].output, 'ok');
+    expect(
+      detail.turns.first.items[2].fileChanges.single.path,
+      'lib/main.dart',
+    );
+    expect(detail.turns.first.items[3].server, 'github');
+    expect(detail.turns.first.items[3].tool, 'search_issues');
     expect(detail.turns.last.errorMessage, 'failed turn');
   });
 }
