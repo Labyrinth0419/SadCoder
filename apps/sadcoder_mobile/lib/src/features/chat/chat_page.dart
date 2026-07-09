@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../commands/slash_command_action_dispatcher.dart';
 import '../../commands/slash_command_registry.dart';
 import '../../config/codex_config_override_controller.dart';
 import '../../i18n/app_localizations.dart';
@@ -24,6 +25,7 @@ class ChatPage extends StatefulWidget {
     this.turnController,
     this.timelineController,
     this.configOverrideController,
+    this.slashCommandDispatcher,
   });
 
   final SlashCommandRegistry registry;
@@ -33,6 +35,7 @@ class ChatPage extends StatefulWidget {
   final TurnController? turnController;
   final ChatTimelineController? timelineController;
   final CodexConfigOverrideController? configOverrideController;
+  final SlashCommandActionDispatcher? slashCommandDispatcher;
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -86,11 +89,11 @@ class _ChatPageState extends State<ChatPage> {
     final turnController = widget.turnController;
     final isConnected =
         sessionController?.status == CodexSessionStatus.connected;
-    final canSend =
-        isConnected &&
-        turnController != null &&
-        turnController.canSubmit &&
-        _canSendComposerText(_composerController.text);
+    final canSend = _canSubmitComposerText(
+      _composerController.text,
+      isConnected: isConnected,
+      turnController: turnController,
+    );
     return Column(
       children: [
         Padding(
@@ -229,12 +232,22 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _sendComposerText() async {
-    final turnController = widget.turnController;
-    if (turnController == null) {
+    final text = _composerController.text;
+    final parsed = widget.registry.parseComposerText(text);
+    if (!_canSubmitComposerText(
+      text,
+      isConnected: widget.sessionController?.isConnected == true,
+      turnController: widget.turnController,
+    )) {
       return;
     }
-    final text = _composerController.text;
-    if (!_canSendComposerText(text)) {
+    if (parsed.kind != SlashCommandParseKind.notSlash) {
+      await _dispatchSlashCommand(parsed);
+      return;
+    }
+
+    final turnController = widget.turnController;
+    if (turnController == null) {
       return;
     }
     await turnController.submitText(text);
@@ -249,12 +262,84 @@ class _ChatPageState extends State<ChatPage> {
     await widget.turnController?.interruptActiveTurn();
   }
 
-  bool _canSendComposerText(String text) {
+  Future<void> _dispatchSlashCommand(SlashCommandParseResult parsed) async {
+    final result = await _slashCommandDispatcher().dispatch(
+      parsed,
+      hasActiveTurn: widget.turnController?.activeTurnId != null,
+    );
+    if (!mounted) {
+      return;
+    }
+    if (result.outcome == SlashCommandActionOutcome.ignored) {
+      return;
+    }
+    if (result.outcome == SlashCommandActionOutcome.executed) {
+      _composerController.clear();
+      _handleComposerChanged('');
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_slashCommandResultMessage(context.l10n, result))),
+    );
+  }
+
+  SlashCommandActionDispatcher _slashCommandDispatcher() {
+    return widget.slashCommandDispatcher ??
+        SlashCommandActionDispatcher(
+          disconnect: widget.sessionController?.disconnect,
+          clearTranscript: _clearLocalTranscript,
+        );
+  }
+
+  void _clearLocalTranscript() {
+    widget.threadDetailController?.clear();
+    widget.timelineController?.clear();
+    widget.turnController?.clearLocalConversation();
+  }
+
+  String _slashCommandResultMessage(
+    AppLocalizations l10n,
+    SlashCommandActionResult result,
+  ) {
+    return switch (result.outcome) {
+      SlashCommandActionOutcome.ignored => '',
+      SlashCommandActionOutcome.executed => switch (result.effect) {
+        SlashCommandActionEffect.disconnect => l10n.slashCommandDisconnected,
+        SlashCommandActionEffect.clearTranscript => l10n.slashCommandCleared,
+        SlashCommandActionEffect.none => l10n.slashCommandExecuted(
+          result.slash,
+        ),
+      },
+      SlashCommandActionOutcome.unknown => l10n.slashCommandUnknown(
+        result.slash,
+      ),
+      SlashCommandActionOutcome.unsupported => l10n.slashCommandUnsupported(
+        result.slash,
+      ),
+      SlashCommandActionOutcome.unavailable => l10n.slashCommandUnavailable(
+        result.slash,
+      ),
+      SlashCommandActionOutcome.failed => l10n.slashCommandFailed(
+        result.slash,
+        result.error?.toString() ?? '',
+      ),
+    };
+  }
+
+  bool _canSubmitComposerText(
+    String text, {
+    required bool isConnected,
+    required TurnController? turnController,
+  }) {
     if (text.trim().isEmpty) {
       return false;
     }
-    return widget.registry.parseComposerText(text).kind ==
-        SlashCommandParseKind.notSlash;
+    final parsed = widget.registry.parseComposerText(text);
+    return switch (parsed.kind) {
+      SlashCommandParseKind.notSlash =>
+        isConnected && turnController != null && turnController.canSubmit,
+      SlashCommandParseKind.empty || SlashCommandParseKind.unknown => false,
+      SlashCommandParseKind.known => true,
+    };
   }
 
   void _handleSessionChanged() {

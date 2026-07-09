@@ -92,6 +92,21 @@ void main() {
     expect(controller.canSubmit, true);
   });
 
+  test('clearLocalConversation clears local thread and turn state', () async {
+    final runner = _FakeTurnRunner();
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+
+    await controller.submitText('Run task');
+    controller.clearLocalConversation();
+
+    expect(controller.status, TurnControllerStatus.idle);
+    expect(controller.activeThreadId, isNull);
+    expect(controller.activeTurnId, isNull);
+    expect(controller.lastTurn, isNull);
+    expect(runner.interruptedTurns, isEmpty);
+  });
+
   test(
     'finishTurn records failed turns without blocking next submit',
     () async {

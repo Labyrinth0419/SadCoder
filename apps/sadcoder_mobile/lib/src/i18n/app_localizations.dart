@@ -114,6 +114,17 @@ class AppLocalizations {
   String get slashCommandUnavailableDuringTask =>
       _text('slashCommandUnavailableDuringTask');
   String get slashCommandRisk => _text('slashCommandRisk');
+  String get slashCommandDisconnected => _text('slashCommandDisconnected');
+  String get slashCommandCleared => _text('slashCommandCleared');
+  String slashCommandExecuted(String slash) =>
+      _text('slashCommandExecuted').replaceAll('{slash}', slash);
+  String slashCommandUnsupported(String slash) =>
+      _text('slashCommandUnsupported').replaceAll('{slash}', slash);
+  String slashCommandUnavailable(String slash) =>
+      _text('slashCommandUnavailable').replaceAll('{slash}', slash);
+  String slashCommandFailed(String slash, String error) => _text(
+    'slashCommandFailed',
+  ).replaceAll('{slash}', slash).replaceAll('{error}', error);
   String get noPendingApprovals => _text('noPendingApprovals');
   String get approvalsBody => _text('approvalsBody');
   String get approvalKindCommand => _text('approvalKindCommand');
@@ -286,6 +297,13 @@ const _values = <String, Map<String, String>>{
     'slashCommandNotSentAsPrompt': 'Not sent as a prompt',
     'slashCommandUnavailableDuringTask': 'Unavailable while a turn is active',
     'slashCommandRisk': 'Risk',
+    'slashCommandDisconnected':
+        'Disconnected from the mobile proxy. Server tasks were not interrupted.',
+    'slashCommandCleared': 'Local transcript cleared.',
+    'slashCommandExecuted': 'Executed {slash}.',
+    'slashCommandUnsupported': '{slash} is not implemented yet.',
+    'slashCommandUnavailable': '{slash} is unavailable right now.',
+    'slashCommandFailed': '{slash} failed: {error}',
     'noPendingApprovals': 'No pending approvals',
     'approvalsBody':
         'Command, file, and MCP requests will appear here with their thread and turn IDs.',
@@ -433,6 +451,12 @@ const _values = <String, Map<String, String>>{
     'slashCommandNotSentAsPrompt': '不会作为普通提示词发送',
     'slashCommandUnavailableDuringTask': '当前回合运行中不可用',
     'slashCommandRisk': '风险',
+    'slashCommandDisconnected': '已断开移动端代理连接，服务器任务未被中断。',
+    'slashCommandCleared': '已清除本地事件流。',
+    'slashCommandExecuted': '已执行 {slash}。',
+    'slashCommandUnsupported': '{slash} 暂未实现。',
+    'slashCommandUnavailable': '{slash} 当前不可用。',
+    'slashCommandFailed': '{slash} 执行失败：{error}',
     'noPendingApprovals': '暂无待审批请求',
     'approvalsBody': '命令、文件和 MCP 请求会在这里显示对应的会话与回合 ID。',
     'approvalKindCommand': '命令审批',

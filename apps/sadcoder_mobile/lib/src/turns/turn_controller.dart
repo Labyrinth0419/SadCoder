@@ -192,6 +192,14 @@ class TurnController extends ChangeNotifier {
     _setState(status: TurnControllerStatus.idle, error: null);
   }
 
+  void clearLocalConversation() {
+    _generation++;
+    _activeThreadId = null;
+    _activeTurnId = null;
+    _lastTurn = null;
+    _setState(status: TurnControllerStatus.idle, error: null);
+  }
+
   String? _selectedThreadId() {
     final selectedThreadId = _activeThreadIdProvider?.call();
     if (selectedThreadId != null && selectedThreadId.trim().isNotEmpty) {

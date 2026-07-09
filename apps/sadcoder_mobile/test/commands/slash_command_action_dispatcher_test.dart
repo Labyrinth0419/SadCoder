@@ -1,0 +1,102 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/commands/slash_command_action_dispatcher.dart';
+import 'package:sadcoder_mobile/src/commands/slash_command_registry.dart';
+
+void main() {
+  const registry = SlashCommandRegistry();
+
+  test('quit and exit disconnect only through the injected callback', () async {
+    var disconnects = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      disconnect: () async => disconnects++,
+    );
+
+    final quit = await dispatcher.dispatch(
+      registry.parseComposerText('/quit'),
+      hasActiveTurn: true,
+    );
+    final exit = await dispatcher.dispatch(
+      registry.parseComposerText('/exit'),
+      hasActiveTurn: true,
+    );
+
+    expect(disconnects, 2);
+    expect(quit.outcome, SlashCommandActionOutcome.executed);
+    expect(quit.effect, SlashCommandActionEffect.disconnect);
+    expect(exit.outcome, SlashCommandActionOutcome.executed);
+    expect(exit.effect, SlashCommandActionEffect.disconnect);
+  });
+
+  test(
+    'clear clears only local transcript state when no turn is active',
+    () async {
+      var clears = 0;
+      final dispatcher = SlashCommandActionDispatcher(
+        clearTranscript: () => clears++,
+      );
+
+      final result = await dispatcher.dispatch(
+        registry.parseComposerText('/clear'),
+        hasActiveTurn: false,
+      );
+
+      expect(clears, 1);
+      expect(result.outcome, SlashCommandActionOutcome.executed);
+      expect(result.effect, SlashCommandActionEffect.clearTranscript);
+    },
+  );
+
+  test('clear is unavailable during an active turn', () async {
+    var clears = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      clearTranscript: () => clears++,
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/clear'),
+      hasActiveTurn: true,
+    );
+
+    expect(clears, 0);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'clear');
+  });
+
+  test(
+    'unknown and unsupported commands never fall through as prompts',
+    () async {
+      final dispatcher = SlashCommandActionDispatcher(
+        disconnect: () async {},
+        clearTranscript: () {},
+      );
+
+      final unknown = await dispatcher.dispatch(
+        registry.parseComposerText('/does-not-exist now'),
+        hasActiveTurn: false,
+      );
+      final unsupported = await dispatcher.dispatch(
+        registry.parseComposerText('/model'),
+        hasActiveTurn: false,
+      );
+
+      expect(unknown.outcome, SlashCommandActionOutcome.unknown);
+      expect(unknown.rawCommand, 'does-not-exist');
+      expect(unsupported.outcome, SlashCommandActionOutcome.unsupported);
+      expect(unsupported.command?.command, 'model');
+    },
+  );
+
+  test('callback failures are reported as command failures', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      disconnect: () async => throw StateError('disconnect failed'),
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/quit'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.failed);
+    expect(result.error, isA<StateError>());
+  });
+}
