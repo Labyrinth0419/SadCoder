@@ -303,6 +303,8 @@ class _ChatPageState extends State<ChatPage> {
           showStatus: _buildStatusSummary,
           toggleRawTranscript: _toggleRawTranscript,
           startNewThread: _startNewThread,
+          resumeThread: _resumeThread,
+          renameThread: _renameThread,
         );
   }
 
@@ -357,6 +359,51 @@ class _ChatPageState extends State<ChatPage> {
     return true;
   }
 
+  Future<bool> _resumeThread(String threadId) async {
+    final turnController = widget.turnController;
+    if (turnController == null) {
+      return false;
+    }
+    final resumed = await turnController.resumeThread(threadId);
+    if (!resumed) {
+      return false;
+    }
+    final activeThreadId = turnController.activeThreadId;
+    if (activeThreadId == null || activeThreadId.isEmpty) {
+      return false;
+    }
+    widget.timelineController?.selectThread(activeThreadId);
+    unawaited(widget.threadDetailController?.readThread(activeThreadId));
+    unawaited(widget.threadListController?.refresh());
+    return true;
+  }
+
+  Future<bool> _renameThread(String name) async {
+    final runner = widget.sessionController?.threadMutationRunner;
+    final threadId = _currentThreadId();
+    if (runner == null || threadId == null) {
+      return false;
+    }
+    await runner.setThreadName(threadId: threadId, name: name);
+    unawaited(widget.threadListController?.refresh());
+    if (widget.threadDetailController?.selectedThreadId == threadId) {
+      unawaited(widget.threadDetailController?.readThread(threadId));
+    }
+    return true;
+  }
+
+  String? _currentThreadId() {
+    final selectedThreadId = widget.threadDetailController?.selectedThreadId;
+    if (selectedThreadId != null && selectedThreadId.trim().isNotEmpty) {
+      return selectedThreadId;
+    }
+    final activeThreadId = widget.turnController?.activeThreadId;
+    if (activeThreadId != null && activeThreadId.trim().isNotEmpty) {
+      return activeThreadId;
+    }
+    return null;
+  }
+
   void _clearLocalTranscript() {
     widget.threadDetailController?.clear();
     widget.timelineController?.clear();
@@ -385,6 +432,8 @@ class _ChatPageState extends State<ChatPage> {
               ? l10n.slashCommandRawEnabled
               : l10n.slashCommandRawDisabled,
         SlashCommandActionEffect.newThread => l10n.slashCommandNewThread,
+        SlashCommandActionEffect.resumeThread => l10n.slashCommandResumedThread,
+        SlashCommandActionEffect.renameThread => l10n.slashCommandRenamedThread,
         SlashCommandActionEffect.none => l10n.slashCommandExecuted(
           result.slash,
         ),

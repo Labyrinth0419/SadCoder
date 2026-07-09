@@ -189,6 +189,78 @@ void main() {
   });
 
   test(
+    '/resume resumes the requested thread through the injected callback',
+    () async {
+      final resumedThreads = <String>[];
+      final dispatcher = SlashCommandActionDispatcher(
+        resumeThread: (threadId) async {
+          resumedThreads.add(threadId);
+          return true;
+        },
+      );
+
+      final result = await dispatcher.dispatch(
+        registry.parseComposerText('/resume thr_1 '),
+        hasActiveTurn: false,
+      );
+
+      expect(resumedThreads, ['thr_1']);
+      expect(result.outcome, SlashCommandActionOutcome.executed);
+      expect(result.effect, SlashCommandActionEffect.resumeThread);
+    },
+  );
+
+  test('/resume requires an inline thread id', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      resumeThread: (_) async => true,
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/resume'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'resume');
+  });
+
+  test(
+    '/rename renames the current thread through the injected callback',
+    () async {
+      final names = <String>[];
+      final dispatcher = SlashCommandActionDispatcher(
+        renameThread: (name) async {
+          names.add(name);
+          return true;
+        },
+      );
+
+      final result = await dispatcher.dispatch(
+        registry.parseComposerText('/rename  Release prep  '),
+        hasActiveTurn: true,
+      );
+
+      expect(names, ['Release prep']);
+      expect(result.outcome, SlashCommandActionOutcome.executed);
+      expect(result.effect, SlashCommandActionEffect.renameThread);
+    },
+  );
+
+  test('/rename requires a non-empty name', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      renameThread: (_) async => true,
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/rename   '),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'rename');
+  });
+
+  test(
     'unknown and unsupported commands never fall through as prompts',
     () async {
       final dispatcher = SlashCommandActionDispatcher(

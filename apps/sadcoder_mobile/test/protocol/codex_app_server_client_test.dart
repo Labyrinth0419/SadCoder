@@ -38,6 +38,7 @@ void main() {
     await client.readThread(threadId: 'thr_1');
     await client.startThread();
     await client.resumeThread(threadId: 'thr_1');
+    await client.setThreadName(threadId: 'thr_1', name: 'Renamed thread');
     await client.startTurn(threadId: 'thr_1', text: 'Fix bug');
     await client.interruptTurn(threadId: 'thr_1', turnId: 'turn_1');
 
@@ -48,6 +49,7 @@ void main() {
       'thread/read',
       'thread/start',
       'thread/resume',
+      'thread/name/set',
       'turn/start',
       'turn/interrupt',
     ]);
@@ -57,7 +59,8 @@ void main() {
     expect(requests[3].params, {'threadId': 'thr_1', 'includeTurns': true});
     expect(requests[4].params, isEmpty);
     expect(requests[5].params, {'threadId': 'thr_1'});
-    expect(requests[6].params, {
+    expect(requests[6].params, {'threadId': 'thr_1', 'name': 'Renamed thread'});
+    expect(requests[7].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},

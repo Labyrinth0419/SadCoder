@@ -55,6 +55,13 @@ class CodexAppServerClient {
     return _request('thread/resume', {'threadId': threadId});
   }
 
+  Future<Map<String, Object?>> setThreadName({
+    required String threadId,
+    required String name,
+  }) {
+    return _request('thread/name/set', {'threadId': threadId, 'name': name});
+  }
+
   Future<Map<String, Object?>> startTurn({
     required String threadId,
     required String text,

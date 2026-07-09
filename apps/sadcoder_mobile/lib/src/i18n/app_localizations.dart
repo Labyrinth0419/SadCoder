@@ -127,6 +127,8 @@ class AppLocalizations {
   String get slashCommandRawEnabled => _text('slashCommandRawEnabled');
   String get slashCommandRawDisabled => _text('slashCommandRawDisabled');
   String get slashCommandNewThread => _text('slashCommandNewThread');
+  String get slashCommandResumedThread => _text('slashCommandResumedThread');
+  String get slashCommandRenamedThread => _text('slashCommandRenamedThread');
   String slashCommandExecuted(String slash) =>
       _text('slashCommandExecuted').replaceAll('{slash}', slash);
   String slashCommandUnsupported(String slash) =>
@@ -326,6 +328,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandRawEnabled': 'Raw transcript view enabled.',
     'slashCommandRawDisabled': 'Raw transcript view disabled.',
     'slashCommandNewThread': 'Started a new thread.',
+    'slashCommandResumedThread': 'Resumed thread.',
+    'slashCommandRenamedThread': 'Renamed thread.',
     'slashCommandExecuted': 'Executed {slash}.',
     'slashCommandUnsupported': '{slash} is not implemented yet.',
     'slashCommandUnavailable': '{slash} is unavailable right now.',
@@ -494,6 +498,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandRawEnabled': '已开启原始事件视图。',
     'slashCommandRawDisabled': '已关闭原始事件视图。',
     'slashCommandNewThread': '已创建新会话。',
+    'slashCommandResumedThread': '已恢复会话。',
+    'slashCommandRenamedThread': '已重命名会话。',
     'slashCommandExecuted': '已执行 {slash}。',
     'slashCommandUnsupported': '{slash} 暂未实现。',
     'slashCommandUnavailable': '{slash} 当前不可用。',

@@ -15,6 +15,7 @@ import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart'
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
+import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
 
@@ -232,6 +233,10 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
       const _StaticConfigSnapshotReader();
 
   @override
+  ThreadMutationRunner get threadMutationRunner =>
+      const _NoopThreadMutationRunner();
+
+  @override
   TurnRunner get turnRunner => const _NoopTurnRunner();
 
   @override
@@ -308,4 +313,14 @@ class _NoopTurnRunner implements TurnRunner {
   }) {
     throw UnimplementedError();
   }
+}
+
+class _NoopThreadMutationRunner implements ThreadMutationRunner {
+  const _NoopThreadMutationRunner();
+
+  @override
+  Future<void> setThreadName({
+    required String threadId,
+    required String name,
+  }) async {}
 }

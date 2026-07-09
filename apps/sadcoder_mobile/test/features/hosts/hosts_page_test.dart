@@ -21,6 +21,7 @@ import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile_store.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
+import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
 
@@ -652,6 +653,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
       const _FakeConfigSnapshotReader();
 
   @override
+  ThreadMutationRunner get threadMutationRunner =>
+      const _FakeThreadMutationRunner();
+
+  @override
   TurnRunner get turnRunner => const _FakeTurnRunner();
 
   @override
@@ -765,6 +770,16 @@ class _FakeTurnRunner implements TurnRunner {
   Future<void> interruptTurn({
     required String threadId,
     required String turnId,
+  }) async {}
+}
+
+class _FakeThreadMutationRunner implements ThreadMutationRunner {
+  const _FakeThreadMutationRunner();
+
+  @override
+  Future<void> setThreadName({
+    required String threadId,
+    required String name,
   }) async {}
 }
 

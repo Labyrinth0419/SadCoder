@@ -20,6 +20,7 @@ import 'package:sadcoder_mobile/src/threads/thread_detail_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
+import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 import 'package:sadcoder_mobile/src/turns/turn_controller.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
@@ -817,6 +818,154 @@ void main() {
     expect(find.text('Started a new thread.'), findsOneWidget);
   });
 
+  testWidgets('/resume resumes a thread without sending a turn', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(
+        thread: ThreadSummary.fromJson({
+          'id': 'thr_existing',
+          'sessionId': 'sess_1',
+          'preview': 'Existing thread',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 1,
+          'turns': <Object?>[],
+        }),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadListController = ThreadListController(
+      readerProvider: () => sessionController.threadListReader,
+    );
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    addTearDown(threadDetailController.dispose);
+    addTearDown(threadListController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadListController: threadListController,
+      threadDetailController: threadDetailController,
+      turnController: turnController,
+      timelineController: timelineController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/resume thr_existing',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(turnRunner.resumedThreads, ['thr_existing']);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(turnController.activeThreadId, 'thr_existing');
+    expect(timelineController.selectedThreadId, 'thr_existing');
+    expect(detailReader.threadIds, ['thr_existing']);
+    expect(find.text('Resumed thread.'), findsOneWidget);
+  });
+
+  testWidgets('/rename updates the selected thread name', (tester) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final mutationRunner = _FakeThreadMutationRunner();
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(
+        thread: ThreadSummary.fromJson({
+          'id': 'thr_selected',
+          'sessionId': 'sess_1',
+          'preview': 'Selected thread',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 1,
+          'turns': <Object?>[],
+        }),
+      ),
+    );
+    final listReader = _CountingThreadListReader(
+      page: const ThreadListPage(threads: []),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: listReader,
+      turnRunner: turnRunner,
+      threadMutationRunner: mutationRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadListController = ThreadListController(
+      readerProvider: () => sessionController.threadListReader,
+    );
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(threadDetailController.dispose);
+    addTearDown(threadListController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await threadDetailController.readThread('thr_selected');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadListController: threadListController,
+      threadDetailController: threadDetailController,
+      turnController: turnController,
+    );
+    await tester.pumpAndSettle();
+    final callsBeforeRename = listReader.calls;
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/rename Release prep',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(mutationRunner.renamedThreads, [
+      (threadId: 'thr_selected', name: 'Release prep'),
+    ]);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(listReader.calls, callsBeforeRename + 1);
+    expect(detailReader.threadIds, ['thr_selected', 'thr_selected']);
+    expect(find.text('Renamed thread.'), findsOneWidget);
+  });
+
   testWidgets('/clear clears the local transcript without interrupting', (
     tester,
   ) async {
@@ -1183,6 +1332,19 @@ class _FakeThreadListReader implements ThreadListReader {
   Future<ThreadListPage> listThreads({int limit = 20}) async => page;
 }
 
+class _CountingThreadListReader implements ThreadListReader {
+  _CountingThreadListReader({required this.page});
+
+  final ThreadListPage page;
+  int calls = 0;
+
+  @override
+  Future<ThreadListPage> listThreads({int limit = 20}) async {
+    calls++;
+    return page;
+  }
+}
+
 class _FakeThreadDetailReader implements ThreadDetailReader {
   _FakeThreadDetailReader({required this.detail});
 
@@ -1203,10 +1365,12 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   const _FakeSessionStarter({
     required this.threadListReader,
     this.turnRunner = const _ConstantTurnRunner(),
+    this.threadMutationRunner = const _NoopThreadMutationRunner(),
   });
 
   final ThreadListReader threadListReader;
   final TurnRunner turnRunner;
+  final ThreadMutationRunner threadMutationRunner;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -1217,6 +1381,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       profile: profile,
       threadListReader: threadListReader,
       turnRunner: turnRunner,
+      threadMutationRunner: threadMutationRunner,
     );
   }
 }
@@ -1226,6 +1391,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.profile,
     required this.threadListReader,
     required this.turnRunner,
+    required this.threadMutationRunner,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -1238,6 +1404,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final TurnRunner turnRunner;
+
+  @override
+  final ThreadMutationRunner threadMutationRunner;
 
   @override
   CodexConfigSnapshotReader get configSnapshotReader =>
@@ -1283,6 +1452,7 @@ class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {
 
 class _FakeTurnRunner implements TurnRunner {
   int startedThreads = 0;
+  final resumedThreads = <String>[];
   final startedTurns = <({String threadId, String text})>[];
   final startedTurnOverrides = <CodexConfigOverrides>[];
   final interruptedTurns = <({String threadId, String turnId})>[];
@@ -1295,6 +1465,7 @@ class _FakeTurnRunner implements TurnRunner {
 
   @override
   Future<ThreadSummary> resumeThread({required String threadId}) async {
+    resumedThreads.add(threadId);
     return _thread(threadId);
   }
 
@@ -1321,6 +1492,28 @@ class _FakeTurnRunner implements TurnRunner {
   }) async {
     interruptedTurns.add((threadId: threadId, turnId: turnId));
   }
+}
+
+class _FakeThreadMutationRunner implements ThreadMutationRunner {
+  final renamedThreads = <({String threadId, String name})>[];
+
+  @override
+  Future<void> setThreadName({
+    required String threadId,
+    required String name,
+  }) async {
+    renamedThreads.add((threadId: threadId, name: name));
+  }
+}
+
+class _NoopThreadMutationRunner implements ThreadMutationRunner {
+  const _NoopThreadMutationRunner();
+
+  @override
+  Future<void> setThreadName({
+    required String threadId,
+    required String name,
+  }) async {}
 }
 
 class _ConstantTurnRunner implements TurnRunner {

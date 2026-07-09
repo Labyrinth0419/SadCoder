@@ -125,6 +125,36 @@ void main() {
     },
   );
 
+  test('resumeThread resumes an idle thread without sending a turn', () async {
+    final runner = _FakeTurnRunner();
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+
+    final resumed = await controller.resumeThread(' thr_existing ');
+
+    expect(resumed, true);
+    expect(runner.resumedThreads, ['thr_existing']);
+    expect(runner.startedThreads, 0);
+    expect(runner.startedTurns, isEmpty);
+    expect(controller.status, TurnControllerStatus.idle);
+    expect(controller.activeThreadId, 'thr_existing');
+    expect(controller.activeTurnId, isNull);
+  });
+
+  test('resumeThread is unavailable while a turn is active', () async {
+    final runner = _FakeTurnRunner();
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+
+    await controller.submitText('Run long task');
+    final resumed = await controller.resumeThread('thr_other');
+
+    expect(resumed, false);
+    expect(runner.resumedThreads, isEmpty);
+    expect(controller.activeThreadId, 'thr_new');
+    expect(controller.activeTurnId, 'turn_1');
+  });
+
   test('startNewThread is unavailable while a turn is active', () async {
     final runner = _FakeTurnRunner();
     final controller = TurnController(runnerProvider: () => runner);

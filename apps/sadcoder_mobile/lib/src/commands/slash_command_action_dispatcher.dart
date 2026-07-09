@@ -6,6 +6,8 @@ typedef SlashCommandCopyLastResponse = Future<bool> Function();
 typedef SlashCommandShowStatus = String? Function();
 typedef SlashCommandToggleRawTranscript = bool? Function(String arguments);
 typedef SlashCommandStartNewThread = Future<bool> Function();
+typedef SlashCommandResumeThread = Future<bool> Function(String threadId);
+typedef SlashCommandRenameThread = Future<bool> Function(String name);
 
 enum SlashCommandActionOutcome {
   ignored,
@@ -24,6 +26,8 @@ enum SlashCommandActionEffect {
   status,
   rawTranscript,
   newThread,
+  resumeThread,
+  renameThread,
 }
 
 class SlashCommandActionResult {
@@ -122,6 +126,8 @@ class SlashCommandActionDispatcher {
     this.showStatus,
     this.toggleRawTranscript,
     this.startNewThread,
+    this.resumeThread,
+    this.renameThread,
   });
 
   final SlashCommandDisconnect? disconnect;
@@ -130,6 +136,8 @@ class SlashCommandActionDispatcher {
   final SlashCommandShowStatus? showStatus;
   final SlashCommandToggleRawTranscript? toggleRawTranscript;
   final SlashCommandStartNewThread? startNewThread;
+  final SlashCommandResumeThread? resumeThread;
+  final SlashCommandRenameThread? renameThread;
 
   Future<SlashCommandActionResult> dispatch(
     SlashCommandParseResult parsed, {
@@ -174,6 +182,10 @@ class SlashCommandActionDispatcher {
         return _toggleRawTranscript(parsed);
       case 'new':
         return _startNewThread(parsed);
+      case 'resume':
+        return _resumeThread(parsed);
+      case 'rename':
+        return _renameThread(parsed);
       default:
         return SlashCommandActionResult.unsupported(
           command: command,
@@ -371,6 +383,94 @@ class SlashCommandActionDispatcher {
         rawCommand: parsed.rawCommand,
         arguments: parsed.arguments,
         effect: SlashCommandActionEffect.newThread,
+      );
+    } on Object catch (error) {
+      return SlashCommandActionResult.failed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        error: error,
+      );
+    }
+  }
+
+  Future<SlashCommandActionResult> _resumeThread(
+    SlashCommandParseResult parsed,
+  ) async {
+    final resumeThread = this.resumeThread;
+    if (resumeThread == null) {
+      return SlashCommandActionResult.unsupported(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    final threadId = parsed.arguments.trim();
+    if (threadId.isEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    try {
+      final resumed = await resumeThread(threadId);
+      if (!resumed) {
+        return SlashCommandActionResult.unavailable(
+          command: parsed.command!,
+          rawCommand: parsed.rawCommand,
+          arguments: parsed.arguments,
+        );
+      }
+      return SlashCommandActionResult.executed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        effect: SlashCommandActionEffect.resumeThread,
+      );
+    } on Object catch (error) {
+      return SlashCommandActionResult.failed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        error: error,
+      );
+    }
+  }
+
+  Future<SlashCommandActionResult> _renameThread(
+    SlashCommandParseResult parsed,
+  ) async {
+    final renameThread = this.renameThread;
+    if (renameThread == null) {
+      return SlashCommandActionResult.unsupported(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    final name = parsed.arguments.trim();
+    if (name.isEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    try {
+      final renamed = await renameThread(name);
+      if (!renamed) {
+        return SlashCommandActionResult.unavailable(
+          command: parsed.command!,
+          rawCommand: parsed.rawCommand,
+          arguments: parsed.arguments,
+        );
+      }
+      return SlashCommandActionResult.executed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        effect: SlashCommandActionEffect.renameThread,
       );
     } on Object catch (error) {
       return SlashCommandActionResult.failed(

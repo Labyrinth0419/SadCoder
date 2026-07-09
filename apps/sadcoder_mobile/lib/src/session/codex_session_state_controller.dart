@@ -10,6 +10,7 @@ import '../events/codex_event.dart';
 import '../ssh/ssh_profile.dart';
 import '../threads/thread_detail_reader.dart';
 import '../threads/thread_list_reader.dart';
+import '../threads/thread_mutation_runner.dart';
 import '../turns/turn_runner.dart';
 import 'codex_session_connector.dart';
 import 'reconnect_policy.dart';
@@ -72,6 +73,9 @@ class CodexSessionStateController extends ChangeNotifier {
 
   CodexConfigSnapshotReader? get configSnapshotReader =>
       _connection?.configSnapshotReader;
+
+  ThreadMutationRunner? get threadMutationRunner =>
+      _connection?.threadMutationRunner;
 
   TurnRunner? get turnRunner => _connection?.turnRunner;
 

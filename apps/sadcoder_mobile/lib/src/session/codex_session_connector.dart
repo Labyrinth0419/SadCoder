@@ -7,10 +7,12 @@ import '../events/codex_event.dart';
 import '../protocol/codex_app_session.dart';
 import '../ssh/ssh_profile.dart';
 import '../ssh/ssh_proxy_connector.dart';
+import '../threads/codex_thread_mutation_runner.dart';
 import '../threads/codex_thread_detail_reader.dart';
 import '../threads/codex_thread_list_reader.dart';
 import '../threads/thread_detail_reader.dart';
 import '../threads/thread_list_reader.dart';
+import '../threads/thread_mutation_runner.dart';
 import '../turns/codex_turn_runner.dart';
 import '../turns/turn_runner.dart';
 
@@ -22,6 +24,8 @@ abstract interface class CodexSessionConnectionHandle {
   ThreadDetailReader get threadDetailReader;
 
   CodexConfigSnapshotReader get configSnapshotReader;
+
+  ThreadMutationRunner get threadMutationRunner;
 
   TurnRunner get turnRunner;
 
@@ -80,6 +84,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         threadListReader: CodexThreadListReader(session.client),
         threadDetailReader: CodexThreadDetailReader(session.client),
         configSnapshotReader: CodexConfigSnapshotRemoteReader(session.client),
+        threadMutationRunner: CodexThreadMutationRunner(session.client),
         turnRunner: CodexTurnRunner(session.client),
       );
     } catch (_) {
@@ -128,6 +133,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.threadListReader,
     required this.threadDetailReader,
     required this.configSnapshotReader,
+    required this.threadMutationRunner,
     required this.turnRunner,
     required AgentProxyConnection proxyConnection,
   }) : _proxyConnection = proxyConnection,
@@ -143,6 +149,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final ThreadDetailReader threadDetailReader;
   @override
   final CodexConfigSnapshotReader configSnapshotReader;
+  @override
+  final ThreadMutationRunner threadMutationRunner;
   @override
   final TurnRunner turnRunner;
   @override
