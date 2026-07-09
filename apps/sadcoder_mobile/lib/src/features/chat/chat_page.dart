@@ -1016,8 +1016,12 @@ class _ChatPageState extends State<ChatPage> {
     if (!mounted) {
       return SlashCommandCallbackResult.cancelled;
     }
+    final activeThreadDetail = await _readActiveThreadForAgentTopology();
+    if (!mounted) {
+      return SlashCommandCallbackResult.cancelled;
+    }
     final topology = AgentThreadTopology.fromThreads(
-      threadListController.threads,
+      _agentTopologyThreads(threadListController.threads, activeThreadDetail),
     );
     final entries = subagentsOnly ? topology.subagentEntries : topology.entries;
     if (entries.isEmpty) {
@@ -1048,6 +1052,47 @@ class _ChatPageState extends State<ChatPage> {
     widget.timelineController?.selectThread(selectedThread.id);
     unawaited(widget.threadDetailController?.readThread(selectedThread.id));
     return SlashCommandCallbackResult.executed;
+  }
+
+  Future<ThreadSummary?> _readActiveThreadForAgentTopology() async {
+    final threadId = _currentThreadId();
+    if (threadId == null) {
+      return null;
+    }
+    final cachedThread = widget.threadDetailController?.detail?.thread;
+    if (cachedThread?.id == threadId && cachedThread!.turns.isNotEmpty) {
+      return cachedThread;
+    }
+    final reader = widget.sessionController?.threadDetailReader;
+    if (reader == null) {
+      return cachedThread?.id == threadId ? cachedThread : null;
+    }
+    try {
+      final detail = await reader.readThread(threadId: threadId);
+      if (detail.thread.id == threadId) {
+        return detail.thread;
+      }
+      return cachedThread?.id == threadId ? cachedThread : null;
+    } on Object {
+      return cachedThread?.id == threadId ? cachedThread : null;
+    }
+  }
+
+  List<ThreadSummary> _agentTopologyThreads(
+    List<ThreadSummary> threads,
+    ThreadSummary? detailThread,
+  ) {
+    if (detailThread == null || detailThread.id.trim().isEmpty) {
+      return threads;
+    }
+    final merged = List<ThreadSummary>.from(threads);
+    final index = merged.indexWhere((thread) => thread.id == detailThread.id);
+    if (index == -1) {
+      merged.add(detailThread);
+    } else {
+      merged[index] = detailThread;
+    }
+    return merged;
   }
 
   Future<void> _returnToMainThread() async {
@@ -1586,12 +1631,13 @@ class _AgentTopologyTile extends StatelessWidget {
     final role = entry.displayRole;
     final details = <String>[
       '${l10n.approvalThread}: ${thread.id}',
-      '${l10n.timelineStatus}: ${thread.status}',
+      '${l10n.timelineStatus}: ${entry.displayStatus}',
       if (role.isNotEmpty) '${l10n.agentRole}: $role',
-      if (thread.parentThreadId != null)
-        '${l10n.agentParentThread}: ${thread.parentThreadId}',
-      if (thread.ancestorThreadId != null)
-        '${l10n.agentAncestorThread}: ${thread.ancestorThreadId}',
+      if (entry.agentPath != null) '${l10n.agentPath}: ${entry.agentPath}',
+      if (entry.parentThreadId != null)
+        '${l10n.agentParentThread}: ${entry.parentThreadId}',
+      if (entry.ancestorThreadId != null)
+        '${l10n.agentAncestorThread}: ${entry.ancestorThreadId}',
       if (thread.cwd.isNotEmpty) thread.cwd,
     ];
     return ListTile(
@@ -1601,7 +1647,7 @@ class _AgentTopologyTile extends StatelessWidget {
         end: 16,
       ),
       leading: Icon(
-        thread.isSubagent ? Icons.account_tree_outlined : Icons.forum_outlined,
+        entry.isSubagent ? Icons.account_tree_outlined : Icons.forum_outlined,
       ),
       title: Text(
         active ? '${thread.title} (${l10n.activeThread})' : thread.title,

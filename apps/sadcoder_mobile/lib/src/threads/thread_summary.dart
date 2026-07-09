@@ -172,6 +172,15 @@ class ThreadItemSummary {
     this.durationMs,
     this.server,
     this.tool,
+    this.senderThreadId,
+    this.receiverThreadIds = const [],
+    this.prompt,
+    this.model,
+    this.reasoningEffort,
+    this.agentStates = const {},
+    this.agentThreadId,
+    this.agentPath,
+    this.activityKind,
     this.fileChanges = const [],
     this.raw = const {},
   });
@@ -190,6 +199,15 @@ class ThreadItemSummary {
       durationMs: _intValue(json['durationMs']),
       server: _stringValue(json['server']),
       tool: _stringValue(json['tool']),
+      senderThreadId: _stringValue(json['senderThreadId']),
+      receiverThreadIds: _listOfStrings(json['receiverThreadIds']),
+      prompt: _stringValue(json['prompt']),
+      model: _stringValue(json['model']),
+      reasoningEffort: _stringValue(json['reasoningEffort']),
+      agentStates: _collabAgentStates(json['agentsStates']),
+      agentThreadId: _stringValue(json['agentThreadId']),
+      agentPath: _stringValue(json['agentPath']),
+      activityKind: _stringValue(json['kind']),
       fileChanges: _listOfMaps(
         json['changes'],
       ).map(ThreadFileChangeSummary.fromJson).toList(growable: false),
@@ -208,8 +226,31 @@ class ThreadItemSummary {
   final int? durationMs;
   final String? server;
   final String? tool;
+  final String? senderThreadId;
+  final List<String> receiverThreadIds;
+  final String? prompt;
+  final String? model;
+  final String? reasoningEffort;
+  final Map<String, CollabAgentStateSummary> agentStates;
+  final String? agentThreadId;
+  final String? agentPath;
+  final String? activityKind;
   final List<ThreadFileChangeSummary> fileChanges;
   final Map<String, Object?> raw;
+}
+
+class CollabAgentStateSummary {
+  const CollabAgentStateSummary({required this.status, this.message});
+
+  factory CollabAgentStateSummary.fromJson(Map<String, Object?> json) {
+    return CollabAgentStateSummary(
+      status: _stringValue(json['status']) ?? 'unknown',
+      message: _stringValue(json['message']),
+    );
+  }
+
+  final String status;
+  final String? message;
 }
 
 class ThreadFileChangeSummary {
@@ -281,12 +322,38 @@ String _itemText(String type, Map<String, Object?> json) {
     ].join('\n'),
     'mcpToolCall' => '',
     'dynamicToolCall' => _stringValue(json['tool']) ?? '',
+    'collabAgentToolCall' => _collabAgentToolCallText(json),
+    'subAgentActivity' => _subAgentActivityText(json),
     'webSearch' => _stringValue(json['query']) ?? '',
     'imageView' => _stringValue(json['path']) ?? '',
     'enteredReviewMode' ||
     'exitedReviewMode' => _stringValue(json['review']) ?? '',
     _ => _stringValue(json['text']) ?? '',
   };
+}
+
+String _collabAgentToolCallText(Map<String, Object?> json) {
+  final prompt = _stringValue(json['prompt'])?.trim();
+  if (prompt != null && prompt.isNotEmpty) {
+    return prompt;
+  }
+  final tool = _stringValue(json['tool'])?.trim();
+  final receivers = _listOfStrings(
+    json['receiverThreadIds'],
+  ).where((id) => id.trim().isNotEmpty).join(', ');
+  return [
+    if (tool != null && tool.isNotEmpty) tool,
+    if (receivers.isNotEmpty) receivers,
+  ].join(' ');
+}
+
+String _subAgentActivityText(Map<String, Object?> json) {
+  final kind = _stringValue(json['kind'])?.trim();
+  final path = _stringValue(json['agentPath'])?.trim();
+  return [
+    if (kind != null && kind.isNotEmpty) kind,
+    if (path != null && path.isNotEmpty) path,
+  ].join(' ');
 }
 
 String _userMessageText(Object? content) {
@@ -317,4 +384,22 @@ List<String> _listOfStrings(Object? value) {
     return const [];
   }
   return value.whereType<String>().toList(growable: false);
+}
+
+Map<String, CollabAgentStateSummary> _collabAgentStates(Object? value) {
+  final raw = _stringKeyedMap(value);
+  if (raw.isEmpty) {
+    return const {};
+  }
+  final states = <String, CollabAgentStateSummary>{};
+  for (final entry in raw.entries) {
+    final threadId = entry.key.trim();
+    if (threadId.isEmpty) {
+      continue;
+    }
+    states[threadId] = CollabAgentStateSummary.fromJson(
+      _stringKeyedMap(entry.value),
+    );
+  }
+  return Map.unmodifiable(states);
 }

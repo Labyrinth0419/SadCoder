@@ -265,6 +265,7 @@ class AppLocalizations {
   String get agentTopologyTitle => _text('agentTopologyTitle');
   String get subagentTopologyTitle => _text('subagentTopologyTitle');
   String get agentRole => _text('agentRole');
+  String get agentPath => _text('agentPath');
   String get agentParentThread => _text('agentParentThread');
   String get agentAncestorThread => _text('agentAncestorThread');
   String get activeThread => _text('activeThread');
@@ -725,6 +726,7 @@ const _values = <String, Map<String, String>>{
     'agentTopologyTitle': 'Agent threads',
     'subagentTopologyTitle': 'Subagents',
     'agentRole': 'Agent',
+    'agentPath': 'Agent path',
     'agentParentThread': 'Parent thread',
     'agentAncestorThread': 'Ancestor thread',
     'activeThread': 'active',
@@ -1127,6 +1129,7 @@ const _values = <String, Map<String, String>>{
     'agentTopologyTitle': 'Agent 会话',
     'subagentTopologyTitle': '子 agent',
     'agentRole': 'Agent',
+    'agentPath': 'Agent 路径',
     'agentParentThread': '父会话',
     'agentAncestorThread': '祖先会话',
     'activeThread': '当前',

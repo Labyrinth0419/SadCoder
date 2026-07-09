@@ -155,4 +155,42 @@ void main() {
     expect(detail.turns.first.items[4].text, 'Looks solid overall.');
     expect(detail.turns.last.errorMessage, 'failed turn');
   });
+
+  test('ThreadItemSummary parses collab agent and subagent activity items', () {
+    final collab = ThreadItemSummary.fromJson({
+      'id': 'item_spawn',
+      'type': 'collabAgentToolCall',
+      'tool': 'spawnAgent',
+      'status': 'completed',
+      'senderThreadId': 'thr_main',
+      'receiverThreadIds': ['thr_worker'],
+      'prompt': 'Build the patch',
+      'model': 'gpt-5',
+      'reasoningEffort': 'high',
+      'agentsStates': {
+        'thr_worker': {'status': 'running', 'message': null},
+      },
+    });
+    final activity = ThreadItemSummary.fromJson({
+      'id': 'item_activity',
+      'type': 'subAgentActivity',
+      'kind': 'started',
+      'agentThreadId': 'thr_worker',
+      'agentPath': 'agents/build',
+    });
+
+    expect(collab.tool, 'spawnAgent');
+    expect(collab.status, 'completed');
+    expect(collab.senderThreadId, 'thr_main');
+    expect(collab.receiverThreadIds, ['thr_worker']);
+    expect(collab.prompt, 'Build the patch');
+    expect(collab.model, 'gpt-5');
+    expect(collab.reasoningEffort, 'high');
+    expect(collab.agentStates['thr_worker']?.status, 'running');
+    expect(collab.text, 'Build the patch');
+    expect(activity.activityKind, 'started');
+    expect(activity.agentThreadId, 'thr_worker');
+    expect(activity.agentPath, 'agents/build');
+    expect(activity.text, 'started agents/build');
+  });
 }

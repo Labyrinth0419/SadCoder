@@ -3993,37 +3993,70 @@ void main() {
   ) async {
     final approvalController = ApprovalStateController();
     final turnRunner = _FakeTurnRunner();
-    final threads = [
-      ThreadSummary.fromJson({
-        'id': 'thr_main',
-        'sessionId': 'sess_1',
-        'preview': 'Main thread',
-        'ephemeral': false,
-        'status': 'idle',
-        'cwd': '/repo',
-        'updatedAt': 1,
-        'turns': <Object?>[],
-      }),
-      ThreadSummary.fromJson({
-        'id': 'thr_worker',
-        'sessionId': 'sess_1',
-        'preview': 'Build patch',
-        'ephemeral': false,
-        'status': 'running',
-        'cwd': '/repo',
-        'updatedAt': 2,
-        'parentThreadId': 'thr_main',
-        'ancestorThreadId': 'thr_main',
-        'agentNickname': 'Builder',
-        'agentRole': 'coder',
-        'turns': <Object?>[],
-      }),
-    ];
+    final mainThread = ThreadSummary.fromJson({
+      'id': 'thr_main',
+      'sessionId': 'sess_1',
+      'preview': 'Main thread',
+      'ephemeral': false,
+      'status': 'idle',
+      'cwd': '/repo',
+      'updatedAt': 1,
+      'turns': <Object?>[],
+    });
+    final workerThread = ThreadSummary.fromJson({
+      'id': 'thr_worker',
+      'sessionId': 'sess_1',
+      'preview': 'Build patch',
+      'ephemeral': false,
+      'status': 'idle',
+      'cwd': '/repo',
+      'updatedAt': 2,
+      'agentNickname': 'Builder',
+      'agentRole': 'coder',
+      'turns': <Object?>[],
+    });
+    final activeThreadWithActivity = ThreadSummary.fromJson({
+      'id': 'thr_main',
+      'sessionId': 'sess_1',
+      'preview': 'Main thread',
+      'ephemeral': false,
+      'status': 'idle',
+      'cwd': '/repo',
+      'updatedAt': 1,
+      'turns': [
+        {
+          'id': 'turn_1',
+          'status': 'completed',
+          'itemsView': 'full',
+          'items': [
+            {
+              'id': 'item_spawn',
+              'type': 'collabAgentToolCall',
+              'tool': 'spawnAgent',
+              'status': 'completed',
+              'senderThreadId': 'thr_main',
+              'receiverThreadIds': ['thr_worker'],
+              'agentsStates': {
+                'thr_worker': {'status': 'running', 'message': null},
+              },
+            },
+            {
+              'id': 'item_path',
+              'type': 'subAgentActivity',
+              'kind': 'started',
+              'agentThreadId': 'thr_worker',
+              'agentPath': 'agents/build',
+            },
+          ],
+        },
+      ],
+    });
+    final threads = [mainThread, workerThread];
     final listReader = _CountingThreadListReader(
       page: ThreadListPage(threads: threads),
     );
     final detailReader = _FakeThreadDetailReader(
-      detail: ThreadDetail(thread: threads.first),
+      detail: ThreadDetail(thread: activeThreadWithActivity),
     );
     final starter = _FakeSessionStarter(
       threadListReader: listReader,
@@ -4070,6 +4103,9 @@ void main() {
 
     expect(find.text('Agent threads'), findsOneWidget);
     expect(find.textContaining('Builder / coder'), findsOneWidget);
+    expect(find.textContaining('Status: running'), findsOneWidget);
+    expect(find.textContaining('Agent path: agents/build'), findsOneWidget);
+    expect(find.textContaining('Parent thread: thr_main'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('agent-thread-thr_worker')));
     await tester.pumpAndSettle();
