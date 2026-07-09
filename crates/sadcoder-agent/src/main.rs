@@ -2,6 +2,7 @@ use anyhow::Context;
 use clap::Parser;
 use clap::Subcommand;
 use clap::ValueEnum;
+use sadcoder_protocol::AgentReconnectCacheStatus;
 use sadcoder_protocol::AgentStatus;
 use sadcoder_protocol::BackendKind;
 use sadcoder_protocol::BackendState;
@@ -94,8 +95,18 @@ enum AgentCommand {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        AgentCommand::Status { json } => print_status(&cli.codex_path, cli.backend, json),
-        AgentCommand::Start { json } => print_start(&cli.codex_path, cli.backend, json),
+        AgentCommand::Status { json } => print_status(
+            &cli.codex_path,
+            cli.backend,
+            cli.state_path.as_deref(),
+            json,
+        ),
+        AgentCommand::Start { json } => print_start(
+            &cli.codex_path,
+            cli.backend,
+            cli.state_path.as_deref(),
+            json,
+        ),
         AgentCommand::Probe { json } => print_probe(&cli.codex_path, json),
         AgentCommand::SlashCommands { json } => print_slash_commands(json),
         AgentCommand::Snapshot { json } => print_snapshot(cli.state_path.as_deref(), json),
@@ -110,8 +121,14 @@ fn main() -> anyhow::Result<()> {
 const SLASH_COMMANDS_MANIFEST_JSON: &str =
     include_str!("../../../resources/slash_commands_manifest.json");
 
-fn print_status(codex_path: &str, backend_mode: BackendMode, json: bool) -> anyhow::Result<()> {
-    let status = collect_status(codex_path, backend_mode);
+fn print_status(
+    codex_path: &str,
+    backend_mode: BackendMode,
+    state_path: Option<&Path>,
+    json: bool,
+) -> anyhow::Result<()> {
+    let state_path = resolve_state_path(state_path);
+    let status = collect_status(codex_path, backend_mode, &state_path);
     if json {
         println!("{}", serde_json::to_string_pretty(&status)?);
     } else {
@@ -125,13 +142,27 @@ fn print_status(codex_path: &str, backend_mode: BackendMode, json: bool) -> anyh
             "backend: {:?} {:?}",
             status.backend.kind, status.backend.state
         );
+        println!(
+            "reconnect cache: {} pending approvals, {} recent events ({})",
+            status.reconnect_cache.pending_approvals,
+            status.reconnect_cache.recent_events,
+            status.reconnect_cache.state_path
+        );
+        if let Some(load_error) = &status.reconnect_cache.load_error {
+            println!("reconnect cache load error: {load_error}");
+        }
     }
     Ok(())
 }
 
-fn print_start(codex_path: &str, backend_mode: BackendMode, json: bool) -> anyhow::Result<()> {
+fn print_start(
+    codex_path: &str,
+    backend_mode: BackendMode,
+    state_path: Option<&Path>,
+    json: bool,
+) -> anyhow::Result<()> {
     start_backend(codex_path, backend_mode)?;
-    print_status(codex_path, backend_mode, json)
+    print_status(codex_path, backend_mode, state_path, json)
 }
 
 fn print_probe(codex_path: &str, json_output: bool) -> anyhow::Result<()> {
@@ -201,10 +232,11 @@ fn print_snapshot(state_path: Option<&Path>, json_output: bool) -> anyhow::Resul
     Ok(())
 }
 
-fn collect_status(codex_path: &str, backend_mode: BackendMode) -> AgentStatus {
+fn collect_status(codex_path: &str, backend_mode: BackendMode, state_path: &Path) -> AgentStatus {
     let codex_version = probe_codex_version(codex_path);
     let codex_available = codex_version.is_some();
     let backend = collect_backend_status(codex_path, codex_available, backend_mode);
+    let reconnect_cache = collect_reconnect_cache_status(state_path);
 
     AgentStatus {
         agent_version: env!("CARGO_PKG_VERSION").to_string(),
@@ -214,6 +246,29 @@ fn collect_status(codex_path: &str, backend_mode: BackendMode) -> AgentStatus {
         codex_available,
         codex_version,
         backend,
+        reconnect_cache,
+    }
+}
+
+fn collect_reconnect_cache_status(state_path: &Path) -> AgentReconnectCacheStatus {
+    match AgentStateCache::load(state_path) {
+        Ok(cache) => {
+            let snapshot = cache.into_snapshot();
+            AgentReconnectCacheStatus {
+                state_path: state_path.display().to_string(),
+                schema_version: snapshot.schema_version,
+                pending_approvals: snapshot.pending_approvals.len(),
+                recent_events: snapshot.recent_events.len(),
+                load_error: None,
+            }
+        }
+        Err(error) => AgentReconnectCacheStatus {
+            state_path: state_path.display().to_string(),
+            schema_version: 1,
+            pending_approvals: 0,
+            recent_events: 0,
+            load_error: Some(error.to_string()),
+        },
     }
 }
 
@@ -560,11 +615,57 @@ mod tests {
         let status = collect_status(
             "definitely-missing-sadcoder-codex-binary",
             BackendMode::Auto,
+            Path::new("sadcoder-agent-test-state.json"),
         );
 
         assert!(!status.codex_available);
         assert_eq!(status.backend.kind, BackendKind::Unknown);
         assert_eq!(status.backend.state, BackendState::Unavailable);
+    }
+
+    #[test]
+    fn status_reports_reconnect_cache_counts() {
+        let path = std::env::temp_dir().join(format!(
+            "sadcoder-agent-status-cache-test-{}-{}.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        let mut cache = AgentStateCache::empty();
+        cache
+            .snapshot
+            .pending_approvals
+            .push(sadcoder_protocol::AgentCachedServerRequest {
+                id: json!("approval-1"),
+                method: "item/commandExecution/requestApproval".to_string(),
+                params: Some(json!({ "command": "cargo test" })),
+            });
+        cache
+            .snapshot
+            .recent_events
+            .push(sadcoder_protocol::AgentCachedEvent {
+                method: "thread/item".to_string(),
+                params: None,
+            });
+
+        cache.save(&path).expect("save cache");
+        let status = collect_status(
+            "definitely-missing-sadcoder-codex-binary",
+            BackendMode::Auto,
+            &path,
+        );
+        let _ = std::fs::remove_file(&path);
+
+        assert_eq!(
+            status.reconnect_cache.state_path,
+            path.display().to_string()
+        );
+        assert_eq!(status.reconnect_cache.schema_version, 1);
+        assert_eq!(status.reconnect_cache.pending_approvals, 1);
+        assert_eq!(status.reconnect_cache.recent_events, 1);
+        assert_eq!(status.reconnect_cache.load_error, None);
     }
 
     #[test]

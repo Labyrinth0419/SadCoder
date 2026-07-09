@@ -46,6 +46,14 @@ class AppLocalizations {
   String get backendDaemon => _text('backendDaemon');
   String get backendStdioFallback => _text('backendStdioFallback');
   String get backendUnknown => _text('backendUnknown');
+  String reconnectCacheSummary(int pendingApprovals, int recentEvents) =>
+      _text('reconnectCacheSummary')
+          .replaceAll('{pendingApprovals}', pendingApprovals.toString())
+          .replaceAll('{recentEvents}', recentEvents.toString());
+  String statePath(String path) =>
+      _text('statePath').replaceAll('{path}', path);
+  String reconnectCacheLoadError(String error) =>
+      _text('reconnectCacheLoadError').replaceAll('{error}', error);
   String get connect => _text('connect');
   String get connecting => _text('connecting');
   String get connected => _text('connected');
@@ -156,6 +164,10 @@ const _values = <String, Map<String, String>>{
     'backendDaemon': 'daemon',
     'backendStdioFallback': 'stdio fallback',
     'backendUnknown': 'unknown',
+    'reconnectCacheSummary':
+        'Reconnect cache: {pendingApprovals} pending approvals, {recentEvents} recent events',
+    'statePath': 'State path: {path}',
+    'reconnectCacheLoadError': 'Reconnect cache load error: {error}',
     'connect': 'Connect',
     'connecting': 'Connecting',
     'connected': 'Connected',
@@ -243,6 +255,10 @@ const _values = <String, Map<String, String>>{
     'backendDaemon': 'daemon',
     'backendStdioFallback': 'stdio fallback',
     'backendUnknown': '未知',
+    'reconnectCacheSummary':
+        '重连缓存：{pendingApprovals} 个待审批，{recentEvents} 个最近事件',
+    'statePath': '状态路径：{path}',
+    'reconnectCacheLoadError': '重连缓存读取失败：{error}',
     'connect': '连接',
     'connecting': '连接中',
     'connected': '已连接',

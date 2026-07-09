@@ -53,6 +53,14 @@ void main() {
     expect(find.text('Probe passed'), findsOneWidget);
     expect(find.text('Backend: stdio fallback'), findsOneWidget);
     expect(
+      find.text('Reconnect cache: 1 pending approvals, 7 recent events'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('State path: /home/alice/.sadcoder/agent-state.json'),
+      findsOneWidget,
+    );
+    expect(
       find.text(
         'on-demand stdio fallback; SSH disconnect can end this backend',
       ),
@@ -287,6 +295,12 @@ const _readyStatus = AgentStatus(
   backendState: BackendState.ready,
   backendDetail:
       'on-demand stdio fallback; SSH disconnect can end this backend',
+  reconnectCache: AgentReconnectCacheStatus(
+    statePath: '/home/alice/.sadcoder/agent-state.json',
+    schemaVersion: 1,
+    pendingApprovals: 1,
+    recentEvents: 7,
+  ),
 );
 
 class _FakeProbeRunner implements M0ProbeRunner {

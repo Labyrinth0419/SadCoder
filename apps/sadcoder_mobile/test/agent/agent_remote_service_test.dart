@@ -23,6 +23,13 @@ void main() {
     "kind": "codex-app-server-stdio",
     "state": "ready",
     "detail": "ok"
+  },
+  "reconnectCache": {
+    "statePath": "/home/tester/.sadcoder/agent-state.json",
+    "schemaVersion": 1,
+    "pendingApprovals": 2,
+    "recentEvents": 7,
+    "loadError": null
   }
 }
 ''',
@@ -37,6 +44,12 @@ void main() {
     expect(status.codexAvailable, true);
     expect(status.backendKind, BackendKind.codexAppServerStdio);
     expect(status.backendState, BackendState.ready);
+    expect(
+      status.reconnectCache.statePath,
+      '/home/tester/.sadcoder/agent-state.json',
+    );
+    expect(status.reconnectCache.pendingApprovals, 2);
+    expect(status.reconnectCache.recentEvents, 7);
   });
 
   test('readStatus throws on failed command', () async {

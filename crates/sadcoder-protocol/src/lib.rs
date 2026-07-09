@@ -111,6 +111,17 @@ pub struct AgentStatus {
     pub codex_available: bool,
     pub codex_version: Option<String>,
     pub backend: BackendStatus,
+    pub reconnect_cache: AgentReconnectCacheStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentReconnectCacheStatus {
+    pub state_path: String,
+    pub schema_version: u32,
+    pub pending_approvals: usize,
+    pub recent_events: usize,
+    pub load_error: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -236,6 +247,13 @@ mod tests {
                 state: BackendState::Ready,
                 detail: None,
             },
+            reconnect_cache: AgentReconnectCacheStatus {
+                state_path: "/tmp/sadcoder-agent-state.json".to_string(),
+                schema_version: 1,
+                pending_approvals: 2,
+                recent_events: 10,
+                load_error: None,
+            },
         };
 
         let encoded = serde_json::to_value(status).expect("serialize status");
@@ -243,6 +261,11 @@ mod tests {
         assert_eq!(encoded["agentVersion"], "0.1.0");
         assert_eq!(encoded["codexAvailable"], true);
         assert_eq!(encoded["backend"]["kind"], "codex-app-server-stdio");
+        assert_eq!(
+            encoded["reconnectCache"]["statePath"],
+            "/tmp/sadcoder-agent-state.json"
+        );
+        assert_eq!(encoded["reconnectCache"]["pendingApprovals"], 2);
     }
 
     #[test]

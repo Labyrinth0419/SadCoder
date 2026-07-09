@@ -549,6 +549,23 @@ class _ProbeResultPanel extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(report.agentStatus!.backendDetail!),
               ],
+              const SizedBox(height: 4),
+              Text(_reconnectCacheSummary(l10n, report.agentStatus!)),
+              if (report.agentStatus!.reconnectCache.statePath.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  l10n.statePath(report.agentStatus!.reconnectCache.statePath),
+                ),
+              ],
+              if (report.agentStatus!.reconnectCache.loadError != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  l10n.reconnectCacheLoadError(
+                    report.agentStatus!.reconnectCache.loadError!,
+                  ),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
             ],
             if (report != null) ...[
               const SizedBox(height: 12),
@@ -604,6 +621,14 @@ class _ProbeResultPanel extends StatelessWidget {
       BackendKind.unknown => l10n.backendUnknown,
     };
     return '${l10n.backend}: $kind';
+  }
+
+  String _reconnectCacheSummary(AppLocalizations l10n, AgentStatus status) {
+    final cache = status.reconnectCache;
+    return l10n.reconnectCacheSummary(
+      cache.pendingApprovals,
+      cache.recentEvents,
+    );
   }
 }
 

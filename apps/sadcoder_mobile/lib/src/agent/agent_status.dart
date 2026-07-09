@@ -33,10 +33,11 @@ class AgentStatus {
     required this.backendState,
     this.codexVersion,
     this.backendDetail,
+    this.reconnectCache = const AgentReconnectCacheStatus(),
   });
 
   factory AgentStatus.fromJson(Map<String, Object?> json) {
-    final backend = json['backend'] as Map<String, Object?>? ?? const {};
+    final backend = _stringKeyedMap(json['backend']);
     return AgentStatus(
       agentVersion: json['agentVersion'] as String? ?? 'unknown',
       platformOs: json['platformOs'] as String? ?? 'unknown',
@@ -47,6 +48,9 @@ class AgentStatus {
       backendKind: BackendKind.fromWire(backend['kind'] as String? ?? ''),
       backendState: BackendState.fromWire(backend['state'] as String? ?? ''),
       backendDetail: backend['detail'] as String?,
+      reconnectCache: AgentReconnectCacheStatus.fromJson(
+        _stringKeyedMap(json['reconnectCache']),
+      ),
     );
   }
 
@@ -59,4 +63,51 @@ class AgentStatus {
   final BackendKind backendKind;
   final BackendState backendState;
   final String? backendDetail;
+  final AgentReconnectCacheStatus reconnectCache;
+}
+
+class AgentReconnectCacheStatus {
+  const AgentReconnectCacheStatus({
+    this.statePath = '',
+    this.schemaVersion = 1,
+    this.pendingApprovals = 0,
+    this.recentEvents = 0,
+    this.loadError,
+  });
+
+  factory AgentReconnectCacheStatus.fromJson(Map<String, Object?> json) {
+    return AgentReconnectCacheStatus(
+      statePath: json['statePath'] as String? ?? '',
+      schemaVersion: _intValue(json['schemaVersion']) ?? 1,
+      pendingApprovals: _intValue(json['pendingApprovals']) ?? 0,
+      recentEvents: _intValue(json['recentEvents']) ?? 0,
+      loadError: json['loadError'] as String?,
+    );
+  }
+
+  final String statePath;
+  final int schemaVersion;
+  final int pendingApprovals;
+  final int recentEvents;
+  final String? loadError;
+}
+
+Map<String, Object?> _stringKeyedMap(Object? value) {
+  if (value is Map<String, Object?>) {
+    return value;
+  }
+  if (value is Map) {
+    return value.map((key, value) => MapEntry(key.toString(), value));
+  }
+  return const {};
+}
+
+int? _intValue(Object? value) {
+  if (value is int) {
+    return value;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  return null;
 }
