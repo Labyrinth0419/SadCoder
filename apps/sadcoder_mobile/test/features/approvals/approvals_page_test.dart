@@ -100,6 +100,80 @@ void main() {
     ]);
   });
 
+  testWidgets('confirms high-risk command approvals before callback', (
+    tester,
+  ) async {
+    final decisions = <({Object requestId, CodexApprovalDecision decision})>[];
+    await _pumpApprovalsPage(
+      tester,
+      const [
+        PendingApproval(
+          requestId: 'cmd-1',
+          method: 'item/commandExecution/requestApproval',
+          kind: PendingApprovalKind.commandExecution,
+          rawParams: {'command': 'rm -rf build'},
+          title: 'rm -rf build',
+          command: 'rm -rf build',
+        ),
+      ],
+      onCommandOrFileDecision: (approval, decision) {
+        decisions.add((requestId: approval.requestId, decision: decision));
+      },
+    );
+
+    await tester.tap(find.text('Approve once'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Confirm approval'), findsOneWidget);
+    expect(decisions, isEmpty);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Cancel'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(decisions, isEmpty);
+
+    await tester.tap(find.text('Approve once'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Approve anyway'));
+    await tester.pumpAndSettle();
+
+    expect(decisions, [
+      (requestId: 'cmd-1', decision: CodexApprovalDecision.accept),
+    ]);
+  });
+
+  testWidgets('does not confirm high-risk command denials', (tester) async {
+    final decisions = <({Object requestId, CodexApprovalDecision decision})>[];
+    await _pumpApprovalsPage(
+      tester,
+      const [
+        PendingApproval(
+          requestId: 'cmd-1',
+          method: 'item/commandExecution/requestApproval',
+          kind: PendingApprovalKind.commandExecution,
+          rawParams: {'command': 'git reset --hard'},
+          title: 'git reset --hard',
+          command: 'git reset --hard',
+        ),
+      ],
+      onCommandOrFileDecision: (approval, decision) {
+        decisions.add((requestId: approval.requestId, decision: decision));
+      },
+    );
+
+    await tester.tap(find.text('Deny'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Confirm approval'), findsNothing);
+    expect(decisions, [
+      (requestId: 'cmd-1', decision: CodexApprovalDecision.decline),
+    ]);
+  });
+
   testWidgets('calls permission response callback with requested grant', (
     tester,
   ) async {

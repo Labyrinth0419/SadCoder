@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../approvals/pending_approval.dart';
 import '../../i18n/app_localizations.dart';
+import '../../security/approval_risk.dart';
 
 typedef CommandOrFileApprovalCallback =
     FutureOr<void> Function(
@@ -146,7 +147,7 @@ class _ApprovalActions extends StatelessWidget {
     final l10n = context.l10n;
     final buttons = switch (approval.kind) {
       PendingApprovalKind.commandExecution ||
-      PendingApprovalKind.fileChange => _commandOrFileButtons(l10n),
+      PendingApprovalKind.fileChange => _commandOrFileButtons(context, l10n),
       PendingApprovalKind.permissions => _permissionButtons(l10n),
       PendingApprovalKind.mcpElicitation => _mcpButtons(l10n),
       PendingApprovalKind.unknown => const <Widget>[],
@@ -159,13 +160,16 @@ class _ApprovalActions extends StatelessWidget {
     return Wrap(spacing: 8, runSpacing: 8, children: buttons);
   }
 
-  List<Widget> _commandOrFileButtons(AppLocalizations l10n) {
+  List<Widget> _commandOrFileButtons(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) {
     return [
       FilledButton.icon(
         onPressed: onCommandOrFileDecision == null
             ? null
-            : () => onCommandOrFileDecision!(
-                approval,
+            : () => _handleCommandOrFileDecision(
+                context,
                 CodexApprovalDecision.accept,
               ),
         icon: const Icon(Icons.check),
@@ -174,8 +178,8 @@ class _ApprovalActions extends StatelessWidget {
       OutlinedButton.icon(
         onPressed: onCommandOrFileDecision == null
             ? null
-            : () => onCommandOrFileDecision!(
-                approval,
+            : () => _handleCommandOrFileDecision(
+                context,
                 CodexApprovalDecision.acceptForSession,
               ),
         icon: const Icon(Icons.done_all),
@@ -184,8 +188,8 @@ class _ApprovalActions extends StatelessWidget {
       OutlinedButton.icon(
         onPressed: onCommandOrFileDecision == null
             ? null
-            : () => onCommandOrFileDecision!(
-                approval,
+            : () => _handleCommandOrFileDecision(
+                context,
                 CodexApprovalDecision.decline,
               ),
         icon: const Icon(Icons.block),
@@ -194,14 +198,54 @@ class _ApprovalActions extends StatelessWidget {
       TextButton.icon(
         onPressed: onCommandOrFileDecision == null
             ? null
-            : () => onCommandOrFileDecision!(
-                approval,
+            : () => _handleCommandOrFileDecision(
+                context,
                 CodexApprovalDecision.cancel,
               ),
         icon: const Icon(Icons.cancel_outlined),
         label: Text(l10n.approvalCancel),
       ),
     ];
+  }
+
+  Future<void> _handleCommandOrFileDecision(
+    BuildContext context,
+    CodexApprovalDecision decision,
+  ) async {
+    final callback = onCommandOrFileDecision;
+    if (callback == null) {
+      return;
+    }
+    if (requiresApprovalSecondConfirmation(approval, decision)) {
+      final confirmed = await _confirmHighRiskApproval(context);
+      if (!confirmed) {
+        return;
+      }
+    }
+    await callback(approval, decision);
+  }
+
+  Future<bool> _confirmHighRiskApproval(BuildContext context) async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.warning_amber_outlined),
+        title: Text(l10n.approvalSecondConfirmTitle),
+        content: Text(l10n.approvalSecondConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.approvalSecondConfirmProceed),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
   }
 
   List<Widget> _permissionButtons(AppLocalizations l10n) {

@@ -239,6 +239,10 @@ class AppLocalizations {
   String get approvalDeny => _text('approvalDeny');
   String get approvalCancel => _text('approvalCancel');
   String get approvalNoDirectActions => _text('approvalNoDirectActions');
+  String get approvalSecondConfirmTitle => _text('approvalSecondConfirmTitle');
+  String get approvalSecondConfirmBody => _text('approvalSecondConfirmBody');
+  String get approvalSecondConfirmProceed =>
+      _text('approvalSecondConfirmProceed');
   String get serverDefaults => _text('serverDefaults');
   String get serverDefaultsBody => _text('serverDefaultsBody');
   String get appDefaultOverrides => _text('appDefaultOverrides');
@@ -838,6 +842,10 @@ const _values = <String, Map<String, String>>{
     'approvalDeny': 'Deny',
     'approvalCancel': 'Cancel',
     'approvalNoDirectActions': 'No direct actions available',
+    'approvalSecondConfirmTitle': 'Confirm approval',
+    'approvalSecondConfirmBody':
+        'This request looks high-risk. Review the command or file change before approving it.',
+    'approvalSecondConfirmProceed': 'Approve anyway',
     'serverDefaults': 'Server defaults',
     'serverDefaultsBody':
         'Codex configuration is inherited from the server unless an override is explicitly set.',
@@ -1321,6 +1329,9 @@ const _values = <String, Map<String, String>>{
     'approvalDeny': '拒绝',
     'approvalCancel': '取消',
     'approvalNoDirectActions': '暂无可直接执行的操作',
+    'approvalSecondConfirmTitle': '确认批准',
+    'approvalSecondConfirmBody': '此请求看起来风险较高。批准前请再次检查命令或文件变更。',
+    'approvalSecondConfirmProceed': '仍然批准',
     'serverDefaults': '服务器默认配置',
     'serverDefaultsBody': '默认沿用服务器上的 Codex 配置，只有显式设置时才覆盖。',
     'appDefaultOverrides': 'App 默认覆盖',
