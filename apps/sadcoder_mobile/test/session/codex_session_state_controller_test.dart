@@ -17,6 +17,7 @@ import 'package:sadcoder_mobile/src/ssh/ssh_proxy_connector.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
+import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
 
 void main() {
   test('connect opens a session and records state transitions', () async {
@@ -41,6 +42,7 @@ void main() {
     expect(controller.profile, _profile);
     expect(controller.threadListReader, isNotNull);
     expect(controller.threadDetailReader, isNotNull);
+    expect(controller.turnRunner, isNotNull);
     expect(connector.connectedProfiles, [_profile]);
     expect(approvalController.canRespond, true);
   });
@@ -391,6 +393,7 @@ void main() {
     expect(controller.status, CodexSessionStatus.idle);
     expect(controller.threadListReader, isNull);
     expect(controller.threadDetailReader, isNull);
+    expect(controller.turnRunner, isNull);
     expect(connector.connectCount, 1);
     expect(connector.closeCount, 1);
     expect(approvalController.approvals.single.requestId, 'approval-1');
@@ -468,6 +471,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       session: session,
       threadListReader: const _FakeThreadListReader(),
       threadDetailReader: const _FakeThreadDetailReader(),
+      turnRunner: const _FakeTurnRunner(),
       proxyConnection: AgentProxyConnection(
         input: const Stream<Uint8List>.empty(),
         output: StreamController<Uint8List>().sink,
@@ -511,6 +515,50 @@ class _FakeThreadDetailReader implements ThreadDetailReader {
       }),
     );
   }
+}
+
+class _FakeTurnRunner implements TurnRunner {
+  const _FakeTurnRunner();
+
+  @override
+  Future<ThreadSummary> startThread() async => ThreadSummary.fromJson({
+    'id': 'thr_1',
+    'sessionId': 'sess_1',
+    'preview': 'Fake thread',
+    'ephemeral': false,
+    'status': 'idle',
+    'cwd': '/repo',
+    'updatedAt': 1,
+  });
+
+  @override
+  Future<ThreadSummary> resumeThread({required String threadId}) async =>
+      ThreadSummary.fromJson({
+        'id': threadId,
+        'sessionId': 'sess_1',
+        'preview': 'Fake thread',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+      });
+
+  @override
+  Future<TurnSummary> startTurn({
+    required String threadId,
+    required String text,
+  }) async => TurnSummary.fromJson({
+    'id': 'turn_1',
+    'status': 'inProgress',
+    'items': <Object?>[],
+    'itemsView': 'notLoaded',
+  });
+
+  @override
+  Future<void> interruptTurn({
+    required String threadId,
+    required String turnId,
+  }) async {}
 }
 
 class _FakeAgentSnapshotReader implements AgentSnapshotReader {

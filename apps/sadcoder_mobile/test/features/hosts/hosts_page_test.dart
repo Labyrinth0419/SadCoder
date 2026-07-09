@@ -17,6 +17,7 @@ import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
+import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
 
 void main() {
   testWidgets('runs a manual M0 probe from the host form', (tester) async {
@@ -359,6 +360,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   @override
   ThreadDetailReader get threadDetailReader => const _FakeThreadDetailReader();
 
+  @override
+  TurnRunner get turnRunner => const _FakeTurnRunner();
+
   final VoidCallback onClose;
   bool _closed = false;
 
@@ -411,6 +415,50 @@ class _FakeThreadDetailReader implements ThreadDetailReader {
       }),
     );
   }
+}
+
+class _FakeTurnRunner implements TurnRunner {
+  const _FakeTurnRunner();
+
+  @override
+  Future<ThreadSummary> startThread() async => ThreadSummary.fromJson({
+    'id': 'thr_1',
+    'sessionId': 'sess_1',
+    'preview': 'Fake thread',
+    'ephemeral': false,
+    'status': 'idle',
+    'cwd': '/repo',
+    'updatedAt': 1,
+  });
+
+  @override
+  Future<ThreadSummary> resumeThread({required String threadId}) async =>
+      ThreadSummary.fromJson({
+        'id': threadId,
+        'sessionId': 'sess_1',
+        'preview': 'Fake thread',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+      });
+
+  @override
+  Future<TurnSummary> startTurn({
+    required String threadId,
+    required String text,
+  }) async => TurnSummary.fromJson({
+    'id': 'turn_1',
+    'status': 'inProgress',
+    'items': <Object?>[],
+    'itemsView': 'notLoaded',
+  });
+
+  @override
+  Future<void> interruptTurn({
+    required String threadId,
+    required String turnId,
+  }) async {}
 }
 
 class _FakeReconnectDelayScheduler implements ReconnectDelayScheduler {

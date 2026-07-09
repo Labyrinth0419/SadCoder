@@ -14,6 +14,8 @@ import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
+import 'package:sadcoder_mobile/src/turns/turn_controller.dart';
+import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
 
 void main() {
   testWidgets('shows command preview for known slash command aliases', (
@@ -164,6 +166,130 @@ void main() {
     expect(find.text('completed / 1 items / full'), findsOneWidget);
   });
 
+  testWidgets('sends normal prompt text through the turn controller', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      ' Fix login bug ',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(turnRunner.startedThreads, 1);
+    expect(turnRunner.startedTurns, [
+      (threadId: 'thr_new', text: 'Fix login bug'),
+    ]);
+    expect(find.text('Turn submitted: turn_1'), findsOneWidget);
+    expect(find.text(' Fix login bug '), findsNothing);
+  });
+
+  testWidgets('does not send slash commands as prompt text', (tester) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/does-not-exist now',
+    );
+    await tester.pump();
+
+    final sendButton = tester.widget<IconButton>(
+      find.widgetWithIcon(IconButton, Icons.send),
+    );
+    expect(sendButton.onPressed, isNull);
+    expect(turnRunner.startedTurns, isEmpty);
+  });
+
+  testWidgets('interrupt button sends explicit turn interrupt only', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await turnController.submitText('Run long task');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+    );
+
+    await tester.tap(find.byTooltip('Interrupt turn'));
+    await tester.pumpAndSettle();
+
+    expect(turnRunner.interruptedTurns, [
+      (threadId: 'thr_new', turnId: 'turn_1'),
+    ]);
+    expect(find.text('Turn interrupted'), findsOneWidget);
+  });
+
   testWidgets('refreshes threads when the session becomes connected', (
     tester,
   ) async {
@@ -214,6 +340,7 @@ Future<void> _pumpChatPage(
   CodexSessionStateController? sessionController,
   ThreadListController? threadListController,
   ThreadDetailController? threadDetailController,
+  TurnController? turnController,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -229,6 +356,7 @@ Future<void> _pumpChatPage(
           sessionController: sessionController,
           threadListController: threadListController,
           threadDetailController: threadDetailController,
+          turnController: turnController,
         ),
       ),
     ),
@@ -268,9 +396,13 @@ class _FakeThreadDetailReader implements ThreadDetailReader {
 }
 
 class _FakeSessionStarter implements CodexSessionConnectionStarter {
-  const _FakeSessionStarter({required this.threadListReader});
+  const _FakeSessionStarter({
+    required this.threadListReader,
+    this.turnRunner = const _ConstantTurnRunner(),
+  });
 
   final ThreadListReader threadListReader;
+  final TurnRunner turnRunner;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -280,6 +412,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     return _FakeSessionConnection(
       profile: profile,
       threadListReader: threadListReader,
+      turnRunner: turnRunner,
     );
   }
 }
@@ -288,6 +421,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   _FakeSessionConnection({
     required this.profile,
     required this.threadListReader,
+    required this.turnRunner,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -297,6 +431,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final ThreadListReader threadListReader;
+
+  @override
+  final TurnRunner turnRunner;
 
   @override
   ThreadDetailReader get threadDetailReader => _FakeThreadDetailReader(
@@ -319,4 +456,83 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   Future<void> close({bool notifyApprovalController = true}) async {}
+}
+
+class _FakeTurnRunner implements TurnRunner {
+  int startedThreads = 0;
+  final startedTurns = <({String threadId, String text})>[];
+  final interruptedTurns = <({String threadId, String turnId})>[];
+
+  @override
+  Future<ThreadSummary> startThread() async {
+    startedThreads++;
+    return _thread('thr_new');
+  }
+
+  @override
+  Future<ThreadSummary> resumeThread({required String threadId}) async {
+    return _thread(threadId);
+  }
+
+  @override
+  Future<TurnSummary> startTurn({
+    required String threadId,
+    required String text,
+  }) async {
+    startedTurns.add((threadId: threadId, text: text));
+    return TurnSummary.fromJson({
+      'id': 'turn_${startedTurns.length}',
+      'status': 'inProgress',
+      'items': <Object?>[],
+      'itemsView': 'notLoaded',
+    });
+  }
+
+  @override
+  Future<void> interruptTurn({
+    required String threadId,
+    required String turnId,
+  }) async {
+    interruptedTurns.add((threadId: threadId, turnId: turnId));
+  }
+}
+
+class _ConstantTurnRunner implements TurnRunner {
+  const _ConstantTurnRunner();
+
+  @override
+  Future<ThreadSummary> startThread() async => _thread('thr_1');
+
+  @override
+  Future<ThreadSummary> resumeThread({required String threadId}) async =>
+      _thread(threadId);
+
+  @override
+  Future<TurnSummary> startTurn({
+    required String threadId,
+    required String text,
+  }) async => TurnSummary.fromJson({
+    'id': 'turn_1',
+    'status': 'inProgress',
+    'items': <Object?>[],
+    'itemsView': 'notLoaded',
+  });
+
+  @override
+  Future<void> interruptTurn({
+    required String threadId,
+    required String turnId,
+  }) async {}
+}
+
+ThreadSummary _thread(String threadId) {
+  return ThreadSummary.fromJson({
+    'id': threadId,
+    'sessionId': 'sess_1',
+    'preview': 'Fake thread',
+    'ephemeral': false,
+    'status': 'idle',
+    'cwd': '/repo',
+    'updatedAt': 1,
+  });
 }

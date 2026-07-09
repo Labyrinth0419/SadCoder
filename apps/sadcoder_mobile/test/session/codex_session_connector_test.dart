@@ -18,8 +18,21 @@ void main() {
     final connection = await connector.connect(_profile);
     addTearDown(connection.close);
     await connection.session.client.listModels();
+    await connection.turnRunner.startThread();
+    await connection.turnRunner.startTurn(threadId: 'thr_1', text: 'Fix bug');
+    await connection.turnRunner.interruptTurn(
+      threadId: 'thr_1',
+      turnId: 'turn_1',
+    );
 
-    expect(proxyConnector.methods, ['initialize', 'initialized', 'model/list']);
+    expect(proxyConnector.methods, [
+      'initialize',
+      'initialized',
+      'model/list',
+      'thread/start',
+      'turn/start',
+      'turn/interrupt',
+    ]);
     expect(connection.profile, _profile);
   });
 
@@ -128,6 +141,25 @@ class _LineServerProxyConnector implements AgentProxyConnector {
   Map<String, Object?> _resultFor(String method) => switch (method) {
     'initialize' => {'serverInfo': 'test'},
     'model/list' => {'models': <Object?>[]},
+    'thread/start' => {
+      'thread': {
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Thread',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+      },
+    },
+    'turn/start' => {
+      'turn': {
+        'id': 'turn_1',
+        'status': 'inProgress',
+        'items': <Object?>[],
+        'itemsView': 'notLoaded',
+      },
+    },
     _ => {},
   };
 }

@@ -36,6 +36,33 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> startThread() {
+    return _request('thread/start', {});
+  }
+
+  Future<Map<String, Object?>> resumeThread({required String threadId}) {
+    return _request('thread/resume', {'threadId': threadId});
+  }
+
+  Future<Map<String, Object?>> startTurn({
+    required String threadId,
+    required String text,
+  }) {
+    return _request('turn/start', {
+      'threadId': threadId,
+      'input': [
+        {'type': 'text', 'text': text, 'text_elements': <Object?>[]},
+      ],
+    });
+  }
+
+  Future<Map<String, Object?>> interruptTurn({
+    required String threadId,
+    required String turnId,
+  }) {
+    return _request('turn/interrupt', {'threadId': threadId, 'turnId': turnId});
+  }
+
   Future<Map<String, Object?>> _request(
     String method, [
     Map<String, Object?>? params,

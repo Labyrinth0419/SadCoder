@@ -81,6 +81,15 @@ class AppLocalizations {
   String turnCount(int count) =>
       _text('turnCount').replaceAll('{count}', count.toString());
   String get noTurns => _text('noTurns');
+  String get startingThread => _text('startingThread');
+  String get resumingThread => _text('resumingThread');
+  String get sendingTurn => _text('sendingTurn');
+  String turnSubmitted(String turnId) =>
+      _text('turnSubmitted').replaceAll('{turnId}', turnId);
+  String get interruptTurn => _text('interruptTurn');
+  String get interruptingTurn => _text('interruptingTurn');
+  String get turnInterrupted => _text('turnInterrupted');
+  String get turnFailed => _text('turnFailed');
   String get forkedThread => _text('forkedThread');
   String get subagentThread => _text('subagentThread');
   String get send => _text('send');
@@ -208,6 +217,14 @@ const _values = <String, Map<String, String>>{
     'threadDetailFailed': 'Failed to load thread detail',
     'turnCount': 'Turns: {count}',
     'noTurns': 'No turns loaded',
+    'startingThread': 'Starting thread',
+    'resumingThread': 'Resuming thread',
+    'sendingTurn': 'Sending turn',
+    'turnSubmitted': 'Turn submitted: {turnId}',
+    'interruptTurn': 'Interrupt turn',
+    'interruptingTurn': 'Interrupting turn',
+    'turnInterrupted': 'Turn interrupted',
+    'turnFailed': 'Turn failed',
     'forkedThread': 'fork',
     'subagentThread': 'subagent',
     'send': 'Send',
@@ -309,6 +326,14 @@ const _values = <String, Map<String, String>>{
     'threadDetailFailed': '会话详情加载失败',
     'turnCount': '回合数：{count}',
     'noTurns': '暂无已加载回合',
+    'startingThread': '正在创建会话',
+    'resumingThread': '正在恢复会话',
+    'sendingTurn': '正在发送回合',
+    'turnSubmitted': '回合已发送：{turnId}',
+    'interruptTurn': '中断回合',
+    'interruptingTurn': '正在中断回合',
+    'turnInterrupted': '回合已中断',
+    'turnFailed': '回合失败',
     'forkedThread': '分叉',
     'subagentThread': '子 agent',
     'send': '发送',

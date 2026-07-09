@@ -6,6 +6,8 @@ import '../threads/codex_thread_detail_reader.dart';
 import '../threads/codex_thread_list_reader.dart';
 import '../threads/thread_detail_reader.dart';
 import '../threads/thread_list_reader.dart';
+import '../turns/codex_turn_runner.dart';
+import '../turns/turn_runner.dart';
 
 abstract interface class CodexSessionConnectionHandle {
   SshProfile get profile;
@@ -13,6 +15,8 @@ abstract interface class CodexSessionConnectionHandle {
   ThreadListReader get threadListReader;
 
   ThreadDetailReader get threadDetailReader;
+
+  TurnRunner get turnRunner;
 
   Future<void> get done;
 
@@ -59,6 +63,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         proxyConnection: proxyConnection,
         threadListReader: CodexThreadListReader(session.client),
         threadDetailReader: CodexThreadDetailReader(session.client),
+        turnRunner: CodexTurnRunner(session.client),
       );
     } catch (_) {
       await session?.close();
@@ -74,6 +79,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.session,
     required this.threadListReader,
     required this.threadDetailReader,
+    required this.turnRunner,
     required AgentProxyConnection proxyConnection,
   }) : _proxyConnection = proxyConnection,
        done = proxyConnection.done;
@@ -86,6 +92,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final ThreadListReader threadListReader;
   @override
   final ThreadDetailReader threadDetailReader;
+  @override
+  final TurnRunner turnRunner;
   final CodexAppSession session;
   final AgentProxyConnection _proxyConnection;
   bool _closed = false;

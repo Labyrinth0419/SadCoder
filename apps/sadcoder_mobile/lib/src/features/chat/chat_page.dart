@@ -8,6 +8,7 @@ import '../../session/codex_session_state_controller.dart';
 import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_list_controller.dart';
 import '../../threads/thread_summary.dart';
+import '../../turns/turn_controller.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({
@@ -16,12 +17,14 @@ class ChatPage extends StatefulWidget {
     this.sessionController,
     this.threadListController,
     this.threadDetailController,
+    this.turnController,
   });
 
   final SlashCommandRegistry registry;
   final CodexSessionStateController? sessionController;
   final ThreadListController? threadListController;
   final ThreadDetailController? threadDetailController;
+  final TurnController? turnController;
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -30,12 +33,14 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   SlashCommandParseResult _slashCommand =
       const SlashCommandParseResult.notSlash();
+  final TextEditingController _composerController = TextEditingController();
   CodexSessionStatus? _lastSessionStatus;
 
   @override
   void initState() {
     super.initState();
     widget.sessionController?.addListener(_handleSessionChanged);
+    widget.turnController?.addListener(_handleTurnChanged);
     _lastSessionStatus = widget.sessionController?.status;
     _refreshThreadsIfConnected();
   }
@@ -49,11 +54,17 @@ class _ChatPageState extends State<ChatPage> {
       _lastSessionStatus = widget.sessionController?.status;
       _refreshThreadsIfConnected();
     }
+    if (oldWidget.turnController != widget.turnController) {
+      oldWidget.turnController?.removeListener(_handleTurnChanged);
+      widget.turnController?.addListener(_handleTurnChanged);
+    }
   }
 
   @override
   void dispose() {
     widget.sessionController?.removeListener(_handleSessionChanged);
+    widget.turnController?.removeListener(_handleTurnChanged);
+    _composerController.dispose();
     super.dispose();
   }
 
@@ -63,6 +74,14 @@ class _ChatPageState extends State<ChatPage> {
     final sessionController = widget.sessionController;
     final threadListController = widget.threadListController;
     final threadDetailController = widget.threadDetailController;
+    final turnController = widget.turnController;
+    final isConnected =
+        sessionController?.status == CodexSessionStatus.connected;
+    final canSend =
+        isConnected &&
+        turnController != null &&
+        turnController.canSubmit &&
+        _canSendComposerText(_composerController.text);
     return Column(
       children: [
         Padding(
@@ -101,6 +120,7 @@ class _ChatPageState extends State<ChatPage> {
                 detailController: threadDetailController,
               ),
               _ThreadDetailPanel(controller: threadDetailController),
+              _TurnStatusPanel(controller: turnController),
               _SlashCommandPreview(result: _slashCommand),
             ],
           ),
@@ -111,14 +131,27 @@ class _ChatPageState extends State<ChatPage> {
             padding: const EdgeInsets.all(12),
             child: TextField(
               key: const ValueKey('chat-composer-field'),
+              controller: _composerController,
               onChanged: _handleComposerChanged,
               decoration: InputDecoration(
                 hintText: l10n.connectBeforeTurn,
                 prefixIcon: const Icon(Icons.code),
-                suffixIcon: IconButton(
-                  onPressed: null,
-                  icon: const Icon(Icons.send),
-                  tooltip: l10n.send,
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: turnController?.canInterrupt == true
+                          ? _interruptActiveTurn
+                          : null,
+                      icon: const Icon(Icons.stop_circle_outlined),
+                      tooltip: l10n.interruptTurn,
+                    ),
+                    IconButton(
+                      onPressed: canSend ? _sendComposerText : null,
+                      icon: const Icon(Icons.send),
+                      tooltip: l10n.send,
+                    ),
+                  ],
                 ),
                 border: const OutlineInputBorder(),
               ),
@@ -133,6 +166,34 @@ class _ChatPageState extends State<ChatPage> {
     setState(() => _slashCommand = widget.registry.parseComposerText(value));
   }
 
+  Future<void> _sendComposerText() async {
+    final turnController = widget.turnController;
+    if (turnController == null) {
+      return;
+    }
+    final text = _composerController.text;
+    if (!_canSendComposerText(text)) {
+      return;
+    }
+    await turnController.submitText(text);
+    if (turnController.status != TurnControllerStatus.failed) {
+      _composerController.clear();
+      _handleComposerChanged('');
+    }
+  }
+
+  Future<void> _interruptActiveTurn() async {
+    await widget.turnController?.interruptActiveTurn();
+  }
+
+  bool _canSendComposerText(String text) {
+    if (text.trim().isEmpty) {
+      return false;
+    }
+    return widget.registry.parseComposerText(text).kind ==
+        SlashCommandParseKind.notSlash;
+  }
+
   void _handleSessionChanged() {
     final status = widget.sessionController?.status;
     if (_lastSessionStatus != CodexSessionStatus.connected &&
@@ -140,6 +201,12 @@ class _ChatPageState extends State<ChatPage> {
       unawaited(widget.threadListController?.refresh());
     }
     _lastSessionStatus = status;
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _handleTurnChanged() {
     if (mounted) {
       setState(() {});
     }
@@ -417,6 +484,75 @@ class _LoadedThreadDetail extends StatelessWidget {
           else
             for (final turn in thread.turns) _TurnSummaryTile(turn: turn),
         ],
+      ),
+    );
+  }
+}
+
+class _TurnStatusPanel extends StatelessWidget {
+  const _TurnStatusPanel({required this.controller});
+
+  final TurnController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = this.controller;
+    if (controller == null) {
+      return const SizedBox.shrink();
+    }
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) => _TurnStatusCard(controller: controller),
+    );
+  }
+}
+
+class _TurnStatusCard extends StatelessWidget {
+  const _TurnStatusCard({required this.controller});
+
+  final TurnController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final content = switch (controller.status) {
+      TurnControllerStatus.idle => null,
+      TurnControllerStatus.startingThread => l10n.startingThread,
+      TurnControllerStatus.resumingThread => l10n.resumingThread,
+      TurnControllerStatus.sendingTurn => l10n.sendingTurn,
+      TurnControllerStatus.submitted => l10n.turnSubmitted(
+        controller.activeTurnId ?? '',
+      ),
+      TurnControllerStatus.interrupting => l10n.interruptingTurn,
+      TurnControllerStatus.interrupted => l10n.turnInterrupted,
+      TurnControllerStatus.failed =>
+        controller.error?.toString() ?? l10n.turnFailed,
+    };
+    if (content == null) {
+      return const SizedBox.shrink();
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            if (controller.isBusy) ...[
+              const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 12),
+            ] else ...[
+              Icon(
+                controller.status == TurnControllerStatus.failed
+                    ? Icons.error_outline
+                    : Icons.task_alt,
+              ),
+              const SizedBox(width: 12),
+            ],
+            Expanded(child: Text(content)),
+          ],
+        ),
       ),
     );
   }

@@ -13,6 +13,7 @@ import '../ssh/dart_ssh_proxy_connector.dart';
 import '../ssh/dart_ssh_remote_command_runner.dart';
 import '../threads/thread_detail_controller.dart';
 import '../threads/thread_list_controller.dart';
+import '../turns/turn_controller.dart';
 
 const _defaultSessionConnector = CodexSessionConnector(
   proxyConnector: DartSshProxyConnector(),
@@ -37,6 +38,7 @@ class _AppShellState extends State<AppShell> {
   late CodexSessionStateController _sessionController;
   late ThreadListController _threadListController;
   late ThreadDetailController _threadDetailController;
+  late TurnController _turnController;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
 
@@ -137,9 +139,14 @@ class _AppShellState extends State<AppShell> {
     _threadDetailController = ThreadDetailController(
       readerProvider: () => _sessionController.threadDetailReader,
     );
+    _turnController = TurnController(
+      runnerProvider: () => _sessionController.turnRunner,
+      activeThreadIdProvider: () => _threadDetailController.selectedThreadId,
+    );
   }
 
   void _disposeOwnedControllers() {
+    _turnController.dispose();
     _threadDetailController.dispose();
     _threadListController.dispose();
     if (_ownsSessionController) {
@@ -157,6 +164,7 @@ class _AppShellState extends State<AppShell> {
         sessionController: _sessionController,
         threadListController: _threadListController,
         threadDetailController: _threadDetailController,
+        turnController: _turnController,
       ),
       2 => ApprovalsPage(
         approvals: _approvalController.approvals,

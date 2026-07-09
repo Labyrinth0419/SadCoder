@@ -72,6 +72,10 @@ class ThreadSummary {
     );
   }
 
+  factory ThreadSummary.fromThreadResponse(Map<String, Object?> json) {
+    return ThreadSummary.fromJson(_stringKeyedMap(json['thread']));
+  }
+
   final String id;
   final String sessionId;
   final String preview;
@@ -127,6 +131,10 @@ class TurnSummary {
       errorMessage: _stringValue(_stringKeyedMap(json['error'])['message']),
       raw: Map.unmodifiable(json),
     );
+  }
+
+  factory TurnSummary.fromTurnResponse(Map<String, Object?> json) {
+    return TurnSummary.fromJson(_stringKeyedMap(json['turn']));
   }
 
   final String id;

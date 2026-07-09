@@ -7,6 +7,7 @@ import '../approvals/approval_state_controller.dart';
 import '../ssh/ssh_profile.dart';
 import '../threads/thread_detail_reader.dart';
 import '../threads/thread_list_reader.dart';
+import '../turns/turn_runner.dart';
 import 'codex_session_connector.dart';
 import 'reconnect_policy.dart';
 
@@ -60,6 +61,8 @@ class CodexSessionStateController extends ChangeNotifier {
   ThreadListReader? get threadListReader => _connection?.threadListReader;
 
   ThreadDetailReader? get threadDetailReader => _connection?.threadDetailReader;
+
+  TurnRunner? get turnRunner => _connection?.turnRunner;
 
   int get reconnectAttempt => _reconnectAttempt;
 
