@@ -6,6 +6,7 @@ typedef SlashCommandDisconnect = Future<void> Function();
 typedef SlashCommandClearTranscript = void Function();
 typedef SlashCommandCopyLastResponse = Future<bool> Function();
 typedef SlashCommandShowStatus = FutureOr<String?> Function();
+typedef SlashCommandShowUsage = FutureOr<String?> Function();
 typedef SlashCommandToggleRawTranscript = bool? Function(String arguments);
 typedef SlashCommandStartNewThread = Future<bool> Function();
 typedef SlashCommandResumeThread = Future<bool> Function(String threadId);
@@ -33,6 +34,7 @@ enum SlashCommandActionEffect {
   clearTranscript,
   copy,
   status,
+  usage,
   rawTranscript,
   newThread,
   resumeThread,
@@ -149,6 +151,7 @@ class SlashCommandActionDispatcher {
     this.clearTranscript,
     this.copyLastResponse,
     this.showStatus,
+    this.showUsage,
     this.toggleRawTranscript,
     this.startNewThread,
     this.resumeThread,
@@ -164,6 +167,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandClearTranscript? clearTranscript;
   final SlashCommandCopyLastResponse? copyLastResponse;
   final SlashCommandShowStatus? showStatus;
+  final SlashCommandShowUsage? showUsage;
   final SlashCommandToggleRawTranscript? toggleRawTranscript;
   final SlashCommandStartNewThread? startNewThread;
   final SlashCommandResumeThread? resumeThread;
@@ -231,6 +235,8 @@ class SlashCommandActionDispatcher {
         return _copyLastResponse(parsed);
       case 'status':
         return _showStatus(parsed);
+      case 'usage':
+        return _showUsage(parsed);
       case 'raw':
         return _toggleRawTranscript(parsed);
       case 'new':
@@ -355,8 +361,29 @@ class SlashCommandActionDispatcher {
   Future<SlashCommandActionResult> _showStatus(
     SlashCommandParseResult parsed,
   ) async {
-    final showStatus = this.showStatus;
-    if (showStatus == null) {
+    return _showMessage(
+      parsed,
+      action: showStatus,
+      effect: SlashCommandActionEffect.status,
+    );
+  }
+
+  Future<SlashCommandActionResult> _showUsage(
+    SlashCommandParseResult parsed,
+  ) async {
+    return _showMessage(
+      parsed,
+      action: showUsage,
+      effect: SlashCommandActionEffect.usage,
+    );
+  }
+
+  Future<SlashCommandActionResult> _showMessage(
+    SlashCommandParseResult parsed, {
+    required FutureOr<String?> Function()? action,
+    required SlashCommandActionEffect effect,
+  }) async {
+    if (action == null) {
       return SlashCommandActionResult.unsupported(
         command: parsed.command!,
         rawCommand: parsed.rawCommand,
@@ -364,7 +391,7 @@ class SlashCommandActionDispatcher {
       );
     }
     try {
-      final message = (await showStatus())?.trim();
+      final message = (await action())?.trim();
       if (message == null || message.isEmpty) {
         return SlashCommandActionResult.unavailable(
           command: parsed.command!,
@@ -376,7 +403,7 @@ class SlashCommandActionDispatcher {
         command: parsed.command!,
         rawCommand: parsed.rawCommand,
         arguments: parsed.arguments,
-        effect: SlashCommandActionEffect.status,
+        effect: effect,
         message: message,
       );
     } on Object catch (error) {

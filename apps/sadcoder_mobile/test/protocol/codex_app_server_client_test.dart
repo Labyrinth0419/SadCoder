@@ -35,6 +35,8 @@ void main() {
     await client.listModels();
     await client.listPermissionProfiles(cwd: '/repo', cursor: '2', limit: 25);
     await client.readAccount();
+    await client.readAccountRateLimits();
+    await client.readAccountUsage();
     await client.listThreads(limit: 5);
     await client.readConfig(cwd: '/repo');
     await client.readThread(threadId: 'thr_1');
@@ -50,6 +52,8 @@ void main() {
       'model/list',
       'permissionProfile/list',
       'account/read',
+      'account/rateLimits/read',
+      'account/usage/read',
       'thread/list',
       'config/read',
       'thread/read',
@@ -64,15 +68,20 @@ void main() {
     expect(requests.first.params, isEmpty);
     expect(requests[1].params, {'cursor': '2', 'limit': 25, 'cwd': '/repo'});
     expect(requests[2].params, {'refreshToken': false});
-    expect(requests[3].params?['limit'], 5);
-    expect(requests[4].params, {'includeLayers': true, 'cwd': '/repo'});
-    expect(requests[5].params, {'threadId': 'thr_1', 'includeTurns': true});
-    expect(requests[6].params, isEmpty);
-    expect(requests[7].params, {'threadId': 'thr_1'});
-    expect(requests[8].params, {'threadId': 'thr_1', 'name': 'Renamed thread'});
+    expect(requests[3].params, isNull);
+    expect(requests[4].params, isNull);
+    expect(requests[5].params?['limit'], 5);
+    expect(requests[6].params, {'includeLayers': true, 'cwd': '/repo'});
+    expect(requests[7].params, {'threadId': 'thr_1', 'includeTurns': true});
+    expect(requests[8].params, isEmpty);
     expect(requests[9].params, {'threadId': 'thr_1'});
-    expect(requests[10].params, {'threadId': 'thr_1'});
-    expect(requests[11].params, {
+    expect(requests[10].params, {
+      'threadId': 'thr_1',
+      'name': 'Renamed thread',
+    });
+    expect(requests[11].params, {'threadId': 'thr_1'});
+    expect(requests[12].params, {'threadId': 'thr_1'});
+    expect(requests[13].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},

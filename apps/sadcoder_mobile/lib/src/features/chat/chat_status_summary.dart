@@ -9,7 +9,9 @@ import '../../session/codex_session_state_controller.dart';
 import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_list_controller.dart';
 import '../../turns/turn_controller.dart';
+import '../../usage/account_usage_snapshot_controller.dart';
 import 'chat_timeline_controller.dart';
+import 'chat_usage_summary.dart';
 import 'config_override_labels.dart';
 
 String buildChatStatusSummary({
@@ -22,6 +24,7 @@ String buildChatStatusSummary({
   CodexConfigOverrideController? configOverrideController,
   CodexConfigSnapshotController? configSnapshotController,
   AccountSnapshotController? accountSnapshotController,
+  AccountUsageSnapshotController? accountUsageSnapshotController,
 }) {
   final lines = <String>[
     '${l10n.connectionStatus}: ${sessionStatusLabel(l10n, sessionController?.status)}',
@@ -63,6 +66,10 @@ String buildChatStatusSummary({
 
   if (accountSnapshotController != null) {
     lines.addAll(_accountStatusLines(l10n, accountSnapshotController));
+  }
+
+  if (accountUsageSnapshotController != null) {
+    lines.addAll(accountUsageStatusLines(l10n, accountUsageSnapshotController));
   }
 
   return lines.join('\n');

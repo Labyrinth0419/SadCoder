@@ -21,6 +21,7 @@ import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
+import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_reader.dart';
 
 void main() {
   testWidgets('renders the SadCoder shell', (tester) async {
@@ -240,6 +241,10 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
       const _StaticAccountSnapshotReader();
 
   @override
+  AccountUsageSnapshotReader get accountUsageSnapshotReader =>
+      const _StaticAccountUsageSnapshotReader();
+
+  @override
   ModelListReader get modelListReader => const _StaticModelListReader();
 
   @override
@@ -281,6 +286,21 @@ class _StaticAccountSnapshotReader implements AccountSnapshotReader {
   @override
   Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
     return const AccountSnapshot(account: null, requiresOpenaiAuth: false);
+  }
+}
+
+class _StaticAccountUsageSnapshotReader implements AccountUsageSnapshotReader {
+  const _StaticAccountUsageSnapshotReader();
+
+  @override
+  Future<AccountUsageSnapshot> readUsage() async {
+    return const AccountUsageSnapshot(
+      summary: AccountTokenUsageSummary(),
+      dailyUsageBuckets: [],
+      rateLimits: null,
+      rateLimitsByLimitId: {},
+      rateLimitResetCredits: null,
+    );
   }
 }
 

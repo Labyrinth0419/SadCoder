@@ -31,6 +31,8 @@ import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 import 'package:sadcoder_mobile/src/turns/turn_controller.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
+import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_controller.dart';
+import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_reader.dart';
 
 void main() {
   testWidgets('shows command preview for known slash command aliases', (
@@ -1356,6 +1358,24 @@ void main() {
         requiresOpenaiAuth: true,
       ),
     );
+    final usageReader = _RecordingAccountUsageSnapshotReader(
+      snapshot: const AccountUsageSnapshot(
+        summary: AccountTokenUsageSummary(
+          lifetimeTokens: 1234,
+          peakDailyTokens: 900,
+        ),
+        dailyUsageBuckets: [],
+        rateLimits: AccountRateLimitsSnapshot(
+          primary: AccountRateLimitWindow(
+            usedPercent: 25,
+            windowDurationMins: 15,
+            resetsAt: 1730947200,
+          ),
+        ),
+        rateLimitsByLimitId: {},
+        rateLimitResetCredits: null,
+      ),
+    );
     final overrideController = CodexConfigOverrideController(
       initialLayers: const CodexConfigOverrideLayers(
         session: CodexConfigOverrides(cwd: '/repo'),
@@ -1380,11 +1400,15 @@ void main() {
     final accountSnapshotController = AccountSnapshotController(
       readerProvider: () => accountReader,
     );
+    final accountUsageSnapshotController = AccountUsageSnapshotController(
+      readerProvider: () => usageReader,
+    );
     final turnController = TurnController(
       runnerProvider: () => sessionController.turnRunner,
       overrideLayersProvider: () => overrideController.layers,
     );
     addTearDown(turnController.dispose);
+    addTearDown(accountUsageSnapshotController.dispose);
     addTearDown(accountSnapshotController.dispose);
     addTearDown(configSnapshotController.dispose);
     addTearDown(threadDetailController.dispose);
@@ -1402,6 +1426,7 @@ void main() {
       configOverrideController: overrideController,
       configSnapshotController: configSnapshotController,
       accountSnapshotController: accountSnapshotController,
+      accountUsageSnapshotController: accountUsageSnapshotController,
     );
 
     await tester.enterText(
@@ -1416,6 +1441,7 @@ void main() {
     expect(detailReader.includeTurnsValues, [false]);
     expect(configReader.cwdValues, ['/repo']);
     expect(accountReader.refreshTokenValues, [false]);
+    expect(usageReader.calls, 1);
     expect(
       find.textContaining(
         'Server config snapshot: Model=gpt-5-codex, Reasoning effort=high, Approval policy=on-request, Permission profile=:workspace, Sandbox mode=workspace-write',
@@ -1428,6 +1454,79 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(
+      find.textContaining('Usage: Lifetime tokens=1234 tokens'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Rate limits: Primary: 25% used'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('/usage refreshes account usage and rate-limit snapshots', (
+    tester,
+  ) async {
+    final usageReader = _RecordingAccountUsageSnapshotReader(
+      snapshot: const AccountUsageSnapshot(
+        summary: AccountTokenUsageSummary(
+          lifetimeTokens: 1234,
+          peakDailyTokens: 900,
+          currentStreakDays: 3,
+          longestStreakDays: 4,
+          longestRunningTurnSec: 120,
+        ),
+        dailyUsageBuckets: [
+          AccountTokenUsageDailyBucket(startDate: '2026-07-08', tokens: 111),
+          AccountTokenUsageDailyBucket(startDate: '2026-07-09', tokens: 222),
+        ],
+        rateLimits: AccountRateLimitsSnapshot(
+          primary: AccountRateLimitWindow(
+            usedPercent: 25,
+            windowDurationMins: 15,
+            resetsAt: 1730947200,
+          ),
+          planType: 'pro',
+        ),
+        rateLimitsByLimitId: {},
+        rateLimitResetCredits: AccountRateLimitResetCreditsSummary(
+          availableCount: 2,
+          credits: null,
+        ),
+      ),
+    );
+    final accountUsageSnapshotController = AccountUsageSnapshotController(
+      readerProvider: () => usageReader,
+    );
+    addTearDown(accountUsageSnapshotController.dispose);
+
+    await _pumpChatPage(
+      tester,
+      accountUsageSnapshotController: accountUsageSnapshotController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/usage',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(usageReader.calls, 1);
+    expect(
+      find.textContaining('Token usage: Lifetime tokens=1234 tokens'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Recent daily usage: 2026-07-08 111 tokens'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Rate limits: Primary: 25% used'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Reset credits: 2 available'), findsOneWidget);
   });
 
   testWidgets('/raw toggles raw timeline item JSON locally', (tester) async {
@@ -2206,6 +2305,7 @@ Future<void> _pumpChatPage(
   CodexConfigOverrideController? configOverrideController,
   CodexConfigSnapshotController? configSnapshotController,
   AccountSnapshotController? accountSnapshotController,
+  AccountUsageSnapshotController? accountUsageSnapshotController,
   ModelListController? modelListController,
   PermissionProfileListController? permissionProfileListController,
 }) {
@@ -2228,6 +2328,7 @@ Future<void> _pumpChatPage(
           configOverrideController: configOverrideController,
           configSnapshotController: configSnapshotController,
           accountSnapshotController: accountSnapshotController,
+          accountUsageSnapshotController: accountUsageSnapshotController,
           modelListController: modelListController,
           permissionProfileListController: permissionProfileListController,
         ),
@@ -2353,6 +2454,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
       const _FakeAccountSnapshotReader();
 
   @override
+  AccountUsageSnapshotReader get accountUsageSnapshotReader =>
+      const _FakeAccountUsageSnapshotReader();
+
+  @override
   CodexConfigSnapshotReader get configSnapshotReader =>
       const _FakeConfigSnapshotReader();
 
@@ -2434,6 +2539,35 @@ class _FakeAccountSnapshotReader implements AccountSnapshotReader {
   @override
   Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
     return const AccountSnapshot(account: null, requiresOpenaiAuth: false);
+  }
+}
+
+class _FakeAccountUsageSnapshotReader implements AccountUsageSnapshotReader {
+  const _FakeAccountUsageSnapshotReader();
+
+  @override
+  Future<AccountUsageSnapshot> readUsage() async {
+    return const AccountUsageSnapshot(
+      summary: AccountTokenUsageSummary(),
+      dailyUsageBuckets: [],
+      rateLimits: null,
+      rateLimitsByLimitId: {},
+      rateLimitResetCredits: null,
+    );
+  }
+}
+
+class _RecordingAccountUsageSnapshotReader
+    implements AccountUsageSnapshotReader {
+  _RecordingAccountUsageSnapshotReader({required this.snapshot});
+
+  final AccountUsageSnapshot snapshot;
+  int calls = 0;
+
+  @override
+  Future<AccountUsageSnapshot> readUsage() async {
+    calls++;
+    return snapshot;
   }
 }
 

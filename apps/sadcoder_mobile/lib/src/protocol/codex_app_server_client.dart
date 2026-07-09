@@ -45,6 +45,14 @@ class CodexAppServerClient {
     return _request('account/read', {'refreshToken': refreshToken});
   }
 
+  Future<Map<String, Object?>> readAccountRateLimits() {
+    return _request('account/rateLimits/read');
+  }
+
+  Future<Map<String, Object?>> readAccountUsage() {
+    return _request('account/usage/read');
+  }
+
   Future<Map<String, Object?>> listThreads({int limit = 20}) {
     return _request('thread/list', {'limit': limit});
   }

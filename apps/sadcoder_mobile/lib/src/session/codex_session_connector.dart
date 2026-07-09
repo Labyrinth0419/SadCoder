@@ -21,6 +21,8 @@ import '../threads/thread_list_reader.dart';
 import '../threads/thread_mutation_runner.dart';
 import '../turns/codex_turn_runner.dart';
 import '../turns/turn_runner.dart';
+import '../usage/account_usage_snapshot_reader.dart';
+import '../usage/codex_account_usage_snapshot_reader.dart';
 
 abstract interface class CodexSessionConnectionHandle {
   SshProfile get profile;
@@ -32,6 +34,8 @@ abstract interface class CodexSessionConnectionHandle {
   CodexConfigSnapshotReader get configSnapshotReader;
 
   AccountSnapshotReader get accountSnapshotReader;
+
+  AccountUsageSnapshotReader get accountUsageSnapshotReader;
 
   ModelListReader get modelListReader;
 
@@ -97,6 +101,9 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         threadDetailReader: CodexThreadDetailReader(session.client),
         configSnapshotReader: CodexConfigSnapshotRemoteReader(session.client),
         accountSnapshotReader: CodexAccountSnapshotReader(session.client),
+        accountUsageSnapshotReader: CodexAccountUsageSnapshotReader(
+          session.client,
+        ),
         modelListReader: CodexModelListReader(session.client),
         permissionProfileListReader: CodexPermissionProfileListReader(
           session.client,
@@ -151,6 +158,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.threadDetailReader,
     required this.configSnapshotReader,
     required this.accountSnapshotReader,
+    required this.accountUsageSnapshotReader,
     required this.modelListReader,
     required this.permissionProfileListReader,
     required this.threadMutationRunner,
@@ -171,6 +179,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final CodexConfigSnapshotReader configSnapshotReader;
   @override
   final AccountSnapshotReader accountSnapshotReader;
+  @override
+  final AccountUsageSnapshotReader accountUsageSnapshotReader;
   @override
   final ModelListReader modelListReader;
   @override

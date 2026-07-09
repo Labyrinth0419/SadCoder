@@ -234,6 +234,52 @@ class AppLocalizations {
   String get accountNotSignedIn => _text('accountNotSignedIn');
   String get openaiAuthRequired => _text('openaiAuthRequired');
   String get openaiAuthNotRequired => _text('openaiAuthNotRequired');
+  String get accountUsageStatus => _text('accountUsageStatus');
+  String get accountUsageUnavailable => _text('accountUsageUnavailable');
+  String get accountUsageLoadFailed => _text('accountUsageLoadFailed');
+  String get accountUsageTokenSummary => _text('accountUsageTokenSummary');
+  String get accountUsageRecentDaily => _text('accountUsageRecentDaily');
+  String get accountUsageRateLimits => _text('accountUsageRateLimits');
+  String get accountUsageResetCredits => _text('accountUsageResetCredits');
+  String get lifetimeTokens => _text('lifetimeTokens');
+  String get peakDailyTokens => _text('peakDailyTokens');
+  String get currentStreakDays => _text('currentStreakDays');
+  String get longestStreakDays => _text('longestStreakDays');
+  String get longestRunningTurnSec => _text('longestRunningTurnSec');
+  String get primaryRateLimit => _text('primaryRateLimit');
+  String get secondaryRateLimit => _text('secondaryRateLimit');
+  String get rateLimitUnavailable => _text('rateLimitUnavailable');
+  String get planType => _text('planType');
+  String get creditsStatus => _text('creditsStatus');
+  String get creditsUnlimited => _text('creditsUnlimited');
+  String get creditsAvailable => _text('creditsAvailable');
+  String get creditsUnavailable => _text('creditsUnavailable');
+  String get individualLimit => _text('individualLimit');
+  String tokenCount(int count) =>
+      _text('tokenCount').replaceAll('{count}', count.toString());
+  String dayCount(int count) =>
+      _text('dayCount').replaceAll('{count}', count.toString());
+  String secondCount(int count) =>
+      _text('secondCount').replaceAll('{count}', count.toString());
+  String rateLimitUsedPercent(int percent) =>
+      _text('rateLimitUsedPercent').replaceAll('{percent}', percent.toString());
+  String rateLimitWindowMinutes(int minutes) => _text(
+    'rateLimitWindowMinutes',
+  ).replaceAll('{minutes}', minutes.toString());
+  String rateLimitResetsAt(int timestamp) => _text(
+    'rateLimitResetsAt',
+  ).replaceAll('{timestamp}', timestamp.toString());
+  String rateLimitReached(String type) =>
+      _text('rateLimitReached').replaceAll('{type}', type);
+  String creditsBalance(String balance) =>
+      _text('creditsBalance').replaceAll('{balance}', balance);
+  String individualLimitUsed(String used) =>
+      _text('individualLimitUsed').replaceAll('{used}', used);
+  String individualLimitRemaining(int percent) => _text(
+    'individualLimitRemaining',
+  ).replaceAll('{percent}', percent.toString());
+  String resetCreditsAvailable(int count) =>
+      _text('resetCreditsAvailable').replaceAll('{count}', count.toString());
   String configLayersLoaded(int count) =>
       _text('configLayersLoaded').replaceAll('{count}', count.toString());
   String get theme => _text('theme');
@@ -473,6 +519,38 @@ const _values = <String, Map<String, String>>{
     'accountNotSignedIn': 'not signed in',
     'openaiAuthRequired': 'OpenAI auth required',
     'openaiAuthNotRequired': 'OpenAI auth not required',
+    'accountUsageStatus': 'Usage',
+    'accountUsageUnavailable': 'Connect to a host, then run /usage.',
+    'accountUsageLoadFailed': 'Failed to load usage',
+    'accountUsageTokenSummary': 'Token usage',
+    'accountUsageRecentDaily': 'Recent daily usage',
+    'accountUsageRateLimits': 'Rate limits',
+    'accountUsageResetCredits': 'Reset credits',
+    'lifetimeTokens': 'Lifetime tokens',
+    'peakDailyTokens': 'Peak daily tokens',
+    'currentStreakDays': 'Current streak',
+    'longestStreakDays': 'Longest streak',
+    'longestRunningTurnSec': 'Longest turn',
+    'primaryRateLimit': 'Primary',
+    'secondaryRateLimit': 'Secondary',
+    'rateLimitUnavailable': 'not available',
+    'planType': 'Plan',
+    'creditsStatus': 'Credits',
+    'creditsUnlimited': 'unlimited',
+    'creditsAvailable': 'available',
+    'creditsUnavailable': 'unavailable',
+    'individualLimit': 'Monthly limit',
+    'tokenCount': '{count} tokens',
+    'dayCount': '{count} days',
+    'secondCount': '{count} sec',
+    'rateLimitUsedPercent': '{percent}% used',
+    'rateLimitWindowMinutes': '{minutes} min window',
+    'rateLimitResetsAt': 'resets at {timestamp}',
+    'rateLimitReached': 'Reached: {type}',
+    'creditsBalance': 'balance {balance}',
+    'individualLimitUsed': 'used {used}',
+    'individualLimitRemaining': '{percent}% remaining',
+    'resetCreditsAvailable': '{count} available',
     'configLayersLoaded': 'Config layers loaded: {count}',
     'theme': 'Theme',
     'themeBody': 'System, light, and dark modes are supported.',
@@ -679,6 +757,38 @@ const _values = <String, Map<String, String>>{
     'accountNotSignedIn': '未登录',
     'openaiAuthRequired': '需要 OpenAI 认证',
     'openaiAuthNotRequired': '不需要 OpenAI 认证',
+    'accountUsageStatus': '使用量',
+    'accountUsageUnavailable': '连接主机后运行 /usage。',
+    'accountUsageLoadFailed': '使用量加载失败',
+    'accountUsageTokenSummary': 'Token 使用量',
+    'accountUsageRecentDaily': '最近每日使用量',
+    'accountUsageRateLimits': '速率限制',
+    'accountUsageResetCredits': '重置额度',
+    'lifetimeTokens': '累计 token',
+    'peakDailyTokens': '单日峰值 token',
+    'currentStreakDays': '当前连续天数',
+    'longestStreakDays': '最长连续天数',
+    'longestRunningTurnSec': '最长回合',
+    'primaryRateLimit': '主限制',
+    'secondaryRateLimit': '次限制',
+    'rateLimitUnavailable': '不可用',
+    'planType': '套餐',
+    'creditsStatus': '额度',
+    'creditsUnlimited': '无限制',
+    'creditsAvailable': '可用',
+    'creditsUnavailable': '不可用',
+    'individualLimit': '月度限制',
+    'tokenCount': '{count} token',
+    'dayCount': '{count} 天',
+    'secondCount': '{count} 秒',
+    'rateLimitUsedPercent': '已用 {percent}%',
+    'rateLimitWindowMinutes': '{minutes} 分钟窗口',
+    'rateLimitResetsAt': '重置时间 {timestamp}',
+    'rateLimitReached': '已触达：{type}',
+    'creditsBalance': '余额 {balance}',
+    'individualLimitUsed': '已用 {used}',
+    'individualLimitRemaining': '剩余 {percent}%',
+    'resetCreditsAvailable': '{count} 个可用',
     'configLayersLoaded': '已加载配置层：{count}',
     'theme': '主题',
     'themeBody': '支持跟随系统、浅色和深色模式。',

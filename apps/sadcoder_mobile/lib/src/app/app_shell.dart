@@ -23,6 +23,7 @@ import '../ssh/ssh_profile_store.dart';
 import '../threads/thread_detail_controller.dart';
 import '../threads/thread_list_controller.dart';
 import '../turns/turn_controller.dart';
+import '../usage/account_usage_snapshot_controller.dart';
 
 const _defaultSessionConnector = CodexSessionConnector(
   proxyConnector: DartSshProxyConnector(),
@@ -60,6 +61,7 @@ class _AppShellState extends State<AppShell> {
   late CodexConfigOverrideController _configOverrideController;
   late CodexConfigSnapshotController _configSnapshotController;
   late AccountSnapshotController _accountSnapshotController;
+  late AccountUsageSnapshotController _accountUsageSnapshotController;
   late ModelListController _modelListController;
   late PermissionProfileListController _permissionProfileListController;
   late bool _ownsApprovalController;
@@ -169,6 +171,9 @@ class _AppShellState extends State<AppShell> {
     _accountSnapshotController = AccountSnapshotController(
       readerProvider: () => _sessionController.accountSnapshotReader,
     );
+    _accountUsageSnapshotController = AccountUsageSnapshotController(
+      readerProvider: () => _sessionController.accountUsageSnapshotReader,
+    );
     _modelListController = ModelListController(
       readerProvider: () => _sessionController.modelListReader,
     );
@@ -197,6 +202,7 @@ class _AppShellState extends State<AppShell> {
     _configOverrideController.dispose();
     _configSnapshotController.dispose();
     _accountSnapshotController.dispose();
+    _accountUsageSnapshotController.dispose();
     _modelListController.dispose();
     _permissionProfileListController.dispose();
     _turnController.dispose();
@@ -225,6 +231,7 @@ class _AppShellState extends State<AppShell> {
         configOverrideController: _configOverrideController,
         configSnapshotController: _configSnapshotController,
         accountSnapshotController: _accountSnapshotController,
+        accountUsageSnapshotController: _accountUsageSnapshotController,
         modelListController: _modelListController,
         permissionProfileListController: _permissionProfileListController,
       ),

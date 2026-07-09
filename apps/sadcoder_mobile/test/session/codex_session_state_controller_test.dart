@@ -26,6 +26,7 @@ import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
+import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_reader.dart';
 
 void main() {
   test('connect opens a session and records state transitions', () async {
@@ -567,6 +568,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       threadDetailReader: const _FakeThreadDetailReader(),
       configSnapshotReader: const _FakeConfigSnapshotReader(),
       accountSnapshotReader: const _FakeAccountSnapshotReader(),
+      accountUsageSnapshotReader: const _FakeAccountUsageSnapshotReader(),
       modelListReader: const _FakeModelListReader(),
       permissionProfileListReader: const _FakePermissionProfileListReader(),
       threadMutationRunner: const _FakeThreadMutationRunner(),
@@ -602,6 +604,21 @@ class _FakeAccountSnapshotReader implements AccountSnapshotReader {
   @override
   Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
     return const AccountSnapshot(account: null, requiresOpenaiAuth: false);
+  }
+}
+
+class _FakeAccountUsageSnapshotReader implements AccountUsageSnapshotReader {
+  const _FakeAccountUsageSnapshotReader();
+
+  @override
+  Future<AccountUsageSnapshot> readUsage() async {
+    return const AccountUsageSnapshot(
+      summary: AccountTokenUsageSummary(),
+      dailyUsageBuckets: [],
+      rateLimits: null,
+      rateLimitsByLimitId: {},
+      rateLimitResetCredits: null,
+    );
   }
 }
 

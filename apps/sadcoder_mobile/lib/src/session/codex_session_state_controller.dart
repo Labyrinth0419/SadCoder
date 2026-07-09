@@ -15,6 +15,7 @@ import '../threads/thread_detail_reader.dart';
 import '../threads/thread_list_reader.dart';
 import '../threads/thread_mutation_runner.dart';
 import '../turns/turn_runner.dart';
+import '../usage/account_usage_snapshot_reader.dart';
 import 'codex_session_connector.dart';
 import 'reconnect_policy.dart';
 
@@ -79,6 +80,9 @@ class CodexSessionStateController extends ChangeNotifier {
 
   AccountSnapshotReader? get accountSnapshotReader =>
       _connection?.accountSnapshotReader;
+
+  AccountUsageSnapshotReader? get accountUsageSnapshotReader =>
+      _connection?.accountUsageSnapshotReader;
 
   ModelListReader? get modelListReader => _connection?.modelListReader;
 

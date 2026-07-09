@@ -136,6 +136,21 @@ void main() {
     expect(result.command?.command, 'status');
   });
 
+  test('/usage returns the injected usage summary', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      showUsage: () async => 'Usage\nToken usage: Lifetime tokens=1234 tokens',
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/usage'),
+      hasActiveTurn: true,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.usage);
+    expect(result.message, 'Usage\nToken usage: Lifetime tokens=1234 tokens');
+  });
+
   test('/raw delegates to the injected raw transcript toggle', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

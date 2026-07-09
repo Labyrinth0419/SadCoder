@@ -20,8 +20,10 @@ import '../../threads/thread_list_controller.dart';
 import '../../threads/thread_mutation_runner.dart';
 import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
+import '../../usage/account_usage_snapshot_controller.dart';
 import 'chat_status_summary.dart';
 import 'chat_timeline_controller.dart';
+import 'chat_usage_summary.dart';
 import 'config_override_controls.dart';
 import 'config_override_labels.dart';
 import 'session_override_controls.dart';
@@ -40,6 +42,7 @@ class ChatPage extends StatefulWidget {
     this.configOverrideController,
     this.configSnapshotController,
     this.accountSnapshotController,
+    this.accountUsageSnapshotController,
     this.modelListController,
     this.permissionProfileListController,
     this.slashCommandDispatcher,
@@ -54,6 +57,7 @@ class ChatPage extends StatefulWidget {
   final CodexConfigOverrideController? configOverrideController;
   final CodexConfigSnapshotController? configSnapshotController;
   final AccountSnapshotController? accountSnapshotController;
+  final AccountUsageSnapshotController? accountUsageSnapshotController;
   final ModelListController? modelListController;
   final PermissionProfileListController? permissionProfileListController;
   final SlashCommandActionDispatcher? slashCommandDispatcher;
@@ -318,6 +322,7 @@ class _ChatPageState extends State<ChatPage> {
           clearTranscript: _clearLocalTranscript,
           copyLastResponse: _copyLastResponse,
           showStatus: _buildStatusSummary,
+          showUsage: _buildUsageSummary,
           toggleRawTranscript: _toggleRawTranscript,
           startNewThread: _startNewThread,
           resumeThread: _resumeThread,
@@ -343,7 +348,17 @@ class _ChatPageState extends State<ChatPage> {
       configOverrideController: widget.configOverrideController,
       configSnapshotController: widget.configSnapshotController,
       accountSnapshotController: widget.accountSnapshotController,
+      accountUsageSnapshotController: widget.accountUsageSnapshotController,
     );
+  }
+
+  Future<String> _buildUsageSummary() async {
+    final l10n = context.l10n;
+    final controller = widget.accountUsageSnapshotController;
+    if (controller != null) {
+      await controller.refresh();
+    }
+    return buildAccountUsageSummary(l10n: l10n, controller: controller);
   }
 
   Future<void> _refreshStatusSources() async {
@@ -366,6 +381,11 @@ class _ChatPageState extends State<ChatPage> {
     final accountSnapshotController = widget.accountSnapshotController;
     if (accountSnapshotController != null) {
       futures.add(accountSnapshotController.refresh());
+    }
+    final accountUsageSnapshotController =
+        widget.accountUsageSnapshotController;
+    if (accountUsageSnapshotController != null) {
+      futures.add(accountUsageSnapshotController.refresh());
     }
     await Future.wait(futures);
   }
@@ -622,6 +642,9 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.clearTranscript => l10n.slashCommandCleared,
         SlashCommandActionEffect.copy => l10n.slashCommandCopied,
         SlashCommandActionEffect.status => l10n.slashCommandExecuted(
+          result.slash,
+        ),
+        SlashCommandActionEffect.usage => l10n.slashCommandExecuted(
           result.slash,
         ),
         SlashCommandActionEffect.rawTranscript =>
