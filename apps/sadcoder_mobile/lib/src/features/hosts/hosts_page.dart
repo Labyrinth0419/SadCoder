@@ -4,6 +4,7 @@ import '../../agent/agent_remote_service.dart';
 import '../../agent/agent_status.dart';
 import '../../i18n/app_localizations.dart';
 import '../../probe/m0_probe_coordinator.dart';
+import '../../probe/ssh_connection_probe.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../ssh/dart_ssh_proxy_connector.dart';
 import '../../ssh/dart_ssh_remote_command_runner.dart';
@@ -13,6 +14,8 @@ import '../../ssh/ssh_profile.dart';
 import '../../ssh/ssh_profile_store.dart';
 
 const M0ProbeRunner _defaultProbeRunner = M0ProbeCoordinator(
+  sshProbeRunner: DartSshConnectionProbeRunner(),
+  shellProbeRunner: RemoteCommandShellProbeRunner(DartSshRemoteCommandRunner()),
   statusReader: AgentRemoteService(DartSshRemoteCommandRunner()),
   startRunner: AgentRemoteService(DartSshRemoteCommandRunner()),
   proxyConnector: DartSshProxyConnector(),
@@ -922,12 +925,35 @@ class _ProbeStepTile extends StatelessWidget {
             : Theme.of(context).colorScheme.error,
       ),
       title: Text(_labelFor(step.step, l10n)),
-      subtitle: step.detail == null ? null : Text(step.detail!),
+      subtitle: _subtitleFor(step, l10n),
     );
+  }
+
+  Widget? _subtitleFor(M0ProbeStepResult step, AppLocalizations l10n) {
+    final suggestion = step.suggestion == null
+        ? null
+        : _suggestionFor(step.suggestion!, l10n);
+    final detail = step.detail;
+    if (detail == null && suggestion == null) {
+      return null;
+    }
+    if (detail == null) {
+      return Text(suggestion!);
+    }
+    if (suggestion == null) {
+      return Text(detail);
+    }
+    return Text('$detail\n$suggestion');
   }
 
   static String _labelFor(M0ProbeStep step, AppLocalizations l10n) =>
       switch (step) {
+        M0ProbeStep.tcpConnect => l10n.tcpConnect,
+        M0ProbeStep.sshHandshake => l10n.sshHandshake,
+        M0ProbeStep.hostKey => l10n.hostKey,
+        M0ProbeStep.auth => l10n.sshAuth,
+        M0ProbeStep.remoteShell => l10n.remoteShell,
+        M0ProbeStep.codexVersion => l10n.codexVersion,
         M0ProbeStep.agentStatus => l10n.agentStatus,
         M0ProbeStep.agentStart => l10n.agentStart,
         M0ProbeStep.proxyConnect => l10n.proxyConnect,
@@ -938,4 +964,24 @@ class _ProbeStepTile extends StatelessWidget {
         M0ProbeStep.permissionProfileList => l10n.permissionProfileList,
         M0ProbeStep.threadList => l10n.threadList,
       };
+
+  static String _suggestionFor(
+    M0ProbeSuggestion suggestion,
+    AppLocalizations l10n,
+  ) => switch (suggestion) {
+    M0ProbeSuggestion.checkNetwork => l10n.probeSuggestionCheckNetwork,
+    M0ProbeSuggestion.checkSshServer => l10n.probeSuggestionCheckSshServer,
+    M0ProbeSuggestion.verifyHostKey => l10n.probeSuggestionVerifyHostKey,
+    M0ProbeSuggestion.checkAuth => l10n.probeSuggestionCheckAuth,
+    M0ProbeSuggestion.checkRemoteShell => l10n.probeSuggestionCheckRemoteShell,
+    M0ProbeSuggestion.installCodex => l10n.probeSuggestionInstallCodex,
+    M0ProbeSuggestion.updateCodex => l10n.probeSuggestionUpdateCodex,
+    M0ProbeSuggestion.installAgent => l10n.probeSuggestionInstallAgent,
+    M0ProbeSuggestion.startAgent => l10n.probeSuggestionStartAgent,
+    M0ProbeSuggestion.checkDaemon => l10n.probeSuggestionCheckDaemon,
+    M0ProbeSuggestion.loginCodex => l10n.probeSuggestionLoginCodex,
+    M0ProbeSuggestion.checkCwdOrPermissions =>
+      l10n.probeSuggestionCheckCwdOrPermissions,
+    M0ProbeSuggestion.retryProxy => l10n.probeSuggestionRetryProxy,
+  };
 }

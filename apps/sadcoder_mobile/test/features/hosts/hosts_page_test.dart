@@ -56,16 +56,7 @@ void main() {
     final runner = _FakeProbeRunner(
       report: const M0ProbeReport(
         agentStatus: _readyStatus,
-        steps: [
-          M0ProbeStepResult(step: M0ProbeStep.agentStatus, ok: true),
-          M0ProbeStepResult(step: M0ProbeStep.proxyConnect, ok: true),
-          M0ProbeStepResult(step: M0ProbeStep.initialize, ok: true),
-          M0ProbeStepResult(step: M0ProbeStep.accountRead, ok: true),
-          M0ProbeStepResult(step: M0ProbeStep.modelList, ok: true),
-          M0ProbeStepResult(step: M0ProbeStep.configRead, ok: true),
-          M0ProbeStepResult(step: M0ProbeStep.permissionProfileList, ok: true),
-          M0ProbeStepResult(step: M0ProbeStep.threadList, ok: true),
-        ],
+        steps: _passedProbeSteps,
       ),
     );
 
@@ -111,9 +102,11 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Agent status'), findsOneWidget);
+    expect(find.text('TCP connect'), findsOneWidget);
+    expect(find.text('Codex version'), findsOneWidget);
     expect(find.text('Account read'), findsOneWidget);
     expect(find.text('Permission profile list'), findsOneWidget);
-    expect(find.text('Thread list'), findsOneWidget);
+    expect(find.text('Thread list (limit 1)'), findsOneWidget);
   });
 
   testWidgets('validates required host fields before probing', (tester) async {
@@ -206,18 +199,7 @@ void main() {
   ) async {
     final runner = _HostKeyProbeRunner(
       challenge: _hostKeyChallenge,
-      report: const M0ProbeReport(
-        steps: [
-          M0ProbeStepResult(step: M0ProbeStep.agentStatus, ok: true),
-          M0ProbeStepResult(step: M0ProbeStep.proxyConnect, ok: true),
-          M0ProbeStepResult(step: M0ProbeStep.initialize, ok: true),
-          M0ProbeStepResult(step: M0ProbeStep.accountRead, ok: true),
-          M0ProbeStepResult(step: M0ProbeStep.modelList, ok: true),
-          M0ProbeStepResult(step: M0ProbeStep.configRead, ok: true),
-          M0ProbeStepResult(step: M0ProbeStep.permissionProfileList, ok: true),
-          M0ProbeStepResult(step: M0ProbeStep.threadList, ok: true),
-        ],
-      ),
+      report: const M0ProbeReport(steps: _passedProbeSteps),
     );
     final store = _MemoryKnownHostStore();
     final verifier = KnownHostVerifier(store: store);
@@ -720,6 +702,27 @@ const _readyStatus = AgentStatus(
     recentEvents: 7,
   ),
 );
+
+const _passedProbeSteps = [
+  M0ProbeStepResult(step: M0ProbeStep.tcpConnect, ok: true),
+  M0ProbeStepResult(step: M0ProbeStep.sshHandshake, ok: true),
+  M0ProbeStepResult(step: M0ProbeStep.hostKey, ok: true),
+  M0ProbeStepResult(step: M0ProbeStep.auth, ok: true),
+  M0ProbeStepResult(step: M0ProbeStep.remoteShell, ok: true),
+  M0ProbeStepResult(
+    step: M0ProbeStep.codexVersion,
+    ok: true,
+    detail: 'codex-cli 0.142.5',
+  ),
+  M0ProbeStepResult(step: M0ProbeStep.agentStatus, ok: true),
+  M0ProbeStepResult(step: M0ProbeStep.proxyConnect, ok: true),
+  M0ProbeStepResult(step: M0ProbeStep.initialize, ok: true),
+  M0ProbeStepResult(step: M0ProbeStep.accountRead, ok: true),
+  M0ProbeStepResult(step: M0ProbeStep.modelList, ok: true),
+  M0ProbeStepResult(step: M0ProbeStep.configRead, ok: true),
+  M0ProbeStepResult(step: M0ProbeStep.permissionProfileList, ok: true),
+  M0ProbeStepResult(step: M0ProbeStep.threadList, ok: true),
+];
 
 class _FakeProbeRunner implements M0ProbeRunner {
   _FakeProbeRunner({required this.report});

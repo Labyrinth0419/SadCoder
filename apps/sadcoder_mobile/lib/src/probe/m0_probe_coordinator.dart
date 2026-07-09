@@ -5,64 +5,25 @@ import '../protocol/json_rpc.dart';
 import '../ssh/known_host_verifier.dart';
 import '../ssh/ssh_profile.dart';
 import '../ssh/ssh_proxy_connector.dart';
+import 'm0_probe_model.dart';
 
-enum M0ProbeStep {
-  agentStatus,
-  agentStart,
-  proxyConnect,
-  initialize,
-  accountRead,
-  modelList,
-  configRead,
-  permissionProfileList,
-  threadList,
-}
-
-class M0ProbeStepResult {
-  const M0ProbeStepResult({required this.step, required this.ok, this.detail});
-
-  final M0ProbeStep step;
-  final bool ok;
-  final String? detail;
-}
-
-class M0ProbeReport {
-  const M0ProbeReport({required this.steps, this.agentStatus});
-
-  final AgentStatus? agentStatus;
-  final List<M0ProbeStepResult> steps;
-
-  bool get ok =>
-      steps.every((step) => step.ok) &&
-      _requiredSteps.every(
-        (requiredStep) => steps.any((step) => step.step == requiredStep),
-      );
-}
-
-const _requiredSteps = {
-  M0ProbeStep.agentStatus,
-  M0ProbeStep.proxyConnect,
-  M0ProbeStep.initialize,
-  M0ProbeStep.accountRead,
-  M0ProbeStep.modelList,
-  M0ProbeStep.configRead,
-  M0ProbeStep.permissionProfileList,
-  M0ProbeStep.threadList,
-};
-
-abstract interface class M0ProbeRunner {
-  Future<M0ProbeReport> run(SshProfile profile);
-}
+export 'm0_probe_model.dart';
 
 class M0ProbeCoordinator implements M0ProbeRunner {
   const M0ProbeCoordinator({
+    required SshConnectionProbeRunner sshProbeRunner,
+    required RemoteShellProbeRunner shellProbeRunner,
     required AgentStatusReader statusReader,
     AgentStartRunner? startRunner,
     required AgentProxyConnector proxyConnector,
-  }) : _statusReader = statusReader,
+  }) : _sshProbeRunner = sshProbeRunner,
+       _shellProbeRunner = shellProbeRunner,
+       _statusReader = statusReader,
        _startRunner = startRunner,
        _proxyConnector = proxyConnector;
 
+  final SshConnectionProbeRunner _sshProbeRunner;
+  final RemoteShellProbeRunner _shellProbeRunner;
   final AgentStatusReader _statusReader;
   final AgentStartRunner? _startRunner;
   final AgentProxyConnector _proxyConnector;
@@ -76,12 +37,45 @@ class M0ProbeCoordinator implements M0ProbeRunner {
     CodexAppSession? session;
 
     try {
+      final sshSteps = await _sshProbeRunner.probe(profile);
+      steps.addAll(sshSteps);
+      if (sshSteps.any((step) => !step.ok)) {
+        return M0ProbeReport(agentStatus: status, steps: steps);
+      }
+    } on KnownHostVerificationException {
+      rethrow;
+    } on Object catch (error) {
+      steps.add(
+        M0ProbeStepResult(
+          step: M0ProbeStep.tcpConnect,
+          ok: false,
+          detail: error.toString(),
+          suggestion: M0ProbeSuggestion.checkNetwork,
+        ),
+      );
+      return M0ProbeReport(agentStatus: status, steps: steps);
+    }
+
+    if (!await _recordVoidStep(
+      steps,
+      M0ProbeStep.remoteShell,
+      () => _shellProbeRunner.probeShell(profile),
+      suggestion: M0ProbeSuggestion.checkRemoteShell,
+    )) {
+      return M0ProbeReport(agentStatus: status, steps: steps);
+    }
+    if (!await _recordCodexVersionStep(steps, _shellProbeRunner, profile)) {
+      return M0ProbeReport(agentStatus: status, steps: steps);
+    }
+
+    try {
       status = await _statusReader.readStatus(profile);
       steps.add(
         M0ProbeStepResult(
           step: M0ProbeStep.agentStatus,
           ok: true,
-          detail: status.codexVersion,
+          detail: status.agentVersion,
+          suggestion: _statusSuggestion(status),
         ),
       );
     } on Object catch (error) {
@@ -93,6 +87,7 @@ class M0ProbeCoordinator implements M0ProbeRunner {
           step: M0ProbeStep.agentStatus,
           ok: false,
           detail: error.toString(),
+          suggestion: M0ProbeSuggestion.installAgent,
         ),
       );
       return M0ProbeReport(agentStatus: status, steps: steps);
@@ -143,7 +138,11 @@ class M0ProbeCoordinator implements M0ProbeRunner {
       )) {
         return M0ProbeReport(agentStatus: status, steps: steps);
       }
-      await _recordStep(steps, M0ProbeStep.threadList, client.listThreads);
+      await _recordStep(
+        steps,
+        M0ProbeStep.threadList,
+        () => client.listThreads(limit: 1),
+      );
 
       return M0ProbeReport(agentStatus: status, steps: steps);
     } on Object catch (error) {
@@ -155,6 +154,7 @@ class M0ProbeCoordinator implements M0ProbeRunner {
           step: M0ProbeStep.proxyConnect,
           ok: false,
           detail: error.toString(),
+          suggestion: M0ProbeSuggestion.retryProxy,
         ),
       );
       return M0ProbeReport(agentStatus: status, steps: steps);
@@ -175,7 +175,68 @@ class M0ProbeCoordinator implements M0ProbeRunner {
       return true;
     } on Object catch (error) {
       steps.add(
-        M0ProbeStepResult(step: step, ok: false, detail: error.toString()),
+        M0ProbeStepResult(
+          step: step,
+          ok: false,
+          detail: error.toString(),
+          suggestion: _rpcSuggestion(step),
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> _recordVoidStep(
+    List<M0ProbeStepResult> steps,
+    M0ProbeStep step,
+    Future<void> Function() action, {
+    M0ProbeSuggestion? suggestion,
+  }) async {
+    try {
+      await action();
+      steps.add(M0ProbeStepResult(step: step, ok: true));
+      return true;
+    } on KnownHostVerificationException {
+      rethrow;
+    } on Object catch (error) {
+      steps.add(
+        M0ProbeStepResult(
+          step: step,
+          ok: false,
+          detail: error.toString(),
+          suggestion: suggestion,
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> _recordCodexVersionStep(
+    List<M0ProbeStepResult> steps,
+    RemoteShellProbeRunner runner,
+    SshProfile profile,
+  ) async {
+    try {
+      final version = await runner.readCodexVersion(profile);
+      steps.add(
+        M0ProbeStepResult(
+          step: M0ProbeStep.codexVersion,
+          ok: true,
+          detail: version,
+          suggestion: _codexVersionSuggestion(version),
+        ),
+      );
+      return true;
+    } on KnownHostVerificationException {
+      rethrow;
+    } on Object catch (error) {
+      steps.add(
+        M0ProbeStepResult(
+          step: M0ProbeStep.codexVersion,
+          ok: false,
+          detail: error.toString(),
+          suggestion: M0ProbeSuggestion.installCodex,
+        ),
       );
       return false;
     }
@@ -198,6 +259,9 @@ class M0ProbeCoordinator implements M0ProbeRunner {
           step: M0ProbeStep.agentStart,
           ok: started.backendState == BackendState.ready,
           detail: started.backendDetail,
+          suggestion: started.backendState == BackendState.ready
+              ? null
+              : _backendSuggestion(started),
         ),
       );
       return started;
@@ -210,6 +274,7 @@ class M0ProbeCoordinator implements M0ProbeRunner {
           step: M0ProbeStep.agentStart,
           ok: false,
           detail: error.toString(),
+          suggestion: M0ProbeSuggestion.startAgent,
         ),
       );
       return status;
@@ -227,3 +292,36 @@ class M0ProbeCoordinator implements M0ProbeRunner {
     }
   }
 }
+
+M0ProbeSuggestion? _codexVersionSuggestion(String version) {
+  final lower = version.toLowerCase();
+  if (lower.contains('unknown') || lower.contains('deprecated')) {
+    return M0ProbeSuggestion.updateCodex;
+  }
+  return null;
+}
+
+M0ProbeSuggestion? _statusSuggestion(AgentStatus status) {
+  if (!status.codexAvailable) {
+    return M0ProbeSuggestion.installCodex;
+  }
+  return _backendSuggestion(status);
+}
+
+M0ProbeSuggestion? _backendSuggestion(AgentStatus status) {
+  if (status.backendState == BackendState.ready) {
+    return null;
+  }
+  return switch (status.backendKind) {
+    BackendKind.codexAppServerDaemon => M0ProbeSuggestion.checkDaemon,
+    BackendKind.codexAppServerStdio => M0ProbeSuggestion.startAgent,
+    BackendKind.unknown => M0ProbeSuggestion.installAgent,
+  };
+}
+
+M0ProbeSuggestion? _rpcSuggestion(M0ProbeStep step) => switch (step) {
+  M0ProbeStep.accountRead => M0ProbeSuggestion.loginCodex,
+  M0ProbeStep.configRead ||
+  M0ProbeStep.permissionProfileList => M0ProbeSuggestion.checkCwdOrPermissions,
+  _ => null,
+};

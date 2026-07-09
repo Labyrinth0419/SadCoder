@@ -16,7 +16,7 @@ void main() {
     'run validates status and app-server methods over line transport',
     () async {
       final connector = _LineServerProxyConnector();
-      final coordinator = M0ProbeCoordinator(
+      final coordinator = _coordinator(
         statusReader: _FakeStatusReader(_readyStatus),
         proxyConnector: connector,
       );
@@ -26,6 +26,12 @@ void main() {
       expect(report.ok, true);
       expect(report.agentStatus?.codexAvailable, true);
       expect(report.steps.map((step) => step.step), [
+        M0ProbeStep.tcpConnect,
+        M0ProbeStep.sshHandshake,
+        M0ProbeStep.hostKey,
+        M0ProbeStep.auth,
+        M0ProbeStep.remoteShell,
+        M0ProbeStep.codexVersion,
         M0ProbeStep.agentStatus,
         M0ProbeStep.proxyConnect,
         M0ProbeStep.initialize,
@@ -44,6 +50,7 @@ void main() {
         'permissionProfile/list',
         'thread/list',
       ]);
+      expect(connector.paramsByMethod['thread/list'], {'limit': 1});
       expect(connector.closed, true);
     },
   );
@@ -51,7 +58,7 @@ void main() {
   test('run starts a not-started backend before proxy connect', () async {
     final connector = _LineServerProxyConnector();
     final starter = _FakeStartRunner(_readyDaemonStatus);
-    final coordinator = M0ProbeCoordinator(
+    final coordinator = _coordinator(
       statusReader: _FakeStatusReader(_notStartedDaemonStatus),
       startRunner: starter,
       proxyConnector: connector,
@@ -63,6 +70,12 @@ void main() {
     expect(report.agentStatus, _readyDaemonStatus);
     expect(starter.startedProfiles, [_profile]);
     expect(report.steps.map((step) => step.step), [
+      M0ProbeStep.tcpConnect,
+      M0ProbeStep.sshHandshake,
+      M0ProbeStep.hostKey,
+      M0ProbeStep.auth,
+      M0ProbeStep.remoteShell,
+      M0ProbeStep.codexVersion,
       M0ProbeStep.agentStatus,
       M0ProbeStep.agentStart,
       M0ProbeStep.proxyConnect,
@@ -78,7 +91,7 @@ void main() {
 
   test('run stops before proxy when backend start fails', () async {
     final connector = _LineServerProxyConnector();
-    final coordinator = M0ProbeCoordinator(
+    final coordinator = _coordinator(
       statusReader: _FakeStatusReader(_notStartedDaemonStatus),
       startRunner: const _FailingStartRunner('start failed'),
       proxyConnector: connector,
@@ -89,6 +102,12 @@ void main() {
     expect(report.ok, false);
     expect(report.agentStatus, _notStartedDaemonStatus);
     expect(report.steps.map((step) => step.step), [
+      M0ProbeStep.tcpConnect,
+      M0ProbeStep.sshHandshake,
+      M0ProbeStep.hostKey,
+      M0ProbeStep.auth,
+      M0ProbeStep.remoteShell,
+      M0ProbeStep.codexVersion,
       M0ProbeStep.agentStatus,
       M0ProbeStep.agentStart,
     ]);
@@ -96,9 +115,27 @@ void main() {
     expect(connector.connectCount, 0);
   });
 
-  test('run stops after app-server request failure', () async {
-    final connector = _LineServerProxyConnector(failMethod: 'config/read');
-    final coordinator = M0ProbeCoordinator(
+  test('run stops before shell probes when ssh probe fails', () async {
+    final connector = _LineServerProxyConnector();
+    final coordinator = _coordinator(
+      sshProbeRunner: const _FailingSshProbeRunner('network unreachable'),
+      statusReader: _FakeStatusReader(_readyStatus),
+      proxyConnector: connector,
+    );
+
+    final report = await coordinator.run(_profile);
+
+    expect(report.ok, false);
+    expect(report.steps.map((step) => step.step), [M0ProbeStep.tcpConnect]);
+    expect(report.steps.single.ok, false);
+    expect(report.steps.single.suggestion, M0ProbeSuggestion.checkNetwork);
+    expect(connector.connectCount, 0);
+  });
+
+  test('run stops before agent status when remote shell probe fails', () async {
+    final connector = _LineServerProxyConnector();
+    final coordinator = _coordinator(
+      shellProbeRunner: const _FailingShellProbeRunner('shell disabled'),
       statusReader: _FakeStatusReader(_readyStatus),
       proxyConnector: connector,
     );
@@ -107,6 +144,34 @@ void main() {
 
     expect(report.ok, false);
     expect(report.steps.map((step) => step.step), [
+      M0ProbeStep.tcpConnect,
+      M0ProbeStep.sshHandshake,
+      M0ProbeStep.hostKey,
+      M0ProbeStep.auth,
+      M0ProbeStep.remoteShell,
+    ]);
+    expect(report.steps.last.ok, false);
+    expect(report.steps.last.suggestion, M0ProbeSuggestion.checkRemoteShell);
+    expect(connector.connectCount, 0);
+  });
+
+  test('run stops after app-server request failure', () async {
+    final connector = _LineServerProxyConnector(failMethod: 'config/read');
+    final coordinator = _coordinator(
+      statusReader: _FakeStatusReader(_readyStatus),
+      proxyConnector: connector,
+    );
+
+    final report = await coordinator.run(_profile);
+
+    expect(report.ok, false);
+    expect(report.steps.map((step) => step.step), [
+      M0ProbeStep.tcpConnect,
+      M0ProbeStep.sshHandshake,
+      M0ProbeStep.hostKey,
+      M0ProbeStep.auth,
+      M0ProbeStep.remoteShell,
+      M0ProbeStep.codexVersion,
       M0ProbeStep.agentStatus,
       M0ProbeStep.proxyConnect,
       M0ProbeStep.initialize,
@@ -126,7 +191,7 @@ void main() {
   });
 
   test('run stops when agent status fails', () async {
-    final coordinator = M0ProbeCoordinator(
+    final coordinator = _coordinator(
       statusReader: const _FailingStatusReader('status unavailable'),
       proxyConnector: _LineServerProxyConnector(),
     );
@@ -135,12 +200,20 @@ void main() {
 
     expect(report.ok, false);
     expect(report.agentStatus, isNull);
-    expect(report.steps.map((step) => step.step), [M0ProbeStep.agentStatus]);
-    expect(report.steps.single.detail, contains('status unavailable'));
+    expect(report.steps.map((step) => step.step), [
+      M0ProbeStep.tcpConnect,
+      M0ProbeStep.sshHandshake,
+      M0ProbeStep.hostKey,
+      M0ProbeStep.auth,
+      M0ProbeStep.remoteShell,
+      M0ProbeStep.codexVersion,
+      M0ProbeStep.agentStatus,
+    ]);
+    expect(report.steps.last.detail, contains('status unavailable'));
   });
 
   test('run reports proxy connection failure after status succeeds', () async {
-    final coordinator = M0ProbeCoordinator(
+    final coordinator = _coordinator(
       statusReader: _FakeStatusReader(_readyStatus),
       proxyConnector: const _FailingProxyConnector('proxy failed'),
     );
@@ -150,6 +223,12 @@ void main() {
     expect(report.ok, false);
     expect(report.agentStatus, _readyStatus);
     expect(report.steps.map((step) => step.step), [
+      M0ProbeStep.tcpConnect,
+      M0ProbeStep.sshHandshake,
+      M0ProbeStep.hostKey,
+      M0ProbeStep.auth,
+      M0ProbeStep.remoteShell,
+      M0ProbeStep.codexVersion,
       M0ProbeStep.agentStatus,
       M0ProbeStep.proxyConnect,
     ]);
@@ -158,7 +237,7 @@ void main() {
   });
 
   test('run rethrows known-host challenges from status checks', () async {
-    final coordinator = M0ProbeCoordinator(
+    final coordinator = _coordinator(
       statusReader: const _KnownHostStatusReader(),
       proxyConnector: _LineServerProxyConnector(),
     );
@@ -170,7 +249,7 @@ void main() {
   });
 
   test('run rethrows known-host challenges from proxy connect', () async {
-    final coordinator = M0ProbeCoordinator(
+    final coordinator = _coordinator(
       statusReader: _FakeStatusReader(_readyStatus),
       proxyConnector: const _KnownHostProxyConnector(),
     );
@@ -188,6 +267,82 @@ const _profile = SshProfile(
   host: 'localhost',
   username: 'tester',
 );
+
+M0ProbeCoordinator _coordinator({
+  SshConnectionProbeRunner sshProbeRunner = const _PassingSshProbeRunner(),
+  RemoteShellProbeRunner shellProbeRunner = const _PassingShellProbeRunner(),
+  required AgentStatusReader statusReader,
+  AgentStartRunner? startRunner,
+  required AgentProxyConnector proxyConnector,
+}) {
+  return M0ProbeCoordinator(
+    sshProbeRunner: sshProbeRunner,
+    shellProbeRunner: shellProbeRunner,
+    statusReader: statusReader,
+    startRunner: startRunner,
+    proxyConnector: proxyConnector,
+  );
+}
+
+class _PassingSshProbeRunner implements SshConnectionProbeRunner {
+  const _PassingSshProbeRunner();
+
+  @override
+  Future<List<M0ProbeStepResult>> probe(SshProfile profile) async {
+    return const [
+      M0ProbeStepResult(step: M0ProbeStep.tcpConnect, ok: true),
+      M0ProbeStepResult(step: M0ProbeStep.sshHandshake, ok: true),
+      M0ProbeStepResult(step: M0ProbeStep.hostKey, ok: true),
+      M0ProbeStepResult(step: M0ProbeStep.auth, ok: true),
+    ];
+  }
+}
+
+class _FailingSshProbeRunner implements SshConnectionProbeRunner {
+  const _FailingSshProbeRunner(this.message);
+
+  final String message;
+
+  @override
+  Future<List<M0ProbeStepResult>> probe(SshProfile profile) async {
+    return [
+      M0ProbeStepResult(
+        step: M0ProbeStep.tcpConnect,
+        ok: false,
+        detail: message,
+        suggestion: M0ProbeSuggestion.checkNetwork,
+      ),
+    ];
+  }
+}
+
+class _PassingShellProbeRunner implements RemoteShellProbeRunner {
+  const _PassingShellProbeRunner();
+
+  @override
+  Future<void> probeShell(SshProfile profile) async {}
+
+  @override
+  Future<String> readCodexVersion(SshProfile profile) async {
+    return 'codex-cli 0.142.5';
+  }
+}
+
+class _FailingShellProbeRunner implements RemoteShellProbeRunner {
+  const _FailingShellProbeRunner(this.message);
+
+  final String message;
+
+  @override
+  Future<void> probeShell(SshProfile profile) async {
+    throw StateError(message);
+  }
+
+  @override
+  Future<String> readCodexVersion(SshProfile profile) async {
+    throw StateError(message);
+  }
+}
 
 const _readyStatus = AgentStatus(
   agentVersion: '0.1.0',
@@ -311,6 +466,7 @@ class _LineServerProxyConnector implements AgentProxyConnector {
 
   final String? failMethod;
   final methods = <String>[];
+  final paramsByMethod = <String, Map<String, Object?>>{};
   bool closed = false;
   int connectCount = 0;
 
@@ -345,6 +501,10 @@ class _LineServerProxyConnector implements AgentProxyConnector {
     final request = Map<String, Object?>.from(jsonDecode(line) as Map);
     final method = request['method'] as String;
     methods.add(method);
+    final params = request['params'];
+    if (params is Map) {
+      paramsByMethod[method] = Map<String, Object?>.from(params);
+    }
 
     final id = request['id'];
     if (id == null) {

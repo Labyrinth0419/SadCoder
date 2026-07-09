@@ -52,6 +52,12 @@ class AppLocalizations {
   String get testingConnection => _text('testingConnection');
   String get probePassed => _text('probePassed');
   String get probeFailed => _text('probeFailed');
+  String get tcpConnect => _text('tcpConnect');
+  String get sshHandshake => _text('sshHandshake');
+  String get hostKey => _text('hostKey');
+  String get sshAuth => _text('sshAuth');
+  String get remoteShell => _text('remoteShell');
+  String get codexVersion => _text('codexVersion');
   String get agentStatus => _text('agentStatus');
   String get agentStart => _text('agentStart');
   String get proxyConnect => _text('proxyConnect');
@@ -61,6 +67,26 @@ class AppLocalizations {
   String get configRead => _text('configRead');
   String get permissionProfileList => _text('permissionProfileList');
   String get threadList => _text('threadList');
+  String get probeSuggestionCheckNetwork =>
+      _text('probeSuggestionCheckNetwork');
+  String get probeSuggestionCheckSshServer =>
+      _text('probeSuggestionCheckSshServer');
+  String get probeSuggestionVerifyHostKey =>
+      _text('probeSuggestionVerifyHostKey');
+  String get probeSuggestionCheckAuth => _text('probeSuggestionCheckAuth');
+  String get probeSuggestionCheckRemoteShell =>
+      _text('probeSuggestionCheckRemoteShell');
+  String get probeSuggestionInstallCodex =>
+      _text('probeSuggestionInstallCodex');
+  String get probeSuggestionUpdateCodex => _text('probeSuggestionUpdateCodex');
+  String get probeSuggestionInstallAgent =>
+      _text('probeSuggestionInstallAgent');
+  String get probeSuggestionStartAgent => _text('probeSuggestionStartAgent');
+  String get probeSuggestionCheckDaemon => _text('probeSuggestionCheckDaemon');
+  String get probeSuggestionLoginCodex => _text('probeSuggestionLoginCodex');
+  String get probeSuggestionCheckCwdOrPermissions =>
+      _text('probeSuggestionCheckCwdOrPermissions');
+  String get probeSuggestionRetryProxy => _text('probeSuggestionRetryProxy');
   String get backend => _text('backend');
   String get backendDaemon => _text('backendDaemon');
   String get backendStdioFallback => _text('backendStdioFallback');
@@ -703,6 +729,12 @@ const _values = <String, Map<String, String>>{
     'testingConnection': 'Testing connection',
     'probePassed': 'Probe passed',
     'probeFailed': 'Probe failed',
+    'tcpConnect': 'TCP connect',
+    'sshHandshake': 'SSH handshake',
+    'hostKey': 'Host key',
+    'sshAuth': 'SSH auth',
+    'remoteShell': 'Remote shell',
+    'codexVersion': 'Codex version',
     'agentStatus': 'Agent status',
     'agentStart': 'Agent start',
     'proxyConnect': 'Proxy connect',
@@ -711,7 +743,32 @@ const _values = <String, Map<String, String>>{
     'modelList': 'Model list',
     'configRead': 'Config read',
     'permissionProfileList': 'Permission profile list',
-    'threadList': 'Thread list',
+    'threadList': 'Thread list (limit 1)',
+    'probeSuggestionCheckNetwork':
+        'Check the host, port, VPN, firewall, and network reachability.',
+    'probeSuggestionCheckSshServer':
+        'Check that the SSH server is running and accepts this protocol.',
+    'probeSuggestionVerifyHostKey':
+        'Verify the SSH host key fingerprint before trusting this host.',
+    'probeSuggestionCheckAuth':
+        'Check the username and password or private key credentials.',
+    'probeSuggestionCheckRemoteShell':
+        'Ensure the remote login shell can execute non-interactive commands.',
+    'probeSuggestionInstallCodex':
+        'Install Codex on the remote host or add it to PATH.',
+    'probeSuggestionUpdateCodex': 'Update Codex to a supported version.',
+    'probeSuggestionInstallAgent':
+        'Install sadcoder-agent or fix the agent command path.',
+    'probeSuggestionStartAgent':
+        'Start the agent/backend and check its service logs.',
+    'probeSuggestionCheckDaemon':
+        'Check the Codex daemon, Windows service, or Linux fallback status.',
+    'probeSuggestionLoginCodex':
+        'Run codex login or configure an API key on the remote host.',
+    'probeSuggestionCheckCwdOrPermissions':
+        'Check the configured cwd and remote file permissions.',
+    'probeSuggestionRetryProxy':
+        'Check sadcoder-agent proxy and backend logs, then retry.',
     'backend': 'Backend',
     'backendDaemon': 'daemon',
     'backendStdioFallback': 'stdio fallback',
@@ -1207,6 +1264,12 @@ const _values = <String, Map<String, String>>{
     'testingConnection': '正在测试连接',
     'probePassed': '测试通过',
     'probeFailed': '测试失败',
+    'tcpConnect': 'TCP 连接',
+    'sshHandshake': 'SSH 握手',
+    'hostKey': '主机密钥',
+    'sshAuth': 'SSH 认证',
+    'remoteShell': '远端 shell',
+    'codexVersion': 'Codex 版本',
     'agentStatus': 'Agent 状态',
     'agentStart': '启动 Agent',
     'proxyConnect': '代理连接',
@@ -1215,7 +1278,21 @@ const _values = <String, Map<String, String>>{
     'modelList': '模型列表',
     'configRead': '配置读取',
     'permissionProfileList': '权限配置列表',
-    'threadList': '会话列表',
+    'threadList': '会话列表（limit 1）',
+    'probeSuggestionCheckNetwork': '检查主机、端口、VPN、防火墙和网络连通性。',
+    'probeSuggestionCheckSshServer': '检查 SSH 服务是否运行并支持当前协议。',
+    'probeSuggestionVerifyHostKey': '信任此主机前请核对 SSH 主机密钥指纹。',
+    'probeSuggestionCheckAuth': '检查用户名、密码或私钥凭据。',
+    'probeSuggestionCheckRemoteShell': '确认远端登录 shell 可以执行非交互命令。',
+    'probeSuggestionInstallCodex': '在远端主机安装 Codex，或将其加入 PATH。',
+    'probeSuggestionUpdateCodex': '将 Codex 更新到受支持版本。',
+    'probeSuggestionInstallAgent': '安装 sadcoder-agent，或修正 Agent 命令路径。',
+    'probeSuggestionStartAgent': '启动 agent/backend，并检查服务日志。',
+    'probeSuggestionCheckDaemon':
+        '检查 Codex daemon、Windows service 或 Linux fallback 状态。',
+    'probeSuggestionLoginCodex': '在远端主机运行 codex login，或配置 API key。',
+    'probeSuggestionCheckCwdOrPermissions': '检查配置的 cwd 和远端文件权限。',
+    'probeSuggestionRetryProxy': '检查 sadcoder-agent proxy 和 backend 日志后重试。',
     'backend': '后端',
     'backendDaemon': 'daemon',
     'backendStdioFallback': 'stdio fallback',

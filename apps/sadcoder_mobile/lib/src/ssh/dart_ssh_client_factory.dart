@@ -7,6 +7,22 @@ import 'remote_command_runner.dart';
 import 'shared_preferences_known_host_store.dart';
 import 'ssh_profile.dart';
 
+class SshConnectionObserver {
+  const SshConnectionObserver({
+    this.onTcpConnected,
+    this.onHostKeyReceived,
+    this.onHostKeyVerified,
+    this.onAuthenticated,
+  });
+
+  final void Function()? onTcpConnected;
+  final void Function(String keyType, String fingerprintSha256)?
+  onHostKeyReceived;
+  final void Function(String keyType, String fingerprintSha256)?
+  onHostKeyVerified;
+  final void Function()? onAuthenticated;
+}
+
 class DartSshClientFactory {
   const DartSshClientFactory({
     this.connectTimeout = const Duration(seconds: 15),
@@ -20,7 +36,10 @@ class DartSshClientFactory {
   final Duration? keepAliveInterval;
   final KnownHostVerifier? knownHostVerifier;
 
-  Future<SSHClient> connect(SshProfile profile) async {
+  Future<SSHClient> connect(
+    SshProfile profile, {
+    SshConnectionObserver? observer,
+  }) async {
     final identities = switch (profile.authType) {
       SshAuthType.privateKey => _privateKeyIdentities(profile),
       SshAuthType.password => null,
@@ -31,6 +50,7 @@ class DartSshClientFactory {
       profile.port,
       timeout: connectTimeout,
     );
+    observer?.onTcpConnected?.call();
 
     KnownHostVerificationException? hostKeyFailure;
     final client = SSHClient(
@@ -42,12 +62,14 @@ class DartSshClientFactory {
           : () => profile.password,
       onVerifyHostKey: _hostKeyVerifier(
         profile,
+        observer: observer,
         onFailure: (error) => hostKeyFailure = error,
       ),
       keepAliveInterval: keepAliveInterval,
     );
     try {
       await client.authenticated;
+      observer?.onAuthenticated?.call();
     } on Object {
       client.close();
       await client.done.catchError((_) {});
@@ -62,6 +84,7 @@ class DartSshClientFactory {
 
   SSHHostkeyVerifyHandler? _hostKeyVerifier(
     SshProfile profile, {
+    required SshConnectionObserver? observer,
     required void Function(KnownHostVerificationException error) onFailure,
   }) {
     final verifier = knownHostVerifier;
@@ -69,12 +92,18 @@ class DartSshClientFactory {
       return null;
     }
     return (keyType, fingerprintBytes) async {
+      final fingerprintSha256 = utf8.decode(fingerprintBytes);
+      observer?.onHostKeyReceived?.call(keyType, fingerprintSha256);
       try {
-        return await verifier.verifyHostKey(
+        final verified = await verifier.verifyHostKey(
           profile,
           keyType: keyType,
-          fingerprintSha256: utf8.decode(fingerprintBytes),
+          fingerprintSha256: fingerprintSha256,
         );
+        if (verified) {
+          observer?.onHostKeyVerified?.call(keyType, fingerprintSha256);
+        }
+        return verified;
       } on KnownHostVerificationException catch (error) {
         onFailure(error);
         return false;
