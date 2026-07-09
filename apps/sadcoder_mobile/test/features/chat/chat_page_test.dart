@@ -43,6 +43,7 @@ import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
+import 'package:sadcoder_mobile/src/theme/sadcoder_theme.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_controller.dart';
@@ -5238,7 +5239,11 @@ void main() {
                 'type': 'fileChange',
                 'status': 'completed',
                 'changes': [
-                  {'path': 'lib/main.dart', 'kind': 'modify', 'diff': '@@'},
+                  {
+                    'path': 'lib/main.dart',
+                    'kind': 'modify',
+                    'diff': '@@ -1 +1 @@\n-old\n+new',
+                  },
                 ],
               },
               {
@@ -5260,8 +5265,46 @@ void main() {
     expect(find.textContaining('Working directory: /repo'), findsOneWidget);
     expect(find.textContaining('Exit code: 0'), findsOneWidget);
     expect(find.text('tests passed'), findsOneWidget);
+    final terminalBlock = tester.widget<Container>(
+      find.byKey(const ValueKey('timeline-terminal-output')),
+    );
+    expect(
+      (terminalBlock.decoration as BoxDecoration).color,
+      SadCoderThemeColors.light.terminalBackground,
+    );
     expect(find.text('File changes'), findsOneWidget);
-    expect(find.textContaining('modify lib/main.dart'), findsOneWidget);
+    expect(find.textContaining('modify lib/main.dart'), findsWidgets);
+    expect(find.text('@@ -1 +1 @@'), findsOneWidget);
+    expect(find.text('-old'), findsOneWidget);
+    expect(find.text('+new'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('timeline-diff-output-modify lib/main.dart')),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Container &&
+            widget.color == SadCoderThemeColors.light.diffHeaderBackground,
+      ),
+      findsWidgets,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Container &&
+            widget.color == SadCoderThemeColors.light.diffRemovedBackground,
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Container &&
+            widget.color == SadCoderThemeColors.light.diffAddedBackground,
+      ),
+      findsOneWidget,
+    );
     expect(find.text('github/search_issues'), findsOneWidget);
     expect(find.textContaining('Tool: search_issues'), findsOneWidget);
   });

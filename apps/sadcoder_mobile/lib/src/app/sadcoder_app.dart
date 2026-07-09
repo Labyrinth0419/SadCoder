@@ -6,6 +6,7 @@ import '../approvals/approval_state_controller.dart';
 import '../i18n/app_localizations.dart';
 import '../session/codex_session_state_controller.dart';
 import '../ssh/ssh_profile_store.dart';
+import '../theme/sadcoder_theme.dart';
 import 'app_shell.dart';
 
 class SadCoderApp extends StatefulWidget {
@@ -79,6 +80,7 @@ class _SadCoderAppState extends State<SadCoderApp> {
           theme: ThemeData(
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(seedColor: seed),
+            extensions: const [SadCoderThemeColors.light],
           ),
           darkTheme: ThemeData(
             useMaterial3: true,
@@ -86,6 +88,7 @@ class _SadCoderAppState extends State<SadCoderApp> {
               seedColor: seed,
               brightness: Brightness.dark,
             ),
+            extensions: const [SadCoderThemeColors.dark],
           ),
           home: AppShell(
             appearanceController: _appearanceController,

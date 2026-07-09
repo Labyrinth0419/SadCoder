@@ -242,11 +242,22 @@ class _RawPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = SadCoderThemeColors.of(context);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: SelectableText(
-        content,
-        style: const TextStyle(fontFamily: 'monospace'),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colors.codeBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: SelectableText(
+          content,
+          style: TextStyle(
+            fontFamily: 'monospace',
+            color: colors.codeForeground,
+          ),
+        ),
       ),
     );
   }
@@ -260,15 +271,24 @@ class _CodePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = Theme.of(
-      context,
-    ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace');
+    final colors = SadCoderThemeColors.of(context);
+    final base = Theme.of(context).textTheme.bodyMedium?.copyWith(
+      fontFamily: 'monospace',
+      color: colors.codeForeground,
+    );
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: SelectableText.rich(
-        TextSpan(
-          style: base,
-          children: _highlightSpans(context, content, language),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colors.codeBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: SelectableText.rich(
+          TextSpan(
+            style: base,
+            children: _highlightSpans(context, content, language),
+          ),
         ),
       ),
     );
@@ -318,18 +338,22 @@ class _CodeBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = SadCoderThemeColors.of(context);
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: colors.codeBackground,
         borderRadius: BorderRadius.circular(8),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SelectableText(
           text,
-          style: const TextStyle(fontFamily: 'monospace'),
+          style: TextStyle(
+            fontFamily: 'monospace',
+            color: colors.codeForeground,
+          ),
         ),
       ),
     );
@@ -382,13 +406,13 @@ List<TextSpan> _highlightSpans(
   String content,
   String? language,
 ) {
-  final colorScheme = Theme.of(context).colorScheme;
+  final colors = SadCoderThemeColors.of(context);
   final keywordStyle = TextStyle(
-    color: colorScheme.primary,
+    color: colors.codeKeyword,
     fontWeight: FontWeight.w600,
   );
-  final stringStyle = TextStyle(color: colorScheme.tertiary);
-  final commentStyle = TextStyle(color: colorScheme.outline);
+  final stringStyle = TextStyle(color: colors.codeString);
+  final commentStyle = TextStyle(color: colors.codeComment);
   final keywordPattern = _keywordPattern(language);
   final spans = <TextSpan>[];
   for (final line in content.split('\n')) {

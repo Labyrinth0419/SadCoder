@@ -10,6 +10,7 @@ import '../../files/workspace_file_kind.dart';
 import '../../files/workspace_file_reader.dart';
 import '../../i18n/app_localizations.dart';
 import '../../session/codex_session_state_controller.dart';
+import '../../theme/sadcoder_theme.dart';
 import '../../threads/thread_detail_controller.dart';
 
 part 'workspace_file_preview.dart';

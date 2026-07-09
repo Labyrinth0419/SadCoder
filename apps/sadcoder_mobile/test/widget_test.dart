@@ -35,6 +35,7 @@ import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
+import 'package:sadcoder_mobile/src/theme/sadcoder_theme.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
@@ -76,10 +77,16 @@ void main() {
       SadCoderApp(appearanceController: appearanceController),
     );
 
+    final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
     expect(
-      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
-      ThemeMode.dark,
+      app.theme?.extension<SadCoderThemeColors>(),
+      SadCoderThemeColors.light,
     );
+    expect(
+      app.darkTheme?.extension<SadCoderThemeColors>(),
+      SadCoderThemeColors.dark,
+    );
+    expect(app.themeMode, ThemeMode.dark);
 
     appearanceController.setTheme(AppThemePreference.light);
     await tester.pump();
@@ -87,6 +94,14 @@ void main() {
     expect(
       tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
       ThemeMode.light,
+    );
+
+    appearanceController.setTheme(AppThemePreference.system);
+    await tester.pump();
+
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.system,
     );
   });
 

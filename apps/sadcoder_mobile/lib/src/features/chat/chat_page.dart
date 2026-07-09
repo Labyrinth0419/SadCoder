@@ -20,6 +20,7 @@ import '../../permissions/permission_profile_list_controller.dart';
 import '../../permissions/permission_profile_list_reader.dart';
 import '../../reviews/thread_review_command.dart';
 import '../../session/codex_session_state_controller.dart';
+import '../../theme/sadcoder_theme.dart';
 import '../../threads/agent_thread_topology.dart';
 import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_list_controller.dart';
@@ -3822,7 +3823,18 @@ class _TimelineItemView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (details.isNotEmpty) Text(details.join('\n')),
-          if (body.isNotEmpty) ...[const SizedBox(height: 4), Text(body)],
+          if (body.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            _TimelineBodyBlock(item: item, body: body),
+          ],
+          if (item.fileChanges.any(
+            (change) => change.diff.trim().isNotEmpty,
+          )) ...[
+            const SizedBox(height: 8),
+            for (final change in item.fileChanges)
+              if (change.diff.trim().isNotEmpty)
+                _TimelineDiffBlock(change: change),
+          ],
           if (showRaw) ...[
             const SizedBox(height: 8),
             SelectableText(
@@ -3910,6 +3922,154 @@ class _TimelineItemView extends StatelessWidget {
       'plan' => Icons.checklist,
       _ => Icons.notes_outlined,
     };
+  }
+}
+
+class _TimelineBodyBlock extends StatelessWidget {
+  const _TimelineBodyBlock({required this.item, required this.body});
+
+  final ChatTimelineItem item;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    if (item.itemType == 'commandExecution') {
+      return _TerminalOutputBlock(text: body);
+    }
+    if (item.itemType == 'fileChange') {
+      return _DiffTextBlock(text: body);
+    }
+    return Text(body);
+  }
+}
+
+class _TerminalOutputBlock extends StatelessWidget {
+  const _TerminalOutputBlock({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = SadCoderThemeColors.of(context);
+    return Container(
+      key: const ValueKey('timeline-terminal-output'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.terminalBackground,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: SelectableText(
+        text,
+        style: TextStyle(
+          color: colors.terminalForeground,
+          fontFamily: 'monospace',
+        ),
+      ),
+    );
+  }
+}
+
+class _TimelineDiffBlock extends StatelessWidget {
+  const _TimelineDiffBlock({required this.change});
+
+  final ThreadFileChangeSummary change;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = change.path.isEmpty
+        ? change.kind
+        : '${change.kind} ${change.path}';
+    return _DiffTextBlock(
+      text: change.diff,
+      label: label,
+      blockKey: ValueKey('timeline-diff-output-$label'),
+    );
+  }
+}
+
+class _DiffTextBlock extends StatelessWidget {
+  const _DiffTextBlock({
+    required this.text,
+    this.label,
+    this.blockKey = const ValueKey('timeline-diff-output'),
+  });
+
+  final String text;
+  final String? label;
+  final Key blockKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = SadCoderThemeColors.of(context);
+    return Container(
+      key: blockKey,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (label != null && label!.trim().isNotEmpty)
+            Container(
+              color: colors.diffHeaderBackground,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                label!,
+                style: TextStyle(
+                  color: colors.diffHeaderForeground,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          for (final line in text.trimRight().split('\n'))
+            _DiffLine(line: line),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiffLine extends StatelessWidget {
+  const _DiffLine({required this.line});
+
+  final String line;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = SadCoderThemeColors.of(context);
+    final isAdded = line.startsWith('+') && !line.startsWith('+++');
+    final isRemoved = line.startsWith('-') && !line.startsWith('---');
+    final isHeader =
+        line.startsWith('diff ') ||
+        line.startsWith('index ') ||
+        line.startsWith('@@') ||
+        line.startsWith('---') ||
+        line.startsWith('+++');
+    return Container(
+      color: isAdded
+          ? colors.diffAddedBackground
+          : isRemoved
+          ? colors.diffRemovedBackground
+          : isHeader
+          ? colors.diffHeaderBackground
+          : colors.codeBackground,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: SelectableText(
+        line,
+        style: TextStyle(
+          color: isAdded
+              ? colors.diffAddedForeground
+              : isRemoved
+              ? colors.diffRemovedForeground
+              : isHeader
+              ? colors.diffHeaderForeground
+              : colors.codeForeground,
+          fontFamily: 'monospace',
+        ),
+      ),
+    );
   }
 }
 

@@ -7,6 +7,7 @@ import 'package:sadcoder_mobile/src/files/workspace_file_failure.dart';
 import 'package:sadcoder_mobile/src/files/workspace_file_kind.dart';
 import 'package:sadcoder_mobile/src/files/workspace_file_reader.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/theme/sadcoder_theme.dart';
 
 void main() {
   testWidgets('browses directories and toggles Markdown render/raw modes', (
@@ -111,6 +112,65 @@ void main() {
     expect(find.textContaining('hello world'), findsOneWidget);
   });
 
+  testWidgets('uses semantic code colors in dark file previews', (
+    tester,
+  ) async {
+    final directoryReader = _FakeWorkspaceDirectoryReader({
+      '': [_entry(path: 'lib/main.dart', name: 'main.dart')],
+    });
+    const code = 'void main() {\n  print("hi"); // comment\n}';
+    final fileReader = _FakeWorkspaceFileReader(
+      stats: {'lib/main.dart': _stat(path: 'lib/main.dart', language: 'dart')},
+      chunks: {
+        'lib/main.dart': [
+          _chunk(path: 'lib/main.dart', content: code, sizeBytes: code.length),
+        ],
+      },
+    );
+
+    await _pumpFilesPage(
+      tester,
+      directoryReader: directoryReader,
+      fileReader: fileReader,
+      themeMode: ThemeMode.dark,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-entry-lib/main.dart')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byWidgetPredicate((widget) {
+        if (widget is! Container) {
+          return false;
+        }
+        final decoration = widget.decoration;
+        return decoration is BoxDecoration &&
+            decoration.color == SadCoderThemeColors.dark.codeBackground;
+      }),
+      findsOneWidget,
+    );
+
+    final codeTextFinder = find.byWidgetPredicate(
+      (widget) =>
+          widget is SelectableText &&
+          widget.textSpan?.toPlainText().contains('void main') == true,
+    );
+    final codeText = tester.widget<SelectableText>(codeTextFinder);
+    expect(
+      codeText.textSpan?.style?.color,
+      SadCoderThemeColors.dark.codeForeground,
+    );
+
+    final spanColors = codeText.textSpan!.children
+        ?.whereType<TextSpan>()
+        .map((span) => span.style?.color)
+        .toSet();
+    expect(spanColors, contains(SadCoderThemeColors.dark.codeKeyword));
+    expect(spanColors, contains(SadCoderThemeColors.dark.codeString));
+    expect(spanColors, contains(SadCoderThemeColors.dark.codeComment));
+  });
+
   testWidgets('filters visible workspace entries', (tester) async {
     final directoryReader = _FakeWorkspaceDirectoryReader({
       '': [
@@ -181,9 +241,16 @@ Future<void> _pumpFilesPage(
   WorkspaceDirectoryReader? directoryReader,
   WorkspaceFileReader? fileReader,
   String? root = '/repo',
+  ThemeMode themeMode = ThemeMode.light,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      theme: ThemeData(extensions: const [SadCoderThemeColors.light]),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        extensions: const [SadCoderThemeColors.dark],
+      ),
+      themeMode: themeMode,
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
