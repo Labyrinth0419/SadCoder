@@ -183,6 +183,38 @@ void main() {
     expect(result.command?.command, 'mcp');
   });
 
+  test('/goal passes inline arguments to the injected goal handler', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      handleGoal: (argument) async {
+        arguments.add(argument);
+        return 'Goal\nObjective: Ship goal support';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/goal Ship goal support'),
+      hasActiveTurn: true,
+    );
+
+    expect(arguments, ['Ship goal support']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.goal);
+    expect(result.message, contains('Ship goal support'));
+  });
+
+  test('/goal is unavailable when arguments are not supported', () async {
+    final dispatcher = SlashCommandActionDispatcher(handleGoal: (_) => null);
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/goal status sideways'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'goal');
+  });
+
   test('/raw delegates to the injected raw transcript toggle', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

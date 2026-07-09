@@ -15,6 +15,8 @@ import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_page.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_timeline_controller.dart';
+import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
+import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_controller.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
@@ -1531,6 +1533,294 @@ void main() {
     expect(find.textContaining('Reset credits: 2 available'), findsOneWidget);
   });
 
+  testWidgets('/goal reads the selected thread goal', (tester) async {
+    final approvalController = ApprovalStateController();
+    final goalRunner = _RecordingThreadGoalRunner(
+      goal: _goal(
+        threadId: 'thr_selected',
+        objective: 'Reduce latency',
+        tokenBudget: 5000,
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      threadGoalRunner: goalRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_selected',
+            'sessionId': 'sess_1',
+            'preview': 'Selected thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+            'turns': <Object?>[],
+          }),
+        ),
+      ),
+    );
+    addTearDown(detailController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_selected');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/goal',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(goalRunner.getGoalThreadIds, ['thr_selected']);
+    expect(goalRunner.setGoalCalls, isEmpty);
+    expect(find.textContaining('Objective: Reduce latency'), findsOneWidget);
+    expect(find.textContaining('Token budget: 5000'), findsOneWidget);
+  });
+
+  testWidgets('/goal sets the selected thread objective', (tester) async {
+    final approvalController = ApprovalStateController();
+    final goalRunner = _RecordingThreadGoalRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      threadGoalRunner: goalRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await turnController.resumeThread('thr_active');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/goal Ship goal support',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(goalRunner.setGoalCalls, [
+      (
+        threadId: 'thr_active',
+        objective: 'Ship goal support',
+        status: null,
+        tokenBudget: null,
+      ),
+    ]);
+    expect(find.textContaining('Objective: Ship goal support'), findsOneWidget);
+  });
+
+  testWidgets('/goal budget sets budget and optional objective', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final goalRunner = _RecordingThreadGoalRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      threadGoalRunner: goalRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await turnController.resumeThread('thr_active');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/goal budget 7500 Finish benchmark',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(goalRunner.setGoalCalls.single, (
+      threadId: 'thr_active',
+      objective: 'Finish benchmark',
+      status: null,
+      tokenBudget: 7500,
+    ));
+    expect(find.textContaining('Objective: Finish benchmark'), findsOneWidget);
+    expect(find.textContaining('Token budget: 7500'), findsOneWidget);
+  });
+
+  testWidgets('/goal status updates the selected thread goal status', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final goalRunner = _RecordingThreadGoalRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      threadGoalRunner: goalRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await turnController.resumeThread('thr_active');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/goal status complete',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(goalRunner.setGoalCalls.single, (
+      threadId: 'thr_active',
+      objective: null,
+      status: 'complete',
+      tokenBudget: null,
+    ));
+    expect(find.textContaining('Status: complete'), findsOneWidget);
+  });
+
+  testWidgets('/goal clear clears the selected thread goal', (tester) async {
+    final approvalController = ApprovalStateController();
+    final goalRunner = _RecordingThreadGoalRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      threadGoalRunner: goalRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await turnController.resumeThread('thr_active');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/goal clear',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(goalRunner.clearGoalThreadIds, ['thr_active']);
+    expect(goalRunner.setGoalCalls, isEmpty);
+    expect(find.text('Goal cleared.'), findsOneWidget);
+  });
+
+  testWidgets('/goal unsupported arguments do not call app-server', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final goalRunner = _RecordingThreadGoalRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      threadGoalRunner: goalRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await turnController.resumeThread('thr_active');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/goal status sideways',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(goalRunner.getGoalThreadIds, isEmpty);
+    expect(goalRunner.setGoalCalls, isEmpty);
+    expect(goalRunner.clearGoalThreadIds, isEmpty);
+    expect(find.text('/goal is unavailable right now.'), findsOneWidget);
+  });
+
   testWidgets('/mcp lists MCP servers with compact detail by default', (
     tester,
   ) async {
@@ -2713,11 +3003,13 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     required this.threadListReader,
     this.turnRunner = const _ConstantTurnRunner(),
     this.threadMutationRunner = const _NoopThreadMutationRunner(),
+    this.threadGoalRunner = const _FakeThreadGoalRunner(),
   });
 
   final ThreadListReader threadListReader;
   final TurnRunner turnRunner;
   final ThreadMutationRunner threadMutationRunner;
+  final ThreadGoalRunner threadGoalRunner;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -2729,6 +3021,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       threadListReader: threadListReader,
       turnRunner: turnRunner,
       threadMutationRunner: threadMutationRunner,
+      threadGoalRunner: threadGoalRunner,
     );
   }
 }
@@ -2739,6 +3032,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.threadListReader,
     required this.turnRunner,
     required this.threadMutationRunner,
+    required this.threadGoalRunner,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -2754,6 +3048,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final ThreadMutationRunner threadMutationRunner;
+
+  @override
+  final ThreadGoalRunner threadGoalRunner;
 
   @override
   ModelListReader get modelListReader => const _FakeModelListReader();
@@ -2886,6 +3183,102 @@ class _FakeMcpServerStatusReader implements McpServerStatusReader {
   }) async {
     return const McpServerStatusPage(servers: []);
   }
+}
+
+class _FakeThreadGoalRunner implements ThreadGoalRunner {
+  const _FakeThreadGoalRunner();
+
+  @override
+  Future<ThreadGoalGetResult> getGoal({required String threadId}) async {
+    return const ThreadGoalGetResult();
+  }
+
+  @override
+  Future<ThreadGoalSetResult> setGoal({
+    required String threadId,
+    String? objective,
+    String? status,
+    int? tokenBudget,
+  }) async {
+    return ThreadGoalSetResult(
+      goal: _goal(
+        threadId: threadId,
+        objective: objective ?? 'Goal',
+        status: status ?? 'active',
+        tokenBudget: tokenBudget,
+      ),
+    );
+  }
+
+  @override
+  Future<ThreadGoalClearResult> clearGoal({required String threadId}) async {
+    return const ThreadGoalClearResult(cleared: false);
+  }
+}
+
+class _RecordingThreadGoalRunner implements ThreadGoalRunner {
+  _RecordingThreadGoalRunner({ThreadGoal? goal}) : goal = goal ?? _goal();
+
+  ThreadGoal goal;
+  final getGoalThreadIds = <String>[];
+  final setGoalCalls =
+      <
+        ({String threadId, String? objective, String? status, int? tokenBudget})
+      >[];
+  final clearGoalThreadIds = <String>[];
+
+  @override
+  Future<ThreadGoalGetResult> getGoal({required String threadId}) async {
+    getGoalThreadIds.add(threadId);
+    return ThreadGoalGetResult(goal: goal);
+  }
+
+  @override
+  Future<ThreadGoalSetResult> setGoal({
+    required String threadId,
+    String? objective,
+    String? status,
+    int? tokenBudget,
+  }) async {
+    setGoalCalls.add((
+      threadId: threadId,
+      objective: objective,
+      status: status,
+      tokenBudget: tokenBudget,
+    ));
+    goal = _goal(
+      threadId: threadId,
+      objective: objective ?? goal.objective,
+      status: status ?? goal.status,
+      tokenBudget: tokenBudget ?? goal.tokenBudget,
+    );
+    return ThreadGoalSetResult(goal: goal);
+  }
+
+  @override
+  Future<ThreadGoalClearResult> clearGoal({required String threadId}) async {
+    clearGoalThreadIds.add(threadId);
+    return const ThreadGoalClearResult(cleared: true);
+  }
+}
+
+ThreadGoal _goal({
+  String threadId = 'thr_1',
+  String objective = 'Ship the feature',
+  String status = 'active',
+  int? tokenBudget = 200000,
+}) {
+  return ThreadGoal(
+    threadId: threadId,
+    objective: objective,
+    status: status,
+    tokenBudget: tokenBudget,
+    tokensUsed: 1234,
+    timeUsedSeconds: 60,
+    createdAtSeconds: 1,
+    updatedAtSeconds: 2,
+    raw: const {},
+  );
 }
 
 class _RecordingMcpServerStatusReader implements McpServerStatusReader {

@@ -244,6 +244,13 @@ class AppLocalizations {
   String get accountUsageRecentDaily => _text('accountUsageRecentDaily');
   String get accountUsageRateLimits => _text('accountUsageRateLimits');
   String get accountUsageResetCredits => _text('accountUsageResetCredits');
+  String get threadGoalStatus => _text('threadGoalStatus');
+  String get threadGoalEmpty => _text('threadGoalEmpty');
+  String get threadGoalObjective => _text('threadGoalObjective');
+  String get threadGoalTokensUsed => _text('threadGoalTokensUsed');
+  String get threadGoalTokenBudget => _text('threadGoalTokenBudget');
+  String get threadGoalTimeUsed => _text('threadGoalTimeUsed');
+  String get threadGoalCleared => _text('threadGoalCleared');
   String get mcpServersStatus => _text('mcpServersStatus');
   String get mcpServersUnavailable => _text('mcpServersUnavailable');
   String get mcpServersLoadFailed => _text('mcpServersLoadFailed');
@@ -541,6 +548,13 @@ const _values = <String, Map<String, String>>{
     'accountUsageRecentDaily': 'Recent daily usage',
     'accountUsageRateLimits': 'Rate limits',
     'accountUsageResetCredits': 'Reset credits',
+    'threadGoalStatus': 'Goal',
+    'threadGoalEmpty': 'No goal set.',
+    'threadGoalObjective': 'Objective',
+    'threadGoalTokensUsed': 'Tokens used',
+    'threadGoalTokenBudget': 'Token budget',
+    'threadGoalTimeUsed': 'Time used',
+    'threadGoalCleared': 'Goal cleared.',
     'mcpServersStatus': 'MCP servers',
     'mcpServersUnavailable': 'Connect to a host, then run /mcp.',
     'mcpServersLoadFailed': 'Failed to load MCP servers',
@@ -791,6 +805,13 @@ const _values = <String, Map<String, String>>{
     'accountUsageRecentDaily': '最近每日使用量',
     'accountUsageRateLimits': '速率限制',
     'accountUsageResetCredits': '重置额度',
+    'threadGoalStatus': '目标',
+    'threadGoalEmpty': '未设置目标。',
+    'threadGoalObjective': '目标内容',
+    'threadGoalTokensUsed': '已用 token',
+    'threadGoalTokenBudget': 'Token 预算',
+    'threadGoalTimeUsed': '已用时间',
+    'threadGoalCleared': '已清除目标。',
     'mcpServersStatus': 'MCP 服务器',
     'mcpServersUnavailable': '连接主机后运行 /mcp。',
     'mcpServersLoadFailed': 'MCP 服务器加载失败',

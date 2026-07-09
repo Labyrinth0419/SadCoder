@@ -126,6 +126,33 @@ class CodexAppServerClient {
     return _request('thread/compact/start', {'threadId': threadId});
   }
 
+  Future<Map<String, Object?>> getThreadGoal({required String threadId}) {
+    return _request('thread/goal/get', {'threadId': threadId});
+  }
+
+  Future<Map<String, Object?>> setThreadGoal({
+    required String threadId,
+    String? objective,
+    String? status,
+    int? tokenBudget,
+  }) {
+    final params = <String, Object?>{'threadId': threadId};
+    if (objective != null && objective.trim().isNotEmpty) {
+      params['objective'] = objective.trim();
+    }
+    if (status != null && status.trim().isNotEmpty) {
+      params['status'] = status.trim();
+    }
+    if (tokenBudget != null) {
+      params['tokenBudget'] = tokenBudget;
+    }
+    return _request('thread/goal/set', params);
+  }
+
+  Future<Map<String, Object?>> clearThreadGoal({required String threadId}) {
+    return _request('thread/goal/clear', {'threadId': threadId});
+  }
+
   Future<Map<String, Object?>> setThreadName({
     required String threadId,
     required String name,

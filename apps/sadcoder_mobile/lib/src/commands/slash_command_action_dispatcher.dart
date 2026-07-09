@@ -8,6 +8,7 @@ typedef SlashCommandCopyLastResponse = Future<bool> Function();
 typedef SlashCommandShowStatus = FutureOr<String?> Function();
 typedef SlashCommandShowUsage = FutureOr<String?> Function();
 typedef SlashCommandShowMcp = FutureOr<String?> Function(String arguments);
+typedef SlashCommandHandleGoal = FutureOr<String?> Function(String arguments);
 typedef SlashCommandToggleRawTranscript = bool? Function(String arguments);
 typedef SlashCommandStartNewThread = Future<bool> Function();
 typedef SlashCommandResumeThread = Future<bool> Function(String threadId);
@@ -37,6 +38,7 @@ enum SlashCommandActionEffect {
   status,
   usage,
   mcp,
+  goal,
   rawTranscript,
   newThread,
   resumeThread,
@@ -157,6 +159,7 @@ class SlashCommandActionDispatcher {
     this.showStatus,
     this.showUsage,
     this.showMcp,
+    this.handleGoal,
     this.toggleRawTranscript,
     this.startNewThread,
     this.resumeThread,
@@ -176,6 +179,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandShowStatus? showStatus;
   final SlashCommandShowUsage? showUsage;
   final SlashCommandShowMcp? showMcp;
+  final SlashCommandHandleGoal? handleGoal;
   final SlashCommandToggleRawTranscript? toggleRawTranscript;
   final SlashCommandStartNewThread? startNewThread;
   final SlashCommandResumeThread? resumeThread;
@@ -249,6 +253,8 @@ class SlashCommandActionDispatcher {
         return _showUsage(parsed);
       case 'mcp':
         return _showMcp(parsed);
+      case 'goal':
+        return _handleGoal(parsed);
       case 'raw':
         return _toggleRawTranscript(parsed);
       case 'new':
@@ -409,6 +415,16 @@ class SlashCommandActionDispatcher {
       parsed,
       action: showMcp,
       effect: SlashCommandActionEffect.mcp,
+    );
+  }
+
+  Future<SlashCommandActionResult> _handleGoal(
+    SlashCommandParseResult parsed,
+  ) async {
+    return _showMessageWithArguments(
+      parsed,
+      action: handleGoal,
+      effect: SlashCommandActionEffect.goal,
     );
   }
 

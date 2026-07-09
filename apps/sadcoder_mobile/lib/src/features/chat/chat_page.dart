@@ -25,6 +25,7 @@ import '../../turns/turn_controller.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import 'chat_status_summary.dart';
 import 'chat_timeline_controller.dart';
+import 'chat_goal_summary.dart';
 import 'chat_mcp_summary.dart';
 import 'chat_usage_summary.dart';
 import 'config_override_controls.dart';
@@ -329,6 +330,7 @@ class _ChatPageState extends State<ChatPage> {
           showStatus: _buildStatusSummary,
           showUsage: _buildUsageSummary,
           showMcp: _buildMcpSummary,
+          handleGoal: _handleGoalCommand,
           toggleRawTranscript: _toggleRawTranscript,
           startNewThread: _startNewThread,
           resumeThread: _resumeThread,
@@ -392,6 +394,41 @@ class _ChatPageState extends State<ChatPage> {
       controller: controller,
       verbose: verbose,
     );
+  }
+
+  Future<String?> _handleGoalCommand(String arguments) async {
+    final runner = widget.sessionController?.threadGoalRunner;
+    final threadId = _currentThreadId();
+    if (runner == null || threadId == null) {
+      return null;
+    }
+
+    final command = _parseGoalCommand(arguments);
+    if (command == null) {
+      return null;
+    }
+
+    final l10n = context.l10n;
+    return switch (command) {
+      _GoalGetCommand() => buildThreadGoalSummary(
+        l10n: l10n,
+        goal: (await runner.getGoal(threadId: threadId)).goal,
+      ),
+      _GoalClearCommand() => buildThreadGoalClearedSummary(
+        l10n: l10n,
+        cleared: (await runner.clearGoal(threadId: threadId)).cleared,
+      ),
+      _GoalSetCommand(:final objective, :final status, :final tokenBudget) =>
+        buildThreadGoalSummary(
+          l10n: l10n,
+          goal: (await runner.setGoal(
+            threadId: threadId,
+            objective: objective,
+            status: status,
+            tokenBudget: tokenBudget,
+          )).goal,
+        ),
+    };
   }
 
   Future<void> _refreshStatusSources() async {
@@ -715,6 +752,9 @@ class _ChatPageState extends State<ChatPage> {
           result.slash,
         ),
         SlashCommandActionEffect.mcp => l10n.slashCommandExecuted(result.slash),
+        SlashCommandActionEffect.goal => l10n.slashCommandExecuted(
+          result.slash,
+        ),
         SlashCommandActionEffect.rawTranscript =>
           _showRawTranscript
               ? l10n.slashCommandRawEnabled
@@ -801,6 +841,74 @@ class _ChatPageState extends State<ChatPage> {
     return sessionStatusLabel(l10n, status);
   }
 }
+
+sealed class _GoalCommand {
+  const _GoalCommand();
+}
+
+class _GoalGetCommand extends _GoalCommand {
+  const _GoalGetCommand();
+}
+
+class _GoalClearCommand extends _GoalCommand {
+  const _GoalClearCommand();
+}
+
+class _GoalSetCommand extends _GoalCommand {
+  const _GoalSetCommand({this.objective, this.status, this.tokenBudget});
+
+  final String? objective;
+  final String? status;
+  final int? tokenBudget;
+}
+
+_GoalCommand? _parseGoalCommand(String arguments) {
+  final trimmed = arguments.trim();
+  if (trimmed.isEmpty || trimmed == 'show' || trimmed == 'get') {
+    return const _GoalGetCommand();
+  }
+  if (trimmed == 'clear') {
+    return const _GoalClearCommand();
+  }
+
+  final firstSpace = trimmed.indexOf(RegExp(r'\s'));
+  final head = firstSpace == -1 ? trimmed : trimmed.substring(0, firstSpace);
+  final tail = firstSpace == -1 ? '' : trimmed.substring(firstSpace + 1).trim();
+  if (head == 'status') {
+    if (!_goalStatuses.contains(tail)) {
+      return null;
+    }
+    return _GoalSetCommand(status: tail);
+  }
+  if (head == 'budget') {
+    final nextSpace = tail.indexOf(RegExp(r'\s'));
+    final budgetText = nextSpace == -1 ? tail : tail.substring(0, nextSpace);
+    final budget = int.tryParse(budgetText);
+    if (budget == null || budget <= 0) {
+      return null;
+    }
+    final objective = nextSpace == -1
+        ? null
+        : tail.substring(nextSpace + 1).trim();
+    return _GoalSetCommand(
+      tokenBudget: budget,
+      objective: objective?.isEmpty == true ? null : objective,
+    );
+  }
+  if (head == 'set') {
+    return tail.isEmpty ? null : _GoalSetCommand(objective: tail);
+  }
+  return _GoalSetCommand(objective: trimmed);
+}
+
+const _goalStatuses = {
+  'active',
+  'paused',
+  'blocked',
+  'usageLimited',
+  'budgetLimited',
+  'complete',
+};
 
 enum _OverrideScope { turn, session }
 

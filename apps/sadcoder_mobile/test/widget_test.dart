@@ -11,6 +11,8 @@ import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
+import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
+import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
@@ -261,6 +263,9 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
       const _NoopThreadMutationRunner();
 
   @override
+  ThreadGoalRunner get threadGoalRunner => const _NoopThreadGoalRunner();
+
+  @override
   TurnRunner get turnRunner => const _NoopTurnRunner();
 
   @override
@@ -433,4 +438,40 @@ class _NoopThreadMutationRunner implements ThreadMutationRunner {
 
   @override
   Future<void> deleteThread({required String threadId}) async {}
+}
+
+class _NoopThreadGoalRunner implements ThreadGoalRunner {
+  const _NoopThreadGoalRunner();
+
+  @override
+  Future<ThreadGoalGetResult> getGoal({required String threadId}) async {
+    return const ThreadGoalGetResult();
+  }
+
+  @override
+  Future<ThreadGoalSetResult> setGoal({
+    required String threadId,
+    String? objective,
+    String? status,
+    int? tokenBudget,
+  }) async {
+    return ThreadGoalSetResult(
+      goal: ThreadGoal(
+        threadId: threadId,
+        objective: objective ?? 'Goal',
+        status: status ?? 'active',
+        tokenBudget: tokenBudget,
+        tokensUsed: 0,
+        timeUsedSeconds: 0,
+        createdAtSeconds: 1,
+        updatedAtSeconds: 1,
+        raw: const {},
+      ),
+    );
+  }
+
+  @override
+  Future<ThreadGoalClearResult> clearGoal({required String threadId}) async {
+    return const ThreadGoalClearResult(cleared: false);
+  }
 }

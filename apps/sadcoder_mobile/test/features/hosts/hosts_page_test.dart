@@ -13,6 +13,8 @@ import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/hosts/hosts_page.dart';
+import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
+import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
@@ -686,6 +688,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
       const _FakeThreadMutationRunner();
 
   @override
+  ThreadGoalRunner get threadGoalRunner => const _FakeThreadGoalRunner();
+
+  @override
   TurnRunner get turnRunner => const _FakeTurnRunner();
 
   @override
@@ -895,6 +900,42 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
 
   @override
   Future<void> deleteThread({required String threadId}) async {}
+}
+
+class _FakeThreadGoalRunner implements ThreadGoalRunner {
+  const _FakeThreadGoalRunner();
+
+  @override
+  Future<ThreadGoalGetResult> getGoal({required String threadId}) async {
+    return const ThreadGoalGetResult();
+  }
+
+  @override
+  Future<ThreadGoalSetResult> setGoal({
+    required String threadId,
+    String? objective,
+    String? status,
+    int? tokenBudget,
+  }) async {
+    return ThreadGoalSetResult(
+      goal: ThreadGoal(
+        threadId: threadId,
+        objective: objective ?? 'Goal',
+        status: status ?? 'active',
+        tokenBudget: tokenBudget,
+        tokensUsed: 0,
+        timeUsedSeconds: 0,
+        createdAtSeconds: 1,
+        updatedAtSeconds: 1,
+        raw: const {},
+      ),
+    );
+  }
+
+  @override
+  Future<ThreadGoalClearResult> clearGoal({required String threadId}) async {
+    return const ThreadGoalClearResult(cleared: false);
+  }
 }
 
 class _FakeReconnectDelayScheduler implements ReconnectDelayScheduler {
