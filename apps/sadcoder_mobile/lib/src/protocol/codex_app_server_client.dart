@@ -144,8 +144,23 @@ class CodexAppServerClient {
     });
   }
 
-  Future<Map<String, Object?>> fsReadFile({required String path}) {
-    return _request('fs/readFile', {'path': path.trim()});
+  Future<Map<String, Object?>> fsReadFile({
+    required String path,
+    int? offset,
+    int? limitBytes,
+    String? encoding,
+  }) {
+    final params = <String, Object?>{'path': path.trim()};
+    if (offset != null) {
+      params['offset'] = offset;
+    }
+    if (limitBytes != null) {
+      params['limitBytes'] = limitBytes;
+    }
+    if (encoding != null && encoding.trim().isNotEmpty) {
+      params['encoding'] = encoding.trim();
+    }
+    return _request('fs/readFile', params);
   }
 
   Future<Map<String, Object?>> fsGetMetadata({required String path}) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/features/files/workspace_files_page.dart';
 import 'package:sadcoder_mobile/src/files/workspace_directory_reader.dart';
@@ -195,6 +196,38 @@ void main() {
     expect(find.text('README.md'), findsNothing);
   });
 
+  testWidgets('copies workspace paths without opening files', (tester) async {
+    final directoryReader = _FakeWorkspaceDirectoryReader({
+      '': [_entry(path: 'README.md', name: 'README.md')],
+    });
+    final fileReader = _RecordingWorkspaceFileReader();
+    Object? clipboardText;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        clipboardText = (call.arguments as Map)['text'];
+      }
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    await _pumpFilesPage(
+      tester,
+      directoryReader: directoryReader,
+      fileReader: fileReader,
+    );
+    await tester.tap(find.byTooltip('Copy path'));
+    await tester.pumpAndSettle();
+
+    expect(clipboardText, 'README.md');
+    expect(find.text('Path copied.'), findsOneWidget);
+    expect(fileReader.statCalls, isEmpty);
+    expect(fileReader.readCalls, isEmpty);
+  });
+
   testWidgets('shows binary file preview state', (tester) async {
     final directoryReader = _FakeWorkspaceDirectoryReader({
       '': [_entry(path: 'image.png', name: 'image.png')],
@@ -386,5 +419,37 @@ class _FakeWorkspaceFileReader implements WorkspaceFileReader {
       );
     }
     return chunk;
+  }
+}
+
+class _RecordingWorkspaceFileReader implements WorkspaceFileReader {
+  final List<String> statCalls = [];
+  final List<String> readCalls = [];
+
+  @override
+  Future<WorkspaceFileStat> statFile({
+    required String root,
+    required String path,
+  }) async {
+    statCalls.add(path);
+    throw const WorkspaceFileException(
+      WorkspaceFileFailureCode.readFailed,
+      'Unexpected stat.',
+    );
+  }
+
+  @override
+  Future<WorkspaceFileReadChunk> readFile({
+    required String root,
+    required String path,
+    int offset = 0,
+    int limitBytes = 64 * 1024,
+    String encoding = 'utf-8',
+  }) async {
+    readCalls.add(path);
+    throw const WorkspaceFileException(
+      WorkspaceFileFailureCode.readFailed,
+      'Unexpected read.',
+    );
   }
 }

@@ -302,7 +302,12 @@ void main() {
     final client = CodexAppServerClient(transport);
     await client.fsReadDirectory(path: ' /repo/lib ');
     await client.fsGetMetadata(path: ' /repo/lib/main.dart ');
-    await client.fsReadFile(path: ' /repo/lib/main.dart ');
+    await client.fsReadFile(
+      path: ' /repo/lib/main.dart ',
+      offset: 1024,
+      limitBytes: 4096,
+      encoding: ' utf-8 ',
+    );
 
     expect(requests.map((request) => request.method), [
       'fs/readDirectory',
@@ -312,7 +317,12 @@ void main() {
     expect(requests.map((request) => request.params), [
       {'path': '/repo/lib'},
       {'path': '/repo/lib/main.dart'},
-      {'path': '/repo/lib/main.dart'},
+      {
+        'path': '/repo/lib/main.dart',
+        'offset': 1024,
+        'limitBytes': 4096,
+        'encoding': 'utf-8',
+      },
     ]);
   });
 

@@ -61,37 +61,16 @@ class CodexWorkspaceFileReader implements WorkspaceFileReader {
 
       final response = await _client.fsReadFile(
         path: workspacePath.absolutePath,
-      );
-      final dataBase64 = _stringValue(
-        response['dataBase64'] ?? response['data_base64'],
-      );
-      if (dataBase64 == null) {
-        throw const WorkspaceFileException(
-          WorkspaceFileFailureCode.readFailed,
-          'Workspace file request failed.',
-          detail: 'Missing file content.',
-        );
-      }
-
-      final bytes = _decodeBase64(dataBase64);
-      if (_looksBinary(bytes)) {
-        throw const WorkspaceFileException(
-          WorkspaceFileFailureCode.binaryNotPreviewable,
-          'Binary files cannot be previewed as text.',
-        );
-      }
-      final slice = _sliceUtf8(bytes, offset: offset, limitBytes: limitBytes);
-      return WorkspaceFileReadChunk(
-        root: workspacePath.root,
-        path: workspacePath.relativePath,
-        sizeBytes: bytes.length,
-        offset: slice.offset,
-        bytesRead: slice.bytesRead,
-        nextOffset: slice.nextOffset,
-        hasMore: slice.hasMore,
+        offset: offset,
+        limitBytes: limitBytes,
         encoding: normalizedEncoding,
-        isBinary: false,
-        content: slice.content,
+      );
+      return _chunkFromReadResponse(
+        response,
+        workspacePath,
+        requestOffset: offset,
+        requestLimitBytes: limitBytes,
+        requestEncoding: normalizedEncoding,
       );
     } catch (error) {
       throw normalizeWorkspaceFileException(error);
@@ -138,6 +117,146 @@ class CodexWorkspaceFileReader implements WorkspaceFileReader {
     }
     return stat;
   }
+}
+
+WorkspaceFileReadChunk _chunkFromReadResponse(
+  Map<String, Object?> response,
+  WorkspacePath workspacePath, {
+  required int requestOffset,
+  required int requestLimitBytes,
+  required String requestEncoding,
+}) {
+  final serverChunk = _serverRangeChunkFromResponse(
+    response,
+    workspacePath,
+    requestOffset: requestOffset,
+    requestEncoding: requestEncoding,
+  );
+  if (serverChunk != null) {
+    return serverChunk;
+  }
+
+  final dataBase64 = _base64Content(response);
+  if (dataBase64 == null) {
+    throw const WorkspaceFileException(
+      WorkspaceFileFailureCode.readFailed,
+      'Workspace file request failed.',
+      detail: 'Missing file content.',
+    );
+  }
+
+  final bytes = _decodeBase64(dataBase64);
+  if (_looksBinary(bytes)) {
+    throw const WorkspaceFileException(
+      WorkspaceFileFailureCode.binaryNotPreviewable,
+      'Binary files cannot be previewed as text.',
+    );
+  }
+  final slice = _sliceUtf8(
+    bytes,
+    offset: requestOffset,
+    limitBytes: requestLimitBytes,
+  );
+  return WorkspaceFileReadChunk(
+    root: workspacePath.root,
+    path: workspacePath.relativePath,
+    sizeBytes: bytes.length,
+    offset: slice.offset,
+    bytesRead: slice.bytesRead,
+    nextOffset: slice.nextOffset,
+    hasMore: slice.hasMore,
+    encoding: requestEncoding,
+    isBinary: false,
+    content: slice.content,
+  );
+}
+
+WorkspaceFileReadChunk? _serverRangeChunkFromResponse(
+  Map<String, Object?> response,
+  WorkspacePath workspacePath, {
+  required int requestOffset,
+  required String requestEncoding,
+}) {
+  final contentText = _contentValue(response['content'] ?? response['text']);
+  final dataBase64 = _base64Content(response);
+  final hasExplicitRangeMetadata =
+      _intValue(response['offset']) != null ||
+      _intValue(response['bytesRead'] ?? response['bytes_read']) != null ||
+      _intValue(response['nextOffset'] ?? response['next_offset']) != null ||
+      _optionalBool(response['hasMore'] ?? response['has_more']) != null;
+  final hasChunkContent = contentText != null || dataBase64 != null;
+  final hasSizedTextChunk =
+      contentText != null &&
+      _intValue(response['sizeBytes'] ?? response['size_bytes']) != null;
+  if (!hasChunkContent || (!hasExplicitRangeMetadata && !hasSizedTextChunk)) {
+    return null;
+  }
+  if (_optionalBool(response['isBinary'] ?? response['is_binary']) == true) {
+    throw const WorkspaceFileException(
+      WorkspaceFileFailureCode.binaryNotPreviewable,
+      'Binary files cannot be previewed as text.',
+    );
+  }
+
+  final decoded = dataBase64 == null
+      ? _DecodedContent(
+          content: contentText!,
+          byteLength: utf8.encode(contentText).length,
+        )
+      : _decodeTextContent(dataBase64);
+  final chunkOffset = _intValue(response['offset']) ?? requestOffset;
+  final bytesRead =
+      _intValue(response['bytesRead'] ?? response['bytes_read']) ??
+      decoded.byteLength;
+  final responseNextOffset = _intValue(
+    response['nextOffset'] ?? response['next_offset'],
+  );
+  final sizeBytes =
+      _intValue(
+        response['sizeBytes'] ?? response['size_bytes'] ?? response['size'],
+      ) ??
+      _inferredSizeBytes(
+        chunkOffset: chunkOffset,
+        bytesRead: bytesRead,
+        nextOffset: responseNextOffset,
+      );
+  final hasMore =
+      _optionalBool(response['hasMore'] ?? response['has_more']) ??
+      (responseNextOffset != null && responseNextOffset < sizeBytes);
+  final nextOffset =
+      responseNextOffset ?? (hasMore ? chunkOffset + bytesRead : null);
+  return WorkspaceFileReadChunk(
+    root: workspacePath.root,
+    path: workspacePath.relativePath,
+    sizeBytes: sizeBytes,
+    offset: chunkOffset,
+    bytesRead: bytesRead,
+    nextOffset: nextOffset,
+    hasMore: hasMore,
+    encoding:
+        _stringValue(response['encoding']) ??
+        _stringValue(response['charset']) ??
+        requestEncoding,
+    isBinary: false,
+    content: decoded.content,
+    contentVersion: _stringValue(
+      response['contentVersion'] ??
+          response['content_version'] ??
+          response['contentHash'] ??
+          response['content_hash'] ??
+          response['hash'] ??
+          response['version'],
+    ),
+  );
+}
+
+int _inferredSizeBytes({
+  required int chunkOffset,
+  required int bytesRead,
+  required int? nextOffset,
+}) {
+  final endOffset = nextOffset ?? chunkOffset + bytesRead;
+  return max(chunkOffset + bytesRead, endOffset);
 }
 
 WorkspaceFileKind _kindFromMetadata(Map<String, Object?> response) {
@@ -191,6 +310,37 @@ List<int> _decodeBase64(String dataBase64) {
     throw WorkspaceFileException(
       WorkspaceFileFailureCode.readFailed,
       'Workspace file request failed.',
+      detail: error,
+    );
+  }
+}
+
+String? _base64Content(Map<String, Object?> response) {
+  return _stringValue(
+    response['dataBase64'] ??
+        response['data_base64'] ??
+        response['contentBase64'] ??
+        response['content_base64'],
+  );
+}
+
+_DecodedContent _decodeTextContent(String dataBase64) {
+  final bytes = _decodeBase64(dataBase64);
+  if (_looksBinary(bytes)) {
+    throw const WorkspaceFileException(
+      WorkspaceFileFailureCode.binaryNotPreviewable,
+      'Binary files cannot be previewed as text.',
+    );
+  }
+  try {
+    return _DecodedContent(
+      content: utf8.decode(bytes, allowMalformed: false),
+      byteLength: bytes.length,
+    );
+  } on FormatException catch (error) {
+    throw WorkspaceFileException(
+      WorkspaceFileFailureCode.binaryNotPreviewable,
+      'Binary files cannot be previewed as text.',
       detail: error,
     );
   }
@@ -332,6 +482,8 @@ String? _stringValue(Object? value) {
   return null;
 }
 
+String? _contentValue(Object? value) => value is String ? value : null;
+
 int? _intValue(Object? value) {
   if (value is int) {
     return value;
@@ -360,4 +512,11 @@ class _Utf8Slice {
   final int? nextOffset;
   final bool hasMore;
   final String content;
+}
+
+class _DecodedContent {
+  const _DecodedContent({required this.content, required this.byteLength});
+
+  final String content;
+  final int byteLength;
 }

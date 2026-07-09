@@ -60,7 +60,9 @@ class CodexWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
       if (name == null) {
         continue;
       }
-      final hidden = WorkspacePath.isHiddenName(name);
+      final hidden =
+          _optionalBool(map['isHidden'] ?? map['is_hidden']) ??
+          WorkspacePath.isHiddenName(name);
       if (hidden && !includeHidden) {
         continue;
       }
@@ -71,6 +73,12 @@ class CodexWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
           path: childPath.relativePath,
           name: name,
           kind: _entryKind(map),
+          sizeBytes: _intValue(
+            map['sizeBytes'] ?? map['size_bytes'] ?? map['size'],
+          ),
+          modifiedAt: _dateFromUnixMilliseconds(
+            _intValue(map['modifiedAtMs'] ?? map['modified_at_ms']),
+          ),
           isHidden: hidden,
         ),
       );
@@ -123,4 +131,23 @@ String? _stringValue(Object? value) {
     return value.trim();
   }
   return null;
+}
+
+int? _intValue(Object? value) {
+  if (value is int) {
+    return value;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  return null;
+}
+
+bool? _optionalBool(Object? value) => value is bool ? value : null;
+
+DateTime? _dateFromUnixMilliseconds(int? value) {
+  if (value == null || value <= 0) {
+    return null;
+  }
+  return DateTime.fromMillisecondsSinceEpoch(value, isUtc: true);
 }

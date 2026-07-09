@@ -20,7 +20,13 @@ void main() {
               {'fileName': 'main.dart', 'isDirectory': false, 'isFile': true},
               {'fileName': '.env', 'isDirectory': false, 'isFile': true},
               {'fileName': 'features', 'isDirectory': true, 'isFile': false},
-              {'fileName': 'README.md', 'isDirectory': false, 'isFile': true},
+              {
+                'fileName': 'README.md',
+                'isDirectory': false,
+                'isFile': true,
+                'sizeBytes': 42,
+                'modifiedAtMs': 1700000000000,
+              },
             ],
           };
         }),
@@ -49,26 +55,38 @@ void main() {
       expect(firstPage.entries.first.path, 'lib/src/features');
       expect(firstPage.nextCursor, '2');
       expect(secondPage.entries.single.name, 'README.md');
+      expect(secondPage.entries.single.sizeBytes, 42);
+      expect(
+        secondPage.entries.single.modifiedAt,
+        DateTime.fromMillisecondsSinceEpoch(1700000000000, isUtc: true),
+      );
       expect(secondPage.nextCursor, isNull);
       expect(requests, hasLength(2));
     },
   );
 
-  test('listDirectory can include hidden files', () async {
+  test('listDirectory can include server-marked hidden files', () async {
     final client = CodexAppServerClient(
       MemoryJsonRpcTransport((request) {
         return {
           'entries': [
-            {'fileName': '.env', 'isDirectory': false, 'isFile': true},
+            {
+              'fileName': 'secret.env',
+              'isDirectory': false,
+              'isFile': true,
+              'isHidden': true,
+            },
           ],
         };
       }),
     );
     final reader = CodexWorkspaceDirectoryReader(client);
 
+    final filteredPage = await reader.listDirectory(root: '/repo');
     final page = await reader.listDirectory(root: '/repo', includeHidden: true);
 
-    expect(page.entries.single.name, '.env');
+    expect(filteredPage.entries, isEmpty);
+    expect(page.entries.single.name, 'secret.env');
     expect(page.entries.single.isHidden, true);
   });
 

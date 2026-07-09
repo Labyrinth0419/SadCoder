@@ -39,8 +39,61 @@ void main() {
     expect(requests, hasLength(1));
   });
 
+  test('readFile parses app-server range chunks', () async {
+    final requests = <JsonRpcRequest>[];
+    final client = CodexAppServerClient(
+      MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        switch (request.method) {
+          case 'fs/getMetadata':
+            return {'isDirectory': false, 'isFile': true, 'isSymlink': false};
+          case 'fs/readFile':
+            expect(request.params, {
+              'path': '/repo/README.md',
+              'offset': 6,
+              'limitBytes': 8,
+              'encoding': 'utf-8',
+            });
+            return {
+              'content': '  hi\n',
+              'sizeBytes': 42,
+              'offset': 6,
+              'bytesRead': 5,
+              'nextOffset': 11,
+              'hasMore': true,
+              'encoding': 'utf-8',
+              'contentHash': 'hash-1',
+            };
+          default:
+            throw StateError('unexpected method ${request.method}');
+        }
+      }),
+    );
+    final reader = CodexWorkspaceFileReader(client);
+
+    final chunk = await reader.readFile(
+      root: '/repo',
+      path: 'README.md',
+      offset: 6,
+      limitBytes: 8,
+      encoding: 'UTF_8',
+    );
+
+    expect(chunk.content, '  hi\n');
+    expect(chunk.sizeBytes, 42);
+    expect(chunk.offset, 6);
+    expect(chunk.bytesRead, 5);
+    expect(chunk.nextOffset, 11);
+    expect(chunk.hasMore, true);
+    expect(chunk.contentVersion, 'hash-1');
+    expect(requests.map((request) => request.method), [
+      'fs/getMetadata',
+      'fs/readFile',
+    ]);
+  });
+
   test(
-    'readFile slices text by UTF-8 byte offsets without cutting characters',
+    'readFile falls back to UTF-8 byte slicing for legacy full-file responses',
     () async {
       final requests = <JsonRpcRequest>[];
       final content = 'a🙂b';
@@ -51,7 +104,9 @@ void main() {
             case 'fs/getMetadata':
               return {'isDirectory': false, 'isFile': true, 'isSymlink': false};
             case 'fs/readFile':
-              expect(request.params, {'path': '/repo/README.md'});
+              expect(request.params?['path'], '/repo/README.md');
+              expect(request.params?['limitBytes'], 2);
+              expect(request.params?['encoding'], 'utf-8');
               return {'dataBase64': base64.encode(utf8.encode(content))};
             default:
               throw StateError('unexpected method ${request.method}');
