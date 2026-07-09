@@ -17,6 +17,7 @@ void main() {
         host: 'srv.dev',
         port: 2200,
         username: 'alice',
+        authType: SshAuthType.privateKey,
         password: 'secret',
         privateKeyPem: 'private-key',
         passphrase: 'passphrase',
@@ -31,6 +32,7 @@ void main() {
     expect(loaded?.host, 'srv.dev');
     expect(loaded?.port, 2200);
     expect(loaded?.username, 'alice');
+    expect(loaded?.authType, SshAuthType.privateKey);
     expect(loaded?.agentCommand, 'sadcoder-agent --verbose');
     expect(loaded?.defaultCwd, '/repo');
     expect(loaded?.password, isNull);

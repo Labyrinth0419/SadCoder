@@ -38,8 +38,11 @@ class _HostsPageState extends State<HostsPage> {
   final _portController = TextEditingController(text: '22');
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _privateKeyController = TextEditingController();
+  final _passphraseController = TextEditingController();
   final _agentCommandController = TextEditingController(text: 'sadcoder-agent');
 
+  SshAuthType _authType = SshAuthType.password;
   bool _testing = false;
   bool _savingProfile = false;
   M0ProbeReport? _report;
@@ -73,6 +76,8 @@ class _HostsPageState extends State<HostsPage> {
     _portController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
+    _privateKeyController.dispose();
+    _passphraseController.dispose();
     _agentCommandController.dispose();
     super.dispose();
   }
@@ -105,7 +110,11 @@ class _HostsPageState extends State<HostsPage> {
           hostController: _hostController,
           portController: _portController,
           usernameController: _usernameController,
+          authType: _authType,
+          onAuthTypeChanged: (value) => setState(() => _authType = value),
           passwordController: _passwordController,
+          privateKeyController: _privateKeyController,
+          passphraseController: _passphraseController,
           agentCommandController: _agentCommandController,
           testing: _testing,
           savingProfile: _savingProfile,
@@ -264,7 +273,16 @@ class _HostsPageState extends State<HostsPage> {
       host: host,
       port: int.tryParse(_portController.text.trim()) ?? 22,
       username: _usernameController.text.trim(),
-      password: _passwordController.text,
+      authType: _authType,
+      password: _authType == SshAuthType.password
+          ? _passwordController.text
+          : null,
+      privateKeyPem: _authType == SshAuthType.privateKey
+          ? _privateKeyController.text
+          : null,
+      passphrase: _authType == SshAuthType.privateKey
+          ? _passphraseController.text
+          : null,
       agentCommand: _agentCommandController.text.trim(),
     );
   }
@@ -274,7 +292,10 @@ class _HostsPageState extends State<HostsPage> {
     _hostController.text = profile.host;
     _portController.text = profile.port.toString();
     _usernameController.text = profile.username;
+    _authType = profile.authType;
     _passwordController.text = profile.password ?? '';
+    _privateKeyController.text = profile.privateKeyPem ?? '';
+    _passphraseController.text = profile.passphrase ?? '';
     _agentCommandController.text = profile.agentCommand;
   }
 
@@ -303,7 +324,11 @@ class _HostProfileForm extends StatelessWidget {
     required this.hostController,
     required this.portController,
     required this.usernameController,
+    required this.authType,
+    required this.onAuthTypeChanged,
     required this.passwordController,
+    required this.privateKeyController,
+    required this.passphraseController,
     required this.agentCommandController,
     required this.testing,
     required this.savingProfile,
@@ -319,7 +344,11 @@ class _HostProfileForm extends StatelessWidget {
   final TextEditingController hostController;
   final TextEditingController portController;
   final TextEditingController usernameController;
+  final SshAuthType authType;
+  final ValueChanged<SshAuthType> onAuthTypeChanged;
   final TextEditingController passwordController;
+  final TextEditingController privateKeyController;
+  final TextEditingController passphraseController;
   final TextEditingController agentCommandController;
   final bool testing;
   final bool savingProfile;
@@ -398,16 +427,60 @@ class _HostProfileForm extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                key: const ValueKey('password-field'),
-                controller: passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: l10n.password,
-                  prefixIcon: const Icon(Icons.key_outlined),
-                ),
-                validator: _required(l10n.passwordRequired),
+              SegmentedButton<SshAuthType>(
+                key: const ValueKey('auth-type-segmented-button'),
+                segments: [
+                  ButtonSegment(
+                    value: SshAuthType.password,
+                    icon: const Icon(Icons.password),
+                    label: Text(l10n.authPassword),
+                  ),
+                  ButtonSegment(
+                    value: SshAuthType.privateKey,
+                    icon: const Icon(Icons.vpn_key_outlined),
+                    label: Text(l10n.authPrivateKey),
+                  ),
+                ],
+                selected: {authType},
+                onSelectionChanged: (values) =>
+                    onAuthTypeChanged(values.single),
               ),
+              const SizedBox(height: 12),
+              if (authType == SshAuthType.password) ...[
+                TextFormField(
+                  key: const ValueKey('password-field'),
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: l10n.password,
+                    prefixIcon: const Icon(Icons.key_outlined),
+                  ),
+                  validator: _required(l10n.passwordRequired),
+                ),
+              ] else ...[
+                TextFormField(
+                  key: const ValueKey('private-key-field'),
+                  controller: privateKeyController,
+                  autocorrect: false,
+                  minLines: 4,
+                  maxLines: 8,
+                  decoration: InputDecoration(
+                    labelText: l10n.privateKey,
+                    prefixIcon: const Icon(Icons.vpn_key_outlined),
+                  ),
+                  validator: _required(l10n.privateKeyRequired),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  key: const ValueKey('passphrase-field'),
+                  controller: passphraseController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: l10n.passphrase,
+                    prefixIcon: const Icon(Icons.lock_outline),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               TextFormField(
                 key: const ValueKey('agent-command-field'),

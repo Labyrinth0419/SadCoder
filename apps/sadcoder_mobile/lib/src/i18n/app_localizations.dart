@@ -26,6 +26,10 @@ class AppLocalizations {
   String get port => _text('port');
   String get username => _text('username');
   String get password => _text('password');
+  String get authPassword => _text('authPassword');
+  String get authPrivateKey => _text('authPrivateKey');
+  String get privateKey => _text('privateKey');
+  String get passphrase => _text('passphrase');
   String get agentCommand => _text('agentCommand');
   String get saveProfile => _text('saveProfile');
   String get savingProfile => _text('savingProfile');
@@ -35,6 +39,7 @@ class AppLocalizations {
   String get hostRequired => _text('hostRequired');
   String get usernameRequired => _text('usernameRequired');
   String get passwordRequired => _text('passwordRequired');
+  String get privateKeyRequired => _text('privateKeyRequired');
   String get agentCommandRequired => _text('agentCommandRequired');
   String get invalidPort => _text('invalidPort');
   String get notTested => _text('notTested');
@@ -221,6 +226,10 @@ const _values = <String, Map<String, String>>{
     'port': 'Port',
     'username': 'Username',
     'password': 'Password',
+    'authPassword': 'Password',
+    'authPrivateKey': 'Private key',
+    'privateKey': 'Private key',
+    'passphrase': 'Passphrase',
     'agentCommand': 'Agent command',
     'saveProfile': 'Save profile',
     'savingProfile': 'Saving',
@@ -230,6 +239,7 @@ const _values = <String, Map<String, String>>{
     'hostRequired': 'Host is required',
     'usernameRequired': 'Username is required',
     'passwordRequired': 'Password is required',
+    'privateKeyRequired': 'Private key is required',
     'agentCommandRequired': 'Agent command is required',
     'invalidPort': 'Invalid port',
     'notTested': 'Not tested',
@@ -380,6 +390,10 @@ const _values = <String, Map<String, String>>{
     'port': '端口',
     'username': '用户名',
     'password': '密码',
+    'authPassword': '密码',
+    'authPrivateKey': '私钥',
+    'privateKey': '私钥',
+    'passphrase': '私钥口令',
     'agentCommand': 'Agent 命令',
     'saveProfile': '保存配置',
     'savingProfile': '保存中',
@@ -389,6 +403,7 @@ const _values = <String, Map<String, String>>{
     'hostRequired': '请填写主机',
     'usernameRequired': '请填写用户名',
     'passwordRequired': '请填写密码',
+    'privateKeyRequired': '请填写私钥',
     'agentCommandRequired': '请填写 Agent 命令',
     'invalidPort': '端口无效',
     'notTested': '未测试',

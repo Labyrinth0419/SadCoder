@@ -50,7 +50,12 @@ void main() {
       find.byKey(const ValueKey('password-field')),
       'secret',
     );
-    await tester.ensureVisible(find.byKey(const ValueKey('probe-test-button')));
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('probe-test-button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('probe-test-button')));
     await tester.pumpAndSettle();
@@ -84,7 +89,12 @@ void main() {
 
     await _pumpHostsPage(tester, runner);
 
-    await tester.ensureVisible(find.byKey(const ValueKey('probe-test-button')));
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('probe-test-button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('probe-test-button')));
     await tester.pumpAndSettle();
 
@@ -92,6 +102,71 @@ void main() {
     expect(find.text('Host is required'), findsOneWidget);
     expect(find.text('Username is required'), findsOneWidget);
     expect(find.text('Password is required'), findsOneWidget);
+  });
+
+  testWidgets('validates private key auth before probing', (tester) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+
+    await _pumpHostsPage(tester, runner);
+
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.tap(find.text('Private key'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('probe-test-button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('probe-test-button')));
+    await tester.pumpAndSettle();
+
+    expect(runner.lastProfile, isNull);
+    expect(find.text('Private key is required'), findsOneWidget);
+    expect(find.text('Password is required'), findsNothing);
+  });
+
+  testWidgets('runs a manual M0 probe with private key auth', (tester) async {
+    final runner = _FakeProbeRunner(
+      report: const M0ProbeReport(
+        steps: [M0ProbeStepResult(step: M0ProbeStep.agentStatus, ok: true)],
+      ),
+    );
+
+    await _pumpHostsPage(tester, runner);
+
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.tap(find.text('Private key'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('private-key-field')),
+      '-----BEGIN OPENSSH PRIVATE KEY-----\nkey\n-----END OPENSSH PRIVATE KEY-----',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('passphrase-field')),
+      'key-passphrase',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('probe-test-button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('probe-test-button')));
+    await tester.pumpAndSettle();
+
+    expect(runner.lastProfile?.authType, SshAuthType.privateKey);
+    expect(runner.lastProfile?.password, isNull);
+    expect(runner.lastProfile?.privateKeyPem, contains('OPENSSH'));
+    expect(runner.lastProfile?.passphrase, 'key-passphrase');
   });
 
   testWidgets('saves host profile metadata without requiring password', (
@@ -116,9 +191,12 @@ void main() {
       find.byKey(const ValueKey('agent-command-field')),
       'sadcoder-agent --verbose',
     );
-    await tester.ensureVisible(
+    await tester.scrollUntilVisible(
       find.byKey(const ValueKey('host-save-profile-button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
     );
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('host-save-profile-button')));
     await tester.pumpAndSettle();
@@ -127,8 +205,51 @@ void main() {
     expect(store.savedProfile?.host, 'srv.dev');
     expect(store.savedProfile?.port, 2200);
     expect(store.savedProfile?.username, 'alice');
+    expect(store.savedProfile?.authType, SshAuthType.password);
     expect(store.savedProfile?.password, isEmpty);
     expect(store.savedProfile?.agentCommand, 'sadcoder-agent --verbose');
+    expect(find.text('Profile saved.'), findsOneWidget);
+  });
+
+  testWidgets('saves private key auth profile fields', (tester) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final store = _FakeProfileStore();
+
+    await _pumpHostsPage(tester, runner, profileStore: store);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('host-name-field')),
+      'Dev',
+    );
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.tap(find.text('Private key'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('private-key-field')),
+      'private-key',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('passphrase-field')),
+      'passphrase',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('host-save-profile-button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('host-save-profile-button')));
+    await tester.pumpAndSettle();
+
+    expect(store.savedProfile?.authType, SshAuthType.privateKey);
+    expect(store.savedProfile?.password, isNull);
+    expect(store.savedProfile?.privateKeyPem, 'private-key');
+    expect(store.savedProfile?.passphrase, 'passphrase');
     expect(find.text('Profile saved.'), findsOneWidget);
   });
 
@@ -194,6 +315,43 @@ void main() {
           .controller
           ?.text,
       'sadcoder-agent --verbose',
+    );
+  });
+
+  testWidgets('loads saved private key profile into the form', (tester) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final store = _FakeProfileStore(
+      initialProfile: const SshProfile(
+        id: 'manual',
+        name: 'Dev',
+        host: 'srv.dev',
+        username: 'alice',
+        authType: SshAuthType.privateKey,
+        privateKeyPem: 'private-key',
+        passphrase: 'passphrase',
+      ),
+    );
+
+    await _pumpHostsPage(tester, runner, profileStore: store);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('password-field')), findsNothing);
+    expect(find.byKey(const ValueKey('private-key-field')), findsOneWidget);
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const ValueKey('private-key-field')),
+          )
+          .controller
+          ?.text,
+      'private-key',
+    );
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const ValueKey('passphrase-field')))
+          .controller
+          ?.text,
+      'passphrase',
     );
   });
 
@@ -380,6 +538,10 @@ Future<void> _pumpHostsPage(
   CodexSessionStateController? sessionController,
   SshProfileStore? profileStore,
 }) {
+  tester.view.physicalSize = const Size(800, 900);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
   return tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: const [
