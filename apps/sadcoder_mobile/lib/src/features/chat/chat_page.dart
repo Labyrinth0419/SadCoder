@@ -150,6 +150,9 @@ class _ChatPageState extends State<ChatPage> {
       isConnected: isConnected,
       turnController: turnController,
     );
+    final composerInputMode =
+        widget.appearanceController?.composerInputMode ??
+        AppComposerInputMode.standard;
     return Column(
       children: [
         _ChatHeader(
@@ -214,6 +217,11 @@ class _ChatPageState extends State<ChatPage> {
                   onChanged: _handleComposerChanged,
                   decoration: InputDecoration(
                     hintText: l10n.connectBeforeTurn,
+                    helperText: _composerInputModeLabel(
+                      l10n,
+                      composerInputMode,
+                    ),
+                    helperMaxLines: 1,
                     prefixIcon: IconButton(
                       key: const ValueKey('chat-slash-command-button'),
                       onPressed: _openSlashCommandPalette,
@@ -379,6 +387,7 @@ class _ChatPageState extends State<ChatPage> {
           configureTheme: _configureTheme,
           configureTitleDisplay: _configureTitleDisplay,
           configureStatusLineDisplay: _configureStatusLineDisplay,
+          toggleComposerVimMode: _toggleComposerVimMode,
           mentionFile: _mentionFile,
           startSideConversation: _startSideConversation,
           showAgentTopology: _showAgentTopology,
@@ -1190,6 +1199,19 @@ class _ChatPageState extends State<ChatPage> {
     return SlashCommandCallbackResult.executed;
   }
 
+  Future<SlashCommandCallbackResult> _toggleComposerVimMode() async {
+    final controller = widget.appearanceController;
+    if (controller == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    final nextMode = controller.composerInputMode == AppComposerInputMode.vim
+        ? AppComposerInputMode.standard
+        : AppComposerInputMode.vim;
+    controller.setComposerInputMode(nextMode);
+    return SlashCommandCallbackResult.executed;
+  }
+
   Future<SlashCommandCallbackResult> _submitFeedback() async {
     final runner = widget.sessionController?.feedbackUploadRunner;
     if (runner == null) {
@@ -1414,6 +1436,11 @@ class _ChatPageState extends State<ChatPage> {
           l10n.slashCommandTitleDisplayUpdated,
         SlashCommandActionEffect.statusLineDisplay =>
           l10n.slashCommandStatusLineDisplayUpdated,
+        SlashCommandActionEffect.composerVimMode =>
+          (widget.appearanceController?.composerInputMode ==
+                  AppComposerInputMode.vim)
+              ? l10n.slashCommandVimModeEnabled
+              : l10n.slashCommandVimModeDisabled,
         SlashCommandActionEffect.mention => l10n.slashCommandMentionInserted,
         SlashCommandActionEffect.sideConversation =>
           l10n.slashCommandSideConversationStarted,
@@ -1609,6 +1636,16 @@ class _ChatPageState extends State<ChatPage> {
   String? _nonEmptyText(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  String _composerInputModeLabel(
+    AppLocalizations l10n,
+    AppComposerInputMode mode,
+  ) {
+    return switch (mode) {
+      AppComposerInputMode.standard => l10n.composerInputModeStandard,
+      AppComposerInputMode.vim => l10n.composerInputModeVim,
+    };
   }
 
   String _connectionLabel(AppLocalizations l10n, CodexSessionStatus? status) {

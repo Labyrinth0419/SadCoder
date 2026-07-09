@@ -147,6 +147,9 @@ class AppLocalizations {
       _text('slashCommandTitleDisplayUpdated');
   String get slashCommandStatusLineDisplayUpdated =>
       _text('slashCommandStatusLineDisplayUpdated');
+  String get slashCommandVimModeEnabled => _text('slashCommandVimModeEnabled');
+  String get slashCommandVimModeDisabled =>
+      _text('slashCommandVimModeDisabled');
   String get slashCommandMentionInserted =>
       _text('slashCommandMentionInserted');
   String get slashCommandSideConversationStarted =>
@@ -286,6 +289,8 @@ class AppLocalizations {
   String get applyTitleDisplay => _text('applyTitleDisplay');
   String get statusLineCommandTitle => _text('statusLineCommandTitle');
   String get applyStatusLineDisplay => _text('applyStatusLineDisplay');
+  String get composerInputModeStandard => _text('composerInputModeStandard');
+  String get composerInputModeVim => _text('composerInputModeVim');
   String get diffTitle => _text('diffTitle');
   String get diffUnavailable => _text('diffUnavailable');
   String get diffNotGitRepository => _text('diffNotGitRepository');
@@ -650,6 +655,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandThemeUpdated': 'Theme updated.',
     'slashCommandTitleDisplayUpdated': 'Title display updated.',
     'slashCommandStatusLineDisplayUpdated': 'Status line display updated.',
+    'slashCommandVimModeEnabled': 'Composer Vim mode enabled.',
+    'slashCommandVimModeDisabled': 'Composer Vim mode disabled.',
     'slashCommandMentionInserted': 'File mention inserted.',
     'slashCommandSideConversationStarted': 'Started side conversation.',
     'slashCommandReturnedToMainThread': 'Returned to main thread.',
@@ -771,6 +778,8 @@ const _values = <String, Map<String, String>>{
     'applyTitleDisplay': 'Apply title display',
     'statusLineCommandTitle': 'Status line display',
     'applyStatusLineDisplay': 'Apply status line',
+    'composerInputModeStandard': 'Input mode: Standard',
+    'composerInputModeVim': 'Input mode: Vim',
     'diffTitle': 'Git diff',
     'diffUnavailable': 'Connect to a host to compute git diff.',
     'diffNotGitRepository':
@@ -1087,6 +1096,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandThemeUpdated': '已更新主题。',
     'slashCommandTitleDisplayUpdated': '已更新标题显示。',
     'slashCommandStatusLineDisplayUpdated': '已更新状态栏显示。',
+    'slashCommandVimModeEnabled': '已启用编辑器 Vim 模式。',
+    'slashCommandVimModeDisabled': '已关闭编辑器 Vim 模式。',
     'slashCommandMentionInserted': '已插入文件提及。',
     'slashCommandSideConversationStarted': '已开始侧聊。',
     'slashCommandReturnedToMainThread': '已返回主线会话。',
@@ -1197,6 +1208,8 @@ const _values = <String, Map<String, String>>{
     'applyTitleDisplay': '应用标题显示',
     'statusLineCommandTitle': '状态栏显示',
     'applyStatusLineDisplay': '应用状态栏',
+    'composerInputModeStandard': '输入模式：标准',
+    'composerInputModeVim': '输入模式：Vim',
     'diffTitle': 'Git 差异',
     'diffUnavailable': '连接到主机后才能计算 Git 差异。',
     'diffNotGitRepository': '当前工作区不在 Git 仓库中。',

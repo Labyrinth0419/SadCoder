@@ -34,6 +34,8 @@ typedef SlashCommandConfigureTitleDisplay =
     Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfigureStatusLineDisplay =
     Future<SlashCommandCallbackResult> Function();
+typedef SlashCommandToggleComposerVimMode =
+    Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandMentionFile = Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandStartSideConversation =
     Future<SlashCommandCallbackResult> Function(
@@ -90,6 +92,7 @@ enum SlashCommandActionEffect {
   theme,
   titleDisplay,
   statusLineDisplay,
+  composerVimMode,
   mention,
   sideConversation,
   agentTopology,
@@ -224,6 +227,7 @@ class SlashCommandActionDispatcher {
     this.configureTheme,
     this.configureTitleDisplay,
     this.configureStatusLineDisplay,
+    this.toggleComposerVimMode,
     this.mentionFile,
     this.startSideConversation,
     this.showAgentTopology,
@@ -261,6 +265,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandConfigureTheme? configureTheme;
   final SlashCommandConfigureTitleDisplay? configureTitleDisplay;
   final SlashCommandConfigureStatusLineDisplay? configureStatusLineDisplay;
+  final SlashCommandToggleComposerVimMode? toggleComposerVimMode;
   final SlashCommandMentionFile? mentionFile;
   final SlashCommandStartSideConversation? startSideConversation;
   final SlashCommandShowAgentTopology? showAgentTopology;
@@ -412,6 +417,8 @@ class SlashCommandActionDispatcher {
         return _configureTitleDisplay(parsed);
       case 'statusline':
         return _configureStatusLineDisplay(parsed);
+      case 'vim':
+        return _toggleComposerVimMode(parsed);
       case 'mention':
         return _mentionFile(parsed);
       case 'side':
@@ -949,6 +956,23 @@ class SlashCommandActionDispatcher {
       parsed,
       action: configureStatusLineDisplay,
       effect: SlashCommandActionEffect.statusLineDisplay,
+    );
+  }
+
+  Future<SlashCommandActionResult> _toggleComposerVimMode(
+    SlashCommandParseResult parsed,
+  ) async {
+    if (parsed.arguments.trim().isNotEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    return _callbackAction(
+      parsed,
+      action: toggleComposerVimMode,
+      effect: SlashCommandActionEffect.composerVimMode,
     );
   }
 

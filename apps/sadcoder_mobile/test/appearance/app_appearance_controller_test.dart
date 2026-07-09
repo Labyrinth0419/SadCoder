@@ -65,4 +65,17 @@ void main() {
     expect(controller.statusLineDisplay, settings);
     expect(notifications, 1);
   });
+
+  test('controller notifies when composer input mode changes', () {
+    final controller = AppAppearanceController();
+    addTearDown(controller.dispose);
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+
+    controller.setComposerInputMode(AppComposerInputMode.vim);
+    controller.setComposerInputMode(AppComposerInputMode.vim);
+
+    expect(controller.composerInputMode, AppComposerInputMode.vim);
+    expect(notifications, 1);
+  });
 }

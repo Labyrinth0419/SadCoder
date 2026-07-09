@@ -2099,6 +2099,46 @@ void main() {
     expect(find.text('Status line display updated.'), findsOneWidget);
   });
 
+  testWidgets('/vim enables the mobile composer Vim mode', (tester) async {
+    final appearanceController = AppAppearanceController();
+    addTearDown(appearanceController.dispose);
+
+    await _pumpChatPage(tester, appearanceController: appearanceController);
+
+    expect(
+      appearanceController.composerInputMode,
+      AppComposerInputMode.standard,
+    );
+    expect(find.text('Input mode: Standard'), findsOneWidget);
+
+    await _submitComposerText(tester, '/vim');
+
+    expect(appearanceController.composerInputMode, AppComposerInputMode.vim);
+    expect(find.text('Input mode: Vim'), findsOneWidget);
+    expect(find.text('Composer Vim mode enabled.'), findsOneWidget);
+  });
+
+  testWidgets('/vim disables the mobile composer Vim mode', (tester) async {
+    final appearanceController = AppAppearanceController(
+      composerInputMode: AppComposerInputMode.vim,
+    );
+    addTearDown(appearanceController.dispose);
+
+    await _pumpChatPage(tester, appearanceController: appearanceController);
+
+    expect(appearanceController.composerInputMode, AppComposerInputMode.vim);
+    expect(find.text('Input mode: Vim'), findsOneWidget);
+
+    await _submitComposerText(tester, '/vim');
+
+    expect(
+      appearanceController.composerInputMode,
+      AppComposerInputMode.standard,
+    );
+    expect(find.text('Input mode: Standard'), findsOneWidget);
+    expect(find.text('Composer Vim mode disabled.'), findsOneWidget);
+  });
+
   testWidgets('/goal reads the selected thread goal', (tester) async {
     final approvalController = ApprovalStateController();
     final goalRunner = _RecordingThreadGoalRunner(

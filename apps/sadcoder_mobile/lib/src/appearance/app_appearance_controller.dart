@@ -34,19 +34,24 @@ extension AppThemePreferenceMode on AppThemePreference {
   }
 }
 
+enum AppComposerInputMode { standard, vim }
+
 class AppAppearanceController extends ChangeNotifier {
   AppAppearanceController({
     AppThemePreference theme = AppThemePreference.system,
     AppTitleDisplaySettings titleDisplay = AppTitleDisplaySettings.defaults,
     AppStatusLineDisplaySettings statusLineDisplay =
         AppStatusLineDisplaySettings.defaults,
+    AppComposerInputMode composerInputMode = AppComposerInputMode.standard,
   }) : _theme = theme,
        _titleDisplay = titleDisplay,
-       _statusLineDisplay = statusLineDisplay;
+       _statusLineDisplay = statusLineDisplay,
+       _composerInputMode = composerInputMode;
 
   AppThemePreference _theme;
   AppTitleDisplaySettings _titleDisplay;
   AppStatusLineDisplaySettings _statusLineDisplay;
+  AppComposerInputMode _composerInputMode;
 
   AppThemePreference get theme => _theme;
 
@@ -55,6 +60,8 @@ class AppAppearanceController extends ChangeNotifier {
   AppTitleDisplaySettings get titleDisplay => _titleDisplay;
 
   AppStatusLineDisplaySettings get statusLineDisplay => _statusLineDisplay;
+
+  AppComposerInputMode get composerInputMode => _composerInputMode;
 
   void setTheme(AppThemePreference theme) {
     if (_theme == theme) {
@@ -77,6 +84,14 @@ class AppAppearanceController extends ChangeNotifier {
       return;
     }
     _statusLineDisplay = settings;
+    notifyListeners();
+  }
+
+  void setComposerInputMode(AppComposerInputMode mode) {
+    if (_composerInputMode == mode) {
+      return;
+    }
+    _composerInputMode = mode;
     notifyListeners();
   }
 }

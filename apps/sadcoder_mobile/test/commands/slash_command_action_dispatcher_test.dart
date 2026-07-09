@@ -613,6 +613,63 @@ void main() {
     expect(result.command?.command, 'statusline');
   });
 
+  test('/vim toggles the injected composer mode action', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      toggleComposerVimMode: () async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/vim'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, 1);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.composerVimMode);
+  });
+
+  test('/vim rejects unsupported inline arguments', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      toggleComposerVimMode: () async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/vim on'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, 0);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'vim');
+  });
+
+  test('/vim is unavailable during an active turn', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      toggleComposerVimMode: () async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/vim'),
+      hasActiveTurn: true,
+    );
+
+    expect(calls, 0);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'vim');
+  });
+
   test('/goal passes inline arguments to the injected goal handler', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(
