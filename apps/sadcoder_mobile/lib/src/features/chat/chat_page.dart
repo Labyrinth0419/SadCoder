@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../commands/slash_command_registry.dart';
 import '../../i18n/app_localizations.dart';
 import '../../session/codex_session_state_controller.dart';
+import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_list_controller.dart';
 import '../../threads/thread_summary.dart';
 
@@ -14,11 +15,13 @@ class ChatPage extends StatefulWidget {
     this.registry = const SlashCommandRegistry(),
     this.sessionController,
     this.threadListController,
+    this.threadDetailController,
   });
 
   final SlashCommandRegistry registry;
   final CodexSessionStateController? sessionController;
   final ThreadListController? threadListController;
+  final ThreadDetailController? threadDetailController;
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -59,6 +62,7 @@ class _ChatPageState extends State<ChatPage> {
     final l10n = context.l10n;
     final sessionController = widget.sessionController;
     final threadListController = widget.threadListController;
+    final threadDetailController = widget.threadDetailController;
     return Column(
       children: [
         Padding(
@@ -92,7 +96,11 @@ class _ChatPageState extends State<ChatPage> {
                 title: l10n.slashCommandSurface,
                 body: l10n.slashCommandSurfaceBody,
               ),
-              _ThreadListPanel(controller: threadListController),
+              _ThreadListPanel(
+                controller: threadListController,
+                detailController: threadDetailController,
+              ),
+              _ThreadDetailPanel(controller: threadDetailController),
               _SlashCommandPreview(result: _slashCommand),
             ],
           ),
@@ -171,9 +179,13 @@ class _StateChip extends StatelessWidget {
 }
 
 class _ThreadListPanel extends StatelessWidget {
-  const _ThreadListPanel({required this.controller});
+  const _ThreadListPanel({
+    required this.controller,
+    required this.detailController,
+  });
 
   final ThreadListController? controller;
+  final ThreadDetailController? detailController;
 
   @override
   Widget build(BuildContext context) {
@@ -186,15 +198,22 @@ class _ThreadListPanel extends StatelessWidget {
     }
     return AnimatedBuilder(
       animation: controller,
-      builder: (context, _) => _ThreadListContent(controller: controller),
+      builder: (context, _) => _ThreadListContent(
+        controller: controller,
+        detailController: detailController,
+      ),
     );
   }
 }
 
 class _ThreadListContent extends StatelessWidget {
-  const _ThreadListContent({required this.controller});
+  const _ThreadListContent({
+    required this.controller,
+    required this.detailController,
+  });
 
   final ThreadListController controller;
+  final ThreadDetailController? detailController;
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +249,10 @@ class _ThreadListContent extends StatelessWidget {
         child: Column(
           children: [
             for (final thread in controller.threads)
-              _ThreadListTile(thread: thread),
+              _ThreadListTile(
+                thread: thread,
+                detailController: detailController,
+              ),
           ],
         ),
       ),
@@ -293,9 +315,10 @@ class _RefreshThreadsButton extends StatelessWidget {
 }
 
 class _ThreadListTile extends StatelessWidget {
-  const _ThreadListTile({required this.thread});
+  const _ThreadListTile({required this.thread, required this.detailController});
 
   final ThreadSummary thread;
+  final ThreadDetailController? detailController;
 
   @override
   Widget build(BuildContext context) {
@@ -315,6 +338,128 @@ class _ThreadListTile extends StatelessWidget {
         ].where((value) => value.isNotEmpty).join('\n'),
       ),
       isThreeLine: thread.cwd.isNotEmpty && badges.isNotEmpty,
+      onTap: detailController == null
+          ? null
+          : () => detailController!.readThread(thread.id),
+    );
+  }
+}
+
+class _ThreadDetailPanel extends StatelessWidget {
+  const _ThreadDetailPanel({required this.controller});
+
+  final ThreadDetailController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = this.controller;
+    if (controller == null) {
+      return const SizedBox.shrink();
+    }
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) => _ThreadDetailContent(controller: controller),
+    );
+  }
+}
+
+class _ThreadDetailContent extends StatelessWidget {
+  const _ThreadDetailContent({required this.controller});
+
+  final ThreadDetailController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return switch (controller.status) {
+      ThreadDetailStatus.idle => const SizedBox.shrink(),
+      ThreadDetailStatus.loading => _ThreadDetailCard(
+        title: l10n.threadDetail,
+        child: const LinearProgressIndicator(),
+      ),
+      ThreadDetailStatus.failed => _ThreadDetailCard(
+        title: l10n.threadDetail,
+        child: Text(
+          controller.error?.toString() ?? l10n.threadDetailFailed,
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+      ),
+      ThreadDetailStatus.loaded => _LoadedThreadDetail(
+        detail: controller.detail!,
+      ),
+    };
+  }
+}
+
+class _LoadedThreadDetail extends StatelessWidget {
+  const _LoadedThreadDetail({required this.detail});
+
+  final ThreadDetail detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final thread = detail.thread;
+    return _ThreadDetailCard(
+      title: l10n.threadDetail,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(thread.title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text('${l10n.approvalThread}: ${thread.id}'),
+          if (thread.cwd.isNotEmpty)
+            Text('${l10n.approvalWorkingDirectory}: ${thread.cwd}'),
+          Text(l10n.turnCount(thread.turns.length)),
+          const SizedBox(height: 8),
+          if (thread.turns.isEmpty)
+            Text(l10n.noTurns)
+          else
+            for (final turn in thread.turns) _TurnSummaryTile(turn: turn),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThreadDetailCard extends StatelessWidget {
+  const _ThreadDetailCard({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TurnSummaryTile extends StatelessWidget {
+  const _TurnSummaryTile({required this.turn});
+
+  final TurnSummary turn;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.notes_outlined),
+      title: Text('${context.l10n.approvalTurn}: ${turn.id}'),
+      subtitle: Text(
+        '${turn.status} / ${turn.itemCount} items / ${turn.itemsView}',
+      ),
     );
   }
 }

@@ -11,6 +11,7 @@ import '../session/codex_session_connector.dart';
 import '../session/codex_session_state_controller.dart';
 import '../ssh/dart_ssh_proxy_connector.dart';
 import '../ssh/dart_ssh_remote_command_runner.dart';
+import '../threads/thread_detail_controller.dart';
 import '../threads/thread_list_controller.dart';
 
 const _defaultSessionConnector = CodexSessionConnector(
@@ -35,6 +36,7 @@ class _AppShellState extends State<AppShell> {
   late ApprovalStateController _approvalController;
   late CodexSessionStateController _sessionController;
   late ThreadListController _threadListController;
+  late ThreadDetailController _threadDetailController;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
 
@@ -132,9 +134,13 @@ class _AppShellState extends State<AppShell> {
     _threadListController = ThreadListController(
       readerProvider: () => _sessionController.threadListReader,
     );
+    _threadDetailController = ThreadDetailController(
+      readerProvider: () => _sessionController.threadDetailReader,
+    );
   }
 
   void _disposeOwnedControllers() {
+    _threadDetailController.dispose();
     _threadListController.dispose();
     if (_ownsSessionController) {
       _sessionController.dispose();
@@ -150,6 +156,7 @@ class _AppShellState extends State<AppShell> {
       1 => ChatPage(
         sessionController: _sessionController,
         threadListController: _threadListController,
+        threadDetailController: _threadDetailController,
       ),
       2 => ApprovalsPage(
         approvals: _approvalController.approvals,

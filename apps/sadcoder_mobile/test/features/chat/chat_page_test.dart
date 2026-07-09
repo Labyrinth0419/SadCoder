@@ -9,6 +9,8 @@ import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
+import 'package:sadcoder_mobile/src/threads/thread_detail_controller.dart';
+import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
@@ -94,6 +96,74 @@ void main() {
     expect(find.text('/repo\nrunning / fork'), findsOneWidget);
   });
 
+  testWidgets('loads thread detail when tapping a thread summary', (
+    tester,
+  ) async {
+    final listController = ThreadListController(
+      readerProvider: () => _FakeThreadListReader(
+        page: ThreadListPage(
+          threads: [
+            ThreadSummary.fromJson({
+              'id': 'thr_1',
+              'sessionId': 'sess_1',
+              'preview': 'Fix login bug',
+              'ephemeral': false,
+              'status': 'idle',
+              'cwd': '/repo',
+              'updatedAt': 1,
+            }),
+          ],
+        ),
+      ),
+    );
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(
+        thread: ThreadSummary.fromJson({
+          'id': 'thr_1',
+          'sessionId': 'sess_1',
+          'preview': 'Fix login bug',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 1,
+          'turns': [
+            {
+              'id': 'turn_1',
+              'status': 'completed',
+              'items': [
+                {'type': 'message'},
+              ],
+              'itemsView': 'full',
+            },
+          ],
+        }),
+      ),
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    addTearDown(listController.dispose);
+    addTearDown(detailController.dispose);
+    await listController.refresh();
+
+    await _pumpChatPage(
+      tester,
+      threadListController: listController,
+      threadDetailController: detailController,
+    );
+    await tester.ensureVisible(find.text('Fix login bug'));
+    await tester.tap(find.text('Fix login bug'));
+    await tester.pumpAndSettle();
+
+    expect(detailReader.threadIds, ['thr_1']);
+    expect(find.text('Thread detail'), findsOneWidget);
+    expect(find.text('Thread: thr_1'), findsOneWidget);
+    expect(find.text('Working directory: /repo'), findsOneWidget);
+    expect(find.text('Turns: 1'), findsOneWidget);
+    expect(find.text('Turn: turn_1'), findsOneWidget);
+    expect(find.text('completed / 1 items / full'), findsOneWidget);
+  });
+
   testWidgets('refreshes threads when the session becomes connected', (
     tester,
   ) async {
@@ -143,6 +213,7 @@ Future<void> _pumpChatPage(
   WidgetTester tester, {
   CodexSessionStateController? sessionController,
   ThreadListController? threadListController,
+  ThreadDetailController? threadDetailController,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -157,6 +228,7 @@ Future<void> _pumpChatPage(
         body: ChatPage(
           sessionController: sessionController,
           threadListController: threadListController,
+          threadDetailController: threadDetailController,
         ),
       ),
     ),
@@ -177,6 +249,22 @@ class _FakeThreadListReader implements ThreadListReader {
 
   @override
   Future<ThreadListPage> listThreads({int limit = 20}) async => page;
+}
+
+class _FakeThreadDetailReader implements ThreadDetailReader {
+  _FakeThreadDetailReader({required this.detail});
+
+  final ThreadDetail detail;
+  final threadIds = <String>[];
+
+  @override
+  Future<ThreadDetail> readThread({
+    required String threadId,
+    bool includeTurns = true,
+  }) async {
+    threadIds.add(threadId);
+    return detail;
+  }
 }
 
 class _FakeSessionStarter implements CodexSessionConnectionStarter {
@@ -209,6 +297,22 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final ThreadListReader threadListReader;
+
+  @override
+  ThreadDetailReader get threadDetailReader => _FakeThreadDetailReader(
+    detail: ThreadDetail(
+      thread: ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Fake thread',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': <Object?>[],
+      }),
+    ),
+  );
 
   @override
   Future<void> get done => _doneCompleter.future;

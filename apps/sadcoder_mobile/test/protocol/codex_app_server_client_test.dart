@@ -33,12 +33,15 @@ void main() {
     final client = CodexAppServerClient(transport);
     await client.listModels();
     await client.listThreads(limit: 5);
+    await client.readThread(threadId: 'thr_1');
 
     expect(requests.map((request) => request.method), [
       'model/list',
       'thread/list',
+      'thread/read',
     ]);
     expect(requests.first.params, isEmpty);
-    expect(requests.last.params?['limit'], 5);
+    expect(requests[1].params?['limit'], 5);
+    expect(requests.last.params, {'threadId': 'thr_1', 'includeTurns': true});
   });
 }

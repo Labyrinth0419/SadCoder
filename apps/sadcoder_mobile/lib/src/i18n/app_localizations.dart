@@ -76,6 +76,11 @@ class AppLocalizations {
   String get refreshThreads => _text('refreshThreads');
   String get noThreads => _text('noThreads');
   String get threadListFailed => _text('threadListFailed');
+  String get threadDetail => _text('threadDetail');
+  String get threadDetailFailed => _text('threadDetailFailed');
+  String turnCount(int count) =>
+      _text('turnCount').replaceAll('{count}', count.toString());
+  String get noTurns => _text('noTurns');
   String get forkedThread => _text('forkedThread');
   String get subagentThread => _text('subagentThread');
   String get send => _text('send');
@@ -199,6 +204,10 @@ const _values = <String, Map<String, String>>{
     'refreshThreads': 'Refresh sessions',
     'noThreads': 'No sessions found',
     'threadListFailed': 'Failed to load sessions',
+    'threadDetail': 'Thread detail',
+    'threadDetailFailed': 'Failed to load thread detail',
+    'turnCount': 'Turns: {count}',
+    'noTurns': 'No turns loaded',
     'forkedThread': 'fork',
     'subagentThread': 'subagent',
     'send': 'Send',
@@ -296,6 +305,10 @@ const _values = <String, Map<String, String>>{
     'refreshThreads': '刷新会话',
     'noThreads': '暂无会话',
     'threadListFailed': '会话加载失败',
+    'threadDetail': '会话详情',
+    'threadDetailFailed': '会话详情加载失败',
+    'turnCount': '回合数：{count}',
+    'noTurns': '暂无已加载回合',
     'forkedThread': '分叉',
     'subagentThread': '子 agent',
     'send': '发送',

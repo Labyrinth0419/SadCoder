@@ -20,6 +20,19 @@ class ThreadListPage {
   final String? backwardsCursor;
 }
 
+class ThreadDetail {
+  const ThreadDetail({required this.thread});
+
+  factory ThreadDetail.fromJson(Map<String, Object?> json) {
+    final thread = _stringKeyedMap(json['thread']);
+    return ThreadDetail(thread: ThreadSummary.fromJson(thread));
+  }
+
+  final ThreadSummary thread;
+
+  List<TurnSummary> get turns => thread.turns;
+}
+
 class ThreadSummary {
   const ThreadSummary({
     required this.id,
@@ -34,6 +47,7 @@ class ThreadSummary {
     this.forkedFromId,
     this.agentNickname,
     this.agentRole,
+    this.turns = const [],
     this.raw = const {},
   });
 
@@ -51,6 +65,9 @@ class ThreadSummary {
       forkedFromId: _stringValue(json['forkedFromId']),
       agentNickname: _stringValue(json['agentNickname']),
       agentRole: _stringValue(json['agentRole']),
+      turns: _listOfMaps(
+        json['turns'],
+      ).map(TurnSummary.fromJson).toList(growable: false),
       raw: Map.unmodifiable(json),
     );
   }
@@ -67,6 +84,7 @@ class ThreadSummary {
   final String? forkedFromId;
   final String? agentNickname;
   final String? agentRole;
+  final List<TurnSummary> turns;
   final Map<String, Object?> raw;
 
   String get title {
@@ -82,6 +100,56 @@ class ThreadSummary {
 
   bool get isSubagent => parentThreadId != null;
   bool get isFork => forkedFromId != null;
+}
+
+class TurnSummary {
+  const TurnSummary({
+    required this.id,
+    required this.status,
+    required this.itemCount,
+    required this.itemsView,
+    this.startedAtSeconds,
+    this.completedAtSeconds,
+    this.durationMs,
+    this.errorMessage,
+    this.raw = const {},
+  });
+
+  factory TurnSummary.fromJson(Map<String, Object?> json) {
+    return TurnSummary(
+      id: _stringValue(json['id']) ?? '',
+      status: _stringValue(json['status']) ?? 'unknown',
+      itemCount: _listOfMaps(json['items']).length,
+      itemsView: _stringValue(json['itemsView']) ?? 'notLoaded',
+      startedAtSeconds: _intValue(json['startedAt']),
+      completedAtSeconds: _intValue(json['completedAt']),
+      durationMs: _intValue(json['durationMs']),
+      errorMessage: _stringValue(_stringKeyedMap(json['error'])['message']),
+      raw: Map.unmodifiable(json),
+    );
+  }
+
+  final String id;
+  final String status;
+  final int itemCount;
+  final String itemsView;
+  final int? startedAtSeconds;
+  final int? completedAtSeconds;
+  final int? durationMs;
+  final String? errorMessage;
+  final Map<String, Object?> raw;
+}
+
+Map<String, Object?> _stringKeyedMap(Object? value) {
+  if (value is Map<String, Object?>) {
+    return value;
+  }
+  if (value is Map) {
+    return value.map(
+      (key, value) => MapEntry(key.toString(), value as Object?),
+    );
+  }
+  return const {};
 }
 
 List<Map<String, Object?>> _listOfMaps(Object? value) {

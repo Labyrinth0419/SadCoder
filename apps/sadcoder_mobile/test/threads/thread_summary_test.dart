@@ -53,4 +53,47 @@ void main() {
     expect(previewThread.title, 'Write docs');
     expect(idThread.title, 'thr_2');
   });
+
+  test('ThreadDetail parses turns from thread/read response', () {
+    final detail = ThreadDetail.fromJson({
+      'thread': {
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Fix bug',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': [
+          {
+            'id': 'turn_1',
+            'status': 'completed',
+            'items': [
+              {'type': 'message'},
+              {'type': 'command'},
+            ],
+            'itemsView': 'full',
+            'startedAt': 10,
+            'completedAt': 20,
+            'durationMs': 1000,
+          },
+          {
+            'id': 'turn_2',
+            'status': 'failed',
+            'items': <Object?>[],
+            'itemsView': 'notLoaded',
+            'error': {'message': 'failed turn'},
+          },
+        ],
+      },
+    });
+
+    expect(detail.thread.id, 'thr_1');
+    expect(detail.turns, hasLength(2));
+    expect(detail.turns.first.id, 'turn_1');
+    expect(detail.turns.first.itemCount, 2);
+    expect(detail.turns.first.itemsView, 'full');
+    expect(detail.turns.first.durationMs, 1000);
+    expect(detail.turns.last.errorMessage, 'failed turn');
+  });
 }

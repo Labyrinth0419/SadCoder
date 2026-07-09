@@ -14,6 +14,7 @@ import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/reconnect_policy.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
+import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 
@@ -355,6 +356,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   @override
   ThreadListReader get threadListReader => const _FakeThreadListReader();
 
+  @override
+  ThreadDetailReader get threadDetailReader => const _FakeThreadDetailReader();
+
   final VoidCallback onClose;
   bool _closed = false;
 
@@ -383,6 +387,29 @@ class _FakeThreadListReader implements ThreadListReader {
   @override
   Future<ThreadListPage> listThreads({int limit = 20}) async {
     return const ThreadListPage(threads: []);
+  }
+}
+
+class _FakeThreadDetailReader implements ThreadDetailReader {
+  const _FakeThreadDetailReader();
+
+  @override
+  Future<ThreadDetail> readThread({
+    required String threadId,
+    bool includeTurns = true,
+  }) async {
+    return ThreadDetail(
+      thread: ThreadSummary.fromJson({
+        'id': threadId,
+        'sessionId': 'sess_1',
+        'preview': 'Fake thread',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': <Object?>[],
+      }),
+    );
   }
 }
 

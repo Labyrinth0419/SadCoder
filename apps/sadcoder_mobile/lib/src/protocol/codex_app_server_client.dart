@@ -26,6 +26,16 @@ class CodexAppServerClient {
     return _request('thread/list', {'limit': limit});
   }
 
+  Future<Map<String, Object?>> readThread({
+    required String threadId,
+    bool includeTurns = true,
+  }) {
+    return _request('thread/read', {
+      'threadId': threadId,
+      'includeTurns': includeTurns,
+    });
+  }
+
   Future<Map<String, Object?>> _request(
     String method, [
     Map<String, Object?>? params,
