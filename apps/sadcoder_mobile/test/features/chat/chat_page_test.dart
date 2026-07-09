@@ -1476,6 +1476,134 @@ void main() {
     );
   });
 
+  testWidgets('/debug-config refreshes and shows config layers', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final configReader = _RecordingConfigSnapshotReader(
+      snapshot: CodexConfigSnapshot.fromJson({
+        'config': {
+          'model': 'gpt-5-codex',
+          'approval_policy': {'type': 'on-request'},
+        },
+        'origins': {
+          'model': {
+            'name': {'type': 'user', 'file': '/home/me/.codex/config.toml'},
+            'version': 'v1',
+          },
+        },
+        'layers': [
+          {
+            'version': 'v1',
+            'config': {'model': 'gpt-5-codex'},
+          },
+        ],
+      }),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_selected',
+            'sessionId': 'sess_1',
+            'preview': 'Selected thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+            'turns': <Object?>[],
+          }),
+        ),
+      ),
+    );
+    final configSnapshotController = CodexConfigSnapshotController(
+      readerProvider: () => configReader,
+    );
+    addTearDown(configSnapshotController.dispose);
+    addTearDown(detailController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_selected');
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+      configSnapshotController: configSnapshotController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/debug-config',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(configReader.cwdValues, ['/repo']);
+    expect(find.textContaining('Debug config'), findsOneWidget);
+    expect(find.textContaining('Effective values'), findsOneWidget);
+    expect(find.textContaining('model: gpt-5-codex'), findsOneWidget);
+    expect(find.textContaining('Origins'), findsOneWidget);
+    expect(find.textContaining('Config layers: 1'), findsOneWidget);
+    expect(find.textContaining('Layer 1: v1'), findsOneWidget);
+  });
+
+  testWidgets('/debug-config unsupported arguments do not refresh', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final configReader = _RecordingConfigSnapshotReader(
+      snapshot: const CodexConfigSnapshot(config: {}, origins: {}, layers: []),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final configSnapshotController = CodexConfigSnapshotController(
+      readerProvider: () => configReader,
+    );
+    addTearDown(configSnapshotController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      configSnapshotController: configSnapshotController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/debug-config sideways',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(configReader.cwdValues, isEmpty);
+    expect(
+      find.text('/debug-config is unavailable right now.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('/usage refreshes account usage and rate-limit snapshots', (
     tester,
   ) async {

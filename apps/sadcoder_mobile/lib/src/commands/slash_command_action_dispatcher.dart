@@ -12,6 +12,8 @@ typedef SlashCommandShowSkills = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowPlugins = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowHooks = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowApps = FutureOr<String?> Function(String arguments);
+typedef SlashCommandShowDebugConfig =
+    FutureOr<String?> Function(String arguments);
 typedef SlashCommandHandleGoal = FutureOr<String?> Function(String arguments);
 typedef SlashCommandHandleReview = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowBackgroundTerminals =
@@ -51,6 +53,7 @@ enum SlashCommandActionEffect {
   plugins,
   hooks,
   apps,
+  debugConfig,
   goal,
   review,
   backgroundTerminals,
@@ -179,6 +182,7 @@ class SlashCommandActionDispatcher {
     this.showPlugins,
     this.showHooks,
     this.showApps,
+    this.showDebugConfig,
     this.handleGoal,
     this.handleReview,
     this.showBackgroundTerminals,
@@ -206,6 +210,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandShowPlugins? showPlugins;
   final SlashCommandShowHooks? showHooks;
   final SlashCommandShowApps? showApps;
+  final SlashCommandShowDebugConfig? showDebugConfig;
   final SlashCommandHandleGoal? handleGoal;
   final SlashCommandHandleReview? handleReview;
   final SlashCommandShowBackgroundTerminals? showBackgroundTerminals;
@@ -291,6 +296,8 @@ class SlashCommandActionDispatcher {
         return _showHooks(parsed);
       case 'apps':
         return _showApps(parsed);
+      case 'debug-config':
+        return _showDebugConfig(parsed);
       case 'goal':
         return _handleGoal(parsed);
       case 'review':
@@ -499,6 +506,16 @@ class SlashCommandActionDispatcher {
       parsed,
       action: showApps,
       effect: SlashCommandActionEffect.apps,
+    );
+  }
+
+  Future<SlashCommandActionResult> _showDebugConfig(
+    SlashCommandParseResult parsed,
+  ) async {
+    return _showMessageWithArguments(
+      parsed,
+      action: showDebugConfig,
+      effect: SlashCommandActionEffect.debugConfig,
     );
   }
 

@@ -350,6 +350,14 @@ class AppLocalizations {
   String get appNotAccessible => _text('appNotAccessible');
   String get appEnabled => _text('appEnabled');
   String get appDisabled => _text('appDisabled');
+  String get debugConfigTitle => _text('debugConfigTitle');
+  String get debugConfigUnavailable => _text('debugConfigUnavailable');
+  String get debugConfigLoadFailed => _text('debugConfigLoadFailed');
+  String get debugConfigNoSnapshot => _text('debugConfigNoSnapshot');
+  String get debugConfigEffectiveValues => _text('debugConfigEffectiveValues');
+  String get debugConfigOrigins => _text('debugConfigOrigins');
+  String get debugConfigLayerConfig => _text('debugConfigLayerConfig');
+  String get debugConfigLayerMetadata => _text('debugConfigLayerMetadata');
   String get lifetimeTokens => _text('lifetimeTokens');
   String get peakDailyTokens => _text('peakDailyTokens');
   String get currentStreakDays => _text('currentStreakDays');
@@ -391,6 +399,10 @@ class AppLocalizations {
       _text('resetCreditsAvailable').replaceAll('{count}', count.toString());
   String configLayersLoaded(int count) =>
       _text('configLayersLoaded').replaceAll('{count}', count.toString());
+  String debugConfigLayers(int count) =>
+      _text('debugConfigLayers').replaceAll('{count}', count.toString());
+  String debugConfigLayer(int index) =>
+      _text('debugConfigLayer').replaceAll('{index}', index.toString());
   String get theme => _text('theme');
   String get themeBody => _text('themeBody');
 
@@ -739,6 +751,14 @@ const _values = <String, Map<String, String>>{
     'appNotAccessible': 'not accessible',
     'appEnabled': 'enabled',
     'appDisabled': 'disabled',
+    'debugConfigTitle': 'Debug config',
+    'debugConfigUnavailable': 'Connect to a host, then run /debug-config.',
+    'debugConfigLoadFailed': 'Failed to load debug config',
+    'debugConfigNoSnapshot': 'No config snapshot loaded.',
+    'debugConfigEffectiveValues': 'Effective values',
+    'debugConfigOrigins': 'Origins',
+    'debugConfigLayerConfig': 'config',
+    'debugConfigLayerMetadata': 'metadata',
     'lifetimeTokens': 'Lifetime tokens',
     'peakDailyTokens': 'Peak daily tokens',
     'currentStreakDays': 'Current streak',
@@ -765,6 +785,8 @@ const _values = <String, Map<String, String>>{
     'individualLimitRemaining': '{percent}% remaining',
     'resetCreditsAvailable': '{count} available',
     'configLayersLoaded': 'Config layers loaded: {count}',
+    'debugConfigLayers': 'Config layers: {count}',
+    'debugConfigLayer': 'Layer {index}',
     'theme': 'Theme',
     'themeBody': 'System, light, and dark modes are supported.',
   },
@@ -1081,6 +1103,14 @@ const _values = <String, Map<String, String>>{
     'appNotAccessible': '不可访问',
     'appEnabled': '已启用',
     'appDisabled': '已禁用',
+    'debugConfigTitle': '调试配置',
+    'debugConfigUnavailable': '连接主机后运行 /debug-config。',
+    'debugConfigLoadFailed': '调试配置加载失败',
+    'debugConfigNoSnapshot': '尚未加载配置快照。',
+    'debugConfigEffectiveValues': '生效值',
+    'debugConfigOrigins': '来源',
+    'debugConfigLayerConfig': '配置',
+    'debugConfigLayerMetadata': '元数据',
     'lifetimeTokens': '累计 token',
     'peakDailyTokens': '单日峰值 token',
     'currentStreakDays': '当前连续天数',
@@ -1107,6 +1137,8 @@ const _values = <String, Map<String, String>>{
     'individualLimitRemaining': '剩余 {percent}%',
     'resetCreditsAvailable': '{count} 个可用',
     'configLayersLoaded': '已加载配置层：{count}',
+    'debugConfigLayers': '配置层：{count}',
+    'debugConfigLayer': '第 {index} 层',
     'theme': '主题',
     'themeBody': '支持跟随系统、浅色和深色模式。',
   },

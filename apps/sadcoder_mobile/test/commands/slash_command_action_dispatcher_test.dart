@@ -314,6 +314,43 @@ void main() {
     expect(result.command?.command, 'apps');
   });
 
+  test('/debug-config returns the injected debug config summary', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      showDebugConfig: (argument) async {
+        arguments.add(argument);
+        return 'Debug config\nEffective values';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/debug-config'),
+      hasActiveTurn: true,
+    );
+
+    expect(arguments, ['']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.debugConfig);
+    expect(result.message, contains('Effective values'));
+  });
+
+  test(
+    '/debug-config is unavailable when arguments are not supported',
+    () async {
+      final dispatcher = SlashCommandActionDispatcher(
+        showDebugConfig: (_) => null,
+      );
+
+      final result = await dispatcher.dispatch(
+        registry.parseComposerText('/debug-config sideways'),
+        hasActiveTurn: false,
+      );
+
+      expect(result.outcome, SlashCommandActionOutcome.unavailable);
+      expect(result.command?.command, 'debug-config');
+    },
+  );
+
   test('/goal passes inline arguments to the injected goal handler', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(
