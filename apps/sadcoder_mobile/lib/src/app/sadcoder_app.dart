@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import '../approvals/approval_state_controller.dart';
 import '../i18n/app_localizations.dart';
 import '../session/codex_session_state_controller.dart';
+import '../ssh/ssh_profile_store.dart';
 import 'app_shell.dart';
 
 class SadCoderApp extends StatelessWidget {
@@ -12,11 +13,13 @@ class SadCoderApp extends StatelessWidget {
     this.locale,
     this.approvalController,
     this.sessionController,
+    this.profileStore,
   });
 
   final Locale? locale;
   final ApprovalStateController? approvalController;
   final CodexSessionStateController? sessionController;
+  final SshProfileStore? profileStore;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +51,7 @@ class SadCoderApp extends StatelessWidget {
       home: AppShell(
         approvalController: approvalController,
         sessionController: sessionController,
+        profileStore: profileStore,
       ),
     );
   }

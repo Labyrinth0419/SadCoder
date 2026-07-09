@@ -8,6 +8,7 @@ import '../../session/codex_session_state_controller.dart';
 import '../../ssh/dart_ssh_proxy_connector.dart';
 import '../../ssh/dart_ssh_remote_command_runner.dart';
 import '../../ssh/ssh_profile.dart';
+import '../../ssh/ssh_profile_store.dart';
 
 const M0ProbeRunner _defaultProbeRunner = M0ProbeCoordinator(
   statusReader: AgentRemoteService(DartSshRemoteCommandRunner()),
@@ -15,10 +16,16 @@ const M0ProbeRunner _defaultProbeRunner = M0ProbeCoordinator(
 );
 
 class HostsPage extends StatefulWidget {
-  const HostsPage({super.key, this.probeRunner, this.sessionController});
+  const HostsPage({
+    super.key,
+    this.probeRunner,
+    this.sessionController,
+    this.profileStore,
+  });
 
   final M0ProbeRunner? probeRunner;
   final CodexSessionStateController? sessionController;
+  final SshProfileStore? profileStore;
 
   @override
   State<HostsPage> createState() => _HostsPageState();
@@ -34,11 +41,30 @@ class _HostsPageState extends State<HostsPage> {
   final _agentCommandController = TextEditingController(text: 'sadcoder-agent');
 
   bool _testing = false;
+  bool _savingProfile = false;
   M0ProbeReport? _report;
   String? _error;
   String? _connectionActionError;
+  String? _profileMessage;
+  String? _profileError;
 
   M0ProbeRunner get _runner => widget.probeRunner ?? _defaultProbeRunner;
+
+  SshProfileStore? get _profileStore => widget.profileStore;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedProfile();
+  }
+
+  @override
+  void didUpdateWidget(HostsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profileStore != widget.profileStore) {
+      _loadSavedProfile();
+    }
+  }
 
   @override
   void dispose() {
@@ -82,11 +108,24 @@ class _HostsPageState extends State<HostsPage> {
           passwordController: _passwordController,
           agentCommandController: _agentCommandController,
           testing: _testing,
+          savingProfile: _savingProfile,
           onTest: _runProbe,
+          onSaveProfile: _profileStore == null ? null : _saveProfile,
           sessionStatus: sessionController?.status,
           onConnect: sessionController == null ? null : _connect,
           onDisconnect: sessionController == null ? null : _disconnect,
         ),
+        if (_profileMessage != null || _profileError != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _profileError ?? _profileMessage!,
+            style: TextStyle(
+              color: _profileError == null
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.error,
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         if (sessionController != null) ...[
           _SessionStatusPanel(
@@ -125,6 +164,62 @@ class _HostsPageState extends State<HostsPage> {
     } finally {
       if (mounted) {
         setState(() => _testing = false);
+      }
+    }
+  }
+
+  Future<void> _loadSavedProfile() async {
+    final store = _profileStore;
+    if (store == null) {
+      return;
+    }
+    try {
+      final profile = await store.loadLastProfile();
+      if (!mounted || profile == null) {
+        return;
+      }
+      setState(() => _applyProfile(profile));
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _profileError = error.toString());
+      }
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    final store = _profileStore;
+    if (store == null) {
+      return;
+    }
+    final validationError = _profileValidationError(context.l10n);
+    if (validationError != null) {
+      setState(() {
+        _profileMessage = null;
+        _profileError = validationError;
+      });
+      return;
+    }
+
+    setState(() {
+      _savingProfile = true;
+      _profileMessage = null;
+      _profileError = null;
+    });
+
+    try {
+      await store.saveLastProfile(_buildProfile());
+      if (mounted) {
+        setState(
+          () => _profileMessage = context.l10n.profileSavedWithoutSecrets,
+        );
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _profileError = error.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _savingProfile = false);
       }
     }
   }
@@ -175,6 +270,31 @@ class _HostsPageState extends State<HostsPage> {
       agentCommand: _agentCommandController.text.trim(),
     );
   }
+
+  void _applyProfile(SshProfile profile) {
+    _nameController.text = profile.name;
+    _hostController.text = profile.host;
+    _portController.text = profile.port.toString();
+    _usernameController.text = profile.username;
+    _agentCommandController.text = profile.agentCommand;
+  }
+
+  String? _profileValidationError(AppLocalizations l10n) {
+    if (_hostController.text.trim().isEmpty) {
+      return l10n.hostRequired;
+    }
+    if (_usernameController.text.trim().isEmpty) {
+      return l10n.usernameRequired;
+    }
+    if (_agentCommandController.text.trim().isEmpty) {
+      return l10n.agentCommandRequired;
+    }
+    final port = int.tryParse(_portController.text.trim());
+    if (port == null || port < 1 || port > 65535) {
+      return l10n.invalidPort;
+    }
+    return null;
+  }
 }
 
 class _HostProfileForm extends StatelessWidget {
@@ -187,7 +307,9 @@ class _HostProfileForm extends StatelessWidget {
     required this.passwordController,
     required this.agentCommandController,
     required this.testing,
+    required this.savingProfile,
     required this.onTest,
+    required this.onSaveProfile,
     required this.sessionStatus,
     required this.onConnect,
     required this.onDisconnect,
@@ -201,7 +323,9 @@ class _HostProfileForm extends StatelessWidget {
   final TextEditingController passwordController;
   final TextEditingController agentCommandController;
   final bool testing;
+  final bool savingProfile;
   final VoidCallback onTest;
+  final VoidCallback? onSaveProfile;
   final CodexSessionStatus? sessionStatus;
   final VoidCallback? onConnect;
   final VoidCallback? onDisconnect;
@@ -304,6 +428,22 @@ class _HostProfileForm extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
+                    if (onSaveProfile != null)
+                      OutlinedButton.icon(
+                        key: const ValueKey('host-save-profile-button'),
+                        onPressed: savingProfile ? null : onSaveProfile,
+                        icon: savingProfile
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.save_outlined),
+                        label: Text(
+                          savingProfile ? l10n.savingProfile : l10n.saveProfile,
+                        ),
+                      ),
                     OutlinedButton.icon(
                       key: const ValueKey('probe-test-button'),
                       onPressed: testing ? null : onTest,

@@ -18,6 +18,7 @@ import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/reconnect_policy.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
+import 'package:sadcoder_mobile/src/ssh/ssh_profile_store.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
@@ -91,6 +92,112 @@ void main() {
     expect(find.text('Host is required'), findsOneWidget);
     expect(find.text('Username is required'), findsOneWidget);
     expect(find.text('Password is required'), findsOneWidget);
+  });
+
+  testWidgets('saves host profile metadata without requiring password', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final store = _FakeProfileStore();
+
+    await _pumpHostsPage(tester, runner, profileStore: store);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('host-name-field')),
+      'Dev',
+    );
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(find.byKey(const ValueKey('port-field')), '2200');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('agent-command-field')),
+      'sadcoder-agent --verbose',
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('host-save-profile-button')),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('host-save-profile-button')));
+    await tester.pumpAndSettle();
+
+    expect(store.savedProfile?.name, 'Dev');
+    expect(store.savedProfile?.host, 'srv.dev');
+    expect(store.savedProfile?.port, 2200);
+    expect(store.savedProfile?.username, 'alice');
+    expect(store.savedProfile?.password, isEmpty);
+    expect(store.savedProfile?.agentCommand, 'sadcoder-agent --verbose');
+    expect(
+      find.text('Profile saved. Secrets are not stored in local preferences.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('loads saved host profile metadata into the form', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final store = _FakeProfileStore(
+      initialProfile: const SshProfile(
+        id: 'manual',
+        name: 'Dev',
+        host: 'srv.dev',
+        port: 2200,
+        username: 'alice',
+        password: 'should-not-fill',
+        agentCommand: 'sadcoder-agent --verbose',
+      ),
+    );
+
+    await _pumpHostsPage(tester, runner, profileStore: store);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const ValueKey('host-name-field')))
+          .controller
+          ?.text,
+      'Dev',
+    );
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const ValueKey('host-field')))
+          .controller
+          ?.text,
+      'srv.dev',
+    );
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const ValueKey('port-field')))
+          .controller
+          ?.text,
+      '2200',
+    );
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const ValueKey('username-field')))
+          .controller
+          ?.text,
+      'alice',
+    );
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const ValueKey('password-field')))
+          .controller
+          ?.text,
+      isEmpty,
+    );
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const ValueKey('agent-command-field')),
+          )
+          .controller
+          ?.text,
+      'sadcoder-agent --verbose',
+    );
   });
 
   testWidgets('connects and disconnects a Codex app session', (tester) async {
@@ -274,6 +381,7 @@ Future<void> _pumpHostsPage(
   WidgetTester tester,
   M0ProbeRunner runner, {
   CodexSessionStateController? sessionController,
+  SshProfileStore? profileStore,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -287,6 +395,7 @@ Future<void> _pumpHostsPage(
       home: HostsPage(
         probeRunner: runner,
         sessionController: sessionController,
+        profileStore: profileStore,
       ),
     ),
   );
@@ -321,6 +430,21 @@ class _FakeProbeRunner implements M0ProbeRunner {
   Future<M0ProbeReport> run(SshProfile profile) async {
     lastProfile = profile;
     return report;
+  }
+}
+
+class _FakeProfileStore implements SshProfileStore {
+  _FakeProfileStore({this.initialProfile});
+
+  final SshProfile? initialProfile;
+  SshProfile? savedProfile;
+
+  @override
+  Future<SshProfile?> loadLastProfile() async => initialProfile;
+
+  @override
+  Future<void> saveLastProfile(SshProfile profile) async {
+    savedProfile = profile;
   }
 }
 

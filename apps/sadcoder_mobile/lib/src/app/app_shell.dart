@@ -16,6 +16,7 @@ import '../session/codex_session_connector.dart';
 import '../session/codex_session_state_controller.dart';
 import '../ssh/dart_ssh_proxy_connector.dart';
 import '../ssh/dart_ssh_remote_command_runner.dart';
+import '../ssh/ssh_profile_store.dart';
 import '../threads/thread_detail_controller.dart';
 import '../threads/thread_list_controller.dart';
 import '../turns/turn_controller.dart';
@@ -28,10 +29,16 @@ const _defaultAgentRemoteService = AgentRemoteService(
 );
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, this.approvalController, this.sessionController});
+  const AppShell({
+    super.key,
+    this.approvalController,
+    this.sessionController,
+    this.profileStore,
+  });
 
   final ApprovalStateController? approvalController;
   final CodexSessionStateController? sessionController;
+  final SshProfileStore? profileStore;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -185,7 +192,10 @@ class _AppShellState extends State<AppShell> {
 
   Widget _pageForIndex(int index) {
     return switch (index) {
-      0 => HostsPage(sessionController: _sessionController),
+      0 => HostsPage(
+        sessionController: _sessionController,
+        profileStore: widget.profileStore,
+      ),
       1 => ChatPage(
         sessionController: _sessionController,
         threadListController: _threadListController,
@@ -210,7 +220,10 @@ class _AppShellState extends State<AppShell> {
         configOverrideController: _configOverrideController,
         configSnapshotController: _configSnapshotController,
       ),
-      _ => HostsPage(sessionController: _sessionController),
+      _ => HostsPage(
+        sessionController: _sessionController,
+        profileStore: widget.profileStore,
+      ),
     };
   }
 
