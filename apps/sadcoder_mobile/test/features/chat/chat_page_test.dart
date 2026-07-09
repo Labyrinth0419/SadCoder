@@ -3988,6 +3988,192 @@ void main() {
     expect(find.text('Side conversation'), findsNothing);
   });
 
+  testWidgets('/agent shows topology and switches selected thread', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final threads = [
+      ThreadSummary.fromJson({
+        'id': 'thr_main',
+        'sessionId': 'sess_1',
+        'preview': 'Main thread',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': <Object?>[],
+      }),
+      ThreadSummary.fromJson({
+        'id': 'thr_worker',
+        'sessionId': 'sess_1',
+        'preview': 'Build patch',
+        'ephemeral': false,
+        'status': 'running',
+        'cwd': '/repo',
+        'updatedAt': 2,
+        'parentThreadId': 'thr_main',
+        'ancestorThreadId': 'thr_main',
+        'agentNickname': 'Builder',
+        'agentRole': 'coder',
+        'turns': <Object?>[],
+      }),
+    ];
+    final listReader = _CountingThreadListReader(
+      page: ThreadListPage(threads: threads),
+    );
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(thread: threads.first),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: listReader,
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadListController = ThreadListController(
+      readerProvider: () => sessionController.threadListReader,
+    );
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    addTearDown(threadDetailController.dispose);
+    addTearDown(threadListController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await threadDetailController.readThread('thr_main');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadListController: threadListController,
+      threadDetailController: threadDetailController,
+      turnController: turnController,
+      timelineController: timelineController,
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/agent',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Agent threads'), findsOneWidget);
+    expect(find.textContaining('Builder / coder'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('agent-thread-thr_worker')));
+    await tester.pumpAndSettle();
+
+    expect(listReader.calls, greaterThanOrEqualTo(1));
+    expect(turnController.activeThreadId, 'thr_worker');
+    expect(timelineController.selectedThreadId, 'thr_worker');
+    expect(threadDetailController.selectedThreadId, 'thr_worker');
+    expect(detailReader.threadIds, ['thr_main', 'thr_worker']);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(find.text('Selected agent thread.'), findsOneWidget);
+  });
+
+  testWidgets('/subagents shows only subagent entries', (tester) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final threads = [
+      ThreadSummary.fromJson({
+        'id': 'thr_main',
+        'sessionId': 'sess_1',
+        'preview': 'Main thread',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': <Object?>[],
+      }),
+      ThreadSummary.fromJson({
+        'id': 'thr_review',
+        'sessionId': 'sess_1',
+        'preview': 'Review patch',
+        'ephemeral': false,
+        'status': 'closed',
+        'cwd': '/repo',
+        'updatedAt': 2,
+        'parentThreadId': 'thr_main',
+        'ancestorThreadId': 'thr_main',
+        'agentRole': 'reviewer',
+        'turns': <Object?>[],
+      }),
+    ];
+    final starter = _FakeSessionStarter(
+      threadListReader: _FakeThreadListReader(
+        page: ThreadListPage(threads: threads),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadListController = ThreadListController(
+      readerProvider: () => sessionController.threadListReader,
+    );
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () =>
+          _FakeThreadDetailReader(detail: ThreadDetail(thread: threads.first)),
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    addTearDown(threadDetailController.dispose);
+    addTearDown(threadListController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await threadDetailController.readThread('thr_main');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadListController: threadListController,
+      threadDetailController: threadDetailController,
+      turnController: turnController,
+      timelineController: timelineController,
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/subagents',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Subagents'), findsOneWidget);
+    expect(find.byKey(const ValueKey('agent-thread-thr_main')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('agent-thread-thr_review')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('agent-thread-thr_review')));
+    await tester.pumpAndSettle();
+
+    expect(turnController.activeThreadId, 'thr_review');
+    expect(timelineController.selectedThreadId, 'thr_review');
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+  });
+
   testWidgets('/compact starts compaction for the current thread', (
     tester,
   ) async {

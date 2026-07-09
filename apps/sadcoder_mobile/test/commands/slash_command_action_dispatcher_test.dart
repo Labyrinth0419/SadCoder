@@ -1092,6 +1092,49 @@ void main() {
     expect(result.command?.command, 'permissions');
   });
 
+  test('/agent and /subagents open the topology browser', () async {
+    final calls = <bool>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      showAgentTopology: ({required bool subagentsOnly}) async {
+        calls.add(subagentsOnly);
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final agent = await dispatcher.dispatch(
+      registry.parseComposerText('/agent'),
+      hasActiveTurn: false,
+    );
+    final subagents = await dispatcher.dispatch(
+      registry.parseComposerText('/subagents'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, [false, true]);
+    expect(agent.outcome, SlashCommandActionOutcome.executed);
+    expect(agent.effect, SlashCommandActionEffect.agentTopology);
+    expect(subagents.outcome, SlashCommandActionOutcome.executed);
+    expect(subagents.effect, SlashCommandActionEffect.agentTopology);
+  });
+
+  test('/agent rejects unsupported inline arguments', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      showAgentTopology: ({required bool subagentsOnly}) async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/agent thr_1'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(calls, 0);
+  });
+
   test(
     'unknown and unsupported commands never fall through as prompts',
     () async {

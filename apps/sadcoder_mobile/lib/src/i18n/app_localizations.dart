@@ -149,6 +149,8 @@ class AppLocalizations {
       _text('slashCommandSideConversationStarted');
   String get slashCommandReturnedToMainThread =>
       _text('slashCommandReturnedToMainThread');
+  String get slashCommandAgentThreadSelected =>
+      _text('slashCommandAgentThreadSelected');
   String get slashCommandModelUpdated => _text('slashCommandModelUpdated');
   String get slashCommandPersonalityUpdated =>
       _text('slashCommandPersonalityUpdated');
@@ -260,6 +262,12 @@ class AppLocalizations {
   String get sideConversationParent => _text('sideConversationParent');
   String get sideConversationDropped => _text('sideConversationDropped');
   String get returnToMainThread => _text('returnToMainThread');
+  String get agentTopologyTitle => _text('agentTopologyTitle');
+  String get subagentTopologyTitle => _text('subagentTopologyTitle');
+  String get agentRole => _text('agentRole');
+  String get agentParentThread => _text('agentParentThread');
+  String get agentAncestorThread => _text('agentAncestorThread');
+  String get activeThread => _text('activeThread');
   String get modelCommandTitle => _text('modelCommandTitle');
   String get modelCommandTurnScope => _text('modelCommandTurnScope');
   String get modelCommandSessionScope => _text('modelCommandSessionScope');
@@ -603,6 +611,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandMentionInserted': 'File mention inserted.',
     'slashCommandSideConversationStarted': 'Started side conversation.',
     'slashCommandReturnedToMainThread': 'Returned to main thread.',
+    'slashCommandAgentThreadSelected': 'Selected agent thread.',
     'slashCommandModelUpdated': 'Model override updated.',
     'slashCommandPersonalityUpdated': 'Personality override updated.',
     'slashCommandPermissionsUpdated': 'Permission override updated.',
@@ -713,6 +722,12 @@ const _values = <String, Map<String, String>>{
     'sideConversationDropped':
         'Side conversation ended because the connection dropped.',
     'returnToMainThread': 'Return',
+    'agentTopologyTitle': 'Agent threads',
+    'subagentTopologyTitle': 'Subagents',
+    'agentRole': 'Agent',
+    'agentParentThread': 'Parent thread',
+    'agentAncestorThread': 'Ancestor thread',
+    'activeThread': 'active',
     'modelCommandTitle': 'Model override',
     'modelCommandTurnScope': 'Next turn',
     'modelCommandSessionScope': 'Session',
@@ -1006,6 +1021,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandMentionInserted': '已插入文件提及。',
     'slashCommandSideConversationStarted': '已开始侧聊。',
     'slashCommandReturnedToMainThread': '已返回主线会话。',
+    'slashCommandAgentThreadSelected': '已切换 agent 会话。',
     'slashCommandModelUpdated': '已更新模型覆盖。',
     'slashCommandPersonalityUpdated': '已更新协作风格覆盖。',
     'slashCommandPermissionsUpdated': '已更新权限覆盖。',
@@ -1108,6 +1124,12 @@ const _values = <String, Map<String, String>>{
     'sideConversationParent': '主线会话',
     'sideConversationDropped': '连接已断开，侧聊已结束。',
     'returnToMainThread': '返回',
+    'agentTopologyTitle': 'Agent 会话',
+    'subagentTopologyTitle': '子 agent',
+    'agentRole': 'Agent',
+    'agentParentThread': '父会话',
+    'agentAncestorThread': '祖先会话',
+    'activeThread': '当前',
     'modelCommandTitle': '模型覆盖',
     'modelCommandTurnScope': '本次回合',
     'modelCommandSessionScope': '本会话',

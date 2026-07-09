@@ -36,6 +36,8 @@ typedef SlashCommandStartSideConversation =
       String arguments, {
       required bool btw,
     });
+typedef SlashCommandShowAgentTopology =
+    Future<SlashCommandCallbackResult> Function({required bool subagentsOnly});
 typedef SlashCommandConfirmedThreadAction =
     Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfiguredAction =
@@ -84,6 +86,7 @@ enum SlashCommandActionEffect {
   theme,
   mention,
   sideConversation,
+  agentTopology,
   modelOverride,
   personalityOverride,
   permissionsOverride,
@@ -215,6 +218,7 @@ class SlashCommandActionDispatcher {
     this.configureTheme,
     this.mentionFile,
     this.startSideConversation,
+    this.showAgentTopology,
     this.forkThread,
     this.compactThread,
     this.archiveThread,
@@ -249,6 +253,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandConfigureTheme? configureTheme;
   final SlashCommandMentionFile? mentionFile;
   final SlashCommandStartSideConversation? startSideConversation;
+  final SlashCommandShowAgentTopology? showAgentTopology;
   final SlashCommandConfiguredAction? forkThread;
   final SlashCommandConfiguredAction? compactThread;
   final SlashCommandConfirmedThreadAction? archiveThread;
@@ -345,6 +350,10 @@ class SlashCommandActionDispatcher {
         return _showDiff(parsed);
       case 'goal':
         return _handleGoal(parsed);
+      case 'agent':
+        return _showAgentTopology(parsed, subagentsOnly: false);
+      case 'subagents':
+        return _showAgentTopology(parsed, subagentsOnly: true);
       case 'review':
         return _handleReview(parsed);
       case 'ps':
@@ -933,6 +942,58 @@ class SlashCommandActionDispatcher {
             rawCommand: parsed.rawCommand,
             arguments: parsed.arguments,
             effect: SlashCommandActionEffect.sideConversation,
+          ),
+        SlashCommandCallbackResult.cancelled =>
+          SlashCommandActionResult.cancelled(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+          ),
+        SlashCommandCallbackResult.unavailable =>
+          SlashCommandActionResult.unavailable(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+          ),
+      };
+    } on Object catch (error) {
+      return SlashCommandActionResult.failed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        error: error,
+      );
+    }
+  }
+
+  Future<SlashCommandActionResult> _showAgentTopology(
+    SlashCommandParseResult parsed, {
+    required bool subagentsOnly,
+  }) async {
+    if (parsed.arguments.trim().isNotEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    final showAgentTopology = this.showAgentTopology;
+    if (showAgentTopology == null) {
+      return SlashCommandActionResult.unsupported(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    try {
+      final result = await showAgentTopology(subagentsOnly: subagentsOnly);
+      return switch (result) {
+        SlashCommandCallbackResult.executed =>
+          SlashCommandActionResult.executed(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+            effect: SlashCommandActionEffect.agentTopology,
           ),
         SlashCommandCallbackResult.cancelled =>
           SlashCommandActionResult.cancelled(

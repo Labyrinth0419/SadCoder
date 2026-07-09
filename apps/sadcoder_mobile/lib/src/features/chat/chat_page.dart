@@ -20,6 +20,7 @@ import '../../permissions/permission_profile_list_controller.dart';
 import '../../permissions/permission_profile_list_reader.dart';
 import '../../reviews/thread_review_command.dart';
 import '../../session/codex_session_state_controller.dart';
+import '../../threads/agent_thread_topology.dart';
 import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_list_controller.dart';
 import '../../threads/thread_mutation_runner.dart';
@@ -383,6 +384,7 @@ class _ChatPageState extends State<ChatPage> {
           configureTheme: _configureTheme,
           mentionFile: _mentionFile,
           startSideConversation: _startSideConversation,
+          showAgentTopology: _showAgentTopology,
           forkThread: _forkCurrentThread,
           compactThread: _compactCurrentThread,
           archiveThread: _archiveCurrentThread,
@@ -1001,6 +1003,53 @@ class _ChatPageState extends State<ChatPage> {
     return SlashCommandCallbackResult.executed;
   }
 
+  Future<SlashCommandCallbackResult> _showAgentTopology({
+    required bool subagentsOnly,
+  }) async {
+    final threadListController = widget.threadListController;
+    final turnController = widget.turnController;
+    if (threadListController == null || turnController == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    await threadListController.refresh(limit: 100);
+    if (!mounted) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+    final topology = AgentThreadTopology.fromThreads(
+      threadListController.threads,
+    );
+    final entries = subagentsOnly ? topology.subagentEntries : topology.entries;
+    if (entries.isEmpty) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    final selectedThread = await showModalBottomSheet<ThreadSummary>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _AgentTopologySheet(
+        entries: entries,
+        subagentsOnly: subagentsOnly,
+        activeThreadId: _currentThreadId(),
+      ),
+    );
+    if (!mounted || selectedThread == null) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+    if (!turnController.canSubmit) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    final activated = turnController.activateThread(selectedThread.id);
+    if (!activated) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    _clearSideConversation();
+    widget.timelineController?.selectThread(selectedThread.id);
+    unawaited(widget.threadDetailController?.readThread(selectedThread.id));
+    return SlashCommandCallbackResult.executed;
+  }
+
   Future<void> _returnToMainThread() async {
     final sideConversation = _sideConversation;
     final turnController = widget.turnController;
@@ -1282,6 +1331,8 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.mention => l10n.slashCommandMentionInserted,
         SlashCommandActionEffect.sideConversation =>
           l10n.slashCommandSideConversationStarted,
+        SlashCommandActionEffect.agentTopology =>
+          l10n.slashCommandAgentThreadSelected,
         SlashCommandActionEffect.modelOverride => l10n.slashCommandModelUpdated,
         SlashCommandActionEffect.personalityOverride =>
           l10n.slashCommandPersonalityUpdated,
@@ -1469,6 +1520,100 @@ class _SideConversationPanel extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AgentTopologySheet extends StatelessWidget {
+  const _AgentTopologySheet({
+    required this.entries,
+    required this.subagentsOnly,
+    required this.activeThreadId,
+  });
+
+  final List<AgentThreadTopologyEntry> entries;
+  final bool subagentsOnly;
+  final String? activeThreadId;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final media = MediaQuery.of(context);
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: media.size.height * 0.78),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                subagentsOnly
+                    ? l10n.subagentTopologyTitle
+                    : l10n.agentTopologyTitle,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: entries.length,
+                itemBuilder: (context, index) => _AgentTopologyTile(
+                  entry: entries[index],
+                  active: entries[index].thread.id == activeThreadId,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AgentTopologyTile extends StatelessWidget {
+  const _AgentTopologyTile({required this.entry, required this.active});
+
+  final AgentThreadTopologyEntry entry;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final thread = entry.thread;
+    final role = entry.displayRole;
+    final details = <String>[
+      '${l10n.approvalThread}: ${thread.id}',
+      '${l10n.timelineStatus}: ${thread.status}',
+      if (role.isNotEmpty) '${l10n.agentRole}: $role',
+      if (thread.parentThreadId != null)
+        '${l10n.agentParentThread}: ${thread.parentThreadId}',
+      if (thread.ancestorThreadId != null)
+        '${l10n.agentAncestorThread}: ${thread.ancestorThreadId}',
+      if (thread.cwd.isNotEmpty) thread.cwd,
+    ];
+    return ListTile(
+      key: ValueKey('agent-thread-${thread.id}'),
+      contentPadding: EdgeInsetsDirectional.only(
+        start: 16.0 + entry.depth * 24,
+        end: 16,
+      ),
+      leading: Icon(
+        thread.isSubagent ? Icons.account_tree_outlined : Icons.forum_outlined,
+      ),
+      title: Text(
+        active ? '${thread.title} (${l10n.activeThread})' : thread.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(details.join('\n')),
+      isThreeLine: true,
+      trailing: entry.hasChildren
+          ? const Icon(Icons.keyboard_arrow_down)
+          : const Icon(Icons.chevron_right),
+      onTap: () => Navigator.of(context).pop(thread),
     );
   }
 }

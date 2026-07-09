@@ -44,6 +44,7 @@ class ThreadSummary {
     required this.updatedAtSeconds,
     this.name,
     this.parentThreadId,
+    this.ancestorThreadId,
     this.forkedFromId,
     this.agentNickname,
     this.agentRole,
@@ -62,6 +63,7 @@ class ThreadSummary {
       updatedAtSeconds: _intValue(json['updatedAt']) ?? 0,
       name: _stringValue(json['name']),
       parentThreadId: _stringValue(json['parentThreadId']),
+      ancestorThreadId: _stringValue(json['ancestorThreadId']),
       forkedFromId: _stringValue(json['forkedFromId']),
       agentNickname: _stringValue(json['agentNickname']),
       agentRole: _stringValue(json['agentRole']),
@@ -85,6 +87,7 @@ class ThreadSummary {
   final int updatedAtSeconds;
   final String? name;
   final String? parentThreadId;
+  final String? ancestorThreadId;
   final String? forkedFromId;
   final String? agentNickname;
   final String? agentRole;
@@ -102,8 +105,10 @@ class ThreadSummary {
     return id;
   }
 
-  bool get isSubagent => parentThreadId != null;
-  bool get isFork => forkedFromId != null;
+  bool get isSubagent =>
+      parentThreadId?.trim().isNotEmpty == true ||
+      ancestorThreadId?.trim().isNotEmpty == true;
+  bool get isFork => forkedFromId?.trim().isNotEmpty == true;
 }
 
 class TurnSummary {

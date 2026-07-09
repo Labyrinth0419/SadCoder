@@ -16,6 +16,7 @@ void main() {
           'name': 'CI fix',
           'forkedFromId': 'thr_0',
           'parentThreadId': null,
+          'ancestorThreadId': 'thr_root',
         },
       ],
       'nextCursor': 'next',
@@ -27,6 +28,8 @@ void main() {
     expect(page.threads.single.id, 'thr_1');
     expect(page.threads.single.title, 'CI fix');
     expect(page.threads.single.isFork, true);
+    expect(page.threads.single.isSubagent, true);
+    expect(page.threads.single.ancestorThreadId, 'thr_root');
     expect(page.threads.single.cwd, '/repo');
   });
 
