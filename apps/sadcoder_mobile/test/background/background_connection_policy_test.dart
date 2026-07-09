@@ -11,7 +11,7 @@ void main() {
 
     expect(fixture.disconnects, 1);
     expect(fixture.connected.value, false);
-    expect(fixture.keeper.retainContexts, isEmpty);
+    expect(fixture.recordingKeeper.retainContexts, isEmpty);
   });
 
   test('background with active turn retains the connection', () async {
@@ -22,11 +22,11 @@ void main() {
 
     expect(fixture.disconnects, 0);
     expect(fixture.connected.value, true);
-    expect(fixture.keeper.retainContexts.single.turnId, 'turn_1');
+    expect(fixture.recordingKeeper.retainContexts.single.turnId, 'turn_1');
 
     await fixture.coordinator.handleLifecycleState(AppLifecycleState.resumed);
 
-    expect(fixture.keeper.retentions.single.released, true);
+    expect(fixture.recordingKeeper.retentions.single.released, true);
   });
 
   test('disabled active-turn retention disconnects in background', () async {
@@ -39,7 +39,7 @@ void main() {
     await fixture.coordinator.handleLifecycleState(AppLifecycleState.paused);
 
     expect(fixture.disconnects, 1);
-    expect(fixture.keeper.retainContexts, isEmpty);
+    expect(fixture.recordingKeeper.retainContexts, isEmpty);
   });
 
   test(
@@ -52,22 +52,39 @@ void main() {
       fixture.turnId.value = null;
       await Future<void>.delayed(Duration.zero);
 
-      expect(fixture.keeper.retentions.single.released, true);
+      expect(fixture.recordingKeeper.retentions.single.released, true);
       expect(fixture.disconnects, 1);
       expect(fixture.connected.value, false);
     },
   );
+
+  test('retention failure disconnects observation', () async {
+    final fixture = _Fixture(
+      activeTurnId: 'turn_1',
+      keeper: const _FailingKeeper(),
+    );
+    addTearDown(fixture.dispose);
+
+    await fixture.coordinator.handleLifecycleState(AppLifecycleState.paused);
+
+    expect(fixture.disconnects, 1);
+    expect(fixture.connected.value, false);
+  });
 }
 
 class _Fixture {
-  _Fixture({String? activeTurnId, BackgroundConnectionPreferences? preferences})
-    : preferences = preferences ?? BackgroundConnectionPreferences(),
-      turnId = ValueNotifier<String?>(activeTurnId) {
+  _Fixture({
+    String? activeTurnId,
+    BackgroundConnectionPreferences? preferences,
+    BackgroundConnectionKeeper? keeper,
+  }) : preferences = preferences ?? BackgroundConnectionPreferences(),
+       keeper = keeper ?? _RecordingKeeper(),
+       turnId = ValueNotifier<String?>(activeTurnId) {
     coordinator = AppLifecycleConnectionCoordinator(
       sessionListenable: connected,
       turnListenable: turnId,
       preferences: this.preferences,
-      keeper: keeper,
+      keeper: this.keeper,
       isConnected: () => connected.value,
       hasActiveTurn: () => turnId.value != null,
       endpointProvider: () => 'tester@localhost:22',
@@ -83,9 +100,11 @@ class _Fixture {
   final ValueNotifier<bool> connected = ValueNotifier<bool>(true);
   final ValueNotifier<String?> turnId;
   final BackgroundConnectionPreferences preferences;
-  final _RecordingKeeper keeper = _RecordingKeeper();
+  final BackgroundConnectionKeeper keeper;
   late final AppLifecycleConnectionCoordinator coordinator;
   int disconnects = 0;
+
+  _RecordingKeeper get recordingKeeper => keeper as _RecordingKeeper;
 
   Future<void> dispose() async {
     await coordinator.dispose();
@@ -116,5 +135,16 @@ class _RecordingRetention implements BackgroundConnectionRetention {
   @override
   Future<void> release() async {
     released = true;
+  }
+}
+
+class _FailingKeeper implements BackgroundConnectionKeeper {
+  const _FailingKeeper();
+
+  @override
+  Future<BackgroundConnectionRetention> retain(
+    BackgroundConnectionContext context,
+  ) async {
+    throw StateError('foreground service unavailable');
   }
 }

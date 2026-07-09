@@ -156,13 +156,18 @@ class AppLifecycleConnectionCoordinator {
       if (_retention != null) {
         return;
       }
-      _retention = await _keeper.retain(
-        BackgroundConnectionContext(
-          endpoint: _endpointProvider(),
-          threadId: _activeThreadIdProvider(),
-          turnId: _activeTurnIdProvider(),
-        ),
-      );
+      try {
+        _retention = await _keeper.retain(
+          BackgroundConnectionContext(
+            endpoint: _endpointProvider(),
+            threadId: _activeThreadIdProvider(),
+            turnId: _activeTurnIdProvider(),
+          ),
+        );
+      } on Object {
+        _retention = null;
+        await _disconnectIfNeeded();
+      }
       return;
     }
 
