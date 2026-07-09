@@ -80,7 +80,16 @@ class LineJsonRpcTransport implements JsonRpcTransport {
       if (error != null) {
         completer?.completeError(JsonRpcRemoteException(error.toString()));
       } else {
-        completer?.complete(decoded);
+        final result = decoded['result'];
+        if (result is Map<String, Object?>) {
+          completer?.complete(result);
+        } else if (result is Map) {
+          completer?.complete(Map<String, Object?>.from(result));
+        } else {
+          completer?.completeError(
+            FormatException('JSON-RPC result is not an object', line),
+          );
+        }
       }
       return;
     }

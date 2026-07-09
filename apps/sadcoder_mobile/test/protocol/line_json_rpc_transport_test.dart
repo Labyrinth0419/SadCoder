@@ -33,11 +33,31 @@ void main() {
 
       expect(outgoing.single['method'], 'thread/list');
       expect(outgoing.single['params'], {'limit': 1});
-      expect(response['result'], {'threads': []});
+      expect(response, {'threads': []});
 
       await transport.close();
     },
   );
+
+  test('request rejects non-object results', () async {
+    final input = StreamController<List<int>>();
+    final output = StreamController<Uint8List>();
+    output.stream.listen((_) {});
+    final transport = LineJsonRpcTransport(
+      input: input.stream,
+      output: output.sink,
+    );
+
+    final future = transport.request(
+      JsonRpcRequest(id: 7, method: 'thread/list', params: {'limit': 1}),
+    );
+    await Future<void>.delayed(Duration.zero);
+    input.add(utf8.encode('{"jsonrpc":"2.0","id":7,"result":true}\n'));
+
+    await expectLater(future, throwsA(isA<FormatException>()));
+
+    await transport.close();
+  });
 
   test('notifications are routed separately from responses', () async {
     final input = StreamController<List<int>>();
