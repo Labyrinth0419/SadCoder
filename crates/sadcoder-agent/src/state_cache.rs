@@ -62,6 +62,30 @@ impl AgentStateCache {
         self.observe_server_line(line)
     }
 
+    pub(crate) fn observe_client_line_bytes(&mut self, line: &[u8]) -> bool {
+        let Ok(line) = std::str::from_utf8(line) else {
+            return false;
+        };
+        self.observe_client_line(line)
+    }
+
+    fn observe_client_line(&mut self, line: &str) -> bool {
+        let Ok(value) = serde_json::from_str::<Value>(line.trim()) else {
+            return false;
+        };
+        let Some(object) = value.as_object() else {
+            return false;
+        };
+        if object.get("method").is_some() {
+            return false;
+        }
+        let Some(id) = object.get("id") else {
+            return false;
+        };
+
+        self.resolve_pending_approval_id(id)
+    }
+
     fn observe_server_line(&mut self, line: &str) -> bool {
         let Ok(value) = serde_json::from_str::<Value>(line.trim()) else {
             return false;
@@ -119,6 +143,10 @@ impl AgentStateCache {
             return false;
         };
 
+        self.resolve_pending_approval_id(request_id)
+    }
+
+    fn resolve_pending_approval_id(&mut self, request_id: &Value) -> bool {
         let before = self.snapshot.pending_approvals.len();
         self.snapshot
             .pending_approvals
@@ -231,6 +259,36 @@ mod tests {
             cache.snapshot.recent_events[0].method,
             "serverRequest/resolved"
         );
+    }
+
+    #[test]
+    fn resolves_pending_approvals_when_client_responds() {
+        let mut cache = AgentStateCache::empty();
+
+        cache.observe_server_line(
+            r#"{"jsonrpc":"2.0","id":"approval-1","method":"item/commandExecution/requestApproval","params":{"command":"cargo test"}}"#,
+        );
+        let changed = cache.observe_client_line(
+            r#"{"jsonrpc":"2.0","id":"approval-1","result":{"decision":"accept"}}"#,
+        );
+
+        assert!(changed);
+        assert!(cache.snapshot.pending_approvals.is_empty());
+    }
+
+    #[test]
+    fn ignores_client_requests_when_tracking_pending_approvals() {
+        let mut cache = AgentStateCache::empty();
+
+        cache.observe_server_line(
+            r#"{"jsonrpc":"2.0","id":"approval-1","method":"item/commandExecution/requestApproval","params":{"command":"cargo test"}}"#,
+        );
+        let changed = cache.observe_client_line(
+            r#"{"jsonrpc":"2.0","id":"approval-1","method":"model/list","params":{}}"#,
+        );
+
+        assert!(!changed);
+        assert_eq!(cache.snapshot.pending_approvals.len(), 1);
     }
 
     #[test]

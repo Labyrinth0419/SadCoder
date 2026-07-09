@@ -24,6 +24,8 @@ use std::process::ChildStdin;
 use std::process::ChildStdout;
 use std::process::Command;
 use std::process::Stdio;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::thread;
 
 mod state_cache;
@@ -565,16 +567,14 @@ fn proxy_stdio_app_server(codex_path: &str, state_path: PathBuf) -> anyhow::Resu
 
     let mut child_stdin = child.stdin.take().context("child stdin was not piped")?;
     let mut child_stdout = child.stdout.take().context("child stdout was not piped")?;
+    let cache = Arc::new(Mutex::new(
+        AgentStateCache::load(&state_path).unwrap_or_else(|_| AgentStateCache::empty()),
+    ));
 
+    let stdin_cache = Arc::clone(&cache);
+    let stdin_state_path = state_path.clone();
     let stdin_thread = thread::spawn(move || {
-        let mut stdin = io::stdin().lock();
-        let _ = io::copy(&mut stdin, &mut child_stdin);
-    });
-    let stdout_thread = thread::spawn(move || {
-        let mut reader = BufReader::new(&mut child_stdout);
-        let mut stdout = io::stdout().lock();
-        let mut cache =
-            AgentStateCache::load(&state_path).unwrap_or_else(|_| AgentStateCache::empty());
+        let mut reader = BufReader::new(io::stdin().lock());
         let mut line = Vec::new();
         loop {
             line.clear();
@@ -585,9 +585,33 @@ fn proxy_stdio_app_server(codex_path: &str, state_path: PathBuf) -> anyhow::Resu
             if bytes == 0 {
                 break;
             }
-            if cache.observe_server_line_bytes(&line) {
-                let _ = cache.save(&state_path);
+            observe_and_save_cache(&stdin_cache, &stdin_state_path, |cache| {
+                cache.observe_client_line_bytes(&line)
+            });
+            if child_stdin.write_all(&line).is_err() {
+                break;
             }
+            let _ = child_stdin.flush();
+        }
+    });
+    let stdout_cache = Arc::clone(&cache);
+    let stdout_state_path = state_path;
+    let stdout_thread = thread::spawn(move || {
+        let mut reader = BufReader::new(&mut child_stdout);
+        let mut stdout = io::stdout().lock();
+        let mut line = Vec::new();
+        loop {
+            line.clear();
+            let bytes = match reader.read_until(b'\n', &mut line) {
+                Ok(bytes) => bytes,
+                Err(_) => break,
+            };
+            if bytes == 0 {
+                break;
+            }
+            observe_and_save_cache(&stdout_cache, &stdout_state_path, |cache| {
+                cache.observe_server_line_bytes(&line)
+            });
             if stdout.write_all(&line).is_err() {
                 break;
             }
@@ -603,6 +627,19 @@ fn proxy_stdio_app_server(codex_path: &str, state_path: PathBuf) -> anyhow::Resu
         Ok(())
     } else {
         anyhow::bail!("app-server exited with status {status}")
+    }
+}
+
+fn observe_and_save_cache(
+    cache: &Arc<Mutex<AgentStateCache>>,
+    state_path: &Path,
+    observe: impl FnOnce(&mut AgentStateCache) -> bool,
+) {
+    let Ok(mut cache) = cache.lock() else {
+        return;
+    };
+    if observe(&mut cache) {
+        let _ = cache.save(state_path);
     }
 }
 
