@@ -1,3 +1,5 @@
+import '../../accounts/account_snapshot_controller.dart';
+import '../../accounts/account_snapshot_reader.dart';
 import '../../config/codex_config_override_controller.dart';
 import '../../config/codex_config_overrides.dart';
 import '../../config/codex_config_snapshot.dart';
@@ -19,6 +21,7 @@ String buildChatStatusSummary({
   ChatTimelineController? timelineController,
   CodexConfigOverrideController? configOverrideController,
   CodexConfigSnapshotController? configSnapshotController,
+  AccountSnapshotController? accountSnapshotController,
 }) {
   final lines = <String>[
     '${l10n.connectionStatus}: ${sessionStatusLabel(l10n, sessionController?.status)}',
@@ -56,6 +59,10 @@ String buildChatStatusSummary({
 
   if (configSnapshotController != null) {
     lines.addAll(_serverConfigStatusLines(l10n, configSnapshotController));
+  }
+
+  if (accountSnapshotController != null) {
+    lines.addAll(_accountStatusLines(l10n, accountSnapshotController));
   }
 
   return lines.join('\n');
@@ -124,6 +131,33 @@ String _serverConfigValue(
   String key,
 ) {
   return snapshot.displayValueFor(key) ?? l10n.serverValueUnset;
+}
+
+Iterable<String> _accountStatusLines(
+  AppLocalizations l10n,
+  AccountSnapshotController controller,
+) sync* {
+  final snapshot = controller.snapshot;
+  if (controller.status == AccountSnapshotStatus.failed) {
+    final error = controller.error;
+    yield '${l10n.accountStatus}: ${l10n.accountLoadFailed}${error == null ? '' : ': $error'}';
+    return;
+  }
+  if (snapshot == null) {
+    return;
+  }
+  yield '${l10n.accountStatus}: ${_accountStatusValue(l10n, snapshot)}';
+}
+
+String _accountStatusValue(AppLocalizations l10n, AccountSnapshot snapshot) {
+  final authRequirement = snapshot.requiresOpenaiAuth
+      ? l10n.openaiAuthRequired
+      : l10n.openaiAuthNotRequired;
+  final account = snapshot.account;
+  if (account == null) {
+    return '${l10n.accountNotSignedIn} / $authRequirement';
+  }
+  return '${account.label} / $authRequirement';
 }
 
 String _overrideStatusValue(

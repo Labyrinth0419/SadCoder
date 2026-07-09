@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../accounts/account_snapshot_controller.dart';
 import '../../commands/slash_command_action_dispatcher.dart';
 import '../../commands/slash_command_registry.dart';
 import '../../config/codex_config_override_controller.dart';
@@ -36,6 +37,7 @@ class ChatPage extends StatefulWidget {
     this.timelineController,
     this.configOverrideController,
     this.configSnapshotController,
+    this.accountSnapshotController,
     this.modelListController,
     this.slashCommandDispatcher,
   });
@@ -48,6 +50,7 @@ class ChatPage extends StatefulWidget {
   final ChatTimelineController? timelineController;
   final CodexConfigOverrideController? configOverrideController;
   final CodexConfigSnapshotController? configSnapshotController;
+  final AccountSnapshotController? accountSnapshotController;
   final ModelListController? modelListController;
   final SlashCommandActionDispatcher? slashCommandDispatcher;
 
@@ -335,6 +338,7 @@ class _ChatPageState extends State<ChatPage> {
       timelineController: widget.timelineController,
       configOverrideController: widget.configOverrideController,
       configSnapshotController: widget.configSnapshotController,
+      accountSnapshotController: widget.accountSnapshotController,
     );
   }
 
@@ -354,6 +358,10 @@ class _ChatPageState extends State<ChatPage> {
           cwd: widget.configOverrideController?.resolved.cwd,
         ),
       );
+    }
+    final accountSnapshotController = widget.accountSnapshotController;
+    if (accountSnapshotController != null) {
+      futures.add(accountSnapshotController.refresh());
     }
     await Future.wait(futures);
   }

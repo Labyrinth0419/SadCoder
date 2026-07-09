@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../accounts/account_snapshot_reader.dart';
 import '../agent/agent_snapshot_reader.dart';
 import '../approvals/approval_state_controller.dart';
 import '../config/codex_config_snapshot_reader.dart';
@@ -74,6 +75,9 @@ class CodexSessionStateController extends ChangeNotifier {
 
   CodexConfigSnapshotReader? get configSnapshotReader =>
       _connection?.configSnapshotReader;
+
+  AccountSnapshotReader? get accountSnapshotReader =>
+      _connection?.accountSnapshotReader;
 
   ModelListReader? get modelListReader => _connection?.modelListReader;
 

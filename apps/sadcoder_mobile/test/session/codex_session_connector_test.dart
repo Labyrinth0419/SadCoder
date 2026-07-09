@@ -20,6 +20,7 @@ void main() {
     final connection = await connector.connect(_profile);
     addTearDown(connection.close);
     await connection.modelListReader.listModels();
+    await connection.accountSnapshotReader.readAccount();
     await connection.turnRunner.startThread();
     await connection.turnRunner.startTurn(threadId: 'thr_1', text: 'Fix bug');
     await connection.turnRunner.interruptTurn(
@@ -31,6 +32,7 @@ void main() {
       'initialize',
       'initialized',
       'model/list',
+      'account/read',
       'thread/start',
       'turn/start',
       'turn/interrupt',
@@ -230,6 +232,7 @@ class _LineServerProxyConnector implements AgentProxyConnector {
   Map<String, Object?> _resultFor(String method) => switch (method) {
     'initialize' => {'serverInfo': 'test'},
     'model/list' => {'models': <Object?>[]},
+    'account/read' => {'account': null, 'requiresOpenaiAuth': false},
     'thread/start' => {
       'thread': {
         'id': 'thr_1',

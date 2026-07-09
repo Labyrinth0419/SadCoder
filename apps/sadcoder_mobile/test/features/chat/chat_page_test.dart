@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/accounts/account_snapshot_controller.dart';
+import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
@@ -1249,6 +1251,16 @@ void main() {
         },
       }),
     );
+    final accountReader = _RecordingAccountSnapshotReader(
+      snapshot: const AccountSnapshot(
+        account: AccountSummary(
+          type: 'chatgpt',
+          email: 'user@example.com',
+          planType: 'pro',
+        ),
+        requiresOpenaiAuth: true,
+      ),
+    );
     final overrideController = CodexConfigOverrideController(
       initialLayers: const CodexConfigOverrideLayers(
         session: CodexConfigOverrides(cwd: '/repo'),
@@ -1270,11 +1282,15 @@ void main() {
     final configSnapshotController = CodexConfigSnapshotController(
       readerProvider: () => configReader,
     );
+    final accountSnapshotController = AccountSnapshotController(
+      readerProvider: () => accountReader,
+    );
     final turnController = TurnController(
       runnerProvider: () => sessionController.turnRunner,
       overrideLayersProvider: () => overrideController.layers,
     );
     addTearDown(turnController.dispose);
+    addTearDown(accountSnapshotController.dispose);
     addTearDown(configSnapshotController.dispose);
     addTearDown(threadDetailController.dispose);
     addTearDown(sessionController.dispose);
@@ -1290,6 +1306,7 @@ void main() {
       turnController: turnController,
       configOverrideController: overrideController,
       configSnapshotController: configSnapshotController,
+      accountSnapshotController: accountSnapshotController,
     );
 
     await tester.enterText(
@@ -1303,9 +1320,16 @@ void main() {
     expect(detailReader.threadIds, ['thr_new']);
     expect(detailReader.includeTurnsValues, [false]);
     expect(configReader.cwdValues, ['/repo']);
+    expect(accountReader.refreshTokenValues, [false]);
     expect(
       find.textContaining(
         'Server config snapshot: Model=gpt-5-codex, Reasoning effort=high, Approval policy=on-request, Sandbox mode=workspace-write',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining(
+        'Account: ChatGPT / user@example.com / pro / OpenAI auth required',
       ),
       findsOneWidget,
     );
@@ -2086,6 +2110,7 @@ Future<void> _pumpChatPage(
   ChatTimelineController? timelineController,
   CodexConfigOverrideController? configOverrideController,
   CodexConfigSnapshotController? configSnapshotController,
+  AccountSnapshotController? accountSnapshotController,
   ModelListController? modelListController,
 }) {
   return tester.pumpWidget(
@@ -2106,6 +2131,7 @@ Future<void> _pumpChatPage(
           timelineController: timelineController,
           configOverrideController: configOverrideController,
           configSnapshotController: configSnapshotController,
+          accountSnapshotController: accountSnapshotController,
           modelListController: modelListController,
         ),
       ),
@@ -2222,6 +2248,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   ModelListReader get modelListReader => const _FakeModelListReader();
 
   @override
+  AccountSnapshotReader get accountSnapshotReader =>
+      const _FakeAccountSnapshotReader();
+
+  @override
   CodexConfigSnapshotReader get configSnapshotReader =>
       const _FakeConfigSnapshotReader();
 
@@ -2284,6 +2314,28 @@ class _FakeModelListReader implements ModelListReader {
 
   @override
   Future<ModelListPage> listModels() async => const ModelListPage(models: []);
+}
+
+class _FakeAccountSnapshotReader implements AccountSnapshotReader {
+  const _FakeAccountSnapshotReader();
+
+  @override
+  Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
+    return const AccountSnapshot(account: null, requiresOpenaiAuth: false);
+  }
+}
+
+class _RecordingAccountSnapshotReader implements AccountSnapshotReader {
+  _RecordingAccountSnapshotReader({required this.snapshot});
+
+  final AccountSnapshot snapshot;
+  final refreshTokenValues = <bool>[];
+
+  @override
+  Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
+    refreshTokenValues.add(refreshToken);
+    return snapshot;
+  }
 }
 
 class _RecordingModelListReader implements ModelListReader {

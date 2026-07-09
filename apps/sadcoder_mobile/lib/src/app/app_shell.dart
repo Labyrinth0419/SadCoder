@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../accounts/account_snapshot_controller.dart';
 import '../agent/agent_remote_service.dart';
 import '../approvals/approval_state_controller.dart';
 import '../config/codex_config_override_controller.dart';
@@ -57,6 +58,7 @@ class _AppShellState extends State<AppShell> {
   late ChatTimelineController _timelineController;
   late CodexConfigOverrideController _configOverrideController;
   late CodexConfigSnapshotController _configSnapshotController;
+  late AccountSnapshotController _accountSnapshotController;
   late ModelListController _modelListController;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
@@ -162,6 +164,9 @@ class _AppShellState extends State<AppShell> {
     _configSnapshotController = CodexConfigSnapshotController(
       readerProvider: () => _sessionController.configSnapshotReader,
     );
+    _accountSnapshotController = AccountSnapshotController(
+      readerProvider: () => _sessionController.accountSnapshotReader,
+    );
     _modelListController = ModelListController(
       readerProvider: () => _sessionController.modelListReader,
     );
@@ -186,6 +191,7 @@ class _AppShellState extends State<AppShell> {
     _timelineController.dispose();
     _configOverrideController.dispose();
     _configSnapshotController.dispose();
+    _accountSnapshotController.dispose();
     _modelListController.dispose();
     _turnController.dispose();
     _threadDetailController.dispose();
@@ -212,6 +218,7 @@ class _AppShellState extends State<AppShell> {
         timelineController: _timelineController,
         configOverrideController: _configOverrideController,
         configSnapshotController: _configSnapshotController,
+        accountSnapshotController: _accountSnapshotController,
         modelListController: _modelListController,
       ),
       2 => ApprovalsPage(
@@ -241,6 +248,7 @@ class _AppShellState extends State<AppShell> {
     _timelineController.attach(_sessionController.events);
     if (_sessionController.isConnected) {
       unawaited(_configSnapshotController.refresh());
+      unawaited(_accountSnapshotController.refresh());
     }
   }
 

@@ -33,6 +33,7 @@ void main() {
 
     final client = CodexAppServerClient(transport);
     await client.listModels();
+    await client.readAccount();
     await client.listThreads(limit: 5);
     await client.readConfig(cwd: '/repo');
     await client.readThread(threadId: 'thr_1');
@@ -46,6 +47,7 @@ void main() {
 
     expect(requests.map((request) => request.method), [
       'model/list',
+      'account/read',
       'thread/list',
       'config/read',
       'thread/read',
@@ -58,15 +60,16 @@ void main() {
       'turn/interrupt',
     ]);
     expect(requests.first.params, isEmpty);
-    expect(requests[1].params?['limit'], 5);
-    expect(requests[2].params, {'includeLayers': true, 'cwd': '/repo'});
-    expect(requests[3].params, {'threadId': 'thr_1', 'includeTurns': true});
-    expect(requests[4].params, isEmpty);
-    expect(requests[5].params, {'threadId': 'thr_1'});
-    expect(requests[6].params, {'threadId': 'thr_1', 'name': 'Renamed thread'});
-    expect(requests[7].params, {'threadId': 'thr_1'});
+    expect(requests[1].params, {'refreshToken': false});
+    expect(requests[2].params?['limit'], 5);
+    expect(requests[3].params, {'includeLayers': true, 'cwd': '/repo'});
+    expect(requests[4].params, {'threadId': 'thr_1', 'includeTurns': true});
+    expect(requests[5].params, isEmpty);
+    expect(requests[6].params, {'threadId': 'thr_1'});
+    expect(requests[7].params, {'threadId': 'thr_1', 'name': 'Renamed thread'});
     expect(requests[8].params, {'threadId': 'thr_1'});
-    expect(requests[9].params, {
+    expect(requests[9].params, {'threadId': 'thr_1'});
+    expect(requests[10].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},

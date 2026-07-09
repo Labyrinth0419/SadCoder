@@ -220,6 +220,11 @@ class AppLocalizations {
   String get serverConfigUnavailable => _text('serverConfigUnavailable');
   String get serverConfigLoadFailed => _text('serverConfigLoadFailed');
   String get serverValueUnset => _text('serverValueUnset');
+  String get accountStatus => _text('accountStatus');
+  String get accountLoadFailed => _text('accountLoadFailed');
+  String get accountNotSignedIn => _text('accountNotSignedIn');
+  String get openaiAuthRequired => _text('openaiAuthRequired');
+  String get openaiAuthNotRequired => _text('openaiAuthNotRequired');
   String configLayersLoaded(int count) =>
       _text('configLayersLoaded').replaceAll('{count}', count.toString());
   String get theme => _text('theme');
@@ -447,6 +452,11 @@ const _values = <String, Map<String, String>>{
     'serverConfigUnavailable': 'Connect to a host, then refresh server config.',
     'serverConfigLoadFailed': 'Failed to load server config',
     'serverValueUnset': 'not set',
+    'accountStatus': 'Account',
+    'accountLoadFailed': 'Failed to load account',
+    'accountNotSignedIn': 'not signed in',
+    'openaiAuthRequired': 'OpenAI auth required',
+    'openaiAuthNotRequired': 'OpenAI auth not required',
     'configLayersLoaded': 'Config layers loaded: {count}',
     'theme': 'Theme',
     'themeBody': 'System, light, and dark modes are supported.',
@@ -641,6 +651,11 @@ const _values = <String, Map<String, String>>{
     'serverConfigUnavailable': '连接主机后刷新服务器配置。',
     'serverConfigLoadFailed': '服务器配置加载失败',
     'serverValueUnset': '未设置',
+    'accountStatus': '账户',
+    'accountLoadFailed': '账户加载失败',
+    'accountNotSignedIn': '未登录',
+    'openaiAuthRequired': '需要 OpenAI 认证',
+    'openaiAuthNotRequired': '不需要 OpenAI 认证',
     'configLayersLoaded': '已加载配置层：{count}',
     'theme': '主题',
     'themeBody': '支持跟随系统、浅色和深色模式。',

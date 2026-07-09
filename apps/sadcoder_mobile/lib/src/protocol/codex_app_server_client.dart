@@ -23,6 +23,10 @@ class CodexAppServerClient {
     return _request('model/list', {});
   }
 
+  Future<Map<String, Object?>> readAccount({bool refreshToken = false}) {
+    return _request('account/read', {'refreshToken': refreshToken});
+  }
+
   Future<Map<String, Object?>> listThreads({int limit = 20}) {
     return _request('thread/list', {'limit': limit});
   }

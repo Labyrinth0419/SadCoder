@@ -1,5 +1,7 @@
 import '../agent/agent_remote_service.dart';
 import '../agent/agent_status.dart';
+import '../accounts/account_snapshot_reader.dart';
+import '../accounts/codex_account_snapshot_reader.dart';
 import '../approvals/approval_state_controller.dart';
 import '../config/codex_config_snapshot_reader.dart';
 import '../config/codex_config_snapshot_remote_reader.dart';
@@ -26,6 +28,8 @@ abstract interface class CodexSessionConnectionHandle {
   ThreadDetailReader get threadDetailReader;
 
   CodexConfigSnapshotReader get configSnapshotReader;
+
+  AccountSnapshotReader get accountSnapshotReader;
 
   ModelListReader get modelListReader;
 
@@ -88,6 +92,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         threadListReader: CodexThreadListReader(session.client),
         threadDetailReader: CodexThreadDetailReader(session.client),
         configSnapshotReader: CodexConfigSnapshotRemoteReader(session.client),
+        accountSnapshotReader: CodexAccountSnapshotReader(session.client),
         modelListReader: CodexModelListReader(session.client),
         threadMutationRunner: CodexThreadMutationRunner(session.client),
         turnRunner: CodexTurnRunner(session.client),
@@ -138,6 +143,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.threadListReader,
     required this.threadDetailReader,
     required this.configSnapshotReader,
+    required this.accountSnapshotReader,
     required this.modelListReader,
     required this.threadMutationRunner,
     required this.turnRunner,
@@ -155,6 +161,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final ThreadDetailReader threadDetailReader;
   @override
   final CodexConfigSnapshotReader configSnapshotReader;
+  @override
+  final AccountSnapshotReader accountSnapshotReader;
   @override
   final ModelListReader modelListReader;
   @override

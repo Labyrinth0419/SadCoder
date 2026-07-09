@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/agent/agent_snapshot.dart';
 import 'package:sadcoder_mobile/src/agent/agent_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
@@ -49,6 +50,7 @@ void main() {
     expect(controller.threadListReader, isNotNull);
     expect(controller.threadDetailReader, isNotNull);
     expect(controller.configSnapshotReader, isNotNull);
+    expect(controller.accountSnapshotReader, isNotNull);
     expect(controller.modelListReader, isNotNull);
     expect(controller.turnRunner, isNotNull);
     expect(connector.connectedProfiles, [_profile]);
@@ -439,6 +441,7 @@ void main() {
     expect(controller.threadListReader, isNull);
     expect(controller.threadDetailReader, isNull);
     expect(controller.configSnapshotReader, isNull);
+    expect(controller.accountSnapshotReader, isNull);
     expect(controller.modelListReader, isNull);
     expect(controller.turnRunner, isNull);
     expect(connector.connectCount, 1);
@@ -560,6 +563,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       threadListReader: const _FakeThreadListReader(),
       threadDetailReader: const _FakeThreadDetailReader(),
       configSnapshotReader: const _FakeConfigSnapshotReader(),
+      accountSnapshotReader: const _FakeAccountSnapshotReader(),
       modelListReader: const _FakeModelListReader(),
       threadMutationRunner: const _FakeThreadMutationRunner(),
       turnRunner: const _FakeTurnRunner(),
@@ -585,6 +589,15 @@ class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {
     String? cwd,
   }) async {
     return const CodexConfigSnapshot(config: {}, origins: {}, layers: []);
+  }
+}
+
+class _FakeAccountSnapshotReader implements AccountSnapshotReader {
+  const _FakeAccountSnapshotReader();
+
+  @override
+  Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
+    return const AccountSnapshot(account: null, requiresOpenaiAuth: false);
   }
 }
 

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
@@ -654,6 +655,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
       const _FakeConfigSnapshotReader();
 
   @override
+  AccountSnapshotReader get accountSnapshotReader =>
+      const _FakeAccountSnapshotReader();
+
+  @override
   ModelListReader get modelListReader => const _FakeModelListReader();
 
   @override
@@ -697,6 +702,15 @@ class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {
     String? cwd,
   }) async {
     return const CodexConfigSnapshot(config: {}, origins: {}, layers: []);
+  }
+}
+
+class _FakeAccountSnapshotReader implements AccountSnapshotReader {
+  const _FakeAccountSnapshotReader();
+
+  @override
+  Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
+    return const AccountSnapshot(account: null, requiresOpenaiAuth: false);
   }
 }
 
