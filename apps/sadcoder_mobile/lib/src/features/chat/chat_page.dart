@@ -1393,8 +1393,9 @@ class _ChatPageState extends State<ChatPage> {
       SlashCommandActionOutcome.unknown => l10n.slashCommandUnknown(
         result.slash,
       ),
-      SlashCommandActionOutcome.unsupported => l10n.slashCommandUnsupported(
-        result.slash,
+      SlashCommandActionOutcome.unsupported => _slashCommandUnsupportedMessage(
+        l10n,
+        result,
       ),
       SlashCommandActionOutcome.unavailable => l10n.slashCommandUnavailable(
         result.slash,
@@ -1403,6 +1404,58 @@ class _ChatPageState extends State<ChatPage> {
         result.slash,
         result.error?.toString() ?? '',
       ),
+    };
+  }
+
+  String _slashCommandUnsupportedMessage(
+    AppLocalizations l10n,
+    SlashCommandActionResult result,
+  ) {
+    final command = result.command;
+    if (command == null) {
+      return l10n.slashCommandUnsupported(result.slash);
+    }
+
+    final parts = <String>[
+      l10n.slashCommandUnsupportedWithStatus(
+        result.slash,
+        _slashCommandUnsupportedStatus(l10n, command),
+      ),
+    ];
+    final target = command.mappingTarget.trim();
+    if (target.isNotEmpty) {
+      parts.add(l10n.slashCommandUnsupportedTarget(target));
+    }
+    if (command.riskLevel != SlashCommandRiskLevel.low) {
+      parts.add(l10n.slashCommandUnsupportedRisk(command.riskLevel.name));
+    }
+    return parts.join(' ');
+  }
+
+  String _slashCommandUnsupportedStatus(
+    AppLocalizations l10n,
+    SlashCommandSpec command,
+  ) {
+    return switch (command.platformVisibility) {
+      SlashPlatformVisibility.desktopOnly =>
+        l10n.slashCommandUnsupportedDesktopOnly,
+      SlashPlatformVisibility.windowsOnly =>
+        l10n.slashCommandUnsupportedWindowsOnly,
+      SlashPlatformVisibility.tuiOnly => l10n.slashCommandUnsupportedTuiOnly,
+      SlashPlatformVisibility.debugOnly =>
+        l10n.slashCommandUnsupportedDebugOnly,
+      SlashPlatformVisibility.all => switch (command.mappingType) {
+        SlashCommandMappingType.appServer =>
+          l10n.slashCommandUnsupportedAppServer,
+        SlashCommandMappingType.uiOnly => l10n.slashCommandUnsupportedUiOnly,
+        SlashCommandMappingType.agentFallback =>
+          l10n.slashCommandUnsupportedAgentFallback,
+        SlashCommandMappingType.topology =>
+          l10n.slashCommandUnsupportedTopology,
+        SlashCommandMappingType.notApplicable =>
+          l10n.slashCommandUnsupportedNotApplicable,
+        SlashCommandMappingType.debug => l10n.slashCommandUnsupportedDebug,
+      },
     };
   }
 

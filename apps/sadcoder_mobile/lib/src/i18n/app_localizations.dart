@@ -162,6 +162,34 @@ class AppLocalizations {
       _text('slashCommandExecuted').replaceAll('{slash}', slash);
   String slashCommandUnsupported(String slash) =>
       _text('slashCommandUnsupported').replaceAll('{slash}', slash);
+  String slashCommandUnsupportedWithStatus(String slash, String status) =>
+      _text(
+        'slashCommandUnsupportedWithStatus',
+      ).replaceAll('{slash}', slash).replaceAll('{status}', status);
+  String slashCommandUnsupportedTarget(String target) =>
+      _text('slashCommandUnsupportedTarget').replaceAll('{target}', target);
+  String slashCommandUnsupportedRisk(String risk) =>
+      _text('slashCommandUnsupportedRisk').replaceAll('{risk}', risk);
+  String get slashCommandUnsupportedAppServer =>
+      _text('slashCommandUnsupportedAppServer');
+  String get slashCommandUnsupportedUiOnly =>
+      _text('slashCommandUnsupportedUiOnly');
+  String get slashCommandUnsupportedAgentFallback =>
+      _text('slashCommandUnsupportedAgentFallback');
+  String get slashCommandUnsupportedTopology =>
+      _text('slashCommandUnsupportedTopology');
+  String get slashCommandUnsupportedNotApplicable =>
+      _text('slashCommandUnsupportedNotApplicable');
+  String get slashCommandUnsupportedDebug =>
+      _text('slashCommandUnsupportedDebug');
+  String get slashCommandUnsupportedDesktopOnly =>
+      _text('slashCommandUnsupportedDesktopOnly');
+  String get slashCommandUnsupportedWindowsOnly =>
+      _text('slashCommandUnsupportedWindowsOnly');
+  String get slashCommandUnsupportedTuiOnly =>
+      _text('slashCommandUnsupportedTuiOnly');
+  String get slashCommandUnsupportedDebugOnly =>
+      _text('slashCommandUnsupportedDebugOnly');
   String slashCommandUnavailable(String slash) =>
       _text('slashCommandUnavailable').replaceAll('{slash}', slash);
   String slashCommandFailed(String slash, String error) => _text(
@@ -619,6 +647,24 @@ const _values = <String, Map<String, String>>{
     'slashCommandCancelled': 'Canceled {slash}.',
     'slashCommandExecuted': 'Executed {slash}.',
     'slashCommandUnsupported': '{slash} is not implemented yet.',
+    'slashCommandUnsupportedWithStatus':
+        '{slash} is registered but not available: {status}.',
+    'slashCommandUnsupportedTarget': 'Planned path: {target}.',
+    'slashCommandUnsupportedRisk': 'Risk: {risk}.',
+    'slashCommandUnsupportedAppServer':
+        'mobile app-server handler is not wired yet',
+    'slashCommandUnsupportedUiOnly': 'mobile UI flow is not wired yet',
+    'slashCommandUnsupportedAgentFallback':
+        'guarded agent fallback is not wired yet',
+    'slashCommandUnsupportedTopology':
+        'thread topology action is not wired yet',
+    'slashCommandUnsupportedNotApplicable': 'not applicable in the mobile app',
+    'slashCommandUnsupportedDebug':
+        'advanced debug command is not wired in mobile',
+    'slashCommandUnsupportedDesktopOnly': 'desktop-only command',
+    'slashCommandUnsupportedWindowsOnly': 'Windows-only command',
+    'slashCommandUnsupportedTuiOnly': 'TUI-only command',
+    'slashCommandUnsupportedDebugOnly': 'debug-only command',
     'slashCommandUnavailable': '{slash} is unavailable right now.',
     'slashCommandFailed': '{slash} failed: {error}',
     'noPendingApprovals': 'No pending approvals',
@@ -1030,6 +1076,19 @@ const _values = <String, Map<String, String>>{
     'slashCommandCancelled': '已取消 {slash}。',
     'slashCommandExecuted': '已执行 {slash}。',
     'slashCommandUnsupported': '{slash} 暂未实现。',
+    'slashCommandUnsupportedWithStatus': '{slash} 已注册但当前不可用：{status}。',
+    'slashCommandUnsupportedTarget': '计划路径：{target}。',
+    'slashCommandUnsupportedRisk': '风险：{risk}。',
+    'slashCommandUnsupportedAppServer': '移动端 app-server 处理器尚未接入',
+    'slashCommandUnsupportedUiOnly': '移动端 UI 流程尚未接入',
+    'slashCommandUnsupportedAgentFallback': '受保护的 agent fallback 尚未接入',
+    'slashCommandUnsupportedTopology': '会话拓扑动作尚未接入',
+    'slashCommandUnsupportedNotApplicable': '不适用于移动端',
+    'slashCommandUnsupportedDebug': '高级调试命令尚未在移动端接入',
+    'slashCommandUnsupportedDesktopOnly': '仅桌面端命令',
+    'slashCommandUnsupportedWindowsOnly': '仅 Windows 命令',
+    'slashCommandUnsupportedTuiOnly': '仅 TUI 命令',
+    'slashCommandUnsupportedDebugOnly': '仅调试命令',
     'slashCommandUnavailable': '{slash} 当前不可用。',
     'slashCommandFailed': '{slash} 执行失败：{error}',
     'noPendingApprovals': '暂无待审批请求',

@@ -1151,11 +1151,29 @@ void main() {
         registry.parseComposerText('/keymap'),
         hasActiveTurn: false,
       );
+      final platformOnly = await dispatcher.dispatch(
+        registry.parseComposerText('/pets'),
+        hasActiveTurn: false,
+      );
+      final debugOnly = await dispatcher.dispatch(
+        registry.parseComposerText('/rollout'),
+        hasActiveTurn: false,
+      );
 
       expect(unknown.outcome, SlashCommandActionOutcome.unknown);
       expect(unknown.rawCommand, 'does-not-exist');
       expect(unsupported.outcome, SlashCommandActionOutcome.unsupported);
       expect(unsupported.command?.command, 'keymap');
+      expect(platformOnly.outcome, SlashCommandActionOutcome.unsupported);
+      expect(
+        platformOnly.command?.mappingType,
+        SlashCommandMappingType.notApplicable,
+      );
+      expect(debugOnly.outcome, SlashCommandActionOutcome.unsupported);
+      expect(
+        debugOnly.command?.platformVisibility,
+        SlashPlatformVisibility.debugOnly,
+      );
     },
   );
 

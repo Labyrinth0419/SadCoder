@@ -496,42 +496,70 @@ void main() {
   testWidgets('unsupported slash commands report explicit unsupported state', (
     tester,
   ) async {
-    final approvalController = ApprovalStateController();
-    final turnRunner = _FakeTurnRunner();
-    final starter = _FakeSessionStarter(
-      threadListReader: const _FakeThreadListReader(
-        page: ThreadListPage(threads: []),
+    final harness = await _pumpConnectedChatPage(tester);
+
+    await _submitComposerText(tester, '/keymap');
+
+    expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(
+      find.text(
+        '/keymap is registered but not available: mobile UI flow is not wired yet. '
+        'Planned path: mobile keyboard shortcut settings.',
       ),
-      turnRunner: turnRunner,
+      findsOneWidget,
     );
-    final sessionController = CodexSessionStateController(
-      connector: starter,
-      approvalController: approvalController,
-    );
-    final turnController = TurnController(
-      runnerProvider: () => sessionController.turnRunner,
-    );
-    addTearDown(turnController.dispose);
-    addTearDown(sessionController.dispose);
-    addTearDown(approvalController.dispose);
+  });
 
-    await sessionController.connect(_profile);
-    await _pumpChatPage(
-      tester,
-      sessionController: sessionController,
-      turnController: turnController,
-    );
+  testWidgets('platform-only slash commands explain visibility state', (
+    tester,
+  ) async {
+    final harness = await _pumpConnectedChatPage(tester);
 
-    await tester.enterText(
-      find.byKey(const ValueKey('chat-composer-field')),
-      '/keymap',
-    );
-    await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
-    await tester.pumpAndSettle();
+    await _submitComposerText(tester, '/app');
 
-    expect(turnRunner.startedTurns, isEmpty);
-    expect(find.text('/keymap is not implemented yet.'), findsOneWidget);
+    expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(
+      find.text(
+        '/app is registered but not available: desktop-only command. '
+        'Planned path: Codex Desktop handoff unavailable on mobile.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('debug-only slash commands explain diagnostic state', (
+    tester,
+  ) async {
+    final harness = await _pumpConnectedChatPage(tester);
+
+    await _submitComposerText(tester, '/rollout');
+
+    expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(
+      find.text(
+        '/rollout is registered but not available: debug-only command. '
+        'Planned path: diagnostic rollout path display.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('high-risk fallback slash commands include risk state', (
+    tester,
+  ) async {
+    final harness = await _pumpConnectedChatPage(tester);
+
+    await _submitComposerText(tester, r'/sandbox-add-read-dir C:\repo');
+
+    expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(
+      find.text(
+        '/sandbox-add-read-dir is registered but not available: Windows-only command. '
+        'Planned path: windows sandbox read directory configuration. '
+        'Risk: high.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('/permissions applies next-turn permission overrides', (
@@ -4800,6 +4828,53 @@ Future<void> _pumpChatPage(
       ),
     ),
   );
+}
+
+Future<_ConnectedChatHarness> _pumpConnectedChatPage(
+  WidgetTester tester,
+) async {
+  final approvalController = ApprovalStateController();
+  final turnRunner = _FakeTurnRunner();
+  final starter = _FakeSessionStarter(
+    threadListReader: const _FakeThreadListReader(
+      page: ThreadListPage(threads: []),
+    ),
+    turnRunner: turnRunner,
+  );
+  final sessionController = CodexSessionStateController(
+    connector: starter,
+    approvalController: approvalController,
+  );
+  final turnController = TurnController(
+    runnerProvider: () => sessionController.turnRunner,
+  );
+  addTearDown(turnController.dispose);
+  addTearDown(sessionController.dispose);
+  addTearDown(approvalController.dispose);
+
+  await sessionController.connect(_profile);
+  await _pumpChatPage(
+    tester,
+    sessionController: sessionController,
+    turnController: turnController,
+  );
+  return _ConnectedChatHarness(turnRunner: turnRunner);
+}
+
+Future<void> _submitComposerText(WidgetTester tester, String text) async {
+  await tester.enterText(
+    find.byKey(const ValueKey('chat-composer-field')),
+    text,
+  );
+  await tester.pump();
+  await tester.tap(find.byTooltip('Send'));
+  await tester.pumpAndSettle();
+}
+
+class _ConnectedChatHarness {
+  const _ConnectedChatHarness({required this.turnRunner});
+
+  final _FakeTurnRunner turnRunner;
 }
 
 Future<void> _selectDropdownOption(
