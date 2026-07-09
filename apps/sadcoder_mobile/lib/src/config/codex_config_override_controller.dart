@@ -47,6 +47,10 @@ class CodexConfigOverrideController extends ChangeNotifier {
     setTurn(CodexConfigOverrides.empty);
   }
 
+  void clearSession() {
+    setSession(CodexConfigOverrides.empty);
+  }
+
   CodexConfigOverrideSource sourceFor(String fieldName) {
     return _layers.sourceFor(fieldName);
   }

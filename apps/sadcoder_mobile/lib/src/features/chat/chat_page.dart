@@ -12,6 +12,7 @@ import '../../threads/thread_list_controller.dart';
 import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
 import 'chat_timeline_controller.dart';
+import 'session_override_controls.dart';
 import 'slash_command_palette.dart';
 import 'turn_override_controls.dart';
 
@@ -146,6 +147,10 @@ class _ChatPageState extends State<ChatPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (widget.configOverrideController != null) ...[
+                  SessionOverrideControls(
+                    controller: widget.configOverrideController!,
+                  ),
+                  const SizedBox(height: 8),
                   TurnOverrideControls(
                     controller: widget.configOverrideController!,
                   ),
@@ -543,6 +548,7 @@ class _ThreadListTile extends StatelessWidget {
       if (thread.isSubagent) context.l10n.subagentThread,
     ];
     return ListTile(
+      key: ValueKey('thread-summary-${thread.id}'),
       contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.forum_outlined),
       title: Text(thread.title, maxLines: 1, overflow: TextOverflow.ellipsis),

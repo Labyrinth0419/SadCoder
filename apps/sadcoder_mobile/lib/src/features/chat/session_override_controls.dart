@@ -5,8 +5,8 @@ import '../../config/codex_config_overrides.dart';
 import '../../i18n/app_localizations.dart';
 import 'config_override_controls.dart';
 
-class TurnOverrideControls extends StatelessWidget {
-  const TurnOverrideControls({super.key, required this.controller});
+class SessionOverrideControls extends StatelessWidget {
+  const SessionOverrideControls({super.key, required this.controller});
 
   final CodexConfigOverrideController controller;
 
@@ -14,22 +14,22 @@ class TurnOverrideControls extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: controller,
-      builder: (context, _) => _TurnOverrideBar(controller: controller),
+      builder: (context, _) => _SessionOverrideBar(controller: controller),
     );
   }
 }
 
-class _TurnOverrideBar extends StatelessWidget {
-  const _TurnOverrideBar({required this.controller});
+class _SessionOverrideBar extends StatelessWidget {
+  const _SessionOverrideBar({required this.controller});
 
   final CodexConfigOverrideController controller;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final hasTurnOverrides = controller.layers.turn
-        .toTurnStartParams()
-        .isNotEmpty;
+    final layers = controller.layers;
+    final sessionDefault = layers.appDefault.merge(layers.session);
+    final hasSessionOverrides = layers.session.toTurnStartParams().isNotEmpty;
     return Material(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(8),
@@ -40,7 +40,7 @@ class _TurnOverrideBar extends StatelessWidget {
           children: [
             const Padding(
               padding: EdgeInsets.only(top: 2),
-              child: Icon(Icons.tune, size: 20),
+              child: Icon(Icons.forum_outlined, size: 20),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -48,7 +48,7 @@ class _TurnOverrideBar extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    l10n.nextTurnOverrides,
+                    l10n.sessionOverrides,
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                   const SizedBox(height: 6),
@@ -58,18 +58,18 @@ class _TurnOverrideBar extends StatelessWidget {
                     children: [
                       ConfigOverrideSourceChip(
                         label: l10n.modelOverride,
-                        value: controller.layers.resolve().model,
-                        source: controller.sourceFor('model'),
+                        value: sessionDefault.model,
+                        source: _sessionSourceFor(layers, 'model'),
                       ),
                       ConfigOverrideSourceChip(
                         label: l10n.effortOverride,
-                        value: controller.layers.resolve().effort,
-                        source: controller.sourceFor('effort'),
+                        value: sessionDefault.effort,
+                        source: _sessionSourceFor(layers, 'effort'),
                       ),
                       ConfigOverrideSourceChip(
                         label: l10n.cwdOverride,
-                        value: controller.layers.resolve().cwd,
-                        source: controller.sourceFor('cwd'),
+                        value: sessionDefault.cwd,
+                        source: _sessionSourceFor(layers, 'cwd'),
                       ),
                     ],
                   ),
@@ -77,16 +77,16 @@ class _TurnOverrideBar extends StatelessWidget {
               ),
             ),
             IconButton(
-              key: const ValueKey('chat-turn-overrides-clear'),
-              onPressed: hasTurnOverrides ? controller.clearTurn : null,
+              key: const ValueKey('chat-session-overrides-clear'),
+              onPressed: hasSessionOverrides ? controller.clearSession : null,
               icon: const Icon(Icons.restore),
-              tooltip: l10n.clearTurnOverrides,
+              tooltip: l10n.clearSessionOverrides,
             ),
             IconButton(
-              key: const ValueKey('chat-turn-overrides-edit'),
-              onPressed: () => _showTurnOverrideSheet(context, controller),
+              key: const ValueKey('chat-session-overrides-edit'),
+              onPressed: () => _showSessionOverrideSheet(context, controller),
               icon: const Icon(Icons.edit_outlined),
-              tooltip: l10n.editTurnOverrides,
+              tooltip: l10n.editSessionOverrides,
             ),
           ],
         ),
@@ -94,28 +94,41 @@ class _TurnOverrideBar extends StatelessWidget {
     );
   }
 
-  void _showTurnOverrideSheet(
+  void _showSessionOverrideSheet(
     BuildContext context,
     CodexConfigOverrideController controller,
   ) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _TurnOverrideSheet(controller: controller),
+      builder: (context) => _SessionOverrideSheet(controller: controller),
     );
+  }
+
+  CodexConfigOverrideSource _sessionSourceFor(
+    CodexConfigOverrideLayers layers,
+    String fieldName,
+  ) {
+    if (layers.session.toTurnStartParams().containsKey(fieldName)) {
+      return CodexConfigOverrideSource.session;
+    }
+    if (layers.appDefault.toTurnStartParams().containsKey(fieldName)) {
+      return CodexConfigOverrideSource.appDefault;
+    }
+    return CodexConfigOverrideSource.serverDefault;
   }
 }
 
-class _TurnOverrideSheet extends StatefulWidget {
-  const _TurnOverrideSheet({required this.controller});
+class _SessionOverrideSheet extends StatefulWidget {
+  const _SessionOverrideSheet({required this.controller});
 
   final CodexConfigOverrideController controller;
 
   @override
-  State<_TurnOverrideSheet> createState() => _TurnOverrideSheetState();
+  State<_SessionOverrideSheet> createState() => _SessionOverrideSheetState();
 }
 
-class _TurnOverrideSheetState extends State<_TurnOverrideSheet> {
+class _SessionOverrideSheetState extends State<_SessionOverrideSheet> {
   late final TextEditingController _modelController;
   late final TextEditingController _effortController;
   late final TextEditingController _cwdController;
@@ -123,10 +136,10 @@ class _TurnOverrideSheetState extends State<_TurnOverrideSheet> {
   @override
   void initState() {
     super.initState();
-    final turn = widget.controller.layers.turn;
-    _modelController = TextEditingController(text: turn.model ?? '');
-    _effortController = TextEditingController(text: turn.effort ?? '');
-    _cwdController = TextEditingController(text: turn.cwd ?? '');
+    final session = widget.controller.layers.session;
+    _modelController = TextEditingController(text: session.model ?? '');
+    _effortController = TextEditingController(text: session.effort ?? '');
+    _cwdController = TextEditingController(text: session.cwd ?? '');
   }
 
   @override
@@ -149,24 +162,24 @@ class _TurnOverrideSheetState extends State<_TurnOverrideSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              l10n.nextTurnOverrides,
+              l10n.sessionOverrides,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
             ConfigOverrideField(
-              keyValue: 'chat-turn-model-override',
+              keyValue: 'chat-session-model-override',
               controller: _modelController,
               label: l10n.modelOverride,
             ),
             const SizedBox(height: 12),
             ConfigOverrideField(
-              keyValue: 'chat-turn-effort-override',
+              keyValue: 'chat-session-effort-override',
               controller: _effortController,
               label: l10n.effortOverride,
             ),
             const SizedBox(height: 12),
             ConfigOverrideField(
-              keyValue: 'chat-turn-cwd-override',
+              keyValue: 'chat-session-cwd-override',
               controller: _cwdController,
               label: l10n.cwdOverride,
             ),
@@ -177,16 +190,16 @@ class _TurnOverrideSheetState extends State<_TurnOverrideSheet> {
               overflowSpacing: 8,
               children: [
                 TextButton.icon(
-                  key: const ValueKey('chat-turn-overrides-sheet-clear'),
+                  key: const ValueKey('chat-session-overrides-sheet-clear'),
                   onPressed: _clear,
                   icon: const Icon(Icons.restore),
-                  label: Text(l10n.clearTurnOverrides),
+                  label: Text(l10n.clearSessionOverrides),
                 ),
                 FilledButton.icon(
-                  key: const ValueKey('chat-turn-overrides-apply'),
+                  key: const ValueKey('chat-session-overrides-apply'),
                   onPressed: _apply,
                   icon: const Icon(Icons.check),
-                  label: Text(l10n.applyTurnOverrides),
+                  label: Text(l10n.applySessionOverrides),
                 ),
               ],
             ),
@@ -197,7 +210,7 @@ class _TurnOverrideSheetState extends State<_TurnOverrideSheet> {
   }
 
   void _apply() {
-    widget.controller.setTurn(
+    widget.controller.setSession(
       CodexConfigOverrides(
         model: _modelController.text,
         effort: _effortController.text,
@@ -208,7 +221,7 @@ class _TurnOverrideSheetState extends State<_TurnOverrideSheet> {
   }
 
   void _clear() {
-    widget.controller.clearTurn();
+    widget.controller.clearSession();
     Navigator.of(context).pop();
   }
 }

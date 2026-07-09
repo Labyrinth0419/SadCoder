@@ -148,9 +148,14 @@ void main() {
     await tester.pumpWidget(SadCoderApp(sessionController: sessionController));
     await tester.tap(find.text('Chat').last);
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView), const Offset(0, -180));
+    final threadTile = find.byKey(const ValueKey('thread-summary-thr_1'));
+    await tester.scrollUntilVisible(
+      threadTile,
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Fix login bug'));
+    await tester.tap(threadTile);
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Timeline'),

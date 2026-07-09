@@ -297,7 +297,7 @@ void main() {
       configOverrideController: overrideController,
     );
 
-    expect(find.textContaining('Model: gpt-5 / app default'), findsOneWidget);
+    expect(find.textContaining('Model: gpt-5 / app default'), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey('chat-turn-overrides-edit')));
     await tester.pumpAndSettle();
@@ -335,7 +335,93 @@ void main() {
       'cwd': '/repo',
     });
     expect(overrideController.layers.turn.toTurnStartParams(), isEmpty);
-    expect(find.textContaining('Model: gpt-5 / app default'), findsOneWidget);
+    expect(find.textContaining('Model: gpt-5 / app default'), findsWidgets);
+  });
+
+  testWidgets('applies session overrides until explicitly cleared', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final overrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        appDefault: CodexConfigOverrides(model: 'gpt-5', effort: 'medium'),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => overrideController.layers,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+    );
+
+    expect(find.textContaining('Model: gpt-5 / app default'), findsWidgets);
+
+    await tester.tap(find.byKey(const ValueKey('chat-session-overrides-edit')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-session-model-override')),
+      'gpt-5-codex',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-session-cwd-override')),
+      '/repo',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('chat-session-overrides-apply')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Model: gpt-5-codex / session override'),
+      findsWidgets,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      'Use session overrides',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(turnRunner.startedTurnOverrides.single.toTurnStartParams(), {
+      'model': 'gpt-5-codex',
+      'effort': 'medium',
+      'cwd': '/repo',
+    });
+    expect(overrideController.layers.session.toTurnStartParams(), {
+      'model': 'gpt-5-codex',
+      'cwd': '/repo',
+    });
+
+    await tester.tap(
+      find.byKey(const ValueKey('chat-session-overrides-clear')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(overrideController.layers.session.toTurnStartParams(), isEmpty);
+    expect(find.textContaining('Model: gpt-5 / app default'), findsWidgets);
   });
 
   testWidgets('does not send slash commands as prompt text', (tester) async {
