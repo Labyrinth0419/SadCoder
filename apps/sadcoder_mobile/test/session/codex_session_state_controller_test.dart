@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/agent/agent_snapshot.dart';
 import 'package:sadcoder_mobile/src/agent/agent_snapshot_reader.dart';
+import 'package:sadcoder_mobile/src/apps/app_list_reader.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
@@ -68,6 +69,7 @@ void main() {
     expect(controller.skillListReader, isNotNull);
     expect(controller.pluginListReader, isNotNull);
     expect(controller.hookListReader, isNotNull);
+    expect(controller.appListReader, isNotNull);
     expect(controller.turnRunner, isNotNull);
     expect(controller.threadBackgroundTerminalRunner, isNotNull);
     expect(controller.threadReviewRunner, isNotNull);
@@ -465,6 +467,7 @@ void main() {
     expect(controller.skillListReader, isNull);
     expect(controller.pluginListReader, isNull);
     expect(controller.hookListReader, isNull);
+    expect(controller.appListReader, isNull);
     expect(controller.turnRunner, isNull);
     expect(connector.connectCount, 1);
     expect(connector.closeCount, 1);
@@ -593,6 +596,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       skillListReader: const _FakeSkillListReader(),
       pluginListReader: const _FakePluginListReader(),
       hookListReader: const _FakeHookListReader(),
+      appListReader: const _FakeAppListReader(),
       threadMutationRunner: const _FakeThreadMutationRunner(),
       threadBackgroundTerminalRunner:
           const _FakeThreadBackgroundTerminalRunner(),
@@ -712,6 +716,20 @@ class _FakeHookListReader implements HookListReader {
   @override
   Future<HookListPage> listHooks({List<String> cwds = const []}) async {
     return const HookListPage(entries: []);
+  }
+}
+
+class _FakeAppListReader implements AppListReader {
+  const _FakeAppListReader();
+
+  @override
+  Future<AppListPage> listApps({
+    String? cursor,
+    int? limit,
+    String? threadId,
+    bool forceRefetch = false,
+  }) async {
+    return const AppListPage(apps: []);
   }
 }
 

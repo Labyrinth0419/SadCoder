@@ -4,6 +4,8 @@ import '../background_terminals/codex_thread_background_terminal_runner.dart';
 import '../background_terminals/thread_background_terminal_runner.dart';
 import '../accounts/account_snapshot_reader.dart';
 import '../accounts/codex_account_snapshot_reader.dart';
+import '../apps/app_list_reader.dart';
+import '../apps/codex_app_list_reader.dart';
 import '../approvals/approval_state_controller.dart';
 import '../config/codex_config_snapshot_reader.dart';
 import '../config/codex_config_snapshot_remote_reader.dart';
@@ -62,6 +64,8 @@ abstract interface class CodexSessionConnectionHandle {
   PluginListReader get pluginListReader;
 
   HookListReader get hookListReader;
+
+  AppListReader get appListReader;
 
   ThreadMutationRunner get threadMutationRunner;
 
@@ -140,6 +144,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         skillListReader: CodexSkillListReader(session.client),
         pluginListReader: CodexPluginListReader(session.client),
         hookListReader: CodexHookListReader(session.client),
+        appListReader: CodexAppListReader(session.client),
         threadMutationRunner: CodexThreadMutationRunner(session.client),
         threadBackgroundTerminalRunner: CodexThreadBackgroundTerminalRunner(
           session.client,
@@ -202,6 +207,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.skillListReader,
     required this.pluginListReader,
     required this.hookListReader,
+    required this.appListReader,
     required this.threadMutationRunner,
     required this.threadBackgroundTerminalRunner,
     required this.threadGoalRunner,
@@ -237,6 +243,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final PluginListReader pluginListReader;
   @override
   final HookListReader hookListReader;
+  @override
+  final AppListReader appListReader;
   @override
   final ThreadMutationRunner threadMutationRunner;
   @override

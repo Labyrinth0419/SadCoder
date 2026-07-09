@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
+import 'package:sadcoder_mobile/src/apps/app_list_reader.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal_runner.dart';
@@ -2625,6 +2626,125 @@ void main() {
     expect(find.text('/hooks is unavailable right now.'), findsOneWidget);
   });
 
+  testWidgets('/apps lists apps for the selected thread', (tester) async {
+    final approvalController = ApprovalStateController();
+    final appReader = _RecordingAppListReader(
+      page: AppListPage.fromJson({
+        'data': [
+          {
+            'id': 'linear',
+            'name': 'Linear',
+            'description': 'Plan work',
+            'distributionChannel': 'marketplace',
+            'branding': {
+              'category': 'Project management',
+              'developer': 'Linear',
+              'website': 'https://linear.app',
+            },
+            'appMetadata': {
+              'review': {'status': 'approved'},
+              'version': '1.2.3',
+            },
+            'isAccessible': true,
+            'isEnabled': true,
+            'pluginDisplayNames': ['Linear plugin'],
+          },
+        ],
+      }),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      appListReader: appReader,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_selected',
+            'sessionId': 'sess_1',
+            'preview': 'Selected thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+            'turns': <Object?>[],
+          }),
+        ),
+      ),
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(detailController.dispose);
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_selected');
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/apps',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(appReader.threadIds, ['thr_selected']);
+    expect(appReader.limits, [25]);
+    expect(appReader.forceRefetchValues, [false]);
+    expect(find.textContaining('Apps'), findsOneWidget);
+    expect(
+      find.textContaining('Linear (linear): accessible, enabled'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Description: Plan work'), findsOneWidget);
+    expect(find.textContaining('Plugins: Linear plugin'), findsOneWidget);
+  });
+
+  testWidgets('/apps unsupported arguments do not refresh or send a prompt', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final appReader = _RecordingAppListReader(
+      page: const AppListPage(apps: []),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      appListReader: appReader,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+
+    await _pumpChatPage(tester, sessionController: sessionController);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/apps sideways',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(appReader.threadIds, isEmpty);
+    expect(find.text('/apps is unavailable right now.'), findsOneWidget);
+  });
+
   testWidgets('/raw toggles raw timeline item JSON locally', (tester) async {
     final timelineController = ChatTimelineController();
     addTearDown(timelineController.dispose);
@@ -3671,6 +3791,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.skillListReader = const _FakeSkillListReader(),
     this.pluginListReader = const _FakePluginListReader(),
     this.hookListReader = const _FakeHookListReader(),
+    this.appListReader = const _FakeAppListReader(),
   });
 
   final ThreadListReader threadListReader;
@@ -3682,6 +3803,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final SkillListReader skillListReader;
   final PluginListReader pluginListReader;
   final HookListReader hookListReader;
+  final AppListReader appListReader;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -3699,6 +3821,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       skillListReader: skillListReader,
       pluginListReader: pluginListReader,
       hookListReader: hookListReader,
+      appListReader: appListReader,
     );
   }
 }
@@ -3715,6 +3838,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.skillListReader,
     required this.pluginListReader,
     required this.hookListReader,
+    required this.appListReader,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -3748,6 +3872,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final HookListReader hookListReader;
+
+  @override
+  final AppListReader appListReader;
 
   @override
   ModelListReader get modelListReader => const _FakeModelListReader();
@@ -3912,6 +4039,20 @@ class _FakeHookListReader implements HookListReader {
   @override
   Future<HookListPage> listHooks({List<String> cwds = const []}) async {
     return const HookListPage(entries: []);
+  }
+}
+
+class _FakeAppListReader implements AppListReader {
+  const _FakeAppListReader();
+
+  @override
+  Future<AppListPage> listApps({
+    String? cursor,
+    int? limit,
+    String? threadId,
+    bool forceRefetch = false,
+  }) async {
+    return const AppListPage(apps: []);
   }
 }
 
@@ -4185,6 +4326,30 @@ class _RecordingHookListReader implements HookListReader {
   @override
   Future<HookListPage> listHooks({List<String> cwds = const []}) async {
     this.cwds.add(List.unmodifiable(cwds));
+    return page;
+  }
+}
+
+class _RecordingAppListReader implements AppListReader {
+  _RecordingAppListReader({required this.page});
+
+  final AppListPage page;
+  final cursors = <String?>[];
+  final limits = <int?>[];
+  final threadIds = <String?>[];
+  final forceRefetchValues = <bool>[];
+
+  @override
+  Future<AppListPage> listApps({
+    String? cursor,
+    int? limit,
+    String? threadId,
+    bool forceRefetch = false,
+  }) async {
+    cursors.add(cursor);
+    limits.add(limit);
+    threadIds.add(threadId);
+    forceRefetchValues.add(forceRefetch);
     return page;
   }
 }

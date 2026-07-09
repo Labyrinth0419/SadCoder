@@ -332,6 +332,24 @@ class AppLocalizations {
   String get hookSourcePath => _text('hookSourcePath');
   String get hookPlugin => _text('hookPlugin');
   String get hookTimeout => _text('hookTimeout');
+  String get appsTitle => _text('appsTitle');
+  String get appsUnavailable => _text('appsUnavailable');
+  String get appsLoadFailed => _text('appsLoadFailed');
+  String get appsEmpty => _text('appsEmpty');
+  String get appDescription => _text('appDescription');
+  String get appCategory => _text('appCategory');
+  String get appDeveloper => _text('appDeveloper');
+  String get appVersion => _text('appVersion');
+  String get appDistribution => _text('appDistribution');
+  String get appReview => _text('appReview');
+  String get appPlugins => _text('appPlugins');
+  String get appWebsite => _text('appWebsite');
+  String get appInstallUrl => _text('appInstallUrl');
+  String get appsNextCursor => _text('appsNextCursor');
+  String get appAccessible => _text('appAccessible');
+  String get appNotAccessible => _text('appNotAccessible');
+  String get appEnabled => _text('appEnabled');
+  String get appDisabled => _text('appDisabled');
   String get lifetimeTokens => _text('lifetimeTokens');
   String get peakDailyTokens => _text('peakDailyTokens');
   String get currentStreakDays => _text('currentStreakDays');
@@ -703,6 +721,24 @@ const _values = <String, Map<String, String>>{
     'hookSourcePath': 'source path',
     'hookPlugin': 'plugin',
     'hookTimeout': 'timeout',
+    'appsTitle': 'Apps',
+    'appsUnavailable': 'Connect to a host, then run /apps.',
+    'appsLoadFailed': 'Failed to load apps',
+    'appsEmpty': 'No apps available.',
+    'appDescription': 'Description',
+    'appCategory': 'Category',
+    'appDeveloper': 'Developer',
+    'appVersion': 'Version',
+    'appDistribution': 'Distribution',
+    'appReview': 'Review',
+    'appPlugins': 'Plugins',
+    'appWebsite': 'Website',
+    'appInstallUrl': 'Install URL',
+    'appsNextCursor': 'Next cursor',
+    'appAccessible': 'accessible',
+    'appNotAccessible': 'not accessible',
+    'appEnabled': 'enabled',
+    'appDisabled': 'disabled',
     'lifetimeTokens': 'Lifetime tokens',
     'peakDailyTokens': 'Peak daily tokens',
     'currentStreakDays': 'Current streak',
@@ -1027,6 +1063,24 @@ const _values = <String, Map<String, String>>{
     'hookSourcePath': '来源路径',
     'hookPlugin': '插件',
     'hookTimeout': '超时',
+    'appsTitle': '应用',
+    'appsUnavailable': '连接主机后运行 /apps。',
+    'appsLoadFailed': '应用加载失败',
+    'appsEmpty': '暂无可用应用。',
+    'appDescription': '说明',
+    'appCategory': '分类',
+    'appDeveloper': '开发者',
+    'appVersion': '版本',
+    'appDistribution': '分发渠道',
+    'appReview': '审核',
+    'appPlugins': '插件',
+    'appWebsite': '网站',
+    'appInstallUrl': '安装 URL',
+    'appsNextCursor': '下一页游标',
+    'appAccessible': '可访问',
+    'appNotAccessible': '不可访问',
+    'appEnabled': '已启用',
+    'appDisabled': '已禁用',
     'lifetimeTokens': '累计 token',
     'peakDailyTokens': '单日峰值 token',
     'currentStreakDays': '当前连续天数',

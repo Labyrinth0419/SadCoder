@@ -282,6 +282,38 @@ void main() {
     expect(result.command?.command, 'hooks');
   });
 
+  test('/apps returns the injected app summary', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      showApps: (argument) async {
+        arguments.add(argument);
+        return 'Apps\nLinear: accessible, enabled';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/apps'),
+      hasActiveTurn: true,
+    );
+
+    expect(arguments, ['']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.apps);
+    expect(result.message, contains('Linear'));
+  });
+
+  test('/apps is unavailable when arguments are not supported', () async {
+    final dispatcher = SlashCommandActionDispatcher(showApps: (_) => null);
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/apps sideways'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'apps');
+  });
+
   test('/goal passes inline arguments to the injected goal handler', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

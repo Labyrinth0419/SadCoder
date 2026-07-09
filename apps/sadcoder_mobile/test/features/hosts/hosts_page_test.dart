@@ -8,6 +8,7 @@ import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/agent/agent_status.dart';
+import 'package:sadcoder_mobile/src/apps/app_list_reader.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal_runner.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
@@ -700,6 +701,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   HookListReader get hookListReader => const _FakeHookListReader();
 
   @override
+  AppListReader get appListReader => const _FakeAppListReader();
+
+  @override
   ThreadMutationRunner get threadMutationRunner =>
       const _FakeThreadMutationRunner();
 
@@ -841,6 +845,20 @@ class _FakeHookListReader implements HookListReader {
   @override
   Future<HookListPage> listHooks({List<String> cwds = const []}) async {
     return const HookListPage(entries: []);
+  }
+}
+
+class _FakeAppListReader implements AppListReader {
+  const _FakeAppListReader();
+
+  @override
+  Future<AppListPage> listApps({
+    String? cursor,
+    int? limit,
+    String? threadId,
+    bool forceRefetch = false,
+  }) async {
+    return const AppListPage(apps: []);
   }
 }
 

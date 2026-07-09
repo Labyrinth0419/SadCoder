@@ -60,6 +60,12 @@ void main() {
       marketplaceKinds: ['local', 'workspace-directory'],
     );
     await client.listHooks(cwds: [' /repo ', '  ']);
+    await client.listApps(
+      cursor: ' apps_cursor ',
+      limit: 25,
+      threadId: ' thr_1 ',
+      forceRefetch: true,
+    );
     await client.getThreadGoal(threadId: 'thr_1');
     await client.setThreadGoal(
       threadId: 'thr_1',
@@ -96,6 +102,7 @@ void main() {
       'skills/list',
       'plugin/list',
       'hooks/list',
+      'app/list',
       'thread/goal/get',
       'thread/goal/set',
       'thread/goal/clear',
@@ -139,26 +146,32 @@ void main() {
     expect(requests[15].params, {
       'cwds': ['/repo'],
     });
-    expect(requests[16].params, {'threadId': 'thr_1'});
-    expect(requests[17].params, {
+    expect(requests[16].params, {
+      'cursor': 'apps_cursor',
+      'limit': 25,
+      'threadId': 'thr_1',
+      'forceRefetch': true,
+    });
+    expect(requests[17].params, {'threadId': 'thr_1'});
+    expect(requests[18].params, {
       'threadId': 'thr_1',
       'objective': 'Ship goal support',
       'status': 'active',
       'tokenBudget': 5000,
     });
-    expect(requests[18].params, {'threadId': 'thr_1'});
-    expect(requests[19].params, {
+    expect(requests[19].params, {'threadId': 'thr_1'});
+    expect(requests[20].params, {
       'threadId': 'thr_1',
       'target': {'type': 'commit', 'sha': 'abc123', 'title': 'Polish colors'},
       'delivery': 'detached',
     });
-    expect(requests[20].params, {
+    expect(requests[21].params, {
       'threadId': 'thr_1',
       'name': 'Renamed thread',
     });
-    expect(requests[21].params, {'threadId': 'thr_1'});
     expect(requests[22].params, {'threadId': 'thr_1'});
-    expect(requests[23].params, {
+    expect(requests[23].params, {'threadId': 'thr_1'});
+    expect(requests[24].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},

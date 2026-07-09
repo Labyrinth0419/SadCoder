@@ -24,6 +24,7 @@ import '../../threads/thread_mutation_runner.dart';
 import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
+import 'chat_apps_summary.dart';
 import 'chat_background_terminal_summary.dart';
 import 'chat_hooks_summary.dart';
 import 'chat_plugins_summary.dart';
@@ -339,6 +340,7 @@ class _ChatPageState extends State<ChatPage> {
           showSkills: _buildSkillsSummary,
           showPlugins: _buildPluginsSummary,
           showHooks: _buildHooksSummary,
+          showApps: _buildAppsSummary,
           handleGoal: _handleGoalCommand,
           handleReview: _handleReviewCommand,
           showBackgroundTerminals: _buildBackgroundTerminalsSummary,
@@ -467,6 +469,28 @@ class _ChatPageState extends State<ChatPage> {
       return buildHooksSummary(l10n: l10n, page: page);
     } on Object catch (error) {
       return '${l10n.hooksTitle}\n${l10n.hooksLoadFailed}: $error';
+    }
+  }
+
+  Future<String?> _buildAppsSummary(String arguments) async {
+    if (arguments.trim().isNotEmpty) {
+      return null;
+    }
+
+    final l10n = context.l10n;
+    final reader = widget.sessionController?.appListReader;
+    if (reader == null) {
+      return [l10n.appsTitle, l10n.appsUnavailable].join('\n');
+    }
+
+    try {
+      final page = await reader.listApps(
+        threadId: _currentThreadId(),
+        limit: 25,
+      );
+      return buildAppsSummary(l10n: l10n, page: page);
+    } on Object catch (error) {
+      return '${l10n.appsTitle}\n${l10n.appsLoadFailed}: $error';
     }
   }
 
@@ -920,6 +944,9 @@ class _ChatPageState extends State<ChatPage> {
           result.slash,
         ),
         SlashCommandActionEffect.hooks => l10n.slashCommandExecuted(
+          result.slash,
+        ),
+        SlashCommandActionEffect.apps => l10n.slashCommandExecuted(
           result.slash,
         ),
         SlashCommandActionEffect.goal => l10n.slashCommandExecuted(

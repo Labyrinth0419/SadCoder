@@ -531,7 +531,7 @@
       "availableInSideConversation": false,
       "platformVisibility": "all",
       "mappingType": "appServer",
-      "mappingTarget": "apps/* or agent fallback",
+      "mappingTarget": "app/list read-only",
       "phase": "secondStage",
       "riskLevel": "low"
     },

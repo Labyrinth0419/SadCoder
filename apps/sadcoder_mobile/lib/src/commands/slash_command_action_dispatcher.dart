@@ -11,6 +11,7 @@ typedef SlashCommandShowMcp = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowSkills = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowPlugins = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowHooks = FutureOr<String?> Function(String arguments);
+typedef SlashCommandShowApps = FutureOr<String?> Function(String arguments);
 typedef SlashCommandHandleGoal = FutureOr<String?> Function(String arguments);
 typedef SlashCommandHandleReview = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowBackgroundTerminals =
@@ -49,6 +50,7 @@ enum SlashCommandActionEffect {
   skills,
   plugins,
   hooks,
+  apps,
   goal,
   review,
   backgroundTerminals,
@@ -176,6 +178,7 @@ class SlashCommandActionDispatcher {
     this.showSkills,
     this.showPlugins,
     this.showHooks,
+    this.showApps,
     this.handleGoal,
     this.handleReview,
     this.showBackgroundTerminals,
@@ -202,6 +205,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandShowSkills? showSkills;
   final SlashCommandShowPlugins? showPlugins;
   final SlashCommandShowHooks? showHooks;
+  final SlashCommandShowApps? showApps;
   final SlashCommandHandleGoal? handleGoal;
   final SlashCommandHandleReview? handleReview;
   final SlashCommandShowBackgroundTerminals? showBackgroundTerminals;
@@ -285,6 +289,8 @@ class SlashCommandActionDispatcher {
         return _showPlugins(parsed);
       case 'hooks':
         return _showHooks(parsed);
+      case 'apps':
+        return _showApps(parsed);
       case 'goal':
         return _handleGoal(parsed);
       case 'review':
@@ -483,6 +489,16 @@ class SlashCommandActionDispatcher {
       parsed,
       action: showHooks,
       effect: SlashCommandActionEffect.hooks,
+    );
+  }
+
+  Future<SlashCommandActionResult> _showApps(
+    SlashCommandParseResult parsed,
+  ) async {
+    return _showMessageWithArguments(
+      parsed,
+      action: showApps,
+      effect: SlashCommandActionEffect.apps,
     );
   }
 

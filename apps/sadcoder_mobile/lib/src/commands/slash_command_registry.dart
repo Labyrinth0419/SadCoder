@@ -566,7 +566,7 @@ const builtInSlashCommands = <SlashCommandSpec>[
     command: 'apps',
     description: 'manage apps',
     mappingType: SlashCommandMappingType.appServer,
-    mappingTarget: 'apps/* or agent fallback',
+    mappingTarget: 'app/list read-only',
     phase: SlashCommandPhase.secondStage,
   ),
   SlashCommandSpec(

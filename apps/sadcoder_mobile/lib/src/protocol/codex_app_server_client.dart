@@ -189,6 +189,28 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> listApps({
+    String? cursor,
+    int? limit,
+    String? threadId,
+    bool forceRefetch = false,
+  }) {
+    final params = <String, Object?>{};
+    if (cursor != null && cursor.trim().isNotEmpty) {
+      params['cursor'] = cursor.trim();
+    }
+    if (limit != null) {
+      params['limit'] = limit;
+    }
+    if (threadId != null && threadId.trim().isNotEmpty) {
+      params['threadId'] = threadId.trim();
+    }
+    if (forceRefetch) {
+      params['forceRefetch'] = true;
+    }
+    return _request('app/list', params);
+  }
+
   Future<Map<String, Object?>> getThreadGoal({required String threadId}) {
     return _request('thread/goal/get', {'threadId': threadId});
   }
