@@ -10,12 +10,14 @@ import 'ssh_profile.dart';
 class DartSshClientFactory {
   const DartSshClientFactory({
     this.connectTimeout = const Duration(seconds: 15),
+    this.keepAliveInterval = const Duration(seconds: 20),
     this.knownHostVerifier = const KnownHostVerifier(
       store: SharedPreferencesKnownHostStore(),
     ),
   });
 
   final Duration connectTimeout;
+  final Duration? keepAliveInterval;
   final KnownHostVerifier? knownHostVerifier;
 
   Future<SSHClient> connect(SshProfile profile) async {
@@ -42,6 +44,7 @@ class DartSshClientFactory {
         profile,
         onFailure: (error) => hostKeyFailure = error,
       ),
+      keepAliveInterval: keepAliveInterval,
     );
     try {
       await client.authenticated;

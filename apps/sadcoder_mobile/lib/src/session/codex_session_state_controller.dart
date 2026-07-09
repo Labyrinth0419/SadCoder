@@ -33,6 +33,7 @@ import '../turns/turn_runner.dart';
 import '../usage/account_usage_snapshot_reader.dart';
 import 'codex_session_connector.dart';
 import 'reconnect_policy.dart';
+import 'session_heartbeat.dart';
 
 enum CodexSessionStatus {
   idle,
@@ -52,17 +53,26 @@ class CodexSessionStateController extends ChangeNotifier {
         const TimerReconnectDelayScheduler(),
     bool autoReconnect = true,
     AgentSnapshotReader? snapshotReader,
+    SessionHeartbeatRunner? heartbeatRunner,
+    SessionHeartbeatScheduler heartbeatScheduler =
+        const TimerSessionHeartbeatScheduler(),
+    this.heartbeatInterval = const Duration(seconds: 60),
   }) : _connector = connector,
        _reconnectPolicy = reconnectPolicy ?? ReconnectPolicy(),
        _reconnectDelayScheduler = reconnectDelayScheduler,
        _autoReconnect = autoReconnect,
-       _snapshotReader = snapshotReader;
+       _snapshotReader = snapshotReader,
+       _heartbeatRunner = heartbeatRunner,
+       _heartbeatScheduler = heartbeatScheduler;
 
   final CodexSessionConnectionStarter _connector;
   final ReconnectPolicy _reconnectPolicy;
   final ReconnectDelayScheduler _reconnectDelayScheduler;
   final bool _autoReconnect;
   final AgentSnapshotReader? _snapshotReader;
+  final SessionHeartbeatRunner? _heartbeatRunner;
+  final SessionHeartbeatScheduler _heartbeatScheduler;
+  final Duration heartbeatInterval;
   final ApprovalStateController approvalController;
   final StreamController<CodexEvent> _eventsController =
       StreamController.broadcast();
@@ -70,6 +80,7 @@ class CodexSessionStateController extends ChangeNotifier {
   final List<String> _seenEventOrder = <String>[];
   CodexSessionConnectionHandle? _connection;
   StreamSubscription<CodexEvent>? _eventSubscription;
+  SessionHeartbeatHandle? _heartbeatHandle;
   CodexSessionStatus _status = CodexSessionStatus.idle;
   SshProfile? _profile;
   Object? _error;
@@ -162,6 +173,7 @@ class CodexSessionStateController extends ChangeNotifier {
     final existingConnection = _connection;
     if (existingConnection != null) {
       _connection = null;
+      _stopHeartbeat();
       _detachConnectionEvents();
       await existingConnection.close();
     }
@@ -212,6 +224,7 @@ class CodexSessionStateController extends ChangeNotifier {
 
     _setState(status: CodexSessionStatus.disconnecting);
     try {
+      _stopHeartbeat();
       _detachConnectionEvents();
       await connection.close();
     } finally {
@@ -226,6 +239,7 @@ class CodexSessionStateController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _generation++;
+    _stopHeartbeat();
     unawaited(_eventSubscription?.cancel());
     unawaited(_connection?.close(notifyApprovalController: false));
     _connection = null;
@@ -256,6 +270,7 @@ class CodexSessionStateController extends ChangeNotifier {
     }
 
     _connection = null;
+    _stopHeartbeat();
     _detachConnectionEvents();
     await connection.close();
     if (!_isCurrentGeneration(generation)) {
@@ -323,7 +338,47 @@ class CodexSessionStateController extends ChangeNotifier {
     _connection = connection;
     _attachConnectionEvents(connection);
     _watchConnectionDone(connection, generation);
+    _startHeartbeat(connection, generation);
     unawaited(_backfillAgentSnapshot(profile, generation, connection));
+  }
+
+  void _startHeartbeat(
+    CodexSessionConnectionHandle connection,
+    int generation,
+  ) {
+    _stopHeartbeat();
+    final runner = _heartbeatRunner;
+    if (runner == null || heartbeatInterval <= Duration.zero) {
+      return;
+    }
+    _heartbeatHandle = _heartbeatScheduler.start(
+      interval: heartbeatInterval,
+      tick: () => _runHeartbeat(runner, connection, generation),
+    );
+  }
+
+  Future<void> _runHeartbeat(
+    SessionHeartbeatRunner runner,
+    CodexSessionConnectionHandle connection,
+    int generation,
+  ) async {
+    if (!_isCurrentGeneration(generation) || _connection != connection) {
+      return;
+    }
+    try {
+      await runner.ping(connection);
+    } on Object catch (error) {
+      if (!_isCurrentGeneration(generation) || _connection != connection) {
+        return;
+      }
+      await _handleConnectionDone(connection, generation, error);
+    }
+  }
+
+  void _stopHeartbeat() {
+    final heartbeat = _heartbeatHandle;
+    _heartbeatHandle = null;
+    heartbeat?.stop();
   }
 
   void _attachConnectionEvents(CodexSessionConnectionHandle connection) {

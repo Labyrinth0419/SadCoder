@@ -36,6 +36,7 @@ import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/reconnect_policy.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
+import 'package:sadcoder_mobile/src/session/session_heartbeat.dart';
 import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_proxy_connector.dart';
@@ -289,6 +290,110 @@ void main() {
       expect(statuses, isNot(contains(CodexSessionStatus.disconnecting)));
     },
   );
+
+  test('heartbeat reads a lightweight thread list while connected', () async {
+    final approvalController = ApprovalStateController();
+    final threadListReader = _RecordingThreadListReader();
+    final heartbeatScheduler = _ManualSessionHeartbeatScheduler();
+    final controller = CodexSessionStateController(
+      connector: _FakeSessionStarter(threadListReaders: [threadListReader]),
+      approvalController: approvalController,
+      heartbeatRunner: const ThreadListSessionHeartbeatRunner(),
+      heartbeatScheduler: heartbeatScheduler,
+    );
+    addTearDown(controller.dispose);
+    addTearDown(approvalController.dispose);
+
+    await controller.connect(_profile);
+    await heartbeatScheduler.tick();
+
+    expect(
+      heartbeatScheduler.handles.single.interval,
+      const Duration(seconds: 60),
+    );
+    expect(threadListReader.limits, [1]);
+    expect(controller.status, CodexSessionStatus.connected);
+  });
+
+  test(
+    'heartbeat failure reconnects without clearing pending approvals',
+    () async {
+      final approvalController = ApprovalStateController(
+        initialApprovals: const [
+          PendingApproval(
+            requestId: 'approval-1',
+            method: commandExecutionApprovalMethod,
+            kind: PendingApprovalKind.commandExecution,
+            rawParams: {},
+          ),
+        ],
+      );
+      final connector = _FakeSessionStarter(
+        threadListReaders: [
+          _RecordingThreadListReader(failure: StateError('heartbeat failed')),
+          _RecordingThreadListReader(),
+        ],
+      );
+      final heartbeatScheduler = _ManualSessionHeartbeatScheduler();
+      final reconnectScheduler = _FakeReconnectDelayScheduler();
+      final controller = CodexSessionStateController(
+        connector: connector,
+        approvalController: approvalController,
+        heartbeatRunner: const ThreadListSessionHeartbeatRunner(),
+        heartbeatScheduler: heartbeatScheduler,
+        reconnectPolicy: const ReconnectPolicy.fixed(
+          delays: [Duration(milliseconds: 1)],
+        ),
+        reconnectDelayScheduler: reconnectScheduler,
+      );
+      addTearDown(controller.dispose);
+      addTearDown(approvalController.dispose);
+
+      await controller.connect(_profile);
+      await heartbeatScheduler.tick();
+      await _flushMicrotasks();
+
+      expect(controller.status, CodexSessionStatus.reconnecting);
+      expect(controller.error, isA<StateError>());
+      expect(connector.closeCount, 1);
+      expect(heartbeatScheduler.handles.first.stopped, true);
+      expect(reconnectScheduler.delays, [const Duration(milliseconds: 1)]);
+      expect(approvalController.approvals.single.requestId, 'approval-1');
+      expect(approvalController.canRespond, false);
+
+      reconnectScheduler.completeNext();
+      await _flushMicrotasks();
+
+      expect(controller.status, CodexSessionStatus.connected);
+      expect(connector.connectedProfiles, [_profile, _profile]);
+      expect(heartbeatScheduler.handles, hasLength(2));
+      expect(heartbeatScheduler.handles.last.stopped, false);
+      expect(approvalController.approvals.single.requestId, 'approval-1');
+      expect(approvalController.canRespond, true);
+    },
+  );
+
+  test('manual disconnect stops heartbeat ticks', () async {
+    final approvalController = ApprovalStateController();
+    final threadListReader = _RecordingThreadListReader();
+    final heartbeatScheduler = _ManualSessionHeartbeatScheduler();
+    final controller = CodexSessionStateController(
+      connector: _FakeSessionStarter(threadListReaders: [threadListReader]),
+      approvalController: approvalController,
+      heartbeatRunner: const ThreadListSessionHeartbeatRunner(),
+      heartbeatScheduler: heartbeatScheduler,
+    );
+    addTearDown(controller.dispose);
+    addTearDown(approvalController.dispose);
+
+    await controller.connect(_profile);
+    await controller.disconnect();
+    await heartbeatScheduler.tick(index: 0);
+
+    expect(heartbeatScheduler.handles.single.stopped, true);
+    expect(threadListReader.limits, isEmpty);
+    expect(controller.status, CodexSessionStatus.idle);
+  });
 
   test('reconnect backfills pending approvals from agent snapshot', () async {
     final approvalController = ApprovalStateController();
@@ -565,10 +670,13 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   _FakeSessionStarter({
     this.failConnect = false,
     List<Object?>? connectOutcomes,
-  }) : connectOutcomes = connectOutcomes ?? const [];
+    List<ThreadListReader>? threadListReaders,
+  }) : connectOutcomes = connectOutcomes ?? const [],
+       threadListReaders = threadListReaders ?? const [];
 
   final bool failConnect;
   final List<Object?> connectOutcomes;
+  final List<ThreadListReader> threadListReaders;
   final connectedProfiles = <SshProfile>[];
   final connections = <_FakeConnectionRecord>[];
   int connectCount = 0;
@@ -579,8 +687,9 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     SshProfile profile, {
     ApprovalStateController? approvalController,
   }) async {
-    final outcome = connectCount < connectOutcomes.length
-        ? connectOutcomes[connectCount]
+    final connectionIndex = connectCount;
+    final outcome = connectionIndex < connectOutcomes.length
+        ? connectOutcomes[connectionIndex]
         : null;
     connectCount++;
     if (failConnect) {
@@ -599,7 +708,9 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     return CodexSessionConnection(
       profile: profile,
       session: session,
-      threadListReader: const _FakeThreadListReader(),
+      threadListReader: connectionIndex < threadListReaders.length
+          ? threadListReaders[connectionIndex]
+          : const _FakeThreadListReader(),
       threadDetailReader: const _FakeThreadDetailReader(),
       configSnapshotReader: const _FakeConfigSnapshotReader(),
       accountSnapshotReader: const _FakeAccountSnapshotReader(),
@@ -855,6 +966,23 @@ class _FakeThreadListReader implements ThreadListReader {
 
   @override
   Future<ThreadListPage> listThreads({int limit = 20}) async {
+    return const ThreadListPage(threads: []);
+  }
+}
+
+class _RecordingThreadListReader implements ThreadListReader {
+  _RecordingThreadListReader({this.failure});
+
+  final Object? failure;
+  final limits = <int>[];
+
+  @override
+  Future<ThreadListPage> listThreads({int limit = 20}) async {
+    limits.add(limit);
+    final failure = this.failure;
+    if (failure != null) {
+      throw failure;
+    }
     return const ThreadListPage(threads: []);
   }
 }
@@ -1132,6 +1260,51 @@ class _FakeReconnectDelayScheduler implements ReconnectDelayScheduler {
     if (!completer.isCompleted) {
       completer.complete();
     }
+  }
+}
+
+class _ManualSessionHeartbeatScheduler implements SessionHeartbeatScheduler {
+  final handles = <_ManualSessionHeartbeatHandle>[];
+
+  @override
+  SessionHeartbeatHandle start({
+    required Duration interval,
+    required Future<void> Function() tick,
+  }) {
+    final handle = _ManualSessionHeartbeatHandle(
+      interval: interval,
+      tick: tick,
+    );
+    handles.add(handle);
+    return handle;
+  }
+
+  Future<void> tick({int? index}) async {
+    final handle = index == null ? handles.last : handles[index];
+    await handle.tick();
+  }
+}
+
+class _ManualSessionHeartbeatHandle implements SessionHeartbeatHandle {
+  _ManualSessionHeartbeatHandle({
+    required this.interval,
+    required Future<void> Function() tick,
+  }) : _tick = tick;
+
+  final Duration interval;
+  final Future<void> Function() _tick;
+  bool stopped = false;
+
+  Future<void> tick() async {
+    if (stopped) {
+      return;
+    }
+    await _tick();
+  }
+
+  @override
+  void stop() {
+    stopped = true;
   }
 }
 

@@ -20,6 +20,7 @@ import '../models/model_list_controller.dart';
 import '../permissions/permission_profile_list_controller.dart';
 import '../session/codex_session_connector.dart';
 import '../session/codex_session_state_controller.dart';
+import '../session/session_heartbeat.dart';
 import '../ssh/dart_ssh_proxy_connector.dart';
 import '../ssh/dart_ssh_remote_command_runner.dart';
 import '../ssh/ssh_profile_store.dart';
@@ -168,6 +169,7 @@ class _AppShellState extends State<AppShell> {
           connector: _defaultSessionConnector,
           approvalController: _approvalController,
           snapshotReader: _defaultAgentRemoteService,
+          heartbeatRunner: const ThreadListSessionHeartbeatRunner(),
         );
     _threadListController = ThreadListController(
       readerProvider: () => _sessionController.threadListReader,
