@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/accounts/account_logout_runner.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/agent/agent_snapshot.dart';
 import 'package:sadcoder_mobile/src/agent/agent_snapshot_reader.dart';
@@ -64,6 +65,7 @@ void main() {
     expect(controller.threadDetailReader, isNotNull);
     expect(controller.configSnapshotReader, isNotNull);
     expect(controller.accountSnapshotReader, isNotNull);
+    expect(controller.accountLogoutRunner, isNotNull);
     expect(controller.modelListReader, isNotNull);
     expect(controller.permissionProfileListReader, isNotNull);
     expect(controller.skillListReader, isNotNull);
@@ -589,6 +591,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       threadDetailReader: const _FakeThreadDetailReader(),
       configSnapshotReader: const _FakeConfigSnapshotReader(),
       accountSnapshotReader: const _FakeAccountSnapshotReader(),
+      accountLogoutRunner: const _FakeAccountLogoutRunner(),
       accountUsageSnapshotReader: const _FakeAccountUsageSnapshotReader(),
       mcpServerStatusReader: const _FakeMcpServerStatusReader(),
       modelListReader: const _FakeModelListReader(),
@@ -635,6 +638,13 @@ class _FakeAccountSnapshotReader implements AccountSnapshotReader {
   Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
     return const AccountSnapshot(account: null, requiresOpenaiAuth: false);
   }
+}
+
+class _FakeAccountLogoutRunner implements AccountLogoutRunner {
+  const _FakeAccountLogoutRunner();
+
+  @override
+  Future<void> logout() async {}
 }
 
 class _FakeAccountUsageSnapshotReader implements AccountUsageSnapshotReader {

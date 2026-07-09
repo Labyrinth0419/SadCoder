@@ -24,6 +24,7 @@ typedef SlashCommandToggleRawTranscript = bool? Function(String arguments);
 typedef SlashCommandStartNewThread = Future<bool> Function();
 typedef SlashCommandResumeThread = Future<bool> Function(String threadId);
 typedef SlashCommandRenameThread = Future<bool> Function(String name);
+typedef SlashCommandLogout = Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfirmedThreadAction =
     Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfiguredAction =
@@ -66,6 +67,7 @@ enum SlashCommandActionEffect {
   compactThread,
   archiveThread,
   deleteThread,
+  logout,
   modelOverride,
   personalityOverride,
   permissionsOverride,
@@ -191,6 +193,7 @@ class SlashCommandActionDispatcher {
     this.startNewThread,
     this.resumeThread,
     this.renameThread,
+    this.logout,
     this.forkThread,
     this.compactThread,
     this.archiveThread,
@@ -219,6 +222,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandStartNewThread? startNewThread;
   final SlashCommandResumeThread? resumeThread;
   final SlashCommandRenameThread? renameThread;
+  final SlashCommandLogout? logout;
   final SlashCommandConfiguredAction? forkThread;
   final SlashCommandConfiguredAction? compactThread;
   final SlashCommandConfirmedThreadAction? archiveThread;
@@ -338,6 +342,8 @@ class SlashCommandActionDispatcher {
           action: deleteThread,
           effect: SlashCommandActionEffect.deleteThread,
         );
+      case 'logout':
+        return _logout(parsed);
       default:
         return SlashCommandActionResult.unsupported(
           command: command,
@@ -775,6 +781,23 @@ class SlashCommandActionDispatcher {
     required SlashCommandActionEffect effect,
   }) async {
     return _callbackAction(parsed, action: action, effect: effect);
+  }
+
+  Future<SlashCommandActionResult> _logout(
+    SlashCommandParseResult parsed,
+  ) async {
+    if (parsed.arguments.trim().isNotEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    return _callbackAction(
+      parsed,
+      action: logout,
+      effect: SlashCommandActionEffect.logout,
+    );
   }
 
   Future<SlashCommandActionResult> _configuredAction(

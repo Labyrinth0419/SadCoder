@@ -1,8 +1,10 @@
 import '../agent/agent_remote_service.dart';
 import '../agent/agent_status.dart';
+import '../accounts/account_logout_runner.dart';
 import '../background_terminals/codex_thread_background_terminal_runner.dart';
 import '../background_terminals/thread_background_terminal_runner.dart';
 import '../accounts/account_snapshot_reader.dart';
+import '../accounts/codex_account_logout_runner.dart';
 import '../accounts/codex_account_snapshot_reader.dart';
 import '../apps/app_list_reader.dart';
 import '../apps/codex_app_list_reader.dart';
@@ -50,6 +52,8 @@ abstract interface class CodexSessionConnectionHandle {
   CodexConfigSnapshotReader get configSnapshotReader;
 
   AccountSnapshotReader get accountSnapshotReader;
+
+  AccountLogoutRunner get accountLogoutRunner;
 
   AccountUsageSnapshotReader get accountUsageSnapshotReader;
 
@@ -133,6 +137,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         threadDetailReader: CodexThreadDetailReader(session.client),
         configSnapshotReader: CodexConfigSnapshotRemoteReader(session.client),
         accountSnapshotReader: CodexAccountSnapshotReader(session.client),
+        accountLogoutRunner: CodexAccountLogoutRunner(session.client),
         accountUsageSnapshotReader: CodexAccountUsageSnapshotReader(
           session.client,
         ),
@@ -200,6 +205,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.threadDetailReader,
     required this.configSnapshotReader,
     required this.accountSnapshotReader,
+    required this.accountLogoutRunner,
     required this.accountUsageSnapshotReader,
     required this.mcpServerStatusReader,
     required this.modelListReader,
@@ -229,6 +235,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final CodexConfigSnapshotReader configSnapshotReader;
   @override
   final AccountSnapshotReader accountSnapshotReader;
+  @override
+  final AccountLogoutRunner accountLogoutRunner;
   @override
   final AccountUsageSnapshotReader accountUsageSnapshotReader;
   @override

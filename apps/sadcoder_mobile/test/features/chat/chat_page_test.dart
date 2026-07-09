@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/accounts/account_logout_runner.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/apps/app_list_reader.dart';
@@ -1667,6 +1668,69 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('Reset credits: 2 available'), findsOneWidget);
+  });
+
+  testWidgets('/logout confirms and signs out account', (tester) async {
+    final approvalController = ApprovalStateController();
+    final logoutRunner = _RecordingAccountLogoutRunner();
+    final accountReader = _RecordingAccountSnapshotReader(
+      snapshot: const AccountSnapshot(account: null, requiresOpenaiAuth: false),
+    );
+    final usageReader = _RecordingAccountUsageSnapshotReader(
+      snapshot: const AccountUsageSnapshot(
+        summary: AccountTokenUsageSummary(),
+        dailyUsageBuckets: [],
+        rateLimits: null,
+        rateLimitsByLimitId: {},
+        rateLimitResetCredits: null,
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      accountLogoutRunner: logoutRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final accountSnapshotController = AccountSnapshotController(
+      readerProvider: () => accountReader,
+    );
+    final accountUsageSnapshotController = AccountUsageSnapshotController(
+      readerProvider: () => usageReader,
+    );
+    addTearDown(accountUsageSnapshotController.dispose);
+    addTearDown(accountSnapshotController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      accountSnapshotController: accountSnapshotController,
+      accountUsageSnapshotController: accountUsageSnapshotController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/logout',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sign out of Codex?'), findsOneWidget);
+
+    await tester.tap(find.text('Sign out'));
+    await tester.pumpAndSettle();
+
+    expect(logoutRunner.calls, 1);
+    expect(accountReader.refreshTokenValues, [false]);
+    expect(usageReader.calls, 1);
+    expect(sessionController.status, CodexSessionStatus.connected);
+    expect(find.text('Signed out of Codex account.'), findsOneWidget);
   });
 
   testWidgets('/goal reads the selected thread goal', (tester) async {
@@ -3920,6 +3984,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.pluginListReader = const _FakePluginListReader(),
     this.hookListReader = const _FakeHookListReader(),
     this.appListReader = const _FakeAppListReader(),
+    this.accountLogoutRunner = const _FakeAccountLogoutRunner(),
   });
 
   final ThreadListReader threadListReader;
@@ -3932,6 +3997,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final PluginListReader pluginListReader;
   final HookListReader hookListReader;
   final AppListReader appListReader;
+  final AccountLogoutRunner accountLogoutRunner;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -3950,6 +4016,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       pluginListReader: pluginListReader,
       hookListReader: hookListReader,
       appListReader: appListReader,
+      accountLogoutRunner: accountLogoutRunner,
     );
   }
 }
@@ -3967,6 +4034,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.pluginListReader,
     required this.hookListReader,
     required this.appListReader,
+    required this.accountLogoutRunner,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -4003,6 +4071,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final AppListReader appListReader;
+
+  @override
+  final AccountLogoutRunner accountLogoutRunner;
 
   @override
   ModelListReader get modelListReader => const _FakeModelListReader();
@@ -4106,6 +4177,13 @@ class _FakeAccountSnapshotReader implements AccountSnapshotReader {
   Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
     return const AccountSnapshot(account: null, requiresOpenaiAuth: false);
   }
+}
+
+class _FakeAccountLogoutRunner implements AccountLogoutRunner {
+  const _FakeAccountLogoutRunner();
+
+  @override
+  Future<void> logout() async {}
 }
 
 class _FakeAccountUsageSnapshotReader implements AccountUsageSnapshotReader {
@@ -4506,6 +4584,15 @@ class _RecordingAccountSnapshotReader implements AccountSnapshotReader {
   Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
     refreshTokenValues.add(refreshToken);
     return snapshot;
+  }
+}
+
+class _RecordingAccountLogoutRunner implements AccountLogoutRunner {
+  int calls = 0;
+
+  @override
+  Future<void> logout() async {
+    calls++;
   }
 }
 

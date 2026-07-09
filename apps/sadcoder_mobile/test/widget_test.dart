@@ -2,10 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/accounts/account_logout_runner.dart';
+import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
-import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/apps/app_list_reader.dart';
 import 'package:sadcoder_mobile/src/app/sadcoder_app.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal.dart';
@@ -252,6 +253,10 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
       const _StaticAccountSnapshotReader();
 
   @override
+  AccountLogoutRunner get accountLogoutRunner =>
+      const _NoopAccountLogoutRunner();
+
+  @override
   AccountUsageSnapshotReader get accountUsageSnapshotReader =>
       const _StaticAccountUsageSnapshotReader();
 
@@ -324,6 +329,13 @@ class _StaticAccountSnapshotReader implements AccountSnapshotReader {
   Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
     return const AccountSnapshot(account: null, requiresOpenaiAuth: false);
   }
+}
+
+class _NoopAccountLogoutRunner implements AccountLogoutRunner {
+  const _NoopAccountLogoutRunner();
+
+  @override
+  Future<void> logout() async {}
 }
 
 class _StaticAccountUsageSnapshotReader implements AccountUsageSnapshotReader {

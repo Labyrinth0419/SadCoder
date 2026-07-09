@@ -26,6 +26,7 @@ void main() {
     await connection.hookListReader.listHooks();
     await connection.appListReader.listApps();
     await connection.accountSnapshotReader.readAccount();
+    await connection.accountLogoutRunner.logout();
     await connection.turnRunner.startThread();
     await connection.turnRunner.startTurn(threadId: 'thr_1', text: 'Fix bug');
     await connection.turnRunner.interruptTurn(
@@ -43,6 +44,7 @@ void main() {
       'hooks/list',
       'app/list',
       'account/read',
+      'account/logout',
       'thread/start',
       'turn/start',
       'turn/interrupt',

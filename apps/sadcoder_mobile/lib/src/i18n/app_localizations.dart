@@ -137,6 +137,7 @@ class AppLocalizations {
       _text('slashCommandCompactionStarted');
   String get slashCommandArchivedThread => _text('slashCommandArchivedThread');
   String get slashCommandDeletedThread => _text('slashCommandDeletedThread');
+  String get slashCommandLoggedOut => _text('slashCommandLoggedOut');
   String get slashCommandModelUpdated => _text('slashCommandModelUpdated');
   String get slashCommandPersonalityUpdated =>
       _text('slashCommandPersonalityUpdated');
@@ -212,6 +213,9 @@ class AppLocalizations {
   String get deleteThreadTitle => _text('deleteThreadTitle');
   String get deleteThreadBody => _text('deleteThreadBody');
   String get deleteThreadConfirm => _text('deleteThreadConfirm');
+  String get logoutAccountTitle => _text('logoutAccountTitle');
+  String get logoutAccountBody => _text('logoutAccountBody');
+  String get logoutAccountConfirm => _text('logoutAccountConfirm');
   String get modelCommandTitle => _text('modelCommandTitle');
   String get modelCommandTurnScope => _text('modelCommandTurnScope');
   String get modelCommandSessionScope => _text('modelCommandSessionScope');
@@ -547,6 +551,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandCompactionStarted': 'Started thread compaction.',
     'slashCommandArchivedThread': 'Archived thread.',
     'slashCommandDeletedThread': 'Deleted thread.',
+    'slashCommandLoggedOut': 'Signed out of Codex account.',
     'slashCommandModelUpdated': 'Model override updated.',
     'slashCommandPersonalityUpdated': 'Personality override updated.',
     'slashCommandPermissionsUpdated': 'Permission override updated.',
@@ -618,6 +623,10 @@ const _values = <String, Map<String, String>>{
     'deleteThreadBody':
         'This permanently deletes the current thread and spawned descendant threads. This cannot be undone.',
     'deleteThreadConfirm': 'Delete',
+    'logoutAccountTitle': 'Sign out of Codex?',
+    'logoutAccountBody':
+        'This signs the server Codex account out for every client using the same CODEX_HOME. Server tasks are not interrupted.',
+    'logoutAccountConfirm': 'Sign out',
     'modelCommandTitle': 'Model override',
     'modelCommandTurnScope': 'Next turn',
     'modelCommandSessionScope': 'Session',
@@ -904,6 +913,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandCompactionStarted': '已开始压缩会话。',
     'slashCommandArchivedThread': '已归档会话。',
     'slashCommandDeletedThread': '已删除会话。',
+    'slashCommandLoggedOut': '已退出服务器 Codex 账户。',
     'slashCommandModelUpdated': '已更新模型覆盖。',
     'slashCommandPersonalityUpdated': '已更新协作风格覆盖。',
     'slashCommandPermissionsUpdated': '已更新权限覆盖。',
@@ -971,6 +981,9 @@ const _values = <String, Map<String, String>>{
     'deleteThreadTitle': '删除会话？',
     'deleteThreadBody': '这会永久删除当前会话和派生的子会话，无法撤销。',
     'deleteThreadConfirm': '删除',
+    'logoutAccountTitle': '退出 Codex 账户？',
+    'logoutAccountBody': '这会让使用同一 CODEX_HOME 的服务器 Codex 账户退出登录，服务器任务不会被中断。',
+    'logoutAccountConfirm': '退出登录',
     'modelCommandTitle': '模型覆盖',
     'modelCommandTurnScope': '本次回合',
     'modelCommandSessionScope': '本会话',

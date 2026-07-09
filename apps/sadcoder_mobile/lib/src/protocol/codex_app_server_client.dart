@@ -67,6 +67,10 @@ class CodexAppServerClient {
     return _request('account/read', {'refreshToken': refreshToken});
   }
 
+  Future<Map<String, Object?>> logoutAccount() {
+    return _request('account/logout');
+  }
+
   Future<Map<String, Object?>> readAccountRateLimits() {
     return _request('account/rateLimits/read');
   }

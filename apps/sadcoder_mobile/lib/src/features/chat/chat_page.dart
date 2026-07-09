@@ -351,6 +351,7 @@ class _ChatPageState extends State<ChatPage> {
           startNewThread: _startNewThread,
           resumeThread: _resumeThread,
           renameThread: _renameThread,
+          logout: _logoutAccount,
           forkThread: _forkCurrentThread,
           compactThread: _compactCurrentThread,
           archiveThread: _archiveCurrentThread,
@@ -841,6 +842,44 @@ class _ChatPageState extends State<ChatPage> {
     return SlashCommandCallbackResult.executed;
   }
 
+  Future<SlashCommandCallbackResult> _logoutAccount() async {
+    final runner = widget.sessionController?.accountLogoutRunner;
+    if (runner == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.logoutAccountTitle),
+        content: Text(l10n.logoutAccountBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.logoutAccountConfirm),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+
+    await runner.logout();
+    await Future.wait([
+      if (widget.accountSnapshotController != null)
+        widget.accountSnapshotController!.refresh(),
+      if (widget.accountUsageSnapshotController != null)
+        widget.accountUsageSnapshotController!.refresh(),
+    ]);
+    return SlashCommandCallbackResult.executed;
+  }
+
   Future<SlashCommandCallbackResult> _archiveCurrentThread() {
     final l10n = context.l10n;
     return _confirmThreadMutation(
@@ -991,6 +1030,7 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.archiveThread =>
           l10n.slashCommandArchivedThread,
         SlashCommandActionEffect.deleteThread => l10n.slashCommandDeletedThread,
+        SlashCommandActionEffect.logout => l10n.slashCommandLoggedOut,
         SlashCommandActionEffect.modelOverride => l10n.slashCommandModelUpdated,
         SlashCommandActionEffect.personalityOverride =>
           l10n.slashCommandPersonalityUpdated,

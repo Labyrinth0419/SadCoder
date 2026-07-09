@@ -82,6 +82,7 @@ void main() {
     await client.setThreadName(threadId: 'thr_1', name: 'Renamed thread');
     await client.archiveThread(threadId: 'thr_1');
     await client.deleteThread(threadId: 'thr_1');
+    await client.logoutAccount();
     await client.startTurn(threadId: 'thr_1', text: 'Fix bug');
     await client.interruptTurn(threadId: 'thr_1', turnId: 'turn_1');
 
@@ -110,6 +111,7 @@ void main() {
       'thread/name/set',
       'thread/archive',
       'thread/delete',
+      'account/logout',
       'turn/start',
       'turn/interrupt',
     ]);
@@ -171,7 +173,8 @@ void main() {
     });
     expect(requests[22].params, {'threadId': 'thr_1'});
     expect(requests[23].params, {'threadId': 'thr_1'});
-    expect(requests[24].params, {
+    expect(requests[24].params, isNull);
+    expect(requests[25].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},

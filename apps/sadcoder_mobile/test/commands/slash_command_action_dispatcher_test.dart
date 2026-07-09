@@ -351,6 +351,44 @@ void main() {
     },
   );
 
+  test('/logout runs the injected confirmed account action', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      logout: () async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/logout'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, 1);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.logout);
+  });
+
+  test('/logout rejects unsupported inline arguments', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      logout: () async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/logout all'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, 0);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'logout');
+  });
+
   test('/goal passes inline arguments to the injected goal handler', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

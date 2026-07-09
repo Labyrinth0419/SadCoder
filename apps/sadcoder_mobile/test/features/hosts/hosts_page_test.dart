@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/accounts/account_logout_runner.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
@@ -677,6 +678,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
       const _FakeAccountSnapshotReader();
 
   @override
+  AccountLogoutRunner get accountLogoutRunner =>
+      const _FakeAccountLogoutRunner();
+
+  @override
   AccountUsageSnapshotReader get accountUsageSnapshotReader =>
       const _FakeAccountUsageSnapshotReader();
 
@@ -764,6 +769,13 @@ class _FakeAccountSnapshotReader implements AccountSnapshotReader {
   Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
     return const AccountSnapshot(account: null, requiresOpenaiAuth: false);
   }
+}
+
+class _FakeAccountLogoutRunner implements AccountLogoutRunner {
+  const _FakeAccountLogoutRunner();
+
+  @override
+  Future<void> logout() async {}
 }
 
 class _FakeAccountUsageSnapshotReader implements AccountUsageSnapshotReader {

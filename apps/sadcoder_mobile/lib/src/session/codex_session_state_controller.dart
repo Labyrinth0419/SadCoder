@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../accounts/account_logout_runner.dart';
 import '../accounts/account_snapshot_reader.dart';
 import '../agent/agent_snapshot_reader.dart';
 import '../apps/app_list_reader.dart';
@@ -88,6 +89,9 @@ class CodexSessionStateController extends ChangeNotifier {
 
   AccountSnapshotReader? get accountSnapshotReader =>
       _connection?.accountSnapshotReader;
+
+  AccountLogoutRunner? get accountLogoutRunner =>
+      _connection?.accountLogoutRunner;
 
   AccountUsageSnapshotReader? get accountUsageSnapshotReader =>
       _connection?.accountUsageSnapshotReader;
