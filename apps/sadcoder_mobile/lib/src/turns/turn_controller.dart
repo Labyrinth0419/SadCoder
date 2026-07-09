@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import '../config/codex_config_overrides.dart';
 import '../threads/thread_summary.dart';
 import 'turn_runner.dart';
+import 'turn_text_element.dart';
 
 typedef TurnRunnerProvider = TurnRunner? Function();
 typedef ActiveThreadIdProvider = String? Function();
@@ -78,9 +81,12 @@ class TurnController extends ChangeNotifier {
     );
   }
 
-  Future<void> submitText(String text) async {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) {
+  Future<void> submitText(
+    String text, {
+    List<TurnTextElement> textElements = const [],
+  }) async {
+    final submission = _prepareSubmittedText(text, textElements);
+    if (submission.text.isEmpty) {
       return;
     }
     if (isBusy) {
@@ -129,7 +135,8 @@ class TurnController extends ChangeNotifier {
       _setState(status: TurnControllerStatus.sendingTurn, error: null);
       final turn = await runner.startTurn(
         threadId: threadId,
-        text: trimmed,
+        text: submission.text,
+        textElements: submission.textElements,
         overrides: _resolvedOverrides(),
       );
       if (generation != _generation) {
@@ -322,4 +329,34 @@ class TurnController extends ChangeNotifier {
     _error = error;
     notifyListeners();
   }
+}
+
+_SubmittedTurnText _prepareSubmittedText(
+  String text,
+  List<TurnTextElement> textElements,
+) {
+  final leadingTrimmed = text.length - text.trimLeft().length;
+  final trailingTrimmed = text.trimRight().length;
+  final trimmed = text.substring(leadingTrimmed, trailingTrimmed);
+  if (trimmed.isEmpty || textElements.isEmpty) {
+    return _SubmittedTurnText(text: trimmed, textElements: const []);
+  }
+
+  final leadingBytes = utf8.encode(text.substring(0, leadingTrimmed)).length;
+  final trailingBytes = utf8.encode(text.substring(0, trailingTrimmed)).length;
+  final rebased = <TurnTextElement>[
+    for (final element in textElements)
+      if (element.isValid &&
+          element.start >= leadingBytes &&
+          element.end <= trailingBytes)
+        element.shift(-leadingBytes),
+  ];
+  return _SubmittedTurnText(text: trimmed, textElements: rebased);
+}
+
+class _SubmittedTurnText {
+  const _SubmittedTurnText({required this.text, required this.textElements});
+
+  final String text;
+  final List<TurnTextElement> textElements;
 }

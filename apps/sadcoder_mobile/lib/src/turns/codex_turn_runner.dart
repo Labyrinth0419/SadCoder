@@ -2,6 +2,7 @@ import '../config/codex_config_overrides.dart';
 import '../protocol/codex_app_server_client.dart';
 import '../threads/thread_summary.dart';
 import 'turn_runner.dart';
+import 'turn_text_element.dart';
 
 class CodexTurnRunner implements TurnRunner {
   const CodexTurnRunner(this._client);
@@ -25,11 +26,13 @@ class CodexTurnRunner implements TurnRunner {
     required String threadId,
     required String text,
     CodexConfigOverrides overrides = CodexConfigOverrides.empty,
+    List<TurnTextElement> textElements = const [],
   }) async {
     final result = await _client.startTurn(
       threadId: threadId,
       text: text,
       overrides: overrides,
+      textElements: textElements,
     );
     return TurnSummary.fromTurnResponse(result);
   }

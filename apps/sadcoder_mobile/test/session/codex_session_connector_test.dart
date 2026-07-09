@@ -29,6 +29,10 @@ void main() {
     await connection.accountLogoutRunner.logout();
     await connection.feedbackUploadRunner.uploadFeedback(classification: 'bug');
     await connection.gitDiffReader.readDiff();
+    await connection.fileSearchReader.searchFiles(
+      query: 'main',
+      roots: ['/repo'],
+    );
     await connection.turnRunner.startThread();
     await connection.turnRunner.startTurn(threadId: 'thr_1', text: 'Fix bug');
     await connection.turnRunner.interruptTurn(
@@ -49,6 +53,7 @@ void main() {
       'account/logout',
       'feedback/upload',
       'command/exec',
+      'fuzzyFileSearch',
       'thread/start',
       'turn/start',
       'turn/interrupt',

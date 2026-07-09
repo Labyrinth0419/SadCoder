@@ -1,4 +1,5 @@
 import '../config/codex_config_overrides.dart';
+import '../turns/turn_text_element.dart';
 import 'json_rpc.dart';
 
 class CodexAppServerClient {
@@ -122,6 +123,25 @@ class CodexAppServerClient {
       params['outputBytesCap'] = outputBytesCap;
     }
     return _request('command/exec', params);
+  }
+
+  Future<Map<String, Object?>> searchFiles({
+    required String query,
+    List<String> roots = const [],
+    String? cancellationToken,
+  }) {
+    final normalizedRoots = [
+      for (final root in roots)
+        if (root.trim().isNotEmpty) root.trim(),
+    ];
+    final trimmedCancellationToken = cancellationToken?.trim();
+    return _request('fuzzyFileSearch', {
+      'query': query,
+      'roots': normalizedRoots,
+      if (trimmedCancellationToken != null &&
+          trimmedCancellationToken.isNotEmpty)
+        'cancellation_token': trimmedCancellationToken,
+    });
   }
 
   Future<Map<String, Object?>> readAccountRateLimits() {
@@ -326,11 +346,18 @@ class CodexAppServerClient {
     required String threadId,
     required String text,
     CodexConfigOverrides overrides = CodexConfigOverrides.empty,
+    List<TurnTextElement> textElements = const [],
   }) {
     return _request('turn/start', {
       'threadId': threadId,
       'input': [
-        {'type': 'text', 'text': text, 'text_elements': <Object?>[]},
+        {
+          'type': 'text',
+          'text': text,
+          'text_elements': [
+            for (final element in textElements) element.toJson(),
+          ],
+        },
       ],
       ...overrides.toTurnStartParams(),
     });

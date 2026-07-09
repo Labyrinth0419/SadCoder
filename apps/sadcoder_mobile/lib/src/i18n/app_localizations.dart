@@ -141,6 +141,8 @@ class AppLocalizations {
   String get slashCommandFeedbackSubmitted =>
       _text('slashCommandFeedbackSubmitted');
   String get slashCommandThemeUpdated => _text('slashCommandThemeUpdated');
+  String get slashCommandMentionInserted =>
+      _text('slashCommandMentionInserted');
   String get slashCommandModelUpdated => _text('slashCommandModelUpdated');
   String get slashCommandPersonalityUpdated =>
       _text('slashCommandPersonalityUpdated');
@@ -242,6 +244,10 @@ class AppLocalizations {
   String get diffNotGitRepository => _text('diffNotGitRepository');
   String get diffNoChanges => _text('diffNoChanges');
   String get diffLoadFailed => _text('diffLoadFailed');
+  String get mentionCommandTitle => _text('mentionCommandTitle');
+  String get mentionSearchHint => _text('mentionSearchHint');
+  String get mentionNoResults => _text('mentionNoResults');
+  String get mentionLoadFailed => _text('mentionLoadFailed');
   String get modelCommandTitle => _text('modelCommandTitle');
   String get modelCommandTurnScope => _text('modelCommandTurnScope');
   String get modelCommandSessionScope => _text('modelCommandSessionScope');
@@ -580,6 +586,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandLoggedOut': 'Signed out of Codex account.',
     'slashCommandFeedbackSubmitted': 'Feedback submitted.',
     'slashCommandThemeUpdated': 'Theme updated.',
+    'slashCommandMentionInserted': 'File mention inserted.',
     'slashCommandModelUpdated': 'Model override updated.',
     'slashCommandPersonalityUpdated': 'Personality override updated.',
     'slashCommandPermissionsUpdated': 'Permission override updated.',
@@ -679,6 +686,10 @@ const _values = <String, Map<String, String>>{
         'The current workspace is not inside a Git repository.',
     'diffNoChanges': 'No tracked or untracked changes.',
     'diffLoadFailed': 'Failed to compute diff',
+    'mentionCommandTitle': 'Mention file',
+    'mentionSearchHint': 'Search files',
+    'mentionNoResults': 'No matching files.',
+    'mentionLoadFailed': 'Failed to search files',
     'modelCommandTitle': 'Model override',
     'modelCommandTurnScope': 'Next turn',
     'modelCommandSessionScope': 'Session',
@@ -968,6 +979,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandLoggedOut': '已退出服务器 Codex 账户。',
     'slashCommandFeedbackSubmitted': '已提交反馈。',
     'slashCommandThemeUpdated': '已更新主题。',
+    'slashCommandMentionInserted': '已插入文件提及。',
     'slashCommandModelUpdated': '已更新模型覆盖。',
     'slashCommandPersonalityUpdated': '已更新协作风格覆盖。',
     'slashCommandPermissionsUpdated': '已更新权限覆盖。',
@@ -1060,6 +1072,10 @@ const _values = <String, Map<String, String>>{
     'diffNotGitRepository': '当前工作区不在 Git 仓库中。',
     'diffNoChanges': '没有已跟踪或未跟踪的变更。',
     'diffLoadFailed': '计算差异失败',
+    'mentionCommandTitle': '提及文件',
+    'mentionSearchHint': '搜索文件',
+    'mentionNoResults': '没有匹配的文件。',
+    'mentionLoadFailed': '搜索文件失败',
     'modelCommandTitle': '模型覆盖',
     'modelCommandTurnScope': '本次回合',
     'modelCommandSessionScope': '本会话',

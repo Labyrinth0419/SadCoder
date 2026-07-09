@@ -3,6 +3,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 import 'package:sadcoder_mobile/src/turns/turn_controller.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
+import 'package:sadcoder_mobile/src/turns/turn_text_element.dart';
 
 void main() {
   test('submitText starts a thread before sending first turn', () async {
@@ -24,6 +25,27 @@ void main() {
       TurnControllerStatus.sendingTurn,
       TurnControllerStatus.submitted,
     ]);
+  });
+
+  test('submitText trims text and rebases text element byte ranges', () async {
+    final runner = _FakeTurnRunner();
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+    const text = '  @lib/main.dart explain  ';
+
+    await controller.submitText(
+      text,
+      textElements: [
+        TurnTextElement.fromCodeUnitRange(text: text, start: 2, end: 16),
+      ],
+    );
+
+    expect(runner.startedTurns, [
+      (threadId: 'thr_new', text: '@lib/main.dart explain'),
+    ]);
+    expect(runner.startedTurnTextElements.single.single.toJson(), {
+      'byte_range': {'start': 0, 'end': 14},
+    });
   });
 
   test('submitText resumes selected thread before sending', () async {
@@ -286,6 +308,7 @@ class _FakeTurnRunner implements TurnRunner {
   final resumedThreads = <String>[];
   final startedTurns = <({String threadId, String text})>[];
   final startedTurnOverrides = <CodexConfigOverrides>[];
+  final startedTurnTextElements = <List<TurnTextElement>>[];
   final interruptedTurns = <({String threadId, String turnId})>[];
 
   @override
@@ -305,9 +328,11 @@ class _FakeTurnRunner implements TurnRunner {
     required String threadId,
     required String text,
     CodexConfigOverrides overrides = CodexConfigOverrides.empty,
+    List<TurnTextElement> textElements = const [],
   }) async {
     startedTurns.add((threadId: threadId, text: text));
     startedTurnOverrides.add(overrides);
+    startedTurnTextElements.add(textElements);
     return TurnSummary.fromJson({
       'id': 'turn_${startedTurns.length}',
       'status': 'inProgress',

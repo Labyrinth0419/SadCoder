@@ -1,5 +1,6 @@
 import '../config/codex_config_overrides.dart';
 import '../threads/thread_summary.dart';
+import 'turn_text_element.dart';
 
 abstract interface class TurnRunner {
   Future<ThreadSummary> startThread();
@@ -10,6 +11,7 @@ abstract interface class TurnRunner {
     required String threadId,
     required String text,
     CodexConfigOverrides overrides = CodexConfigOverrides.empty,
+    List<TurnTextElement> textElements = const [],
   });
 
   Future<void> interruptTurn({

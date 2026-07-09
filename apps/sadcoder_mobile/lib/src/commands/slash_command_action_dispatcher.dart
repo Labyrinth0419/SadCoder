@@ -30,6 +30,7 @@ typedef SlashCommandSubmitFeedback =
     Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfigureTheme =
     Future<SlashCommandCallbackResult> Function();
+typedef SlashCommandMentionFile = Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfirmedThreadAction =
     Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfiguredAction =
@@ -76,6 +77,7 @@ enum SlashCommandActionEffect {
   logout,
   feedback,
   theme,
+  mention,
   modelOverride,
   personalityOverride,
   permissionsOverride,
@@ -205,6 +207,7 @@ class SlashCommandActionDispatcher {
     this.logout,
     this.submitFeedback,
     this.configureTheme,
+    this.mentionFile,
     this.forkThread,
     this.compactThread,
     this.archiveThread,
@@ -237,6 +240,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandLogout? logout;
   final SlashCommandSubmitFeedback? submitFeedback;
   final SlashCommandConfigureTheme? configureTheme;
+  final SlashCommandMentionFile? mentionFile;
   final SlashCommandConfiguredAction? forkThread;
   final SlashCommandConfiguredAction? compactThread;
   final SlashCommandConfirmedThreadAction? archiveThread;
@@ -364,6 +368,8 @@ class SlashCommandActionDispatcher {
         return _submitFeedback(parsed);
       case 'theme':
         return _configureTheme(parsed);
+      case 'mention':
+        return _mentionFile(parsed);
       default:
         return SlashCommandActionResult.unsupported(
           command: command,
@@ -861,6 +867,23 @@ class SlashCommandActionDispatcher {
       parsed,
       action: configureTheme,
       effect: SlashCommandActionEffect.theme,
+    );
+  }
+
+  Future<SlashCommandActionResult> _mentionFile(
+    SlashCommandParseResult parsed,
+  ) async {
+    if (parsed.arguments.trim().isNotEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    return _callbackAction(
+      parsed,
+      action: mentionFile,
+      effect: SlashCommandActionEffect.mention,
     );
   }
 

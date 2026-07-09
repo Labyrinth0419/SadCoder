@@ -20,6 +20,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/diffs/git_diff_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/feedback/feedback_upload_runner.dart';
+import 'package:sadcoder_mobile/src/files/file_search_reader.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_page.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_timeline_controller.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
@@ -47,6 +48,7 @@ import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 import 'package:sadcoder_mobile/src/turns/turn_controller.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
+import 'package:sadcoder_mobile/src/turns/turn_text_element.dart';
 import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_reader.dart';
 
@@ -1667,6 +1669,97 @@ void main() {
     expect(find.textContaining('Git diff'), findsOneWidget);
     expect(find.textContaining('lib/main.dart | 2 +-'), findsOneWidget);
     expect(find.textContaining('diff --git'), findsOneWidget);
+  });
+
+  testWidgets('/mention inserts a file mention and submits text elements', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final fileSearchReader = _RecordingFileSearchReader(
+      page: const FileSearchResultPage(
+        files: [
+          FileSearchMatch(
+            root: '/repo',
+            path: 'lib/main.dart',
+            matchType: 'fuzzy',
+            fileName: 'main.dart',
+            score: 100,
+            indices: [4, 5, 6, 7],
+          ),
+        ],
+      ),
+    );
+    final overrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(cwd: '/repo'),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+      fileSearchReader: fileSearchReader,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/mention',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-mention-search-field')),
+      'main',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('chat-mention-file-lib/main.dart')),
+    );
+    await tester.pumpAndSettle();
+
+    final composer = tester.widget<TextField>(
+      find.byKey(const ValueKey('chat-composer-field')),
+    );
+    expect(composer.controller?.text, '@lib/main.dart');
+    expect(fileSearchReader.calls.last.query, 'main');
+    expect(fileSearchReader.calls.last.roots, ['/repo']);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '@lib/main.dart explain',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(turnRunner.startedTurns, [
+      (threadId: 'thr_new', text: '@lib/main.dart explain'),
+    ]);
+    expect(turnRunner.startedTurnTextElements.single.single.toJson(), {
+      'byte_range': {'start': 0, 'end': 14},
+    });
   });
 
   testWidgets('/usage refreshes account usage and rate-limit snapshots', (
@@ -4148,6 +4241,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.accountLogoutRunner = const _FakeAccountLogoutRunner(),
     this.feedbackUploadRunner = const _FakeFeedbackUploadRunner(),
     this.gitDiffReader = const _FakeGitDiffReader(),
+    this.fileSearchReader = const _FakeFileSearchReader(),
   });
 
   final ThreadListReader threadListReader;
@@ -4163,6 +4257,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final AccountLogoutRunner accountLogoutRunner;
   final FeedbackUploadRunner feedbackUploadRunner;
   final GitDiffReader gitDiffReader;
+  final FileSearchReader fileSearchReader;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -4184,6 +4279,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       accountLogoutRunner: accountLogoutRunner,
       feedbackUploadRunner: feedbackUploadRunner,
       gitDiffReader: gitDiffReader,
+      fileSearchReader: fileSearchReader,
     );
   }
 }
@@ -4204,6 +4300,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.accountLogoutRunner,
     required this.feedbackUploadRunner,
     required this.gitDiffReader,
+    required this.fileSearchReader,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -4249,6 +4346,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final GitDiffReader gitDiffReader;
+
+  @override
+  final FileSearchReader fileSearchReader;
 
   @override
   ModelListReader get modelListReader => const _FakeModelListReader();
@@ -4382,6 +4482,19 @@ class _FakeGitDiffReader implements GitDiffReader {
   @override
   Future<GitDiffResult> readDiff({String? cwd}) async {
     return const GitDiffResult(isGitRepository: true, stat: '', diff: '');
+  }
+}
+
+class _FakeFileSearchReader implements FileSearchReader {
+  const _FakeFileSearchReader();
+
+  @override
+  Future<FileSearchResultPage> searchFiles({
+    required String query,
+    List<String> roots = const [],
+    String? cancellationToken,
+  }) async {
+    return const FileSearchResultPage(files: []);
   }
 }
 
@@ -4839,6 +4952,23 @@ class _RecordingGitDiffReader implements GitDiffReader {
   }
 }
 
+class _RecordingFileSearchReader implements FileSearchReader {
+  _RecordingFileSearchReader({required this.page});
+
+  final FileSearchResultPage page;
+  final calls = <({String query, List<String> roots})>[];
+
+  @override
+  Future<FileSearchResultPage> searchFiles({
+    required String query,
+    List<String> roots = const [],
+    String? cancellationToken,
+  }) async {
+    calls.add((query: query, roots: roots));
+    return page;
+  }
+}
+
 class _RecordingModelListReader implements ModelListReader {
   _RecordingModelListReader({required this.page});
 
@@ -4873,6 +5003,7 @@ class _FakeTurnRunner implements TurnRunner {
   final resumedThreads = <String>[];
   final startedTurns = <({String threadId, String text})>[];
   final startedTurnOverrides = <CodexConfigOverrides>[];
+  final startedTurnTextElements = <List<TurnTextElement>>[];
   final interruptedTurns = <({String threadId, String turnId})>[];
 
   @override
@@ -4892,9 +5023,11 @@ class _FakeTurnRunner implements TurnRunner {
     required String threadId,
     required String text,
     CodexConfigOverrides overrides = CodexConfigOverrides.empty,
+    List<TurnTextElement> textElements = const [],
   }) async {
     startedTurns.add((threadId: threadId, text: text));
     startedTurnOverrides.add(overrides);
+    startedTurnTextElements.add(textElements);
     return TurnSummary.fromJson({
       'id': 'turn_${startedTurns.length}',
       'status': 'inProgress',
@@ -5003,6 +5136,7 @@ class _ConstantTurnRunner implements TurnRunner {
     required String threadId,
     required String text,
     CodexConfigOverrides overrides = CodexConfigOverrides.empty,
+    List<TurnTextElement> textElements = const [],
   }) async => TurnSummary.fromJson({
     'id': 'turn_1',
     'status': 'inProgress',

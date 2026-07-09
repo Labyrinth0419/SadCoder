@@ -11,6 +11,7 @@ import '../../commands/slash_command_registry.dart';
 import '../../config/codex_config_override_controller.dart';
 import '../../config/codex_config_overrides.dart';
 import '../../config/codex_config_snapshot_controller.dart';
+import '../../files/file_search_reader.dart';
 import '../../i18n/app_localizations.dart';
 import '../../mcp/mcp_server_status_controller.dart';
 import '../../mcp/mcp_server_status_reader.dart';
@@ -24,6 +25,7 @@ import '../../threads/thread_list_controller.dart';
 import '../../threads/thread_mutation_runner.dart';
 import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
+import '../../turns/turn_text_element.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import 'chat_apps_summary.dart';
 import 'chat_background_terminal_summary.dart';
@@ -88,6 +90,7 @@ class _ChatPageState extends State<ChatPage> {
   SlashCommandParseResult _slashCommand =
       const SlashCommandParseResult.notSlash();
   final TextEditingController _composerController = TextEditingController();
+  final List<_ComposerMention> _composerMentions = [];
   CodexSessionStatus? _lastSessionStatus;
   bool _slashPaletteOpen = false;
   bool _showRawTranscript = false;
@@ -243,6 +246,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _handleComposerChanged(String value) {
+    _pruneComposerMentions(value);
     final result = widget.registry.parseComposerText(value);
     setState(() => _slashCommand = result);
     if (result.kind == SlashCommandParseKind.empty) {
@@ -275,6 +279,7 @@ class _ChatPageState extends State<ChatPage> {
     final text = command.supportsInlineArgs
         ? '${command.slash} '
         : command.slash;
+    _composerMentions.clear();
     _composerController.text = text;
     _composerController.selection = TextSelection.collapsed(
       offset: text.length,
@@ -301,9 +306,11 @@ class _ChatPageState extends State<ChatPage> {
     if (turnController == null) {
       return;
     }
-    await turnController.submitText(text);
+    final textElements = _composerTextElements(text);
+    await turnController.submitText(text, textElements: textElements);
     if (turnController.status != TurnControllerStatus.failed) {
       widget.configOverrideController?.clearTurn();
+      _composerMentions.clear();
       _composerController.clear();
       _handleComposerChanged('');
     }
@@ -324,9 +331,15 @@ class _ChatPageState extends State<ChatPage> {
     if (result.outcome == SlashCommandActionOutcome.ignored) {
       return;
     }
-    if (result.outcome == SlashCommandActionOutcome.executed) {
+    if (result.outcome == SlashCommandActionOutcome.executed &&
+        result.effect != SlashCommandActionEffect.mention) {
+      _composerMentions.clear();
       _composerController.clear();
       _handleComposerChanged('');
+    }
+    if (result.outcome == SlashCommandActionOutcome.executed &&
+        result.effect == SlashCommandActionEffect.mention) {
+      return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(_slashCommandResultMessage(context.l10n, result))),
@@ -359,6 +372,7 @@ class _ChatPageState extends State<ChatPage> {
           logout: _logoutAccount,
           submitFeedback: _submitFeedback,
           configureTheme: _configureTheme,
+          mentionFile: _mentionFile,
           forkThread: _forkCurrentThread,
           compactThread: _compactCurrentThread,
           archiveThread: _archiveCurrentThread,
@@ -538,6 +552,76 @@ class _ChatPageState extends State<ChatPage> {
     } on Object catch (error) {
       return '${l10n.diffTitle}\n${l10n.diffLoadFailed}: $error';
     }
+  }
+
+  Future<SlashCommandCallbackResult> _mentionFile() async {
+    final reader = widget.sessionController?.fileSearchReader;
+    final roots = _currentWorkspaceCwds();
+    if (reader == null || roots.isEmpty) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    final match = await showModalBottomSheet<FileSearchMatch>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _MentionFileSheet(reader: reader, roots: roots),
+    );
+    if (!mounted || match == null) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+
+    _insertMention(match);
+    return SlashCommandCallbackResult.executed;
+  }
+
+  void _insertMention(FileSearchMatch match) {
+    final token = '@${match.path}';
+    final value = _composerController.value;
+    final text = value.text;
+    final parsed = widget.registry.parseComposerText(text);
+    final replaceWholeComposer =
+        parsed.kind == SlashCommandParseKind.known &&
+        parsed.command?.command == 'mention';
+    final selection = value.selection.isValid
+        ? value.selection
+        : TextSelection.collapsed(offset: text.length);
+    final start = replaceWholeComposer ? 0 : selection.start;
+    final end = replaceWholeComposer ? text.length : selection.end;
+    final safeStart = start.clamp(0, text.length).toInt();
+    final safeEnd = end.clamp(safeStart, text.length).toInt();
+    final newText = text.replaceRange(safeStart, safeEnd, token);
+    _composerMentions
+      ..removeWhere(
+        (mention) => mention.start < safeEnd && mention.end > safeStart,
+      )
+      ..add(
+        _ComposerMention(
+          token: token,
+          start: safeStart,
+          end: safeStart + token.length,
+        ),
+      );
+    _composerController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: safeStart + token.length),
+    );
+    _handleComposerChanged(newText);
+  }
+
+  void _pruneComposerMentions(String text) {
+    _composerMentions.removeWhere((mention) => !mention.isPresentIn(text));
+  }
+
+  List<TurnTextElement> _composerTextElements(String text) {
+    return [
+      for (final mention in _composerMentions)
+        if (mention.isPresentIn(text))
+          TurnTextElement.fromCodeUnitRange(
+            text: text,
+            start: mention.start,
+            end: mention.end,
+          ),
+    ];
   }
 
   Future<String?> _handleGoalCommand(String arguments) async {
@@ -1109,6 +1193,7 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.logout => l10n.slashCommandLoggedOut,
         SlashCommandActionEffect.feedback => l10n.slashCommandFeedbackSubmitted,
         SlashCommandActionEffect.theme => l10n.slashCommandThemeUpdated,
+        SlashCommandActionEffect.mention => l10n.slashCommandMentionInserted,
         SlashCommandActionEffect.modelOverride => l10n.slashCommandModelUpdated,
         SlashCommandActionEffect.personalityOverride =>
           l10n.slashCommandPersonalityUpdated,
@@ -1180,6 +1265,182 @@ class _ChatPageState extends State<ChatPage> {
 
   String _connectionLabel(AppLocalizations l10n, CodexSessionStatus? status) {
     return sessionStatusLabel(l10n, status);
+  }
+}
+
+class _ComposerMention {
+  const _ComposerMention({
+    required this.token,
+    required this.start,
+    required this.end,
+  });
+
+  final String token;
+  final int start;
+  final int end;
+
+  bool isPresentIn(String text) {
+    return start >= 0 &&
+        end <= text.length &&
+        end > start &&
+        text.substring(start, end) == token;
+  }
+}
+
+class _MentionFileSheet extends StatefulWidget {
+  const _MentionFileSheet({required this.reader, required this.roots});
+
+  final FileSearchReader reader;
+  final List<String> roots;
+
+  @override
+  State<_MentionFileSheet> createState() => _MentionFileSheetState();
+}
+
+class _MentionFileSheetState extends State<_MentionFileSheet> {
+  final TextEditingController _queryController = TextEditingController();
+  FileSearchResultPage? _page;
+  Object? _error;
+  bool _loading = true;
+  int _generation = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  @override
+  void dispose() {
+    _queryController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 560),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.attach_file),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      l10n.mentionCommandTitle,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                    tooltip: l10n.approvalCancel,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const ValueKey('chat-mention-search-field'),
+                controller: _queryController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: l10n.mentionSearchHint,
+                  prefixIcon: const Icon(Icons.search),
+                  border: const OutlineInputBorder(),
+                ),
+                onChanged: (_) => _load(),
+              ),
+              const SizedBox(height: 12),
+              if (_loading) const LinearProgressIndicator(),
+              Flexible(child: _buildResults(context)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResults(BuildContext context) {
+    final l10n = context.l10n;
+    final error = _error;
+    if (error != null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: Text(
+          '${l10n.mentionLoadFailed}: $error',
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+      );
+    }
+
+    final files = _page?.files ?? const <FileSearchMatch>[];
+    if (files.isEmpty && _loading) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (files.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: Text(l10n.mentionNoResults),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      itemCount: files.length,
+      itemBuilder: (context, index) {
+        final file = files[index];
+        return ListTile(
+          key: ValueKey('chat-mention-file-${file.path}'),
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.insert_drive_file_outlined),
+          title: Text(file.path, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: file.root.isEmpty
+              ? null
+              : Text(file.root, maxLines: 1, overflow: TextOverflow.ellipsis),
+          onTap: () => Navigator.of(context).pop(file),
+        );
+      },
+    );
+  }
+
+  Future<void> _load() async {
+    final generation = ++_generation;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final page = await widget.reader.searchFiles(
+        query: _queryController.text.trim(),
+        roots: widget.roots,
+      );
+      if (!mounted || generation != _generation) {
+        return;
+      }
+      setState(() {
+        _page = page;
+        _loading = false;
+      });
+    } on Object catch (error) {
+      if (!mounted || generation != _generation) {
+        return;
+      }
+      setState(() {
+        _error = error;
+        _loading = false;
+      });
+    }
   }
 }
 

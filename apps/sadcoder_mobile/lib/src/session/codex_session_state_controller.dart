@@ -13,6 +13,7 @@ import '../config/codex_config_snapshot_reader.dart';
 import '../diffs/git_diff_reader.dart';
 import '../events/codex_event.dart';
 import '../feedback/feedback_upload_runner.dart';
+import '../files/file_search_reader.dart';
 import '../goals/thread_goal_runner.dart';
 import '../hooks/hook_list_reader.dart';
 import '../mcp/mcp_server_status_reader.dart';
@@ -102,6 +103,8 @@ class CodexSessionStateController extends ChangeNotifier {
       _connection?.feedbackUploadRunner;
 
   GitDiffReader? get gitDiffReader => _connection?.gitDiffReader;
+
+  FileSearchReader? get fileSearchReader => _connection?.fileSearchReader;
 
   McpServerStatusReader? get mcpServerStatusReader =>
       _connection?.mcpServerStatusReader;

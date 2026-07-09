@@ -385,6 +385,44 @@ void main() {
     expect(result.command?.command, 'diff');
   });
 
+  test('/mention runs the injected file picker action', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      mentionFile: () async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/mention'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, 1);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.mention);
+  });
+
+  test('/mention rejects unsupported inline arguments', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      mentionFile: () async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/mention lib/main.dart'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, 0);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'mention');
+  });
+
   test('/logout runs the injected confirmed account action', () async {
     var calls = 0;
     final dispatcher = SlashCommandActionDispatcher(

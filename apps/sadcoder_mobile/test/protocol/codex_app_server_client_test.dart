@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_server_client.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
+import 'package:sadcoder_mobile/src/turns/turn_text_element.dart';
 
 void main() {
   test('initialize sends initialized notification after request', () async {
@@ -97,6 +98,11 @@ void main() {
       timeoutMs: 30000,
       outputBytesCap: 1024,
     );
+    await client.searchFiles(
+      query: 'main',
+      roots: [' /repo ', '  '],
+      cancellationToken: ' token-1 ',
+    );
     await client.startTurn(threadId: 'thr_1', text: 'Fix bug');
     await client.interruptTurn(threadId: 'thr_1', turnId: 'turn_1');
 
@@ -128,6 +134,7 @@ void main() {
       'account/logout',
       'feedback/upload',
       'command/exec',
+      'fuzzyFileSearch',
       'turn/start',
       'turn/interrupt',
     ]);
@@ -205,6 +212,11 @@ void main() {
       'outputBytesCap': 1024,
     });
     expect(requests[27].params, {
+      'query': 'main',
+      'roots': ['/repo'],
+      'cancellation_token': 'token-1',
+    });
+    expect(requests[28].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},
@@ -238,9 +250,14 @@ void main() {
           sandboxPolicy: {'type': 'readOnly', 'networkAccess': false},
         ),
       );
+      await client.startTurn(
+        threadId: 'thr_1',
+        text: '@lib/main.dart explain',
+        textElements: const [TurnTextElement(start: 0, end: 14)],
+      );
 
       expect(requests.first.params!.keys, ['threadId', 'input']);
-      expect(requests.last.params, {
+      expect(requests[1].params, {
         'threadId': 'thr_1',
         'input': [
           {
@@ -256,6 +273,20 @@ void main() {
         'permissions': ':workspace',
         'cwd': '/repo',
         'personality': 'pragmatic',
+      });
+      expect(requests.last.params, {
+        'threadId': 'thr_1',
+        'input': [
+          {
+            'type': 'text',
+            'text': '@lib/main.dart explain',
+            'text_elements': [
+              {
+                'byte_range': {'start': 0, 'end': 14},
+              },
+            ],
+          },
+        ],
       });
     },
   );

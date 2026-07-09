@@ -18,6 +18,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/diffs/git_diff_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/feedback/feedback_upload_runner.dart';
+import 'package:sadcoder_mobile/src/files/file_search_reader.dart';
 import 'package:sadcoder_mobile/src/features/hosts/hosts_page.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
@@ -41,6 +42,7 @@ import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
+import 'package:sadcoder_mobile/src/turns/turn_text_element.dart';
 import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_reader.dart';
 
 void main() {
@@ -695,6 +697,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   GitDiffReader get gitDiffReader => const _FakeGitDiffReader();
 
   @override
+  FileSearchReader get fileSearchReader => const _FakeFileSearchReader();
+
+  @override
   McpServerStatusReader get mcpServerStatusReader =>
       const _FakeMcpServerStatusReader();
 
@@ -808,6 +813,19 @@ class _FakeGitDiffReader implements GitDiffReader {
   @override
   Future<GitDiffResult> readDiff({String? cwd}) async {
     return const GitDiffResult(isGitRepository: true, stat: '', diff: '');
+  }
+}
+
+class _FakeFileSearchReader implements FileSearchReader {
+  const _FakeFileSearchReader();
+
+  @override
+  Future<FileSearchResultPage> searchFiles({
+    required String query,
+    List<String> roots = const [],
+    String? cancellationToken,
+  }) async {
+    return const FileSearchResultPage(files: []);
   }
 }
 
@@ -970,6 +988,7 @@ class _FakeTurnRunner implements TurnRunner {
     required String threadId,
     required String text,
     CodexConfigOverrides overrides = CodexConfigOverrides.empty,
+    List<TurnTextElement> textElements = const [],
   }) async => TurnSummary.fromJson({
     'id': 'turn_1',
     'status': 'inProgress',
