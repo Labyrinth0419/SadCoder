@@ -13,6 +13,7 @@ import '../goals/thread_goal_runner.dart';
 import '../mcp/mcp_server_status_reader.dart';
 import '../models/model_list_reader.dart';
 import '../permissions/permission_profile_list_reader.dart';
+import '../plugins/plugin_list_reader.dart';
 import '../reviews/thread_review_runner.dart';
 import '../skills/skill_list_reader.dart';
 import '../ssh/ssh_profile.dart';
@@ -98,6 +99,8 @@ class CodexSessionStateController extends ChangeNotifier {
       _connection?.permissionProfileListReader;
 
   SkillListReader? get skillListReader => _connection?.skillListReader;
+
+  PluginListReader? get pluginListReader => _connection?.pluginListReader;
 
   ThreadMutationRunner? get threadMutationRunner =>
       _connection?.threadMutationRunner;

@@ -19,6 +19,7 @@ import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
+import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_session.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
@@ -64,6 +65,7 @@ void main() {
     expect(controller.modelListReader, isNotNull);
     expect(controller.permissionProfileListReader, isNotNull);
     expect(controller.skillListReader, isNotNull);
+    expect(controller.pluginListReader, isNotNull);
     expect(controller.turnRunner, isNotNull);
     expect(controller.threadBackgroundTerminalRunner, isNotNull);
     expect(controller.threadReviewRunner, isNotNull);
@@ -459,6 +461,7 @@ void main() {
     expect(controller.modelListReader, isNull);
     expect(controller.permissionProfileListReader, isNull);
     expect(controller.skillListReader, isNull);
+    expect(controller.pluginListReader, isNull);
     expect(controller.turnRunner, isNull);
     expect(connector.connectCount, 1);
     expect(connector.closeCount, 1);
@@ -585,6 +588,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       modelListReader: const _FakeModelListReader(),
       permissionProfileListReader: const _FakePermissionProfileListReader(),
       skillListReader: const _FakeSkillListReader(),
+      pluginListReader: const _FakePluginListReader(),
       threadMutationRunner: const _FakeThreadMutationRunner(),
       threadBackgroundTerminalRunner:
           const _FakeThreadBackgroundTerminalRunner(),
@@ -683,6 +687,18 @@ class _FakeSkillListReader implements SkillListReader {
     bool forceReload = false,
   }) async {
     return const SkillListPage(entries: []);
+  }
+}
+
+class _FakePluginListReader implements PluginListReader {
+  const _FakePluginListReader();
+
+  @override
+  Future<PluginListPage> listPlugins({
+    List<String> cwds = const [],
+    List<PluginMarketplaceKind> marketplaceKinds = const [],
+  }) async {
+    return const PluginListPage(marketplaces: []);
   }
 }
 

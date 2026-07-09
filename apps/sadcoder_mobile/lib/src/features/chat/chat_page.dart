@@ -25,6 +25,7 @@ import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import 'chat_background_terminal_summary.dart';
+import 'chat_plugins_summary.dart';
 import 'chat_skills_summary.dart';
 import 'chat_status_summary.dart';
 import 'chat_timeline_controller.dart';
@@ -335,6 +336,7 @@ class _ChatPageState extends State<ChatPage> {
           showUsage: _buildUsageSummary,
           showMcp: _buildMcpSummary,
           showSkills: _buildSkillsSummary,
+          showPlugins: _buildPluginsSummary,
           handleGoal: _handleGoalCommand,
           handleReview: _handleReviewCommand,
           showBackgroundTerminals: _buildBackgroundTerminalsSummary,
@@ -419,12 +421,31 @@ class _ChatPageState extends State<ChatPage> {
 
     try {
       final page = await reader.listSkills(
-        cwds: _currentSkillCwds(),
+        cwds: _currentWorkspaceCwds(),
         forceReload: forceReload,
       );
       return buildSkillsSummary(l10n: l10n, page: page);
     } on Object catch (error) {
       return '${l10n.skillsTitle}\n${l10n.skillsLoadFailed}: $error';
+    }
+  }
+
+  Future<String?> _buildPluginsSummary(String arguments) async {
+    if (arguments.trim().isNotEmpty) {
+      return null;
+    }
+
+    final l10n = context.l10n;
+    final reader = widget.sessionController?.pluginListReader;
+    if (reader == null) {
+      return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
+    }
+
+    try {
+      final page = await reader.listPlugins(cwds: _currentWorkspaceCwds());
+      return buildPluginsSummary(l10n: l10n, page: page);
+    } on Object catch (error) {
+      return '${l10n.pluginsTitle}\n${l10n.pluginsLoadFailed}: $error';
     }
   }
 
@@ -830,7 +851,7 @@ class _ChatPageState extends State<ChatPage> {
     return null;
   }
 
-  List<String> _currentSkillCwds() {
+  List<String> _currentWorkspaceCwds() {
     final overrideCwd = widget.configOverrideController?.resolved.cwd?.trim();
     if (overrideCwd != null && overrideCwd.isNotEmpty) {
       return [overrideCwd];
@@ -872,6 +893,9 @@ class _ChatPageState extends State<ChatPage> {
         ),
         SlashCommandActionEffect.mcp => l10n.slashCommandExecuted(result.slash),
         SlashCommandActionEffect.skills => l10n.slashCommandExecuted(
+          result.slash,
+        ),
+        SlashCommandActionEffect.plugins => l10n.slashCommandExecuted(
           result.slash,
         ),
         SlashCommandActionEffect.goal => l10n.slashCommandExecuted(

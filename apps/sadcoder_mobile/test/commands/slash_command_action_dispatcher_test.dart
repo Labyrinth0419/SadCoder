@@ -218,6 +218,38 @@ void main() {
     expect(result.command?.command, 'skills');
   });
 
+  test('/plugins returns the injected plugin summary', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      showPlugins: (argument) async {
+        arguments.add(argument);
+        return 'Plugins\nOpenAI curated\nlinear: installed, enabled';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/plugins'),
+      hasActiveTurn: true,
+    );
+
+    expect(arguments, ['']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.plugins);
+    expect(result.message, contains('linear'));
+  });
+
+  test('/plugins is unavailable when arguments are not supported', () async {
+    final dispatcher = SlashCommandActionDispatcher(showPlugins: (_) => null);
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/plugins sideways'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'plugins');
+  });
+
   test('/goal passes inline arguments to the injected goal handler', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

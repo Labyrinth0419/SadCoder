@@ -9,6 +9,7 @@ typedef SlashCommandShowStatus = FutureOr<String?> Function();
 typedef SlashCommandShowUsage = FutureOr<String?> Function();
 typedef SlashCommandShowMcp = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowSkills = FutureOr<String?> Function(String arguments);
+typedef SlashCommandShowPlugins = FutureOr<String?> Function(String arguments);
 typedef SlashCommandHandleGoal = FutureOr<String?> Function(String arguments);
 typedef SlashCommandHandleReview = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowBackgroundTerminals =
@@ -45,6 +46,7 @@ enum SlashCommandActionEffect {
   usage,
   mcp,
   skills,
+  plugins,
   goal,
   review,
   backgroundTerminals,
@@ -170,6 +172,7 @@ class SlashCommandActionDispatcher {
     this.showUsage,
     this.showMcp,
     this.showSkills,
+    this.showPlugins,
     this.handleGoal,
     this.handleReview,
     this.showBackgroundTerminals,
@@ -194,6 +197,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandShowUsage? showUsage;
   final SlashCommandShowMcp? showMcp;
   final SlashCommandShowSkills? showSkills;
+  final SlashCommandShowPlugins? showPlugins;
   final SlashCommandHandleGoal? handleGoal;
   final SlashCommandHandleReview? handleReview;
   final SlashCommandShowBackgroundTerminals? showBackgroundTerminals;
@@ -273,6 +277,8 @@ class SlashCommandActionDispatcher {
         return _showMcp(parsed);
       case 'skills':
         return _showSkills(parsed);
+      case 'plugins':
+        return _showPlugins(parsed);
       case 'goal':
         return _handleGoal(parsed);
       case 'review':
@@ -451,6 +457,16 @@ class SlashCommandActionDispatcher {
       parsed,
       action: showSkills,
       effect: SlashCommandActionEffect.skills,
+    );
+  }
+
+  Future<SlashCommandActionResult> _showPlugins(
+    SlashCommandParseResult parsed,
+  ) async {
+    return _showMessageWithArguments(
+      parsed,
+      action: showPlugins,
+      effect: SlashCommandActionEffect.plugins,
     );
   }
 

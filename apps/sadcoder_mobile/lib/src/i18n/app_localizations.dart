@@ -297,6 +297,22 @@ class AppLocalizations {
   String get skillEnabled => _text('skillEnabled');
   String get skillDisabled => _text('skillDisabled');
   String get skillScope => _text('skillScope');
+  String get pluginsTitle => _text('pluginsTitle');
+  String get pluginsUnavailable => _text('pluginsUnavailable');
+  String get pluginsLoadFailed => _text('pluginsLoadFailed');
+  String get pluginsEmpty => _text('pluginsEmpty');
+  String get pluginMarketplace => _text('pluginMarketplace');
+  String get pluginMarketplacePath => _text('pluginMarketplacePath');
+  String get pluginMarketplaceErrors => _text('pluginMarketplaceErrors');
+  String get pluginDescription => _text('pluginDescription');
+  String get pluginVersion => _text('pluginVersion');
+  String get pluginSource => _text('pluginSource');
+  String get pluginCapabilities => _text('pluginCapabilities');
+  String get pluginInstalled => _text('pluginInstalled');
+  String get pluginNotInstalled => _text('pluginNotInstalled');
+  String get pluginEnabled => _text('pluginEnabled');
+  String get pluginDisabled => _text('pluginDisabled');
+  String get pluginAvailability => _text('pluginAvailability');
   String get lifetimeTokens => _text('lifetimeTokens');
   String get peakDailyTokens => _text('peakDailyTokens');
   String get currentStreakDays => _text('currentStreakDays');
@@ -633,6 +649,22 @@ const _values = <String, Map<String, String>>{
     'skillEnabled': 'enabled',
     'skillDisabled': 'disabled',
     'skillScope': 'scope',
+    'pluginsTitle': 'Plugins',
+    'pluginsUnavailable': 'Connect to a host, then run /plugins.',
+    'pluginsLoadFailed': 'Failed to load plugins',
+    'pluginsEmpty': 'No plugins available.',
+    'pluginMarketplace': 'Marketplace',
+    'pluginMarketplacePath': 'Marketplace path',
+    'pluginMarketplaceErrors': 'Marketplace errors',
+    'pluginDescription': 'Description',
+    'pluginVersion': 'Version',
+    'pluginSource': 'Source',
+    'pluginCapabilities': 'Capabilities',
+    'pluginInstalled': 'installed',
+    'pluginNotInstalled': 'not installed',
+    'pluginEnabled': 'enabled',
+    'pluginDisabled': 'disabled',
+    'pluginAvailability': 'availability',
     'lifetimeTokens': 'Lifetime tokens',
     'peakDailyTokens': 'Peak daily tokens',
     'currentStreakDays': 'Current streak',
@@ -922,6 +954,22 @@ const _values = <String, Map<String, String>>{
     'skillEnabled': '已启用',
     'skillDisabled': '已禁用',
     'skillScope': '范围',
+    'pluginsTitle': '插件',
+    'pluginsUnavailable': '连接主机后运行 /plugins。',
+    'pluginsLoadFailed': '插件加载失败',
+    'pluginsEmpty': '暂无可用插件。',
+    'pluginMarketplace': '市场',
+    'pluginMarketplacePath': '市场路径',
+    'pluginMarketplaceErrors': '市场错误',
+    'pluginDescription': '说明',
+    'pluginVersion': '版本',
+    'pluginSource': '来源',
+    'pluginCapabilities': '能力',
+    'pluginInstalled': '已安装',
+    'pluginNotInstalled': '未安装',
+    'pluginEnabled': '已启用',
+    'pluginDisabled': '已禁用',
+    'pluginAvailability': '可用性',
     'lifetimeTokens': '累计 token',
     'peakDailyTokens': '单日峰值 token',
     'currentStreakDays': '当前连续天数',

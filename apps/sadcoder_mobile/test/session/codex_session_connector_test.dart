@@ -22,6 +22,7 @@ void main() {
     await connection.modelListReader.listModels();
     await connection.permissionProfileListReader.listPermissionProfiles();
     await connection.skillListReader.listSkills();
+    await connection.pluginListReader.listPlugins();
     await connection.accountSnapshotReader.readAccount();
     await connection.turnRunner.startThread();
     await connection.turnRunner.startTurn(threadId: 'thr_1', text: 'Fix bug');
@@ -36,6 +37,7 @@ void main() {
       'model/list',
       'permissionProfile/list',
       'skills/list',
+      'plugin/list',
       'account/read',
       'thread/start',
       'turn/start',
@@ -238,6 +240,7 @@ class _LineServerProxyConnector implements AgentProxyConnector {
     'model/list' => {'models': <Object?>[]},
     'permissionProfile/list' => {'data': <Object?>[]},
     'skills/list' => {'data': <Object?>[]},
+    'plugin/list' => {'marketplaces': <Object?>[]},
     'account/read' => {'account': null, 'requiresOpenaiAuth': false},
     'thread/start' => {
       'thread': {

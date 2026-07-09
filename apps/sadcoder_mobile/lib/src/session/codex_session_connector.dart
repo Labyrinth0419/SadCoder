@@ -16,6 +16,8 @@ import '../models/codex_model_list_reader.dart';
 import '../models/model_list_reader.dart';
 import '../permissions/codex_permission_profile_list_reader.dart';
 import '../permissions/permission_profile_list_reader.dart';
+import '../plugins/codex_plugin_list_reader.dart';
+import '../plugins/plugin_list_reader.dart';
 import '../protocol/codex_app_session.dart';
 import '../reviews/codex_thread_review_runner.dart';
 import '../reviews/thread_review_runner.dart';
@@ -54,6 +56,8 @@ abstract interface class CodexSessionConnectionHandle {
   PermissionProfileListReader get permissionProfileListReader;
 
   SkillListReader get skillListReader;
+
+  PluginListReader get pluginListReader;
 
   ThreadMutationRunner get threadMutationRunner;
 
@@ -130,6 +134,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
           session.client,
         ),
         skillListReader: CodexSkillListReader(session.client),
+        pluginListReader: CodexPluginListReader(session.client),
         threadMutationRunner: CodexThreadMutationRunner(session.client),
         threadBackgroundTerminalRunner: CodexThreadBackgroundTerminalRunner(
           session.client,
@@ -190,6 +195,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.modelListReader,
     required this.permissionProfileListReader,
     required this.skillListReader,
+    required this.pluginListReader,
     required this.threadMutationRunner,
     required this.threadBackgroundTerminalRunner,
     required this.threadGoalRunner,
@@ -221,6 +227,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final PermissionProfileListReader permissionProfileListReader;
   @override
   final SkillListReader skillListReader;
+  @override
+  final PluginListReader pluginListReader;
   @override
   final ThreadMutationRunner threadMutationRunner;
   @override

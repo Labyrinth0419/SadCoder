@@ -161,6 +161,24 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> listPlugins({
+    List<String> cwds = const [],
+    List<String> marketplaceKinds = const [],
+  }) {
+    final normalizedCwds = [
+      for (final cwd in cwds)
+        if (cwd.trim().isNotEmpty) cwd.trim(),
+    ];
+    final normalizedKinds = [
+      for (final kind in marketplaceKinds)
+        if (kind.trim().isNotEmpty) kind.trim(),
+    ];
+    return _request('plugin/list', {
+      if (normalizedCwds.isNotEmpty) 'cwds': normalizedCwds,
+      if (normalizedKinds.isNotEmpty) 'marketplaceKinds': normalizedKinds,
+    });
+  }
+
   Future<Map<String, Object?>> getThreadGoal({required String threadId}) {
     return _request('thread/goal/get', {'threadId': threadId});
   }

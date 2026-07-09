@@ -26,6 +26,7 @@ import 'package:sadcoder_mobile/src/models/model_list_controller.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_controller.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
+import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
@@ -2372,6 +2373,129 @@ void main() {
     expect(find.textContaining('No skills available.'), findsOneWidget);
   });
 
+  testWidgets('/plugins lists plugins for the selected thread cwd', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final pluginReader = _RecordingPluginListReader(
+      page: PluginListPage.fromJson({
+        'marketplaces': [
+          {
+            'name': 'openai-curated',
+            'interface': {'displayName': 'OpenAI curated'},
+            'plugins': [
+              {
+                'id': 'linear',
+                'name': 'linear',
+                'version': '1.2.3',
+                'source': {'type': 'remote'},
+                'installed': true,
+                'enabled': true,
+                'installPolicy': 'AVAILABLE',
+                'authPolicy': 'ON_USE',
+                'interface': {
+                  'displayName': 'Linear',
+                  'shortDescription': 'Plan work',
+                  'capabilities': ['mcp'],
+                },
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      pluginListReader: pluginReader,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_selected',
+            'sessionId': 'sess_1',
+            'preview': 'Selected thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+            'turns': <Object?>[],
+          }),
+        ),
+      ),
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(detailController.dispose);
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_selected');
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/plugins',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(pluginReader.cwds, [
+      ['/repo'],
+    ]);
+    expect(pluginReader.marketplaceKinds, [isEmpty]);
+    expect(find.textContaining('Plugins'), findsOneWidget);
+    expect(find.textContaining('Marketplace: OpenAI curated'), findsOneWidget);
+    expect(find.textContaining('Linear (linear)'), findsOneWidget);
+    expect(find.textContaining('Capabilities: mcp'), findsOneWidget);
+  });
+
+  testWidgets(
+    '/plugins unsupported arguments do not refresh or send a prompt',
+    (tester) async {
+      final approvalController = ApprovalStateController();
+      final pluginReader = _RecordingPluginListReader(
+        page: const PluginListPage(marketplaces: []),
+      );
+      final starter = _FakeSessionStarter(
+        threadListReader: const _FakeThreadListReader(
+          page: ThreadListPage(threads: []),
+        ),
+        pluginListReader: pluginReader,
+      );
+      final sessionController = CodexSessionStateController(
+        connector: starter,
+        approvalController: approvalController,
+      );
+      addTearDown(sessionController.dispose);
+      addTearDown(approvalController.dispose);
+      await sessionController.connect(_profile);
+
+      await _pumpChatPage(tester, sessionController: sessionController);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('chat-composer-field')),
+        '/plugins sideways',
+      );
+      await tester.pump();
+      await tester.tap(find.byTooltip('Send'));
+      await tester.pumpAndSettle();
+
+      expect(pluginReader.cwds, isEmpty);
+      expect(find.text('/plugins is unavailable right now.'), findsOneWidget);
+    },
+  );
+
   testWidgets('/raw toggles raw timeline item JSON locally', (tester) async {
     final timelineController = ChatTimelineController();
     addTearDown(timelineController.dispose);
@@ -3416,6 +3540,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.threadGoalRunner = const _FakeThreadGoalRunner(),
     this.threadReviewRunner = const _FakeThreadReviewRunner(),
     this.skillListReader = const _FakeSkillListReader(),
+    this.pluginListReader = const _FakePluginListReader(),
   });
 
   final ThreadListReader threadListReader;
@@ -3425,6 +3550,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final ThreadGoalRunner threadGoalRunner;
   final ThreadReviewRunner threadReviewRunner;
   final SkillListReader skillListReader;
+  final PluginListReader pluginListReader;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -3440,6 +3566,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       threadGoalRunner: threadGoalRunner,
       threadReviewRunner: threadReviewRunner,
       skillListReader: skillListReader,
+      pluginListReader: pluginListReader,
     );
   }
 }
@@ -3454,6 +3581,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.threadGoalRunner,
     required this.threadReviewRunner,
     required this.skillListReader,
+    required this.pluginListReader,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -3481,6 +3609,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final SkillListReader skillListReader;
+
+  @override
+  final PluginListReader pluginListReader;
 
   @override
   ModelListReader get modelListReader => const _FakeModelListReader();
@@ -3624,6 +3755,18 @@ class _FakeSkillListReader implements SkillListReader {
     bool forceReload = false,
   }) async {
     return const SkillListPage(entries: []);
+  }
+}
+
+class _FakePluginListReader implements PluginListReader {
+  const _FakePluginListReader();
+
+  @override
+  Future<PluginListPage> listPlugins({
+    List<String> cwds = const [],
+    List<PluginMarketplaceKind> marketplaceKinds = const [],
+  }) async {
+    return const PluginListPage(marketplaces: []);
   }
 }
 
@@ -3866,6 +4009,24 @@ class _RecordingSkillListReader implements SkillListReader {
   }) async {
     this.cwds.add(List.unmodifiable(cwds));
     forceReloadValues.add(forceReload);
+    return page;
+  }
+}
+
+class _RecordingPluginListReader implements PluginListReader {
+  _RecordingPluginListReader({required this.page});
+
+  final PluginListPage page;
+  final cwds = <List<String>>[];
+  final marketplaceKinds = <List<PluginMarketplaceKind>>[];
+
+  @override
+  Future<PluginListPage> listPlugins({
+    List<String> cwds = const [],
+    List<PluginMarketplaceKind> marketplaceKinds = const [],
+  }) async {
+    this.cwds.add(List.unmodifiable(cwds));
+    this.marketplaceKinds.add(List.unmodifiable(marketplaceKinds));
     return page;
   }
 }
