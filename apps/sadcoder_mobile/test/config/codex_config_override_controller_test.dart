@@ -74,4 +74,35 @@ void main() {
       'serviceTier': 'auto',
     });
   });
+
+  test('permission helpers preserve unrelated override fields', () {
+    final controller = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(model: 'gpt-5', personality: 'concise'),
+        turn: CodexConfigOverrides(cwd: '/tmp', effort: 'high'),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    controller.setSessionPermissions(
+      approvalPolicy: 'on-request',
+      sandboxPolicy: {'type': 'readOnly', 'networkAccess': false},
+    );
+    controller.setTurnPermissions(
+      approvalPolicy: '',
+      sandboxPolicy: {'type': 'dangerFullAccess', 'networkAccess': true},
+    );
+
+    expect(controller.layers.session.toTurnStartParams(), {
+      'model': 'gpt-5',
+      'approvalPolicy': 'on-request',
+      'sandboxPolicy': {'type': 'readOnly', 'networkAccess': false},
+      'personality': 'concise',
+    });
+    expect(controller.layers.turn.toTurnStartParams(), {
+      'sandboxPolicy': {'type': 'dangerFullAccess', 'networkAccess': true},
+      'cwd': '/tmp',
+      'effort': 'high',
+    });
+  });
 }

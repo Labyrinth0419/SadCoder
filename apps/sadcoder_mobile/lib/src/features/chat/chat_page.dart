@@ -18,6 +18,7 @@ import '../../turns/turn_controller.dart';
 import 'chat_status_summary.dart';
 import 'chat_timeline_controller.dart';
 import 'config_override_controls.dart';
+import 'config_override_labels.dart';
 import 'session_override_controls.dart';
 import 'slash_command_palette.dart';
 import 'turn_override_controls.dart';
@@ -312,6 +313,7 @@ class _ChatPageState extends State<ChatPage> {
           deleteThread: _deleteCurrentThread,
           configureModel: _configureModelOverride,
           configurePersonality: _configurePersonalityOverride,
+          configurePermissions: _configurePermissionsOverride,
         );
   }
 
@@ -374,6 +376,34 @@ class _ChatPageState extends State<ChatPage> {
         controller.setSessionModelEffort(
           model: result.model,
           effort: result.effort,
+        );
+    }
+    return SlashCommandCallbackResult.executed;
+  }
+
+  Future<SlashCommandCallbackResult> _configurePermissionsOverride() async {
+    final controller = widget.configOverrideController;
+    if (controller == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    final result = await showModalBottomSheet<_PermissionsOverrideResult>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _PermissionsOverrideSheet(controller: controller),
+    );
+    if (!mounted || result == null) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+    switch (result.scope) {
+      case _OverrideScope.turn:
+        controller.setTurnPermissions(
+          approvalPolicy: result.approvalPolicy,
+          sandboxPolicy: result.sandboxPolicy,
+        );
+      case _OverrideScope.session:
+        controller.setSessionPermissions(
+          approvalPolicy: result.approvalPolicy,
+          sandboxPolicy: result.sandboxPolicy,
         );
     }
     return SlashCommandCallbackResult.executed;
@@ -556,6 +586,8 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.modelOverride => l10n.slashCommandModelUpdated,
         SlashCommandActionEffect.personalityOverride =>
           l10n.slashCommandPersonalityUpdated,
+        SlashCommandActionEffect.permissionsOverride =>
+          l10n.slashCommandPermissionsUpdated,
         SlashCommandActionEffect.none => l10n.slashCommandExecuted(
           result.slash,
         ),
@@ -627,6 +659,14 @@ class _ChatPageState extends State<ChatPage> {
 
 enum _OverrideScope { turn, session }
 
+const _approvalPolicyOptions = ['', 'on-request', 'on-failure', 'never'];
+const _sandboxModeOptions = [
+  '',
+  'readOnly',
+  'workspaceWrite',
+  'dangerFullAccess',
+];
+
 class _OverrideScopeSelector extends StatelessWidget {
   const _OverrideScopeSelector({required this.scope, required this.onChanged});
 
@@ -651,6 +691,246 @@ class _OverrideScopeSelector extends StatelessWidget {
       ],
       selected: {scope},
       onSelectionChanged: (selection) => onChanged(selection.single),
+    );
+  }
+}
+
+class _PermissionsOverrideResult {
+  const _PermissionsOverrideResult({
+    required this.scope,
+    required this.approvalPolicy,
+    required this.sandboxPolicy,
+  });
+
+  final _OverrideScope scope;
+  final Object? approvalPolicy;
+  final Map<String, Object?> sandboxPolicy;
+}
+
+class _PermissionsOverrideSheet extends StatefulWidget {
+  const _PermissionsOverrideSheet({required this.controller});
+
+  final CodexConfigOverrideController controller;
+
+  @override
+  State<_PermissionsOverrideSheet> createState() =>
+      _PermissionsOverrideSheetState();
+}
+
+class _PermissionsOverrideSheetState extends State<_PermissionsOverrideSheet> {
+  late _OverrideScope _scope;
+  late String _approvalPolicy;
+  late String _sandboxMode;
+  late bool _networkAccess;
+
+  @override
+  void initState() {
+    super.initState();
+    _scope = _OverrideScope.turn;
+    _loadScopeValues();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.permissionsCommandTitle,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            _OverrideScopeSelector(
+              scope: _scope,
+              onChanged: (scope) {
+                setState(() {
+                  _scope = scope;
+                  _loadScopeValues();
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+            _OverrideDropdown(
+              key: const ValueKey('chat-permissions-command-approval-policy'),
+              label: l10n.approvalPolicy,
+              value: _approvalPolicy,
+              values: _approvalPolicyOptions,
+              defaultLabel: l10n.serverDefaultOption,
+              onChanged: (value) {
+                setState(() => _approvalPolicy = value);
+              },
+            ),
+            const SizedBox(height: 12),
+            _OverrideDropdown(
+              key: const ValueKey('chat-permissions-command-sandbox-mode'),
+              label: l10n.sandboxMode,
+              value: _sandboxMode,
+              values: _sandboxModeOptions,
+              defaultLabel: l10n.serverDefaultOption,
+              onChanged: (value) {
+                setState(() => _sandboxMode = value);
+              },
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              key: const ValueKey('chat-permissions-command-network-access'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.networkAccess),
+              value: _networkAccess,
+              onChanged: _sandboxMode.isEmpty
+                  ? null
+                  : (value) => setState(() => _networkAccess = value),
+            ),
+            if (_isHighRisk) ...[
+              const SizedBox(height: 8),
+              _PermissionsRiskWarning(message: l10n.permissionsHighRiskWarning),
+            ],
+            const SizedBox(height: 16),
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              spacing: 8,
+              overflowSpacing: 8,
+              children: [
+                TextButton.icon(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                  label: Text(l10n.approvalCancel),
+                ),
+                FilledButton.icon(
+                  key: const ValueKey('chat-permissions-command-apply'),
+                  onPressed: _apply,
+                  icon: const Icon(Icons.check),
+                  label: Text(l10n.applyPermissionsOverride),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool get _isHighRisk {
+    return _approvalPolicy == 'never' || _sandboxMode == 'dangerFullAccess';
+  }
+
+  void _apply() {
+    Navigator.of(context).pop(
+      _PermissionsOverrideResult(
+        scope: _scope,
+        approvalPolicy: _approvalPolicy,
+        sandboxPolicy: _sandboxPolicy(),
+      ),
+    );
+  }
+
+  void _loadScopeValues() {
+    final overrides = _overridesForScope(widget.controller, _scope);
+    _approvalPolicy = _supportedOption(
+      configOverrideValueLabel(overrides.approvalPolicy) ?? '',
+      _approvalPolicyOptions,
+    );
+    final sandboxPolicy = overrides.sandboxPolicy;
+    _sandboxMode = _supportedOption(
+      sandboxPolicy?['type'] as String? ?? '',
+      _sandboxModeOptions,
+    );
+    _networkAccess = sandboxPolicy?['networkAccess'] as bool? ?? false;
+  }
+
+  Map<String, Object?> _sandboxPolicy() {
+    if (_sandboxMode.isEmpty) {
+      return {};
+    }
+    return {'type': _sandboxMode, 'networkAccess': _networkAccess};
+  }
+}
+
+String _supportedOption(String value, List<String> options) {
+  return options.contains(value) ? value : '';
+}
+
+class _OverrideDropdown extends StatelessWidget {
+  const _OverrideDropdown({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.values,
+    required this.defaultLabel,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String value;
+  final List<String> values;
+  final String defaultLabel;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          items: [
+            for (final option in values)
+              DropdownMenuItem(
+                value: option,
+                child: Text(option.isEmpty ? defaultLabel : option),
+              ),
+          ],
+          onChanged: (value) {
+            if (value != null) {
+              onChanged(value);
+            }
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _PermissionsRiskWarning extends StatelessWidget {
+  const _PermissionsRiskWarning({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      color: colorScheme.errorContainer,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.warning_amber_outlined,
+              color: colorScheme.onErrorContainer,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(color: colorScheme.onErrorContainer),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

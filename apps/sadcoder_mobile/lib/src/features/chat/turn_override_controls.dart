@@ -4,6 +4,7 @@ import '../../config/codex_config_override_controller.dart';
 import '../../config/codex_config_overrides.dart';
 import '../../i18n/app_localizations.dart';
 import 'config_override_controls.dart';
+import 'config_override_labels.dart';
 
 class TurnOverrideControls extends StatelessWidget {
   const TurnOverrideControls({super.key, required this.controller});
@@ -52,31 +53,51 @@ class _TurnOverrideBar extends StatelessWidget {
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                   const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      ConfigOverrideSourceChip(
-                        label: l10n.modelOverride,
-                        value: controller.layers.resolve().model,
-                        source: controller.sourceFor('model'),
-                      ),
-                      ConfigOverrideSourceChip(
-                        label: l10n.effortOverride,
-                        value: controller.layers.resolve().effort,
-                        source: controller.sourceFor('effort'),
-                      ),
-                      ConfigOverrideSourceChip(
-                        label: l10n.cwdOverride,
-                        value: controller.layers.resolve().cwd,
-                        source: controller.sourceFor('cwd'),
-                      ),
-                      ConfigOverrideSourceChip(
-                        label: l10n.personalityOverride,
-                        value: controller.layers.resolve().personality,
-                        source: controller.sourceFor('personality'),
-                      ),
-                    ],
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        ConfigOverrideSourceChip(
+                          label: l10n.modelOverride,
+                          value: controller.layers.resolve().model,
+                          source: controller.sourceFor('model'),
+                        ),
+                        const SizedBox(width: 8),
+                        ConfigOverrideSourceChip(
+                          label: l10n.effortOverride,
+                          value: controller.layers.resolve().effort,
+                          source: controller.sourceFor('effort'),
+                        ),
+                        const SizedBox(width: 8),
+                        ConfigOverrideSourceChip(
+                          label: l10n.approvalPolicy,
+                          value: configOverrideValueLabel(
+                            controller.layers.resolve().approvalPolicy,
+                          ),
+                          source: controller.sourceFor('approvalPolicy'),
+                        ),
+                        const SizedBox(width: 8),
+                        ConfigOverrideSourceChip(
+                          label: l10n.sandboxMode,
+                          value: configOverrideValueLabel(
+                            controller.layers.resolve().sandboxPolicy,
+                          ),
+                          source: controller.sourceFor('sandboxPolicy'),
+                        ),
+                        const SizedBox(width: 8),
+                        ConfigOverrideSourceChip(
+                          label: l10n.cwdOverride,
+                          value: controller.layers.resolve().cwd,
+                          source: controller.sourceFor('cwd'),
+                        ),
+                        const SizedBox(width: 8),
+                        ConfigOverrideSourceChip(
+                          label: l10n.personalityOverride,
+                          value: controller.layers.resolve().personality,
+                          source: controller.sourceFor('personality'),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

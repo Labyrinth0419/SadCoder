@@ -4,6 +4,7 @@ import '../../config/codex_config_override_controller.dart';
 import '../../config/codex_config_overrides.dart';
 import '../../i18n/app_localizations.dart';
 import 'config_override_controls.dart';
+import 'config_override_labels.dart';
 
 class SessionOverrideControls extends StatelessWidget {
   const SessionOverrideControls({super.key, required this.controller});
@@ -52,31 +53,51 @@ class _SessionOverrideBar extends StatelessWidget {
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                   const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      ConfigOverrideSourceChip(
-                        label: l10n.modelOverride,
-                        value: sessionDefault.model,
-                        source: _sessionSourceFor(layers, 'model'),
-                      ),
-                      ConfigOverrideSourceChip(
-                        label: l10n.effortOverride,
-                        value: sessionDefault.effort,
-                        source: _sessionSourceFor(layers, 'effort'),
-                      ),
-                      ConfigOverrideSourceChip(
-                        label: l10n.cwdOverride,
-                        value: sessionDefault.cwd,
-                        source: _sessionSourceFor(layers, 'cwd'),
-                      ),
-                      ConfigOverrideSourceChip(
-                        label: l10n.personalityOverride,
-                        value: sessionDefault.personality,
-                        source: _sessionSourceFor(layers, 'personality'),
-                      ),
-                    ],
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        ConfigOverrideSourceChip(
+                          label: l10n.modelOverride,
+                          value: sessionDefault.model,
+                          source: _sessionSourceFor(layers, 'model'),
+                        ),
+                        const SizedBox(width: 8),
+                        ConfigOverrideSourceChip(
+                          label: l10n.effortOverride,
+                          value: sessionDefault.effort,
+                          source: _sessionSourceFor(layers, 'effort'),
+                        ),
+                        const SizedBox(width: 8),
+                        ConfigOverrideSourceChip(
+                          label: l10n.approvalPolicy,
+                          value: configOverrideValueLabel(
+                            sessionDefault.approvalPolicy,
+                          ),
+                          source: _sessionSourceFor(layers, 'approvalPolicy'),
+                        ),
+                        const SizedBox(width: 8),
+                        ConfigOverrideSourceChip(
+                          label: l10n.sandboxMode,
+                          value: configOverrideValueLabel(
+                            sessionDefault.sandboxPolicy,
+                          ),
+                          source: _sessionSourceFor(layers, 'sandboxPolicy'),
+                        ),
+                        const SizedBox(width: 8),
+                        ConfigOverrideSourceChip(
+                          label: l10n.cwdOverride,
+                          value: sessionDefault.cwd,
+                          source: _sessionSourceFor(layers, 'cwd'),
+                        ),
+                        const SizedBox(width: 8),
+                        ConfigOverrideSourceChip(
+                          label: l10n.personalityOverride,
+                          value: sessionDefault.personality,
+                          source: _sessionSourceFor(layers, 'personality'),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

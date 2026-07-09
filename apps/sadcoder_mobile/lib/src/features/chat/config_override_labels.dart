@@ -12,3 +12,17 @@ String configOverrideSourceLabel(
     CodexConfigOverrideSource.turn => l10n.sourceTurnOverride,
   };
 }
+
+String? configOverrideValueLabel(Object? value) {
+  return switch (value) {
+    null => null,
+    String text => text,
+    Map<String, Object?> map when map['type'] is String =>
+      map['type']! as String,
+    Map map when map['type'] is String => map['type']! as String,
+    Map map when map.isEmpty => null,
+    Map map =>
+      map.entries.map((entry) => '${entry.key}: ${entry.value}').join(', '),
+    _ => value.toString(),
+  };
+}

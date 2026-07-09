@@ -134,6 +134,8 @@ class AppLocalizations {
   String get slashCommandModelUpdated => _text('slashCommandModelUpdated');
   String get slashCommandPersonalityUpdated =>
       _text('slashCommandPersonalityUpdated');
+  String get slashCommandPermissionsUpdated =>
+      _text('slashCommandPermissionsUpdated');
   String slashCommandCancelled(String slash) =>
       _text('slashCommandCancelled').replaceAll('{slash}', slash);
   String slashCommandExecuted(String slash) =>
@@ -196,6 +198,7 @@ class AppLocalizations {
   String get clearTurnOverrides => _text('clearTurnOverrides');
   String get overrideTurnScope => _text('overrideTurnScope');
   String get overrideSessionScope => _text('overrideSessionScope');
+  String get serverDefaultOption => _text('serverDefaultOption');
   String get archiveThreadTitle => _text('archiveThreadTitle');
   String get archiveThreadBody => _text('archiveThreadBody');
   String get archiveThreadConfirm => _text('archiveThreadConfirm');
@@ -208,6 +211,10 @@ class AppLocalizations {
   String get applyModelOverride => _text('applyModelOverride');
   String get personalityCommandTitle => _text('personalityCommandTitle');
   String get applyPersonalityOverride => _text('applyPersonalityOverride');
+  String get permissionsCommandTitle => _text('permissionsCommandTitle');
+  String get applyPermissionsOverride => _text('applyPermissionsOverride');
+  String get networkAccess => _text('networkAccess');
+  String get permissionsHighRiskWarning => _text('permissionsHighRiskWarning');
   String get serverConfigSnapshot => _text('serverConfigSnapshot');
   String get refreshServerConfig => _text('refreshServerConfig');
   String get serverConfigUnavailable => _text('serverConfigUnavailable');
@@ -356,6 +363,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandDeletedThread': 'Deleted thread.',
     'slashCommandModelUpdated': 'Model override updated.',
     'slashCommandPersonalityUpdated': 'Personality override updated.',
+    'slashCommandPermissionsUpdated': 'Permission override updated.',
     'slashCommandCancelled': 'Canceled {slash}.',
     'slashCommandExecuted': 'Executed {slash}.',
     'slashCommandUnsupported': '{slash} is not implemented yet.',
@@ -414,6 +422,7 @@ const _values = <String, Map<String, String>>{
     'clearTurnOverrides': 'Clear next turn overrides',
     'overrideTurnScope': 'Next turn',
     'overrideSessionScope': 'Session',
+    'serverDefaultOption': 'Server default',
     'archiveThreadTitle': 'Archive thread?',
     'archiveThreadBody':
         'This moves the current thread out of the active session list.',
@@ -428,6 +437,11 @@ const _values = <String, Map<String, String>>{
     'applyModelOverride': 'Apply model override',
     'personalityCommandTitle': 'Personality override',
     'applyPersonalityOverride': 'Apply personality override',
+    'permissionsCommandTitle': 'Permission override',
+    'applyPermissionsOverride': 'Apply permission override',
+    'networkAccess': 'Network access',
+    'permissionsHighRiskWarning':
+        'High risk: these permissions can let Codex run with less review or broader filesystem access.',
     'serverConfigSnapshot': 'Server config snapshot',
     'refreshServerConfig': 'Refresh server config',
     'serverConfigUnavailable': 'Connect to a host, then refresh server config.',
@@ -548,6 +562,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandDeletedThread': '已删除会话。',
     'slashCommandModelUpdated': '已更新模型覆盖。',
     'slashCommandPersonalityUpdated': '已更新协作风格覆盖。',
+    'slashCommandPermissionsUpdated': '已更新权限覆盖。',
     'slashCommandCancelled': '已取消 {slash}。',
     'slashCommandExecuted': '已执行 {slash}。',
     'slashCommandUnsupported': '{slash} 暂未实现。',
@@ -604,6 +619,7 @@ const _values = <String, Map<String, String>>{
     'clearTurnOverrides': '清除本次回合覆盖',
     'overrideTurnScope': '本次回合',
     'overrideSessionScope': '本会话',
+    'serverDefaultOption': '服务器默认',
     'archiveThreadTitle': '归档会话？',
     'archiveThreadBody': '这会把当前会话移出活动会话列表。',
     'archiveThreadConfirm': '归档',
@@ -616,6 +632,10 @@ const _values = <String, Map<String, String>>{
     'applyModelOverride': '应用模型覆盖',
     'personalityCommandTitle': '协作风格覆盖',
     'applyPersonalityOverride': '应用协作风格覆盖',
+    'permissionsCommandTitle': '权限覆盖',
+    'applyPermissionsOverride': '应用权限覆盖',
+    'networkAccess': '网络访问',
+    'permissionsHighRiskWarning': '高风险：这些权限会减少 Codex 执行前的审批或扩大文件系统访问范围。',
     'serverConfigSnapshot': '服务器配置快照',
     'refreshServerConfig': '刷新服务器配置',
     'serverConfigUnavailable': '连接主机后刷新服务器配置。',

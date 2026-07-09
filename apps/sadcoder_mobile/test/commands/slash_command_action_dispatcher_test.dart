@@ -392,6 +392,42 @@ void main() {
   });
 
   test(
+    '/permissions opens the injected permissions configuration action',
+    () async {
+      var opens = 0;
+      final dispatcher = SlashCommandActionDispatcher(
+        configurePermissions: () async {
+          opens++;
+          return SlashCommandCallbackResult.executed;
+        },
+      );
+
+      final result = await dispatcher.dispatch(
+        registry.parseComposerText('/permissions'),
+        hasActiveTurn: true,
+      );
+
+      expect(opens, 1);
+      expect(result.outcome, SlashCommandActionOutcome.executed);
+      expect(result.effect, SlashCommandActionEffect.permissionsOverride);
+    },
+  );
+
+  test('/permissions can be cancelled by the configuration UI', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      configurePermissions: () async => SlashCommandCallbackResult.cancelled,
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/permissions'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.cancelled);
+    expect(result.command?.command, 'permissions');
+  });
+
+  test(
     'unknown and unsupported commands never fall through as prompts',
     () async {
       final dispatcher = SlashCommandActionDispatcher(
@@ -404,14 +440,14 @@ void main() {
         hasActiveTurn: false,
       );
       final unsupported = await dispatcher.dispatch(
-        registry.parseComposerText('/permissions'),
+        registry.parseComposerText('/keymap'),
         hasActiveTurn: false,
       );
 
       expect(unknown.outcome, SlashCommandActionOutcome.unknown);
       expect(unknown.rawCommand, 'does-not-exist');
       expect(unsupported.outcome, SlashCommandActionOutcome.unsupported);
-      expect(unsupported.command?.command, 'permissions');
+      expect(unsupported.command?.command, 'keymap');
     },
   );
 

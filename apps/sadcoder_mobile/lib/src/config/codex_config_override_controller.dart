@@ -59,6 +59,32 @@ class CodexConfigOverrideController extends ChangeNotifier {
     setTurn(_withPersonality(_layers.turn, personality: personality));
   }
 
+  void setSessionPermissions({
+    required Object? approvalPolicy,
+    required Map<String, Object?> sandboxPolicy,
+  }) {
+    setSession(
+      _withPermissions(
+        _layers.session,
+        approvalPolicy: approvalPolicy,
+        sandboxPolicy: sandboxPolicy,
+      ),
+    );
+  }
+
+  void setTurnPermissions({
+    required Object? approvalPolicy,
+    required Map<String, Object?> sandboxPolicy,
+  }) {
+    setTurn(
+      _withPermissions(
+        _layers.turn,
+        approvalPolicy: approvalPolicy,
+        sandboxPolicy: sandboxPolicy,
+      ),
+    );
+  }
+
   void clearTurn() {
     setTurn(CodexConfigOverrides.empty);
   }
@@ -105,6 +131,23 @@ class CodexConfigOverrideController extends ChangeNotifier {
       sandboxPolicy: overrides.sandboxPolicy,
       cwd: overrides.cwd,
       personality: personality,
+      serviceTier: overrides.serviceTier,
+    );
+  }
+
+  CodexConfigOverrides _withPermissions(
+    CodexConfigOverrides overrides, {
+    required Object? approvalPolicy,
+    required Map<String, Object?> sandboxPolicy,
+  }) {
+    return CodexConfigOverrides(
+      model: overrides.model,
+      effort: overrides.effort,
+      summary: overrides.summary,
+      approvalPolicy: approvalPolicy,
+      sandboxPolicy: sandboxPolicy,
+      cwd: overrides.cwd,
+      personality: overrides.personality,
       serviceTier: overrides.serviceTier,
     );
   }

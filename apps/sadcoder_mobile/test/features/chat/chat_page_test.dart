@@ -497,14 +497,179 @@ void main() {
 
     await tester.enterText(
       find.byKey(const ValueKey('chat-composer-field')),
-      '/permissions',
+      '/keymap',
     );
     await tester.pump();
     await tester.tap(find.byTooltip('Send'));
     await tester.pumpAndSettle();
 
     expect(turnRunner.startedTurns, isEmpty);
-    expect(find.text('/permissions is not implemented yet.'), findsOneWidget);
+    expect(find.text('/keymap is not implemented yet.'), findsOneWidget);
+  });
+
+  testWidgets('/permissions applies next-turn permission overrides', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final overrideController = CodexConfigOverrideController();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => overrideController.layers,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/permissions',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Permission override'), findsOneWidget);
+    await _selectDropdownOption(
+      tester,
+      const ValueKey('chat-permissions-command-approval-policy'),
+      'on-request',
+    );
+    await _selectDropdownOption(
+      tester,
+      const ValueKey('chat-permissions-command-sandbox-mode'),
+      'readOnly',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('chat-permissions-command-apply')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(overrideController.layers.turn.toTurnStartParams(), {
+      'approvalPolicy': 'on-request',
+      'sandboxPolicy': {'type': 'readOnly', 'networkAccess': false},
+    });
+    expect(overrideController.layers.session.toTurnStartParams(), isEmpty);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(find.text('Permission override updated.'), findsOneWidget);
+  });
+
+  testWidgets('/permissions can apply a session permission override', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final overrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(
+          approvalPolicy: 'on-failure',
+          sandboxPolicy: {'type': 'workspaceWrite', 'networkAccess': true},
+        ),
+        turn: CodexConfigOverrides(approvalPolicy: 'on-request'),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => overrideController.layers,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/permissions',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Session'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('on-failure'), findsOneWidget);
+    expect(find.text('workspaceWrite'), findsOneWidget);
+    expect(
+      tester
+          .widget<SwitchListTile>(
+            find.byKey(
+              const ValueKey('chat-permissions-command-network-access'),
+            ),
+          )
+          .value,
+      true,
+    );
+
+    await _selectDropdownOption(
+      tester,
+      const ValueKey('chat-permissions-command-approval-policy'),
+      'never',
+    );
+    await _selectDropdownOption(
+      tester,
+      const ValueKey('chat-permissions-command-sandbox-mode'),
+      'dangerFullAccess',
+    );
+
+    expect(
+      find.text(
+        'High risk: these permissions can let Codex run with less review or broader filesystem access.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('chat-permissions-command-apply')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(overrideController.layers.session.toTurnStartParams(), {
+      'approvalPolicy': 'never',
+      'sandboxPolicy': {'type': 'dangerFullAccess', 'networkAccess': true},
+    });
+    expect(overrideController.layers.turn.toTurnStartParams(), {
+      'approvalPolicy': 'on-request',
+    });
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(find.text('Permission override updated.'), findsOneWidget);
   });
 
   testWidgets('/model applies a next-turn model override', (tester) async {
@@ -1760,6 +1925,17 @@ Future<void> _pumpChatPage(
       ),
     ),
   );
+}
+
+Future<void> _selectDropdownOption(
+  WidgetTester tester,
+  Key dropdownKey,
+  String option,
+) async {
+  await tester.tap(find.byKey(dropdownKey));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(option).last);
+  await tester.pumpAndSettle();
 }
 
 const _profile = SshProfile(

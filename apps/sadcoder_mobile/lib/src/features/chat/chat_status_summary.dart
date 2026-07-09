@@ -89,8 +89,8 @@ Iterable<String> _overrideStatusLines(
   final resolved = controller.resolved;
   yield '${l10n.modelOverride}: ${_overrideStatusValue(l10n, resolved.model, controller.sourceFor('model'))}';
   yield '${l10n.effortOverride}: ${_overrideStatusValue(l10n, resolved.effort, controller.sourceFor('effort'))}';
-  yield '${l10n.approvalPolicy}: ${_overrideStatusValue(l10n, _objectStatusValue(resolved.approvalPolicy), controller.sourceFor('approvalPolicy'))}';
-  yield '${l10n.sandboxMode}: ${_overrideStatusValue(l10n, _objectStatusValue(resolved.sandboxPolicy), controller.sourceFor('sandboxPolicy'))}';
+  yield '${l10n.approvalPolicy}: ${_overrideStatusValue(l10n, configOverrideValueLabel(resolved.approvalPolicy), controller.sourceFor('approvalPolicy'))}';
+  yield '${l10n.sandboxMode}: ${_overrideStatusValue(l10n, configOverrideValueLabel(resolved.sandboxPolicy), controller.sourceFor('sandboxPolicy'))}';
   yield '${l10n.cwdOverride}: ${_overrideStatusValue(l10n, resolved.cwd, controller.sourceFor('cwd'))}';
   yield '${l10n.personalityOverride}: ${_overrideStatusValue(l10n, resolved.personality, controller.sourceFor('personality'))}';
 }
@@ -106,18 +106,4 @@ String _overrideStatusValue(
     return sourceLabel;
   }
   return '$trimmed / $sourceLabel';
-}
-
-String? _objectStatusValue(Object? value) {
-  return switch (value) {
-    null => null,
-    String text => text,
-    Map<String, Object?> map when map['type'] is String =>
-      map['type']! as String,
-    Map map when map['type'] is String => map['type']! as String,
-    Map map when map.isEmpty => null,
-    Map map =>
-      map.entries.map((entry) => '${entry.key}: ${entry.value}').join(', '),
-    _ => value.toString(),
-  };
 }
