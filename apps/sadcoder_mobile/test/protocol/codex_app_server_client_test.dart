@@ -48,6 +48,12 @@ void main() {
     await client.readThread(threadId: 'thr_1');
     await client.startThread();
     await client.resumeThread(threadId: 'thr_1');
+    await client.forkThread(
+      threadId: 'thr_1',
+      lastTurnId: 'turn_1',
+      ephemeral: true,
+    );
+    await client.compactThread(threadId: 'thr_1');
     await client.setThreadName(threadId: 'thr_1', name: 'Renamed thread');
     await client.archiveThread(threadId: 'thr_1');
     await client.deleteThread(threadId: 'thr_1');
@@ -66,6 +72,8 @@ void main() {
       'thread/read',
       'thread/start',
       'thread/resume',
+      'thread/fork',
+      'thread/compact/start',
       'thread/name/set',
       'thread/archive',
       'thread/delete',
@@ -90,11 +98,17 @@ void main() {
     expect(requests[10].params, {'threadId': 'thr_1'});
     expect(requests[11].params, {
       'threadId': 'thr_1',
-      'name': 'Renamed thread',
+      'lastTurnId': 'turn_1',
+      'ephemeral': true,
     });
     expect(requests[12].params, {'threadId': 'thr_1'});
-    expect(requests[13].params, {'threadId': 'thr_1'});
-    expect(requests[14].params, {
+    expect(requests[13].params, {
+      'threadId': 'thr_1',
+      'name': 'Renamed thread',
+    });
+    expect(requests[14].params, {'threadId': 'thr_1'});
+    expect(requests[15].params, {'threadId': 'thr_1'});
+    expect(requests[16].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},

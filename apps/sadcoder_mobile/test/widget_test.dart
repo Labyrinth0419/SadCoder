@@ -402,6 +402,27 @@ class _NoopThreadMutationRunner implements ThreadMutationRunner {
   const _NoopThreadMutationRunner();
 
   @override
+  Future<ThreadSummary> forkThread({
+    required String threadId,
+    String? lastTurnId,
+    bool ephemeral = false,
+  }) async {
+    return ThreadSummary.fromJson({
+      'id': 'thr_fork',
+      'sessionId': 'sess_1',
+      'preview': 'Forked thread',
+      'ephemeral': ephemeral,
+      'status': 'idle',
+      'cwd': '/repo',
+      'updatedAt': 1,
+      'forkedFromId': threadId,
+    });
+  }
+
+  @override
+  Future<void> compactThread({required String threadId}) async {}
+
+  @override
   Future<void> setThreadName({
     required String threadId,
     required String name,

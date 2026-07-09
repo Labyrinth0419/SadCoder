@@ -107,6 +107,25 @@ class CodexAppServerClient {
     return _request('thread/resume', {'threadId': threadId});
   }
 
+  Future<Map<String, Object?>> forkThread({
+    required String threadId,
+    String? lastTurnId,
+    bool ephemeral = false,
+  }) {
+    final params = <String, Object?>{'threadId': threadId};
+    if (lastTurnId != null && lastTurnId.trim().isNotEmpty) {
+      params['lastTurnId'] = lastTurnId.trim();
+    }
+    if (ephemeral) {
+      params['ephemeral'] = true;
+    }
+    return _request('thread/fork', params);
+  }
+
+  Future<Map<String, Object?>> compactThread({required String threadId}) {
+    return _request('thread/compact/start', {'threadId': threadId});
+  }
+
   Future<Map<String, Object?>> setThreadName({
     required String threadId,
     required String name,

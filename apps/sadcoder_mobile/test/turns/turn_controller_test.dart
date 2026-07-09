@@ -155,6 +155,37 @@ void main() {
     expect(controller.activeTurnId, 'turn_1');
   });
 
+  test(
+    'activateThread switches local active thread without a server call',
+    () async {
+      final runner = _FakeTurnRunner();
+      final controller = TurnController(runnerProvider: () => runner);
+      addTearDown(controller.dispose);
+
+      final activated = controller.activateThread(' thr_fork ');
+
+      expect(activated, true);
+      expect(runner.startedThreads, 0);
+      expect(runner.resumedThreads, isEmpty);
+      expect(controller.status, TurnControllerStatus.idle);
+      expect(controller.activeThreadId, 'thr_fork');
+      expect(controller.activeTurnId, isNull);
+    },
+  );
+
+  test('activateThread is unavailable while a turn is active', () async {
+    final runner = _FakeTurnRunner();
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+
+    await controller.submitText('Run long task');
+    final activated = controller.activateThread('thr_other');
+
+    expect(activated, false);
+    expect(controller.activeThreadId, 'thr_new');
+    expect(controller.activeTurnId, 'turn_1');
+  });
+
   test('startNewThread is unavailable while a turn is active', () async {
     final runner = _FakeTurnRunner();
     final controller = TurnController(runnerProvider: () => runner);

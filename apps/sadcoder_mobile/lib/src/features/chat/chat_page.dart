@@ -333,6 +333,8 @@ class _ChatPageState extends State<ChatPage> {
           startNewThread: _startNewThread,
           resumeThread: _resumeThread,
           renameThread: _renameThread,
+          forkThread: _forkCurrentThread,
+          compactThread: _compactCurrentThread,
           archiveThread: _archiveCurrentThread,
           deleteThread: _deleteCurrentThread,
           configureModel: _configureModelOverride,
@@ -581,6 +583,40 @@ class _ChatPageState extends State<ChatPage> {
     return true;
   }
 
+  Future<SlashCommandCallbackResult> _forkCurrentThread() async {
+    final runner = widget.sessionController?.threadMutationRunner;
+    final threadId = _currentThreadId();
+    final turnController = widget.turnController;
+    if (runner == null || threadId == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    if (turnController != null && !turnController.canSubmit) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    final forked = await runner.forkThread(threadId: threadId);
+    if (forked.id.trim().isEmpty) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    final activated = turnController?.activateThread(forked.id) ?? true;
+    if (!activated) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    widget.timelineController?.showThread(forked);
+    unawaited(widget.threadDetailController?.readThread(forked.id));
+    unawaited(widget.threadListController?.refresh());
+    return SlashCommandCallbackResult.executed;
+  }
+
+  Future<SlashCommandCallbackResult> _compactCurrentThread() async {
+    final runner = widget.sessionController?.threadMutationRunner;
+    final threadId = _currentThreadId();
+    if (runner == null || threadId == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    await runner.compactThread(threadId: threadId);
+    return SlashCommandCallbackResult.executed;
+  }
+
   Future<SlashCommandCallbackResult> _archiveCurrentThread() {
     final l10n = context.l10n;
     return _confirmThreadMutation(
@@ -686,6 +722,9 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.newThread => l10n.slashCommandNewThread,
         SlashCommandActionEffect.resumeThread => l10n.slashCommandResumedThread,
         SlashCommandActionEffect.renameThread => l10n.slashCommandRenamedThread,
+        SlashCommandActionEffect.forkThread => l10n.slashCommandForkedThread,
+        SlashCommandActionEffect.compactThread =>
+          l10n.slashCommandCompactionStarted,
         SlashCommandActionEffect.archiveThread =>
           l10n.slashCommandArchivedThread,
         SlashCommandActionEffect.deleteThread => l10n.slashCommandDeletedThread,

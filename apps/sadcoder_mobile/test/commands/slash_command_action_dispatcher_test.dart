@@ -354,34 +354,97 @@ void main() {
     expect(result.command?.command, 'delete');
   });
 
-  test('archive and delete are unavailable during an active turn', () async {
-    var archiveCalls = 0;
-    var deleteCalls = 0;
+  test('/fork runs the injected fork action', () async {
+    var forks = 0;
     final dispatcher = SlashCommandActionDispatcher(
-      archiveThread: () async {
-        archiveCalls++;
-        return SlashCommandCallbackResult.executed;
-      },
-      deleteThread: () async {
-        deleteCalls++;
+      forkThread: () async {
+        forks++;
         return SlashCommandCallbackResult.executed;
       },
     );
 
-    final archive = await dispatcher.dispatch(
-      registry.parseComposerText('/archive'),
-      hasActiveTurn: true,
-    );
-    final delete = await dispatcher.dispatch(
-      registry.parseComposerText('/delete'),
-      hasActiveTurn: true,
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/fork'),
+      hasActiveTurn: false,
     );
 
-    expect(archive.outcome, SlashCommandActionOutcome.unavailable);
-    expect(delete.outcome, SlashCommandActionOutcome.unavailable);
-    expect(archiveCalls, 0);
-    expect(deleteCalls, 0);
+    expect(forks, 1);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.forkThread);
   });
+
+  test('/compact runs the injected compaction action', () async {
+    var compactions = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      compactThread: () async {
+        compactions++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/compact'),
+      hasActiveTurn: false,
+    );
+
+    expect(compactions, 1);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.compactThread);
+  });
+
+  test(
+    'thread lifecycle commands are unavailable during an active turn',
+    () async {
+      var forkCalls = 0;
+      var compactCalls = 0;
+      var archiveCalls = 0;
+      var deleteCalls = 0;
+      final dispatcher = SlashCommandActionDispatcher(
+        forkThread: () async {
+          forkCalls++;
+          return SlashCommandCallbackResult.executed;
+        },
+        compactThread: () async {
+          compactCalls++;
+          return SlashCommandCallbackResult.executed;
+        },
+        archiveThread: () async {
+          archiveCalls++;
+          return SlashCommandCallbackResult.executed;
+        },
+        deleteThread: () async {
+          deleteCalls++;
+          return SlashCommandCallbackResult.executed;
+        },
+      );
+
+      final archive = await dispatcher.dispatch(
+        registry.parseComposerText('/archive'),
+        hasActiveTurn: true,
+      );
+      final delete = await dispatcher.dispatch(
+        registry.parseComposerText('/delete'),
+        hasActiveTurn: true,
+      );
+      final fork = await dispatcher.dispatch(
+        registry.parseComposerText('/fork'),
+        hasActiveTurn: true,
+      );
+      final compact = await dispatcher.dispatch(
+        registry.parseComposerText('/compact'),
+        hasActiveTurn: true,
+      );
+
+      expect(archive.outcome, SlashCommandActionOutcome.unavailable);
+      expect(delete.outcome, SlashCommandActionOutcome.unavailable);
+      expect(fork.outcome, SlashCommandActionOutcome.unavailable);
+      expect(compact.outcome, SlashCommandActionOutcome.unavailable);
+      expect(forkCalls, 0);
+      expect(compactCalls, 0);
+      expect(archiveCalls, 0);
+      expect(deleteCalls, 0);
+    },
+  );
 
   test('/model opens the injected model configuration action', () async {
     var opens = 0;

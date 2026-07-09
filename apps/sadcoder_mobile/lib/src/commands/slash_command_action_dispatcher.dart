@@ -41,6 +41,8 @@ enum SlashCommandActionEffect {
   newThread,
   resumeThread,
   renameThread,
+  forkThread,
+  compactThread,
   archiveThread,
   deleteThread,
   modelOverride,
@@ -159,6 +161,8 @@ class SlashCommandActionDispatcher {
     this.startNewThread,
     this.resumeThread,
     this.renameThread,
+    this.forkThread,
+    this.compactThread,
     this.archiveThread,
     this.deleteThread,
     this.configureModel,
@@ -176,6 +180,8 @@ class SlashCommandActionDispatcher {
   final SlashCommandStartNewThread? startNewThread;
   final SlashCommandResumeThread? resumeThread;
   final SlashCommandRenameThread? renameThread;
+  final SlashCommandConfiguredAction? forkThread;
+  final SlashCommandConfiguredAction? compactThread;
   final SlashCommandConfirmedThreadAction? archiveThread;
   final SlashCommandConfirmedThreadAction? deleteThread;
   final SlashCommandConfiguredAction? configureModel;
@@ -251,6 +257,18 @@ class SlashCommandActionDispatcher {
         return _resumeThread(parsed);
       case 'rename':
         return _renameThread(parsed);
+      case 'fork':
+        return _configuredAction(
+          parsed,
+          action: forkThread,
+          effect: SlashCommandActionEffect.forkThread,
+        );
+      case 'compact':
+        return _configuredAction(
+          parsed,
+          action: compactThread,
+          effect: SlashCommandActionEffect.compactThread,
+        );
       case 'archive':
         return _confirmedThreadAction(
           parsed,

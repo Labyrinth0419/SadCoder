@@ -132,6 +132,9 @@ class AppLocalizations {
   String get slashCommandNewThread => _text('slashCommandNewThread');
   String get slashCommandResumedThread => _text('slashCommandResumedThread');
   String get slashCommandRenamedThread => _text('slashCommandRenamedThread');
+  String get slashCommandForkedThread => _text('slashCommandForkedThread');
+  String get slashCommandCompactionStarted =>
+      _text('slashCommandCompactionStarted');
   String get slashCommandArchivedThread => _text('slashCommandArchivedThread');
   String get slashCommandDeletedThread => _text('slashCommandDeletedThread');
   String get slashCommandModelUpdated => _text('slashCommandModelUpdated');
@@ -432,6 +435,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandNewThread': 'Started a new thread.',
     'slashCommandResumedThread': 'Resumed thread.',
     'slashCommandRenamedThread': 'Renamed thread.',
+    'slashCommandForkedThread': 'Forked thread.',
+    'slashCommandCompactionStarted': 'Started thread compaction.',
     'slashCommandArchivedThread': 'Archived thread.',
     'slashCommandDeletedThread': 'Deleted thread.',
     'slashCommandModelUpdated': 'Model override updated.',
@@ -685,6 +690,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandNewThread': '已创建新会话。',
     'slashCommandResumedThread': '已恢复会话。',
     'slashCommandRenamedThread': '已重命名会话。',
+    'slashCommandForkedThread': '已派生会话。',
+    'slashCommandCompactionStarted': '已开始压缩会话。',
     'slashCommandArchivedThread': '已归档会话。',
     'slashCommandDeletedThread': '已删除会话。',
     'slashCommandModelUpdated': '已更新模型覆盖。',
