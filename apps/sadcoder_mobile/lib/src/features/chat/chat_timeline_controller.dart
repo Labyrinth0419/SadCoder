@@ -72,7 +72,11 @@ class ChatTimelineController extends ChangeNotifier {
         _appendDelta(event, fallbackType: 'mcpToolCall');
       case CodexEventKind.planDelta:
         _appendDelta(event, fallbackType: 'plan');
-      case CodexEventKind.threadStarted || CodexEventKind.unknown:
+      case CodexEventKind.threadStarted ||
+          CodexEventKind.threadArchived ||
+          CodexEventKind.threadDeleted ||
+          CodexEventKind.threadNameUpdated ||
+          CodexEventKind.unknown:
         return;
     }
     notifyListeners();

@@ -2,6 +2,9 @@ import '../threads/thread_summary.dart';
 
 enum CodexEventKind {
   threadStarted,
+  threadArchived,
+  threadDeleted,
+  threadNameUpdated,
   turnStarted,
   turnCompleted,
   itemStarted,
@@ -26,6 +29,7 @@ class CodexEvent {
     this.itemId,
     this.itemType,
     this.delta,
+    this.threadName,
     this.thread,
     this.turn,
     this.item,
@@ -37,6 +41,24 @@ class CodexEvent {
     final params = _stringKeyedMap(notification['params']);
     return switch (method) {
       'thread/started' => _threadStarted(method, notification, params),
+      'thread/archived' => _threadLifecycleEvent(
+        CodexEventKind.threadArchived,
+        method,
+        notification,
+        params,
+      ),
+      'thread/deleted' => _threadLifecycleEvent(
+        CodexEventKind.threadDeleted,
+        method,
+        notification,
+        params,
+      ),
+      'thread/name/updated' => _threadLifecycleEvent(
+        CodexEventKind.threadNameUpdated,
+        method,
+        notification,
+        params,
+      ),
       'turn/started' => _turnEvent(
         CodexEventKind.turnStarted,
         method,
@@ -118,6 +140,7 @@ class CodexEvent {
   final String? itemId;
   final String? itemType;
   final String? delta;
+  final String? threadName;
   final ThreadSummary? thread;
   final TurnSummary? turn;
   final Map<String, Object?>? item;
@@ -136,6 +159,21 @@ class CodexEvent {
       raw: Map.unmodifiable(raw),
       threadId: thread.id,
       thread: thread,
+    );
+  }
+
+  static CodexEvent _threadLifecycleEvent(
+    CodexEventKind kind,
+    String method,
+    Map<String, Object?> raw,
+    Map<String, Object?> params,
+  ) {
+    return CodexEvent(
+      kind: kind,
+      method: method,
+      raw: Map.unmodifiable(raw),
+      threadId: _stringValue(params['threadId']),
+      threadName: _stringValue(params['threadName']),
     );
   }
 

@@ -29,10 +29,29 @@ void main() {
         },
       },
     });
+    final threadNameUpdated = CodexEvent.fromNotification({
+      'method': 'thread/name/updated',
+      'params': {'threadId': 'thr_1', 'threadName': 'Renamed'},
+    });
+    final threadArchived = CodexEvent.fromNotification({
+      'method': 'thread/archived',
+      'params': {'threadId': 'thr_1'},
+    });
+    final threadDeleted = CodexEvent.fromNotification({
+      'method': 'thread/deleted',
+      'params': {'threadId': 'thr_2'},
+    });
 
     expect(threadStarted.kind, CodexEventKind.threadStarted);
     expect(threadStarted.threadId, 'thr_1');
     expect(threadStarted.thread?.title, 'Fix bug');
+    expect(threadNameUpdated.kind, CodexEventKind.threadNameUpdated);
+    expect(threadNameUpdated.threadId, 'thr_1');
+    expect(threadNameUpdated.threadName, 'Renamed');
+    expect(threadArchived.kind, CodexEventKind.threadArchived);
+    expect(threadArchived.threadId, 'thr_1');
+    expect(threadDeleted.kind, CodexEventKind.threadDeleted);
+    expect(threadDeleted.threadId, 'thr_2');
     expect(turnCompleted.kind, CodexEventKind.turnCompleted);
     expect(turnCompleted.threadId, 'thr_1');
     expect(turnCompleted.turnId, 'turn_1');
