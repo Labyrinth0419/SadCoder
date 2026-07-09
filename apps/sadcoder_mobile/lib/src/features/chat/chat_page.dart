@@ -2608,7 +2608,13 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     );
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_includeLogs) {
+      final confirmed = await _confirmIncludeLogs();
+      if (!mounted || !confirmed) {
+        return;
+      }
+    }
     final note = _noteController.text.trim();
     Navigator.of(context).pop(
       _FeedbackFormResult(
@@ -2617,6 +2623,29 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
         note: note.isEmpty ? null : note,
       ),
     );
+  }
+
+  Future<bool> _confirmIncludeLogs() async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.info_outline),
+        title: Text(l10n.feedbackLogsConfirmTitle),
+        content: Text(l10n.feedbackLogsConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.feedbackLogsConfirmSubmit),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
   }
 }
 

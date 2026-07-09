@@ -2,13 +2,16 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'json_rpc_diagnostic_log.dart';
 import 'json_rpc.dart';
 
 class LineJsonRpcTransport implements JsonRpcTransport {
   LineJsonRpcTransport({
     required Stream<List<int>> input,
     required StreamSink<Uint8List> output,
-  }) : _output = output {
+    JsonRpcDiagnosticLogSink? diagnosticLogSink,
+  }) : _output = output,
+       _diagnosticLogSink = diagnosticLogSink {
     _subscription = utf8.decoder
         .bind(input)
         .transform(const LineSplitter())
@@ -16,6 +19,7 @@ class LineJsonRpcTransport implements JsonRpcTransport {
   }
 
   final StreamSink<Uint8List> _output;
+  final JsonRpcDiagnosticLogSink? _diagnosticLogSink;
   final Map<Object, Completer<Map<String, Object?>>> _pending = {};
   final StreamController<Map<String, Object?>> _notifications =
       StreamController.broadcast();
@@ -56,6 +60,7 @@ class LineJsonRpcTransport implements JsonRpcTransport {
   }
 
   Future<void> _write(Map<String, Object?> message) {
+    _recordDiagnosticLog(JsonRpcDiagnosticLogDirection.outgoing, message);
     final line = '${jsonEncode(message)}\n';
     _output.add(Uint8List.fromList(utf8.encode(line)));
     return Future.value();
@@ -71,6 +76,7 @@ class LineJsonRpcTransport implements JsonRpcTransport {
       _handleError(FormatException('JSON-RPC line is not an object', line));
       return;
     }
+    _recordDiagnosticLog(JsonRpcDiagnosticLogDirection.incoming, decoded);
 
     final id = decoded['id'];
     final method = decoded['method'];
@@ -102,6 +108,17 @@ class LineJsonRpcTransport implements JsonRpcTransport {
     }
 
     _notifications.add(decoded);
+  }
+
+  void _recordDiagnosticLog(
+    JsonRpcDiagnosticLogDirection direction,
+    Map<String, Object?> message,
+  ) {
+    try {
+      _diagnosticLogSink?.record(direction: direction, message: message);
+    } catch (_) {
+      // Diagnostic capture must not affect JSON-RPC delivery.
+    }
   }
 
   void _handleError(Object error, [StackTrace? stackTrace]) {

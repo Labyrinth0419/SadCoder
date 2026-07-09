@@ -44,6 +44,32 @@ void main() {
     expect((tokens[2] as Map<Object?, Object?>)['safe'], 'value');
   });
 
+  test('redacts sensitive text inside structured string fields', () {
+    final redacted =
+        redactor.redactValue({
+              'method': 'feedback/upload',
+              'params': {
+                'reason':
+                    'Authorization: Bearer access-secret path=/repo\n'
+                    'password=hunter2',
+                'stdout':
+                    '-----BEGIN OPENSSH PRIVATE KEY-----\n'
+                    'super-secret-key-material\n'
+                    '-----END OPENSSH PRIVATE KEY-----',
+              },
+            })
+            as Map<Object?, Object?>;
+    final params = redacted['params'] as Map<Object?, Object?>;
+
+    expect(params['reason'], contains('Authorization: Bearer [REDACTED]'));
+    expect(params['reason'], contains('password=[REDACTED]'));
+    expect(params['reason'], contains('path=/repo'));
+    expect(params['stdout'], '[REDACTED]');
+    expect(params['reason'], isNot(contains('access-secret')));
+    expect(params['reason'], isNot(contains('hunter2')));
+    expect(params['stdout'], isNot(contains('super-secret-key-material')));
+  });
+
   test('redacts JSON strings while preserving non-sensitive fields', () {
     final redacted = redactor.redactJsonString(
       jsonEncode({

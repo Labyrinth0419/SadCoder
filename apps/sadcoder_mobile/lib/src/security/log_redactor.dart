@@ -18,6 +18,7 @@ class LogRedactor {
       Iterable<Object?> values => [
         for (final value in values) redactValue(value),
       ],
+      String text => redactText(text),
       _ => value,
     };
   }

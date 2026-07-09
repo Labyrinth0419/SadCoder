@@ -294,6 +294,9 @@ class AppLocalizations {
   String get feedbackNoteHint => _text('feedbackNoteHint');
   String get feedbackIncludeLogs => _text('feedbackIncludeLogs');
   String get feedbackLogsDisclosure => _text('feedbackLogsDisclosure');
+  String get feedbackLogsConfirmTitle => _text('feedbackLogsConfirmTitle');
+  String get feedbackLogsConfirmBody => _text('feedbackLogsConfirmBody');
+  String get feedbackLogsConfirmSubmit => _text('feedbackLogsConfirmSubmit');
   String get feedbackSubmit => _text('feedbackSubmit');
   String get themeCommandTitle => _text('themeCommandTitle');
   String get themeSystem => _text('themeSystem');
@@ -901,6 +904,10 @@ const _values = <String, Map<String, String>>{
     'feedbackIncludeLogs': 'Include server logs',
     'feedbackLogsDisclosure':
         'Logs may include prompts, paths, commands, and diagnostic details from this server.',
+    'feedbackLogsConfirmTitle': 'Send logs with feedback?',
+    'feedbackLogsConfirmBody':
+        'SadCoder redacts diagnostic logs it captures, but server logs may still include paths, commands, project names, and prompts. Review your note before sending.',
+    'feedbackLogsConfirmSubmit': 'Send with logs',
     'feedbackSubmit': 'Send feedback',
     'themeCommandTitle': 'Theme',
     'themeSystem': 'System',
@@ -1382,6 +1389,10 @@ const _values = <String, Map<String, String>>{
     'feedbackNoteHint': '可选补充信息',
     'feedbackIncludeLogs': '包含服务器日志',
     'feedbackLogsDisclosure': '日志可能包含提示词、路径、命令和此服务器上的诊断信息。',
+    'feedbackLogsConfirmTitle': '随反馈发送日志？',
+    'feedbackLogsConfirmBody':
+        'SadCoder 会脱敏它采集的诊断日志，但服务器日志仍可能包含路径、命令、项目名和提示词。发送前请检查说明。',
+    'feedbackLogsConfirmSubmit': '随日志发送',
     'feedbackSubmit': '发送反馈',
     'themeCommandTitle': '主题',
     'themeSystem': '跟随系统',

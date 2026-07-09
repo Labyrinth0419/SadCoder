@@ -29,6 +29,7 @@ import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
+import 'package:sadcoder_mobile/src/protocol/json_rpc_diagnostic_log.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
@@ -474,6 +475,9 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   TurnRunner get turnRunner => const _NoopTurnRunner();
+
+  @override
+  List<JsonRpcDiagnosticLogEntry> get diagnosticLogs => const [];
 
   @override
   Stream<CodexEvent> get events => const Stream.empty();

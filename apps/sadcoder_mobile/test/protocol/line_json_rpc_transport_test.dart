@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/protocol/json_rpc_diagnostic_log.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
 import 'package:sadcoder_mobile/src/protocol/line_json_rpc_transport.dart';
 
@@ -139,4 +140,54 @@ void main() {
 
     await transport.close();
   });
+
+  test(
+    'diagnostic log sink records redacted inbound and outbound messages',
+    () async {
+      final input = StreamController<List<int>>();
+      final output = StreamController<Uint8List>();
+      output.stream.listen((_) {});
+      final entries = <JsonRpcDiagnosticLogEntry>[];
+      final transport = LineJsonRpcTransport(
+        input: input.stream,
+        output: output.sink,
+        diagnosticLogSink: RedactingJsonRpcDiagnosticLogSink(
+          onEntry: entries.add,
+          clock: () => DateTime.fromMillisecondsSinceEpoch(1, isUtc: true),
+        ),
+      );
+
+      final future = transport.request(
+        JsonRpcRequest(
+          id: 'login',
+          method: 'account/login',
+          params: {'password': 'hunter2', 'path': '/repo'},
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      input.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":"login","result":{"accessToken":"secret-token","path":"/repo"}}\n',
+        ),
+      );
+      await future;
+
+      expect(entries.map((entry) => entry.direction), [
+        JsonRpcDiagnosticLogDirection.outgoing,
+        JsonRpcDiagnosticLogDirection.incoming,
+      ]);
+      expect(
+        (entries.first.redactedJson['params'] as Map)['password'],
+        '[REDACTED]',
+      );
+      expect((entries.first.redactedJson['params'] as Map)['path'], '/repo');
+      expect(
+        (entries.last.redactedJson['result'] as Map)['accessToken'],
+        '[REDACTED]',
+      );
+      expect((entries.last.redactedJson['result'] as Map)['path'], '/repo');
+
+      await transport.close();
+    },
+  );
 }

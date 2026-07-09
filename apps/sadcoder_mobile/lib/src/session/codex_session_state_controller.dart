@@ -22,6 +22,7 @@ import '../mcp/mcp_server_status_reader.dart';
 import '../models/model_list_reader.dart';
 import '../permissions/permission_profile_list_reader.dart';
 import '../plugins/plugin_list_reader.dart';
+import '../protocol/json_rpc_diagnostic_log.dart';
 import '../reviews/thread_review_runner.dart';
 import '../skills/skill_list_reader.dart';
 import '../ssh/ssh_profile.dart';
@@ -141,6 +142,9 @@ class CodexSessionStateController extends ChangeNotifier {
   ThreadReviewRunner? get threadReviewRunner => _connection?.threadReviewRunner;
 
   TurnRunner? get turnRunner => _connection?.turnRunner;
+
+  List<JsonRpcDiagnosticLogEntry> get diagnosticLogs =>
+      _connection?.diagnosticLogs ?? const [];
 
   Stream<CodexEvent>? get events => _eventsController.stream;
 

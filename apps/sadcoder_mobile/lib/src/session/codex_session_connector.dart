@@ -35,6 +35,7 @@ import '../permissions/permission_profile_list_reader.dart';
 import '../plugins/codex_plugin_list_reader.dart';
 import '../plugins/plugin_list_reader.dart';
 import '../protocol/codex_app_session.dart';
+import '../protocol/json_rpc_diagnostic_log.dart';
 import '../reviews/codex_thread_review_runner.dart';
 import '../reviews/thread_review_runner.dart';
 import '../skills/codex_skill_list_reader.dart';
@@ -102,6 +103,8 @@ abstract interface class CodexSessionConnectionHandle {
 
   TurnRunner get turnRunner;
 
+  List<JsonRpcDiagnosticLogEntry> get diagnosticLogs;
+
   Stream<CodexEvent> get events;
 
   Future<void> get done;
@@ -140,10 +143,13 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
   }) async {
     await _ensureBackendReady(profile);
     final proxyConnection = await _proxyConnector.connect(profile);
+    final diagnosticLogBuffer = RedactingJsonRpcDiagnosticLogBuffer();
     CodexAppSession? session;
     try {
       session = CodexAppSession(
-        proxyConnection.asJsonRpcTransport(),
+        proxyConnection.asJsonRpcTransport(
+          diagnosticLogSink: diagnosticLogBuffer,
+        ),
         approvalController: approvalController,
       );
       await session.initialize(
@@ -185,6 +191,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         threadGoalRunner: CodexThreadGoalRunner(session.client),
         threadReviewRunner: CodexThreadReviewRunner(session.client),
         turnRunner: CodexTurnRunner(session.client),
+        diagnosticLogBuffer: diagnosticLogBuffer,
       );
     } catch (_) {
       await session?.close();
@@ -253,7 +260,11 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.threadReviewRunner,
     required this.turnRunner,
     required AgentProxyConnection proxyConnection,
+    RedactingJsonRpcDiagnosticLogBuffer? diagnosticLogBuffer,
   }) : _proxyConnection = proxyConnection,
+       _diagnosticLogBuffer =
+           diagnosticLogBuffer ??
+           RedactingJsonRpcDiagnosticLogBuffer(maxEntries: 0),
        done = proxyConnection.done;
 
   @override
@@ -307,9 +318,15 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   @override
   final TurnRunner turnRunner;
   @override
+  List<JsonRpcDiagnosticLogEntry> get diagnosticLogs {
+    return _diagnosticLogBuffer.snapshot();
+  }
+
+  @override
   Stream<CodexEvent> get events => session.events;
   final CodexAppSession session;
   final AgentProxyConnection _proxyConnection;
+  final RedactingJsonRpcDiagnosticLogBuffer _diagnosticLogBuffer;
   bool _closed = false;
 
   @override

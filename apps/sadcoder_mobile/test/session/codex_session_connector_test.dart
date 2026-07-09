@@ -27,7 +27,10 @@ void main() {
     await connection.appListReader.listApps();
     await connection.accountSnapshotReader.readAccount();
     await connection.accountLogoutRunner.logout();
-    await connection.feedbackUploadRunner.uploadFeedback(classification: 'bug');
+    await connection.feedbackUploadRunner.uploadFeedback(
+      classification: 'bug',
+      reason: 'Authorization: Bearer upload-secret path=/repo',
+    );
     await connection.gitDiffReader.readDiff();
     await connection.fileSearchReader.searchFiles(
       query: 'main',
@@ -59,6 +62,12 @@ void main() {
       'turn/interrupt',
     ]);
     expect(connection.profile, _profile);
+    final feedbackLog = connection.diagnosticLogs.lastWhere(
+      (entry) => entry.redactedJson['method'] == 'feedback/upload',
+    );
+    final params = feedbackLog.redactedJson['params'] as Map<Object?, Object?>;
+    expect(params['reason'], 'Authorization: Bearer [REDACTED] path=/repo');
+    expect(params['reason'], isNot(contains('upload-secret')));
   });
 
   test(

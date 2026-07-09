@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import '../protocol/json_rpc.dart';
+import '../protocol/json_rpc_diagnostic_log.dart';
 import '../protocol/line_json_rpc_transport.dart';
 import 'ssh_profile.dart';
 
@@ -22,7 +23,13 @@ class AgentProxyConnection {
   final Future<void> Function() close;
   final Future<void> done;
 
-  JsonRpcTransport asJsonRpcTransport() {
-    return LineJsonRpcTransport(input: input, output: output);
+  JsonRpcTransport asJsonRpcTransport({
+    JsonRpcDiagnosticLogSink? diagnosticLogSink,
+  }) {
+    return LineJsonRpcTransport(
+      input: input,
+      output: output,
+      diagnosticLogSink: diagnosticLogSink,
+    );
   }
 }

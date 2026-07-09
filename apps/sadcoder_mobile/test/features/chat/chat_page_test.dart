@@ -37,6 +37,7 @@ import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_controller.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
+import 'package:sadcoder_mobile/src/protocol/json_rpc_diagnostic_log.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
@@ -2198,6 +2199,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Send feedback'));
     await tester.pumpAndSettle();
+    expect(find.text('Send logs with feedback?'), findsOneWidget);
+    expect(feedbackRunner.calls, isEmpty);
+
+    await tester.tap(find.text('Send with logs'));
+    await tester.pumpAndSettle();
 
     expect(feedbackRunner.calls.single, (
       classification: 'bug',
@@ -2207,6 +2213,50 @@ void main() {
       includeLogs: true,
     ));
     expect(find.text('Feedback submitted.'), findsOneWidget);
+  });
+
+  testWidgets('/feedback can cancel log upload confirmation', (tester) async {
+    final approvalController = ApprovalStateController();
+    final feedbackRunner = _RecordingFeedbackUploadRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      feedbackUploadRunner: feedbackRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(tester, sessionController: sessionController);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/feedback',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Include server logs'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Send feedback'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Send logs with feedback?'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Cancel'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(feedbackRunner.calls, isEmpty);
+    expect(find.text('Send feedback'), findsWidgets);
   });
 
   testWidgets('/theme applies mobile theme preference', (tester) async {
@@ -5664,6 +5714,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   @override
   CodexConfigSnapshotReader get configSnapshotReader =>
       const _FakeConfigSnapshotReader();
+
+  @override
+  List<JsonRpcDiagnosticLogEntry> get diagnosticLogs => const [];
 
   @override
   Stream<CodexEvent> get events => const Stream.empty();
