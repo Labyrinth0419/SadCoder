@@ -30,4 +30,39 @@ void main() {
     expect(controller.themeMode, ThemeMode.dark);
     expect(notifications, 1);
   });
+
+  test('controller notifies when title display changes', () {
+    final controller = AppAppearanceController();
+    addTearDown(controller.dispose);
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+
+    const settings = AppTitleDisplaySettings(
+      showThreadTitle: true,
+      showWorkingDirectory: true,
+    );
+    controller.setTitleDisplay(settings);
+    controller.setTitleDisplay(settings);
+
+    expect(controller.titleDisplay, settings);
+    expect(notifications, 1);
+  });
+
+  test('controller notifies when status line display changes', () {
+    final controller = AppAppearanceController();
+    addTearDown(controller.dispose);
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+
+    const settings = AppStatusLineDisplaySettings(
+      showConnection: true,
+      showThread: true,
+      showModel: true,
+    );
+    controller.setStatusLineDisplay(settings);
+    controller.setStatusLineDisplay(settings);
+
+    expect(controller.statusLineDisplay, settings);
+    expect(notifications, 1);
+  });
 }

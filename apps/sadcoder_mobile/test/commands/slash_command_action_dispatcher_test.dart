@@ -537,6 +537,82 @@ void main() {
     expect(result.command?.command, 'theme');
   });
 
+  test('/title runs the injected title display action', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      configureTitleDisplay: () async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/title'),
+      hasActiveTurn: true,
+    );
+
+    expect(calls, 1);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.titleDisplay);
+  });
+
+  test('/title rejects unsupported inline arguments', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      configureTitleDisplay: () async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/title thread'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, 0);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'title');
+  });
+
+  test('/statusline runs the injected status line display action', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      configureStatusLineDisplay: () async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/statusline'),
+      hasActiveTurn: true,
+    );
+
+    expect(calls, 1);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.statusLineDisplay);
+  });
+
+  test('/statusline rejects unsupported inline arguments', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      configureStatusLineDisplay: () async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/statusline model'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, 0);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'statusline');
+  });
+
   test('/goal passes inline arguments to the injected goal handler', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

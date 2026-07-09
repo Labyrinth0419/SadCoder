@@ -143,6 +143,10 @@ class AppLocalizations {
   String get slashCommandFeedbackSubmitted =>
       _text('slashCommandFeedbackSubmitted');
   String get slashCommandThemeUpdated => _text('slashCommandThemeUpdated');
+  String get slashCommandTitleDisplayUpdated =>
+      _text('slashCommandTitleDisplayUpdated');
+  String get slashCommandStatusLineDisplayUpdated =>
+      _text('slashCommandStatusLineDisplayUpdated');
   String get slashCommandMentionInserted =>
       _text('slashCommandMentionInserted');
   String get slashCommandSideConversationStarted =>
@@ -275,6 +279,13 @@ class AppLocalizations {
   String get themeLight => _text('themeLight');
   String get themeDark => _text('themeDark');
   String get applyTheme => _text('applyTheme');
+  String get titleCommandTitle => _text('titleCommandTitle');
+  String get titleDisplayThread => _text('titleDisplayThread');
+  String get titleDisplayWorkingDirectory =>
+      _text('titleDisplayWorkingDirectory');
+  String get applyTitleDisplay => _text('applyTitleDisplay');
+  String get statusLineCommandTitle => _text('statusLineCommandTitle');
+  String get applyStatusLineDisplay => _text('applyStatusLineDisplay');
   String get diffTitle => _text('diffTitle');
   String get diffUnavailable => _text('diffUnavailable');
   String get diffNotGitRepository => _text('diffNotGitRepository');
@@ -637,6 +648,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandLoggedOut': 'Signed out of Codex account.',
     'slashCommandFeedbackSubmitted': 'Feedback submitted.',
     'slashCommandThemeUpdated': 'Theme updated.',
+    'slashCommandTitleDisplayUpdated': 'Title display updated.',
+    'slashCommandStatusLineDisplayUpdated': 'Status line display updated.',
     'slashCommandMentionInserted': 'File mention inserted.',
     'slashCommandSideConversationStarted': 'Started side conversation.',
     'slashCommandReturnedToMainThread': 'Returned to main thread.',
@@ -752,6 +765,12 @@ const _values = <String, Map<String, String>>{
     'themeLight': 'Light',
     'themeDark': 'Dark',
     'applyTheme': 'Apply theme',
+    'titleCommandTitle': 'Title display',
+    'titleDisplayThread': 'Current thread title',
+    'titleDisplayWorkingDirectory': 'Working directory',
+    'applyTitleDisplay': 'Apply title display',
+    'statusLineCommandTitle': 'Status line display',
+    'applyStatusLineDisplay': 'Apply status line',
     'diffTitle': 'Git diff',
     'diffUnavailable': 'Connect to a host to compute git diff.',
     'diffNotGitRepository':
@@ -1066,6 +1085,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandLoggedOut': '已退出服务器 Codex 账户。',
     'slashCommandFeedbackSubmitted': '已提交反馈。',
     'slashCommandThemeUpdated': '已更新主题。',
+    'slashCommandTitleDisplayUpdated': '已更新标题显示。',
+    'slashCommandStatusLineDisplayUpdated': '已更新状态栏显示。',
     'slashCommandMentionInserted': '已插入文件提及。',
     'slashCommandSideConversationStarted': '已开始侧聊。',
     'slashCommandReturnedToMainThread': '已返回主线会话。',
@@ -1170,6 +1191,12 @@ const _values = <String, Map<String, String>>{
     'themeLight': '浅色',
     'themeDark': '深色',
     'applyTheme': '应用主题',
+    'titleCommandTitle': '标题显示',
+    'titleDisplayThread': '当前会话标题',
+    'titleDisplayWorkingDirectory': '工作目录',
+    'applyTitleDisplay': '应用标题显示',
+    'statusLineCommandTitle': '状态栏显示',
+    'applyStatusLineDisplay': '应用状态栏',
     'diffTitle': 'Git 差异',
     'diffUnavailable': '连接到主机后才能计算 Git 差异。',
     'diffNotGitRepository': '当前工作区不在 Git 仓库中。',

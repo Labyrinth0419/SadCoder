@@ -31,6 +31,7 @@ import '../../usage/account_usage_snapshot_controller.dart';
 import 'chat_apps_summary.dart';
 import 'chat_background_terminal_summary.dart';
 import 'chat_debug_config_summary.dart';
+import 'chat_display_settings_sheets.dart';
 import 'chat_diff_summary.dart';
 import 'chat_hooks_summary.dart';
 import 'chat_plugins_summary.dart';
@@ -102,6 +103,7 @@ class _ChatPageState extends State<ChatPage> {
     super.initState();
     widget.sessionController?.addListener(_handleSessionChanged);
     widget.turnController?.addListener(_handleTurnChanged);
+    widget.appearanceController?.addListener(_handleAppearanceChanged);
     _lastSessionStatus = widget.sessionController?.status;
     _refreshThreadsIfConnected();
   }
@@ -119,12 +121,17 @@ class _ChatPageState extends State<ChatPage> {
       oldWidget.turnController?.removeListener(_handleTurnChanged);
       widget.turnController?.addListener(_handleTurnChanged);
     }
+    if (oldWidget.appearanceController != widget.appearanceController) {
+      oldWidget.appearanceController?.removeListener(_handleAppearanceChanged);
+      widget.appearanceController?.addListener(_handleAppearanceChanged);
+    }
   }
 
   @override
   void dispose() {
     widget.sessionController?.removeListener(_handleSessionChanged);
     widget.turnController?.removeListener(_handleTurnChanged);
+    widget.appearanceController?.removeListener(_handleAppearanceChanged);
     _composerController.dispose();
     super.dispose();
   }
@@ -145,23 +152,11 @@ class _ChatPageState extends State<ChatPage> {
     );
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  l10n.chat,
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-              ),
-              _StateChip(
-                label: _connectionLabel(l10n, sessionController?.status),
-                connected:
-                    sessionController?.status == CodexSessionStatus.connected,
-              ),
-            ],
-          ),
+        _ChatHeader(
+          title: _chatHeaderTitle(l10n),
+          connectionLabel: _connectionLabel(l10n, sessionController?.status),
+          connected: sessionController?.status == CodexSessionStatus.connected,
+          statusLineParts: _chatStatusLineParts(l10n),
         ),
         const Divider(height: 1),
         Expanded(
@@ -382,6 +377,8 @@ class _ChatPageState extends State<ChatPage> {
           logout: _logoutAccount,
           submitFeedback: _submitFeedback,
           configureTheme: _configureTheme,
+          configureTitleDisplay: _configureTitleDisplay,
+          configureStatusLineDisplay: _configureStatusLineDisplay,
           mentionFile: _mentionFile,
           startSideConversation: _startSideConversation,
           showAgentTopology: _showAgentTopology,
@@ -1153,6 +1150,46 @@ class _ChatPageState extends State<ChatPage> {
     return SlashCommandCallbackResult.executed;
   }
 
+  Future<SlashCommandCallbackResult> _configureTitleDisplay() async {
+    final controller = widget.appearanceController;
+    if (controller == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    final settings = await showModalBottomSheet<AppTitleDisplaySettings>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) =>
+          TitleDisplaySheet(initialSettings: controller.titleDisplay),
+    );
+    if (!mounted || settings == null) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+
+    controller.setTitleDisplay(settings);
+    return SlashCommandCallbackResult.executed;
+  }
+
+  Future<SlashCommandCallbackResult> _configureStatusLineDisplay() async {
+    final controller = widget.appearanceController;
+    if (controller == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    final settings = await showModalBottomSheet<AppStatusLineDisplaySettings>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) =>
+          StatusLineDisplaySheet(initialSettings: controller.statusLineDisplay),
+    );
+    if (!mounted || settings == null) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+
+    controller.setStatusLineDisplay(settings);
+    return SlashCommandCallbackResult.executed;
+  }
+
   Future<SlashCommandCallbackResult> _submitFeedback() async {
     final runner = widget.sessionController?.feedbackUploadRunner;
     if (runner == null) {
@@ -1373,6 +1410,10 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.logout => l10n.slashCommandLoggedOut,
         SlashCommandActionEffect.feedback => l10n.slashCommandFeedbackSubmitted,
         SlashCommandActionEffect.theme => l10n.slashCommandThemeUpdated,
+        SlashCommandActionEffect.titleDisplay =>
+          l10n.slashCommandTitleDisplayUpdated,
+        SlashCommandActionEffect.statusLineDisplay =>
+          l10n.slashCommandStatusLineDisplayUpdated,
         SlashCommandActionEffect.mention => l10n.slashCommandMentionInserted,
         SlashCommandActionEffect.sideConversation =>
           l10n.slashCommandSideConversationStarted,
@@ -1508,8 +1549,76 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  String _chatHeaderTitle(AppLocalizations l10n) {
+    final settings =
+        widget.appearanceController?.titleDisplay ??
+        AppTitleDisplaySettings.defaults;
+    final parts = <String>[l10n.chat];
+    final threadTitle = widget.threadDetailController?.detail?.thread.title
+        .trim();
+    if (settings.showThreadTitle &&
+        threadTitle != null &&
+        threadTitle.isNotEmpty) {
+      parts.add(threadTitle);
+    }
+    final cwd = _currentWorkspaceCwd();
+    if (settings.showWorkingDirectory && cwd != null) {
+      parts.add(cwd);
+    }
+    return parts.join(' / ');
+  }
+
+  List<String> _chatStatusLineParts(AppLocalizations l10n) {
+    final settings =
+        widget.appearanceController?.statusLineDisplay ??
+        AppStatusLineDisplaySettings.defaults;
+    final parts = <String>[];
+    if (settings.showConnection) {
+      parts.add(
+        '${l10n.connectionStatus}: '
+        '${_connectionLabel(l10n, widget.sessionController?.status)}',
+      );
+    }
+    if (settings.showThread) {
+      final threadId = _currentThreadId();
+      if (threadId != null) {
+        parts.add('${l10n.approvalThread}: $threadId');
+      }
+    }
+    final cwd = _currentWorkspaceCwd();
+    if (settings.showWorkingDirectory && cwd != null) {
+      parts.add('${l10n.approvalWorkingDirectory}: $cwd');
+    }
+    final overrides = widget.configOverrideController?.resolved;
+    final model = _nonEmptyText(overrides?.model);
+    if (settings.showModel && model != null) {
+      parts.add('${l10n.modelOverride}: $model');
+    }
+    final effort = _nonEmptyText(overrides?.effort);
+    if (settings.showEffort && effort != null) {
+      parts.add('${l10n.effortOverride}: $effort');
+    }
+    return parts;
+  }
+
+  String? _currentWorkspaceCwd() {
+    final cwds = _currentWorkspaceCwds();
+    return cwds.isEmpty ? null : cwds.first;
+  }
+
+  String? _nonEmptyText(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
   String _connectionLabel(AppLocalizations l10n, CodexSessionStatus? status) {
     return sessionStatusLabel(l10n, status);
+  }
+
+  void _handleAppearanceChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _clearSideConversation() {
@@ -2939,6 +3048,56 @@ class _StateChip extends StatelessWidget {
     return Chip(
       avatar: Icon(connected ? Icons.link : Icons.link_off, size: 18),
       label: Text(label),
+    );
+  }
+}
+
+class _ChatHeader extends StatelessWidget {
+  const _ChatHeader({
+    required this.title,
+    required this.connectionLabel,
+    required this.connected,
+    required this.statusLineParts,
+  });
+
+  final String title;
+  final String connectionLabel;
+  final bool connected;
+  final List<String> statusLineParts;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  key: const ValueKey('chat-display-title'),
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+              ),
+              _StateChip(label: connectionLabel, connected: connected),
+            ],
+          ),
+          if (statusLineParts.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              key: const ValueKey('chat-status-line'),
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final part in statusLineParts)
+                  Text(part, style: Theme.of(context).textTheme.labelMedium),
+              ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

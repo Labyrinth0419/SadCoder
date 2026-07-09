@@ -30,6 +30,10 @@ typedef SlashCommandSubmitFeedback =
     Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfigureTheme =
     Future<SlashCommandCallbackResult> Function();
+typedef SlashCommandConfigureTitleDisplay =
+    Future<SlashCommandCallbackResult> Function();
+typedef SlashCommandConfigureStatusLineDisplay =
+    Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandMentionFile = Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandStartSideConversation =
     Future<SlashCommandCallbackResult> Function(
@@ -84,6 +88,8 @@ enum SlashCommandActionEffect {
   logout,
   feedback,
   theme,
+  titleDisplay,
+  statusLineDisplay,
   mention,
   sideConversation,
   agentTopology,
@@ -216,6 +222,8 @@ class SlashCommandActionDispatcher {
     this.logout,
     this.submitFeedback,
     this.configureTheme,
+    this.configureTitleDisplay,
+    this.configureStatusLineDisplay,
     this.mentionFile,
     this.startSideConversation,
     this.showAgentTopology,
@@ -251,6 +259,8 @@ class SlashCommandActionDispatcher {
   final SlashCommandLogout? logout;
   final SlashCommandSubmitFeedback? submitFeedback;
   final SlashCommandConfigureTheme? configureTheme;
+  final SlashCommandConfigureTitleDisplay? configureTitleDisplay;
+  final SlashCommandConfigureStatusLineDisplay? configureStatusLineDisplay;
   final SlashCommandMentionFile? mentionFile;
   final SlashCommandStartSideConversation? startSideConversation;
   final SlashCommandShowAgentTopology? showAgentTopology;
@@ -398,6 +408,10 @@ class SlashCommandActionDispatcher {
         return _submitFeedback(parsed);
       case 'theme':
         return _configureTheme(parsed);
+      case 'title':
+        return _configureTitleDisplay(parsed);
+      case 'statusline':
+        return _configureStatusLineDisplay(parsed);
       case 'mention':
         return _mentionFile(parsed);
       case 'side':
@@ -901,6 +915,40 @@ class SlashCommandActionDispatcher {
       parsed,
       action: configureTheme,
       effect: SlashCommandActionEffect.theme,
+    );
+  }
+
+  Future<SlashCommandActionResult> _configureTitleDisplay(
+    SlashCommandParseResult parsed,
+  ) async {
+    if (parsed.arguments.trim().isNotEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    return _callbackAction(
+      parsed,
+      action: configureTitleDisplay,
+      effect: SlashCommandActionEffect.titleDisplay,
+    );
+  }
+
+  Future<SlashCommandActionResult> _configureStatusLineDisplay(
+    SlashCommandParseResult parsed,
+  ) async {
+    if (parsed.arguments.trim().isNotEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    return _callbackAction(
+      parsed,
+      action: configureStatusLineDisplay,
+      effect: SlashCommandActionEffect.statusLineDisplay,
     );
   }
 

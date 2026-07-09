@@ -2013,6 +2013,92 @@ void main() {
     expect(find.text('Theme updated.'), findsOneWidget);
   });
 
+  testWidgets('/title applies mobile title display settings', (tester) async {
+    final appearanceController = AppAppearanceController();
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(
+        thread: ThreadSummary.fromJson({
+          'id': 'thr_selected',
+          'sessionId': 'sess_1',
+          'preview': 'Selected thread',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 1,
+        }),
+      ),
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    addTearDown(detailController.dispose);
+    addTearDown(appearanceController.dispose);
+    await detailController.readThread('thr_selected');
+
+    await _pumpChatPage(
+      tester,
+      appearanceController: appearanceController,
+      threadDetailController: detailController,
+    );
+
+    await _submitComposerText(tester, '/title');
+
+    expect(find.text('Title display'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('chat-title-command-thread')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('chat-title-command-cwd')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('chat-title-command-apply')));
+    await tester.pumpAndSettle();
+
+    expect(appearanceController.titleDisplay.showThreadTitle, isTrue);
+    expect(appearanceController.titleDisplay.showWorkingDirectory, isTrue);
+    expect(find.text('Chat / Selected thread / /repo'), findsOneWidget);
+    expect(find.text('Title display updated.'), findsOneWidget);
+  });
+
+  testWidgets('/statusline applies mobile status line settings', (
+    tester,
+  ) async {
+    final appearanceController = AppAppearanceController();
+    final overrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(model: 'gpt-5-codex', effort: 'high'),
+      ),
+    );
+    addTearDown(overrideController.dispose);
+    addTearDown(appearanceController.dispose);
+
+    await _pumpChatPage(
+      tester,
+      appearanceController: appearanceController,
+      configOverrideController: overrideController,
+    );
+
+    await _submitComposerText(tester, '/statusline');
+
+    expect(find.text('Status line display'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('chat-statusline-command-model')),
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('chat-statusline-command-effort')),
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('chat-statusline-command-apply')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(appearanceController.statusLineDisplay.showModel, isTrue);
+    expect(appearanceController.statusLineDisplay.showEffort, isTrue);
+    expect(find.byKey(const ValueKey('chat-status-line')), findsOneWidget);
+    expect(find.text('Model: gpt-5-codex'), findsOneWidget);
+    expect(find.text('Reasoning effort: high'), findsOneWidget);
+    expect(find.text('Status line display updated.'), findsOneWidget);
+  });
+
   testWidgets('/goal reads the selected thread goal', (tester) async {
     final approvalController = ApprovalStateController();
     final goalRunner = _RecordingThreadGoalRunner(
