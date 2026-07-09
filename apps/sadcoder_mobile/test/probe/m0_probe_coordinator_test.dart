@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/agent/agent_remote_service.dart';
 import 'package:sadcoder_mobile/src/agent/agent_status.dart';
 import 'package:sadcoder_mobile/src/probe/m0_probe_coordinator.dart';
+import 'package:sadcoder_mobile/src/ssh/known_host.dart';
+import 'package:sadcoder_mobile/src/ssh/known_host_verifier.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_proxy_connector.dart';
 
@@ -154,6 +156,30 @@ void main() {
     expect(report.steps.last.ok, false);
     expect(report.steps.last.detail, contains('proxy failed'));
   });
+
+  test('run rethrows known-host challenges from status checks', () async {
+    final coordinator = M0ProbeCoordinator(
+      statusReader: const _KnownHostStatusReader(),
+      proxyConnector: _LineServerProxyConnector(),
+    );
+
+    await expectLater(
+      coordinator.run(_profile),
+      throwsA(isA<UnknownHostKeyException>()),
+    );
+  });
+
+  test('run rethrows known-host challenges from proxy connect', () async {
+    final coordinator = M0ProbeCoordinator(
+      statusReader: _FakeStatusReader(_readyStatus),
+      proxyConnector: const _KnownHostProxyConnector(),
+    );
+
+    await expectLater(
+      coordinator.run(_profile),
+      throwsA(isA<UnknownHostKeyException>()),
+    );
+  });
 }
 
 const _profile = SshProfile(
@@ -220,6 +246,15 @@ class _FailingStatusReader implements AgentStatusReader {
   }
 }
 
+class _KnownHostStatusReader implements AgentStatusReader {
+  const _KnownHostStatusReader();
+
+  @override
+  Future<AgentStatus> readStatus(SshProfile profile) async {
+    throw const UnknownHostKeyException(_hostKeyChallenge);
+  }
+}
+
 class _FakeStartRunner implements AgentStartRunner {
   _FakeStartRunner(this.status);
 
@@ -254,6 +289,22 @@ class _FailingProxyConnector implements AgentProxyConnector {
     throw StateError(message);
   }
 }
+
+class _KnownHostProxyConnector implements AgentProxyConnector {
+  const _KnownHostProxyConnector();
+
+  @override
+  Future<AgentProxyConnection> connect(SshProfile profile) async {
+    throw const UnknownHostKeyException(_hostKeyChallenge);
+  }
+}
+
+const _hostKeyChallenge = SshHostKeyChallenge(
+  host: 'srv.dev',
+  port: 22,
+  keyType: 'ssh-ed25519',
+  fingerprintSha256: 'SHA256:first',
+);
 
 class _LineServerProxyConnector implements AgentProxyConnector {
   _LineServerProxyConnector({this.failMethod});

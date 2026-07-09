@@ -7,6 +7,8 @@ import '../../probe/m0_probe_coordinator.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../ssh/dart_ssh_proxy_connector.dart';
 import '../../ssh/dart_ssh_remote_command_runner.dart';
+import '../../ssh/known_host_verifier.dart';
+import '../../ssh/shared_preferences_known_host_store.dart';
 import '../../ssh/ssh_profile.dart';
 import '../../ssh/ssh_profile_store.dart';
 
@@ -15,6 +17,9 @@ const M0ProbeRunner _defaultProbeRunner = M0ProbeCoordinator(
   startRunner: AgentRemoteService(DartSshRemoteCommandRunner()),
   proxyConnector: DartSshProxyConnector(),
 );
+const KnownHostVerifier _defaultKnownHostVerifier = KnownHostVerifier(
+  store: SharedPreferencesKnownHostStore(),
+);
 
 class HostsPage extends StatefulWidget {
   const HostsPage({
@@ -22,11 +27,13 @@ class HostsPage extends StatefulWidget {
     this.probeRunner,
     this.sessionController,
     this.profileStore,
+    this.knownHostVerifier,
   });
 
   final M0ProbeRunner? probeRunner;
   final CodexSessionStateController? sessionController;
   final SshProfileStore? profileStore;
+  final KnownHostVerifier? knownHostVerifier;
 
   @override
   State<HostsPage> createState() => _HostsPageState();
@@ -55,6 +62,9 @@ class _HostsPageState extends State<HostsPage> {
   M0ProbeRunner get _runner => widget.probeRunner ?? _defaultProbeRunner;
 
   SshProfileStore? get _profileStore => widget.profileStore;
+
+  KnownHostVerifier get _knownHostVerifier =>
+      widget.knownHostVerifier ?? _defaultKnownHostVerifier;
 
   @override
   void initState() {
@@ -161,7 +171,9 @@ class _HostsPageState extends State<HostsPage> {
     });
 
     try {
-      final report = await _runner.run(_buildProfile());
+      final report = await _runWithKnownHostConfirmation(
+        action: () => _runner.run(_buildProfile()),
+      );
       if (!mounted) {
         return;
       }
@@ -241,7 +253,9 @@ class _HostsPageState extends State<HostsPage> {
 
     setState(() => _connectionActionError = null);
     try {
-      await sessionController.connect(_buildProfile());
+      await _runWithKnownHostConfirmation(
+        action: () => sessionController.connect(_buildProfile()),
+      );
     } on Object catch (error) {
       if (mounted) {
         setState(() => _connectionActionError = error.toString());
@@ -315,6 +329,51 @@ class _HostsPageState extends State<HostsPage> {
       return l10n.invalidPort;
     }
     return null;
+  }
+
+  Future<T> _runWithKnownHostConfirmation<T>({
+    required Future<T> Function() action,
+  }) async {
+    try {
+      return await action();
+    } on UnknownHostKeyException catch (error) {
+      final trusted = await _confirmUnknownHostKey(error);
+      if (!mounted || !trusted) {
+        rethrow;
+      }
+      await _knownHostVerifier.trustHostKey(error.challenge);
+      return action();
+    }
+  }
+
+  Future<bool> _confirmUnknownHostKey(UnknownHostKeyException error) async {
+    final l10n = context.l10n;
+    final challenge = error.challenge;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.security_outlined),
+        title: Text(l10n.hostKeyConfirmTitle),
+        content: SelectableText(
+          l10n.hostKeyConfirmBody(
+            challenge.endpoint,
+            challenge.keyType,
+            challenge.fingerprintSha256,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.hostKeyTrust),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
   }
 }
 

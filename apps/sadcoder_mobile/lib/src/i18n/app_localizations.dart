@@ -85,6 +85,16 @@ class AppLocalizations {
   String get activeConnection => _text('activeConnection');
   String get noActiveConnection => _text('noActiveConnection');
   String get disconnected => _text('disconnected');
+  String get hostKeyConfirmTitle => _text('hostKeyConfirmTitle');
+  String hostKeyConfirmBody(
+    String endpoint,
+    String keyType,
+    String fingerprint,
+  ) => _text('hostKeyConfirmBody')
+      .replaceAll('{endpoint}', endpoint)
+      .replaceAll('{keyType}', keyType)
+      .replaceAll('{fingerprint}', fingerprint);
+  String get hostKeyTrust => _text('hostKeyTrust');
   String get m0ProtocolClient => _text('m0ProtocolClient');
   String get m0ProtocolClientBody => _text('m0ProtocolClientBody');
   String get slashCommandSurface => _text('slashCommandSurface');
@@ -722,6 +732,10 @@ const _values = <String, Map<String, String>>{
     'activeConnection': 'Active connection',
     'noActiveConnection': 'No active connection',
     'disconnected': 'Disconnected',
+    'hostKeyConfirmTitle': 'Trust this SSH host key?',
+    'hostKeyConfirmBody':
+        'This is the first time SadCoder has seen {endpoint}.\n\nKey type: {keyType}\nFingerprint: {fingerprint}\n\nOnly continue if this fingerprint matches the server you expect.',
+    'hostKeyTrust': 'Trust and continue',
     'm0ProtocolClient': 'M0 protocol client',
     'm0ProtocolClientBody':
         'The app has a JSON-RPC client for initialize, model/list, and thread/list. SSH transport uses the same interface.',
@@ -1222,6 +1236,10 @@ const _values = <String, Map<String, String>>{
     'activeConnection': '当前连接',
     'noActiveConnection': '暂无活动连接',
     'disconnected': '未连接',
+    'hostKeyConfirmTitle': '信任此 SSH 主机密钥？',
+    'hostKeyConfirmBody':
+        '这是 SadCoder 首次看到 {endpoint}。\n\n密钥类型：{keyType}\n指纹：{fingerprint}\n\n只有在该指纹与预期服务器一致时才继续。',
+    'hostKeyTrust': '信任并继续',
     'm0ProtocolClient': 'M0 协议客户端',
     'm0ProtocolClientBody':
         '应用已经具备 initialize、model/list 和 thread/list 的 JSON-RPC 客户端，SSH 传输复用同一接口。',

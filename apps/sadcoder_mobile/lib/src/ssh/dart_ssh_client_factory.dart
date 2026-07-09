@@ -1,27 +1,36 @@
+import 'dart:convert';
+
 import 'package:dartssh2/dartssh2.dart';
 
+import 'known_host_verifier.dart';
 import 'remote_command_runner.dart';
+import 'shared_preferences_known_host_store.dart';
 import 'ssh_profile.dart';
 
 class DartSshClientFactory {
   const DartSshClientFactory({
     this.connectTimeout = const Duration(seconds: 15),
+    this.knownHostVerifier = const KnownHostVerifier(
+      store: SharedPreferencesKnownHostStore(),
+    ),
   });
 
   final Duration connectTimeout;
+  final KnownHostVerifier? knownHostVerifier;
 
   Future<SSHClient> connect(SshProfile profile) async {
+    final identities = switch (profile.authType) {
+      SshAuthType.privateKey => _privateKeyIdentities(profile),
+      SshAuthType.password => null,
+    };
+
     final socket = await SSHSocket.connect(
       profile.host,
       profile.port,
       timeout: connectTimeout,
     );
 
-    final identities = switch (profile.authType) {
-      SshAuthType.privateKey => _privateKeyIdentities(profile),
-      SshAuthType.password => null,
-    };
-
+    KnownHostVerificationException? hostKeyFailure;
     final client = SSHClient(
       socket,
       username: profile.username,
@@ -29,9 +38,45 @@ class DartSshClientFactory {
       onPasswordRequest: profile.password == null
           ? null
           : () => profile.password,
+      onVerifyHostKey: _hostKeyVerifier(
+        profile,
+        onFailure: (error) => hostKeyFailure = error,
+      ),
     );
-    await client.authenticated;
+    try {
+      await client.authenticated;
+    } on Object {
+      client.close();
+      await client.done.catchError((_) {});
+      final failure = hostKeyFailure;
+      if (failure != null) {
+        throw failure;
+      }
+      rethrow;
+    }
     return client;
+  }
+
+  SSHHostkeyVerifyHandler? _hostKeyVerifier(
+    SshProfile profile, {
+    required void Function(KnownHostVerificationException error) onFailure,
+  }) {
+    final verifier = knownHostVerifier;
+    if (verifier == null) {
+      return null;
+    }
+    return (keyType, fingerprintBytes) async {
+      try {
+        return await verifier.verifyHostKey(
+          profile,
+          keyType: keyType,
+          fingerprintSha256: utf8.decode(fingerprintBytes),
+        );
+      } on KnownHostVerificationException catch (error) {
+        onFailure(error);
+        return false;
+      }
+    };
   }
 
   List<SSHKeyPair>? _privateKeyIdentities(SshProfile profile) {

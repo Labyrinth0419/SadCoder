@@ -2,6 +2,7 @@ import '../agent/agent_remote_service.dart';
 import '../agent/agent_status.dart';
 import '../protocol/codex_app_session.dart';
 import '../protocol/json_rpc.dart';
+import '../ssh/known_host_verifier.dart';
 import '../ssh/ssh_profile.dart';
 import '../ssh/ssh_proxy_connector.dart';
 
@@ -84,6 +85,9 @@ class M0ProbeCoordinator implements M0ProbeRunner {
         ),
       );
     } on Object catch (error) {
+      if (error is KnownHostVerificationException) {
+        rethrow;
+      }
       steps.add(
         M0ProbeStepResult(
           step: M0ProbeStep.agentStatus,
@@ -143,6 +147,9 @@ class M0ProbeCoordinator implements M0ProbeRunner {
 
       return M0ProbeReport(agentStatus: status, steps: steps);
     } on Object catch (error) {
+      if (error is KnownHostVerificationException) {
+        rethrow;
+      }
       steps.add(
         M0ProbeStepResult(
           step: M0ProbeStep.proxyConnect,
@@ -195,6 +202,9 @@ class M0ProbeCoordinator implements M0ProbeRunner {
       );
       return started;
     } on Object catch (error) {
+      if (error is KnownHostVerificationException) {
+        rethrow;
+      }
       steps.add(
         M0ProbeStepResult(
           step: M0ProbeStep.agentStart,

@@ -39,6 +39,8 @@ import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/reconnect_policy.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
+import 'package:sadcoder_mobile/src/ssh/known_host.dart';
+import 'package:sadcoder_mobile/src/ssh/known_host_verifier.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile_store.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
@@ -197,6 +199,107 @@ void main() {
     expect(runner.lastProfile?.password, isNull);
     expect(runner.lastProfile?.privateKeyPem, contains('OPENSSH'));
     expect(runner.lastProfile?.passphrase, 'key-passphrase');
+  });
+
+  testWidgets('confirms and stores an unknown host key before probing', (
+    tester,
+  ) async {
+    final runner = _HostKeyProbeRunner(
+      challenge: _hostKeyChallenge,
+      report: const M0ProbeReport(
+        steps: [
+          M0ProbeStepResult(step: M0ProbeStep.agentStatus, ok: true),
+          M0ProbeStepResult(step: M0ProbeStep.proxyConnect, ok: true),
+          M0ProbeStepResult(step: M0ProbeStep.initialize, ok: true),
+          M0ProbeStepResult(step: M0ProbeStep.accountRead, ok: true),
+          M0ProbeStepResult(step: M0ProbeStep.modelList, ok: true),
+          M0ProbeStepResult(step: M0ProbeStep.configRead, ok: true),
+          M0ProbeStepResult(step: M0ProbeStep.permissionProfileList, ok: true),
+          M0ProbeStepResult(step: M0ProbeStep.threadList, ok: true),
+        ],
+      ),
+    );
+    final store = _MemoryKnownHostStore();
+    final verifier = KnownHostVerifier(store: store);
+
+    await _pumpHostsPage(tester, runner, knownHostVerifier: verifier);
+
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('password-field')),
+      'secret',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('probe-test-button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('probe-test-button')));
+    await tester.pump();
+
+    expect(runner.runCount, 1);
+    expect(find.text('Trust this SSH host key?'), findsOneWidget);
+    expect(find.textContaining('srv.dev:22'), findsOneWidget);
+    expect(find.textContaining('ssh-ed25519'), findsOneWidget);
+    expect(find.textContaining('SHA256:first'), findsOneWidget);
+
+    await tester.tap(find.text('Trust and continue'));
+    await tester.pumpAndSettle();
+
+    expect(runner.runCount, 2);
+    expect(store.entries.single.fingerprintSha256, 'SHA256:first');
+    expect(find.text('Probe passed'), findsOneWidget);
+  });
+
+  testWidgets('canceling unknown host key confirmation does not probe again', (
+    tester,
+  ) async {
+    final runner = _HostKeyProbeRunner(
+      challenge: _hostKeyChallenge,
+      report: const M0ProbeReport(steps: []),
+    );
+    final store = _MemoryKnownHostStore();
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      knownHostVerifier: KnownHostVerifier(store: store),
+    );
+
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('password-field')),
+      'secret',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('probe-test-button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('probe-test-button')));
+    await tester.pump();
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Cancel'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(runner.runCount, 1);
+    expect(store.entries, isEmpty);
+    expect(find.textContaining('Unknown SSH host key'), findsOneWidget);
   });
 
   testWidgets('saves host profile metadata without requiring password', (
@@ -567,6 +670,7 @@ Future<void> _pumpHostsPage(
   M0ProbeRunner runner, {
   CodexSessionStateController? sessionController,
   SshProfileStore? profileStore,
+  KnownHostVerifier? knownHostVerifier,
 }) {
   tester.view.physicalSize = const Size(800, 900);
   tester.view.devicePixelRatio = 1;
@@ -585,10 +689,18 @@ Future<void> _pumpHostsPage(
         probeRunner: runner,
         sessionController: sessionController,
         profileStore: profileStore,
+        knownHostVerifier: knownHostVerifier,
       ),
     ),
   );
 }
+
+const _hostKeyChallenge = SshHostKeyChallenge(
+  host: 'srv.dev',
+  port: 22,
+  keyType: 'ssh-ed25519',
+  fingerprintSha256: 'SHA256:first',
+);
 
 const _readyStatus = AgentStatus(
   agentVersion: '0.1.0',
@@ -619,6 +731,67 @@ class _FakeProbeRunner implements M0ProbeRunner {
   Future<M0ProbeReport> run(SshProfile profile) async {
     lastProfile = profile;
     return report;
+  }
+}
+
+class _HostKeyProbeRunner implements M0ProbeRunner {
+  _HostKeyProbeRunner({required this.challenge, required this.report});
+
+  final SshHostKeyChallenge challenge;
+  final M0ProbeReport report;
+  int runCount = 0;
+
+  @override
+  Future<M0ProbeReport> run(SshProfile profile) async {
+    runCount++;
+    if (runCount == 1) {
+      throw UnknownHostKeyException(challenge);
+    }
+    return report;
+  }
+}
+
+class _MemoryKnownHostStore implements KnownHostStore {
+  final entries = <KnownHostEntry>[];
+
+  @override
+  Future<KnownHostEntry?> readKnownHost({
+    required String host,
+    required int port,
+    required String keyType,
+  }) async {
+    final key = knownHostStoreKey(host: host, port: port, keyType: keyType);
+    for (final entry in entries) {
+      if (knownHostStoreKey(
+            host: entry.host,
+            port: entry.port,
+            keyType: entry.keyType,
+          ) ==
+          key) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<KnownHostEntry?> readKnownHostForEndpoint({
+    required String host,
+    required int port,
+  }) async {
+    final endpointKey = knownHostEndpointKey(host: host, port: port);
+    for (final entry in entries) {
+      if (knownHostEndpointKey(host: entry.host, port: entry.port) ==
+          endpointKey) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<void> saveKnownHost(KnownHostEntry entry) async {
+    entries.add(entry);
   }
 }
 
