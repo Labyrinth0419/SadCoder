@@ -92,6 +92,7 @@ Iterable<String> _overrideStatusLines(
   yield '${l10n.approvalPolicy}: ${_overrideStatusValue(l10n, _objectStatusValue(resolved.approvalPolicy), controller.sourceFor('approvalPolicy'))}';
   yield '${l10n.sandboxMode}: ${_overrideStatusValue(l10n, _objectStatusValue(resolved.sandboxPolicy), controller.sourceFor('sandboxPolicy'))}';
   yield '${l10n.cwdOverride}: ${_overrideStatusValue(l10n, resolved.cwd, controller.sourceFor('cwd'))}';
+  yield '${l10n.personalityOverride}: ${_overrideStatusValue(l10n, resolved.personality, controller.sourceFor('personality'))}';
 }
 
 String _overrideStatusValue(

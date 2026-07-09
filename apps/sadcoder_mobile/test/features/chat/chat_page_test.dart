@@ -652,6 +652,143 @@ void main() {
     expect(find.text('Model override updated.'), findsOneWidget);
   });
 
+  testWidgets('/personality applies a next-turn personality override', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final overrideController = CodexConfigOverrideController();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => overrideController.layers,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/personality',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Personality override'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-personality-command-personality')),
+      'concise',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('chat-personality-command-apply')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(overrideController.layers.turn.toTurnStartParams(), {
+      'personality': 'concise',
+    });
+    expect(overrideController.layers.session.toTurnStartParams(), isEmpty);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(find.text('Personality override updated.'), findsOneWidget);
+  });
+
+  testWidgets('/personality can apply a session personality override', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final overrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(personality: 'pragmatic'),
+        turn: CodexConfigOverrides(personality: 'brief'),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => overrideController.layers,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/personality',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Session'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const ValueKey('chat-personality-command-personality')),
+          )
+          .controller
+          ?.text,
+      'pragmatic',
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-personality-command-personality')),
+      'collaborative',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('chat-personality-command-apply')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(overrideController.layers.session.toTurnStartParams(), {
+      'personality': 'collaborative',
+    });
+    expect(overrideController.layers.turn.toTurnStartParams(), {
+      'personality': 'brief',
+    });
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(find.text('Personality override updated.'), findsOneWidget);
+  });
+
   testWidgets('/quit disconnects without interrupting an active turn', (
     tester,
   ) async {
@@ -820,7 +957,8 @@ void main() {
         'Reasoning effort: server default\n'
         'Approval policy: server default\n'
         'Sandbox mode: server default\n'
-        'Working directory: /repo / session override',
+        'Working directory: /repo / session override\n'
+        'Personality: server default',
       ),
       findsOneWidget,
     );

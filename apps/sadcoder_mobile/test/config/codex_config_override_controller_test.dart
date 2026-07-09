@@ -50,4 +50,28 @@ void main() {
       'cwd': '/tmp',
     });
   });
+
+  test('personality helpers preserve unrelated override fields', () {
+    final controller = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(model: 'gpt-5', cwd: '/repo'),
+        turn: CodexConfigOverrides(effort: 'high', serviceTier: 'auto'),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    controller.setSessionPersonality('concise');
+    controller.setTurnPersonality('pragmatic');
+
+    expect(controller.layers.session.toTurnStartParams(), {
+      'model': 'gpt-5',
+      'cwd': '/repo',
+      'personality': 'concise',
+    });
+    expect(controller.layers.turn.toTurnStartParams(), {
+      'effort': 'high',
+      'personality': 'pragmatic',
+      'serviceTier': 'auto',
+    });
+  });
 }

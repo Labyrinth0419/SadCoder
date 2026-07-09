@@ -71,6 +71,11 @@ class _SessionOverrideBar extends StatelessWidget {
                         value: sessionDefault.cwd,
                         source: _sessionSourceFor(layers, 'cwd'),
                       ),
+                      ConfigOverrideSourceChip(
+                        label: l10n.personalityOverride,
+                        value: sessionDefault.personality,
+                        source: _sessionSourceFor(layers, 'personality'),
+                      ),
                     ],
                   ),
                 ],

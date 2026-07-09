@@ -356,6 +356,42 @@ void main() {
   });
 
   test(
+    '/personality opens the injected personality configuration action',
+    () async {
+      var opens = 0;
+      final dispatcher = SlashCommandActionDispatcher(
+        configurePersonality: () async {
+          opens++;
+          return SlashCommandCallbackResult.executed;
+        },
+      );
+
+      final result = await dispatcher.dispatch(
+        registry.parseComposerText('/personality'),
+        hasActiveTurn: true,
+      );
+
+      expect(opens, 1);
+      expect(result.outcome, SlashCommandActionOutcome.executed);
+      expect(result.effect, SlashCommandActionEffect.personalityOverride);
+    },
+  );
+
+  test('/personality can be cancelled by the configuration UI', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      configurePersonality: () async => SlashCommandCallbackResult.cancelled,
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/personality'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.cancelled);
+    expect(result.command?.command, 'personality');
+  });
+
+  test(
     'unknown and unsupported commands never fall through as prompts',
     () async {
       final dispatcher = SlashCommandActionDispatcher(

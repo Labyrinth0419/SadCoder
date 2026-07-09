@@ -132,6 +132,8 @@ class AppLocalizations {
   String get slashCommandArchivedThread => _text('slashCommandArchivedThread');
   String get slashCommandDeletedThread => _text('slashCommandDeletedThread');
   String get slashCommandModelUpdated => _text('slashCommandModelUpdated');
+  String get slashCommandPersonalityUpdated =>
+      _text('slashCommandPersonalityUpdated');
   String slashCommandCancelled(String slash) =>
       _text('slashCommandCancelled').replaceAll('{slash}', slash);
   String slashCommandExecuted(String slash) =>
@@ -173,6 +175,7 @@ class AppLocalizations {
   String get modelOverride => _text('modelOverride');
   String get modelProvider => _text('modelProvider');
   String get effortOverride => _text('effortOverride');
+  String get personalityOverride => _text('personalityOverride');
   String get approvalPolicy => _text('approvalPolicy');
   String get sandboxMode => _text('sandboxMode');
   String get cwdOverride => _text('cwdOverride');
@@ -191,6 +194,8 @@ class AppLocalizations {
   String get editTurnOverrides => _text('editTurnOverrides');
   String get applyTurnOverrides => _text('applyTurnOverrides');
   String get clearTurnOverrides => _text('clearTurnOverrides');
+  String get overrideTurnScope => _text('overrideTurnScope');
+  String get overrideSessionScope => _text('overrideSessionScope');
   String get archiveThreadTitle => _text('archiveThreadTitle');
   String get archiveThreadBody => _text('archiveThreadBody');
   String get archiveThreadConfirm => _text('archiveThreadConfirm');
@@ -201,6 +206,8 @@ class AppLocalizations {
   String get modelCommandTurnScope => _text('modelCommandTurnScope');
   String get modelCommandSessionScope => _text('modelCommandSessionScope');
   String get applyModelOverride => _text('applyModelOverride');
+  String get personalityCommandTitle => _text('personalityCommandTitle');
+  String get applyPersonalityOverride => _text('applyPersonalityOverride');
   String get serverConfigSnapshot => _text('serverConfigSnapshot');
   String get refreshServerConfig => _text('refreshServerConfig');
   String get serverConfigUnavailable => _text('serverConfigUnavailable');
@@ -348,6 +355,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandArchivedThread': 'Archived thread.',
     'slashCommandDeletedThread': 'Deleted thread.',
     'slashCommandModelUpdated': 'Model override updated.',
+    'slashCommandPersonalityUpdated': 'Personality override updated.',
     'slashCommandCancelled': 'Canceled {slash}.',
     'slashCommandExecuted': 'Executed {slash}.',
     'slashCommandUnsupported': '{slash} is not implemented yet.',
@@ -385,6 +393,7 @@ const _values = <String, Map<String, String>>{
     'modelOverride': 'Model',
     'modelProvider': 'Model provider',
     'effortOverride': 'Reasoning effort',
+    'personalityOverride': 'Personality',
     'approvalPolicy': 'Approval policy',
     'sandboxMode': 'Sandbox mode',
     'cwdOverride': 'Working directory',
@@ -403,6 +412,8 @@ const _values = <String, Map<String, String>>{
     'editTurnOverrides': 'Edit next turn overrides',
     'applyTurnOverrides': 'Apply to next turn',
     'clearTurnOverrides': 'Clear next turn overrides',
+    'overrideTurnScope': 'Next turn',
+    'overrideSessionScope': 'Session',
     'archiveThreadTitle': 'Archive thread?',
     'archiveThreadBody':
         'This moves the current thread out of the active session list.',
@@ -415,6 +426,8 @@ const _values = <String, Map<String, String>>{
     'modelCommandTurnScope': 'Next turn',
     'modelCommandSessionScope': 'Session',
     'applyModelOverride': 'Apply model override',
+    'personalityCommandTitle': 'Personality override',
+    'applyPersonalityOverride': 'Apply personality override',
     'serverConfigSnapshot': 'Server config snapshot',
     'refreshServerConfig': 'Refresh server config',
     'serverConfigUnavailable': 'Connect to a host, then refresh server config.',
@@ -534,6 +547,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandArchivedThread': '已归档会话。',
     'slashCommandDeletedThread': '已删除会话。',
     'slashCommandModelUpdated': '已更新模型覆盖。',
+    'slashCommandPersonalityUpdated': '已更新协作风格覆盖。',
     'slashCommandCancelled': '已取消 {slash}。',
     'slashCommandExecuted': '已执行 {slash}。',
     'slashCommandUnsupported': '{slash} 暂未实现。',
@@ -569,6 +583,7 @@ const _values = <String, Map<String, String>>{
     'modelOverride': '模型',
     'modelProvider': '模型提供方',
     'effortOverride': '推理强度',
+    'personalityOverride': '协作风格',
     'approvalPolicy': '审批策略',
     'sandboxMode': '沙盒模式',
     'cwdOverride': '工作目录',
@@ -587,6 +602,8 @@ const _values = <String, Map<String, String>>{
     'editTurnOverrides': '编辑本次回合覆盖',
     'applyTurnOverrides': '应用到本次回合',
     'clearTurnOverrides': '清除本次回合覆盖',
+    'overrideTurnScope': '本次回合',
+    'overrideSessionScope': '本会话',
     'archiveThreadTitle': '归档会话？',
     'archiveThreadBody': '这会把当前会话移出活动会话列表。',
     'archiveThreadConfirm': '归档',
@@ -597,6 +614,8 @@ const _values = <String, Map<String, String>>{
     'modelCommandTurnScope': '本次回合',
     'modelCommandSessionScope': '本会话',
     'applyModelOverride': '应用模型覆盖',
+    'personalityCommandTitle': '协作风格覆盖',
+    'applyPersonalityOverride': '应用协作风格覆盖',
     'serverConfigSnapshot': '服务器配置快照',
     'refreshServerConfig': '刷新服务器配置',
     'serverConfigUnavailable': '连接主机后刷新服务器配置。',

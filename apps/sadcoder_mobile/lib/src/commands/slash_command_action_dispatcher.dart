@@ -38,6 +38,7 @@ enum SlashCommandActionEffect {
   archiveThread,
   deleteThread,
   modelOverride,
+  personalityOverride,
 }
 
 class SlashCommandActionResult {
@@ -152,6 +153,7 @@ class SlashCommandActionDispatcher {
     this.archiveThread,
     this.deleteThread,
     this.configureModel,
+    this.configurePersonality,
   });
 
   final SlashCommandDisconnect? disconnect;
@@ -165,6 +167,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandConfirmedThreadAction? archiveThread;
   final SlashCommandConfirmedThreadAction? deleteThread;
   final SlashCommandConfiguredAction? configureModel;
+  final SlashCommandConfiguredAction? configurePersonality;
 
   Future<SlashCommandActionResult> dispatch(
     SlashCommandParseResult parsed, {
@@ -202,6 +205,12 @@ class SlashCommandActionDispatcher {
           parsed,
           action: configureModel,
           effect: SlashCommandActionEffect.modelOverride,
+        );
+      case 'personality':
+        return _configuredAction(
+          parsed,
+          action: configurePersonality,
+          effect: SlashCommandActionEffect.personalityOverride,
         );
       case 'quit' || 'exit':
         return _disconnect(parsed);

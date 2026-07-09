@@ -311,6 +311,7 @@ class _ChatPageState extends State<ChatPage> {
           archiveThread: _archiveCurrentThread,
           deleteThread: _deleteCurrentThread,
           configureModel: _configureModelOverride,
+          configurePersonality: _configurePersonalityOverride,
         );
   }
 
@@ -364,16 +365,38 @@ class _ChatPageState extends State<ChatPage> {
       return SlashCommandCallbackResult.cancelled;
     }
     switch (result.scope) {
-      case _ModelOverrideScope.turn:
+      case _OverrideScope.turn:
         controller.setTurnModelEffort(
           model: result.model,
           effort: result.effort,
         );
-      case _ModelOverrideScope.session:
+      case _OverrideScope.session:
         controller.setSessionModelEffort(
           model: result.model,
           effort: result.effort,
         );
+    }
+    return SlashCommandCallbackResult.executed;
+  }
+
+  Future<SlashCommandCallbackResult> _configurePersonalityOverride() async {
+    final controller = widget.configOverrideController;
+    if (controller == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    final result = await showModalBottomSheet<_PersonalityOverrideResult>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _PersonalityOverrideSheet(controller: controller),
+    );
+    if (!mounted || result == null) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+    switch (result.scope) {
+      case _OverrideScope.turn:
+        controller.setTurnPersonality(result.personality);
+      case _OverrideScope.session:
+        controller.setSessionPersonality(result.personality);
     }
     return SlashCommandCallbackResult.executed;
   }
@@ -531,6 +554,8 @@ class _ChatPageState extends State<ChatPage> {
           l10n.slashCommandArchivedThread,
         SlashCommandActionEffect.deleteThread => l10n.slashCommandDeletedThread,
         SlashCommandActionEffect.modelOverride => l10n.slashCommandModelUpdated,
+        SlashCommandActionEffect.personalityOverride =>
+          l10n.slashCommandPersonalityUpdated,
         SlashCommandActionEffect.none => l10n.slashCommandExecuted(
           result.slash,
         ),
@@ -600,7 +625,35 @@ class _ChatPageState extends State<ChatPage> {
   }
 }
 
-enum _ModelOverrideScope { turn, session }
+enum _OverrideScope { turn, session }
+
+class _OverrideScopeSelector extends StatelessWidget {
+  const _OverrideScopeSelector({required this.scope, required this.onChanged});
+
+  final _OverrideScope scope;
+  final ValueChanged<_OverrideScope> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return SegmentedButton<_OverrideScope>(
+      segments: [
+        ButtonSegment(
+          value: _OverrideScope.turn,
+          icon: const Icon(Icons.send_outlined),
+          label: Text(l10n.overrideTurnScope),
+        ),
+        ButtonSegment(
+          value: _OverrideScope.session,
+          icon: const Icon(Icons.forum_outlined),
+          label: Text(l10n.overrideSessionScope),
+        ),
+      ],
+      selected: {scope},
+      onSelectionChanged: (selection) => onChanged(selection.single),
+    );
+  }
+}
 
 class _ModelOverrideResult {
   const _ModelOverrideResult({
@@ -609,7 +662,7 @@ class _ModelOverrideResult {
     required this.effort,
   });
 
-  final _ModelOverrideScope scope;
+  final _OverrideScope scope;
   final String model;
   final String effort;
 }
@@ -624,15 +677,15 @@ class _ModelOverrideSheet extends StatefulWidget {
 }
 
 class _ModelOverrideSheetState extends State<_ModelOverrideSheet> {
-  late _ModelOverrideScope _scope;
+  late _OverrideScope _scope;
   late final TextEditingController _modelController;
   late final TextEditingController _effortController;
 
   @override
   void initState() {
     super.initState();
-    _scope = _ModelOverrideScope.turn;
-    final overrides = _overridesFor(_scope);
+    _scope = _OverrideScope.turn;
+    final overrides = _overridesForScope(widget.controller, _scope);
     _modelController = TextEditingController(text: overrides.model ?? '');
     _effortController = TextEditingController(text: overrides.effort ?? '');
   }
@@ -660,23 +713,11 @@ class _ModelOverrideSheetState extends State<_ModelOverrideSheet> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
-            SegmentedButton<_ModelOverrideScope>(
-              segments: [
-                ButtonSegment(
-                  value: _ModelOverrideScope.turn,
-                  icon: const Icon(Icons.send_outlined),
-                  label: Text(l10n.modelCommandTurnScope),
-                ),
-                ButtonSegment(
-                  value: _ModelOverrideScope.session,
-                  icon: const Icon(Icons.forum_outlined),
-                  label: Text(l10n.modelCommandSessionScope),
-                ),
-              ],
-              selected: {_scope},
-              onSelectionChanged: (selection) {
+            _OverrideScopeSelector(
+              scope: _scope,
+              onChanged: (scope) {
                 setState(() {
-                  _scope = selection.single;
+                  _scope = scope;
                   _loadScopeValues();
                 });
               },
@@ -728,18 +769,132 @@ class _ModelOverrideSheetState extends State<_ModelOverrideSheet> {
     );
   }
 
-  CodexConfigOverrides _overridesFor(_ModelOverrideScope scope) {
-    return switch (scope) {
-      _ModelOverrideScope.turn => widget.controller.layers.turn,
-      _ModelOverrideScope.session => widget.controller.layers.session,
-    };
-  }
-
   void _loadScopeValues() {
-    final overrides = _overridesFor(_scope);
+    final overrides = _overridesForScope(widget.controller, _scope);
     _modelController.text = overrides.model ?? '';
     _effortController.text = overrides.effort ?? '';
   }
+}
+
+class _PersonalityOverrideResult {
+  const _PersonalityOverrideResult({
+    required this.scope,
+    required this.personality,
+  });
+
+  final _OverrideScope scope;
+  final String personality;
+}
+
+class _PersonalityOverrideSheet extends StatefulWidget {
+  const _PersonalityOverrideSheet({required this.controller});
+
+  final CodexConfigOverrideController controller;
+
+  @override
+  State<_PersonalityOverrideSheet> createState() =>
+      _PersonalityOverrideSheetState();
+}
+
+class _PersonalityOverrideSheetState extends State<_PersonalityOverrideSheet> {
+  late _OverrideScope _scope;
+  late final TextEditingController _personalityController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scope = _OverrideScope.turn;
+    final overrides = _overridesForScope(widget.controller, _scope);
+    _personalityController = TextEditingController(
+      text: overrides.personality ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _personalityController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.personalityCommandTitle,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            _OverrideScopeSelector(
+              scope: _scope,
+              onChanged: (scope) {
+                setState(() {
+                  _scope = scope;
+                  _loadScopeValues();
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+            ConfigOverrideField(
+              keyValue: 'chat-personality-command-personality',
+              controller: _personalityController,
+              label: l10n.personalityOverride,
+            ),
+            const SizedBox(height: 16),
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              spacing: 8,
+              overflowSpacing: 8,
+              children: [
+                TextButton.icon(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                  label: Text(l10n.approvalCancel),
+                ),
+                FilledButton.icon(
+                  key: const ValueKey('chat-personality-command-apply'),
+                  onPressed: _apply,
+                  icon: const Icon(Icons.check),
+                  label: Text(l10n.applyPersonalityOverride),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _apply() {
+    Navigator.of(context).pop(
+      _PersonalityOverrideResult(
+        scope: _scope,
+        personality: _personalityController.text,
+      ),
+    );
+  }
+
+  void _loadScopeValues() {
+    final overrides = _overridesForScope(widget.controller, _scope);
+    _personalityController.text = overrides.personality ?? '';
+  }
+}
+
+CodexConfigOverrides _overridesForScope(
+  CodexConfigOverrideController controller,
+  _OverrideScope scope,
+) {
+  return switch (scope) {
+    _OverrideScope.turn => controller.layers.turn,
+    _OverrideScope.session => controller.layers.session,
+  };
 }
 
 class _StateChip extends StatelessWidget {

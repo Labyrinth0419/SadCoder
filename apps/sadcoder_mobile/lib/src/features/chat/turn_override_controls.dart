@@ -71,6 +71,11 @@ class _TurnOverrideBar extends StatelessWidget {
                         value: controller.layers.resolve().cwd,
                         source: controller.sourceFor('cwd'),
                       ),
+                      ConfigOverrideSourceChip(
+                        label: l10n.personalityOverride,
+                        value: controller.layers.resolve().personality,
+                        source: controller.sourceFor('personality'),
+                      ),
                     ],
                   ),
                 ],

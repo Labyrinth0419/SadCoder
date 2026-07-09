@@ -23,7 +23,8 @@ void main() {
       'Reasoning effort: server default\n'
       'Approval policy: server default\n'
       'Sandbox mode: server default\n'
-      'Working directory: /repo / session override',
+      'Working directory: /repo / session override\n'
+      'Personality: server default',
     );
   });
 }
