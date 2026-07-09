@@ -13,4 +13,14 @@ class CodexThreadMutationRunner implements ThreadMutationRunner {
   }) async {
     await _client.setThreadName(threadId: threadId, name: name);
   }
+
+  @override
+  Future<void> archiveThread({required String threadId}) async {
+    await _client.archiveThread(threadId: threadId);
+  }
+
+  @override
+  Future<void> deleteThread({required String threadId}) async {
+    await _client.deleteThread(threadId: threadId);
+  }
 }

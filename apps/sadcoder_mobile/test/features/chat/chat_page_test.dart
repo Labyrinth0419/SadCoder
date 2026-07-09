@@ -966,6 +966,169 @@ void main() {
     expect(find.text('Renamed thread.'), findsOneWidget);
   });
 
+  testWidgets('/archive confirms and archives the selected thread', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final mutationRunner = _FakeThreadMutationRunner();
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(
+        thread: ThreadSummary.fromJson({
+          'id': 'thr_selected',
+          'sessionId': 'sess_1',
+          'preview': 'Selected thread',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 1,
+          'turns': [
+            {
+              'id': 'turn_1',
+              'status': 'completed',
+              'items': <Object?>[],
+              'itemsView': 'full',
+            },
+          ],
+        }),
+      ),
+    );
+    final listReader = _CountingThreadListReader(
+      page: const ThreadListPage(threads: []),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: listReader,
+      turnRunner: turnRunner,
+      threadMutationRunner: mutationRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadListController = ThreadListController(
+      readerProvider: () => sessionController.threadListReader,
+    );
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    addTearDown(threadDetailController.dispose);
+    addTearDown(threadListController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await threadDetailController.readThread('thr_selected');
+    timelineController.showThread(detailReader.detail.thread);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadListController: threadListController,
+      threadDetailController: threadDetailController,
+      turnController: turnController,
+      timelineController: timelineController,
+    );
+    await tester.pumpAndSettle();
+    final callsBeforeArchive = listReader.calls;
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/archive',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+    expect(find.text('Archive thread?'), findsOneWidget);
+
+    await tester.tap(find.text('Archive'));
+    await tester.pumpAndSettle();
+
+    expect(mutationRunner.archivedThreads, ['thr_selected']);
+    expect(mutationRunner.deletedThreads, isEmpty);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(threadDetailController.selectedThreadId, isNull);
+    expect(timelineController.turns, isEmpty);
+    expect(listReader.calls, callsBeforeArchive + 1);
+    expect(find.text('Archived thread.'), findsOneWidget);
+  });
+
+  testWidgets('/delete confirms and deletes the selected thread', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final mutationRunner = _FakeThreadMutationRunner();
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(
+        thread: ThreadSummary.fromJson({
+          'id': 'thr_selected',
+          'sessionId': 'sess_1',
+          'preview': 'Selected thread',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 1,
+          'turns': <Object?>[],
+        }),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+      threadMutationRunner: mutationRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(threadDetailController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await threadDetailController.readThread('thr_selected');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: threadDetailController,
+      turnController: turnController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/delete',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete thread?'), findsOneWidget);
+
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    expect(mutationRunner.deletedThreads, ['thr_selected']);
+    expect(mutationRunner.archivedThreads, isEmpty);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(threadDetailController.selectedThreadId, isNull);
+    expect(find.text('Deleted thread.'), findsOneWidget);
+  });
+
   testWidgets('/clear clears the local transcript without interrupting', (
     tester,
   ) async {
@@ -1496,6 +1659,8 @@ class _FakeTurnRunner implements TurnRunner {
 
 class _FakeThreadMutationRunner implements ThreadMutationRunner {
   final renamedThreads = <({String threadId, String name})>[];
+  final archivedThreads = <String>[];
+  final deletedThreads = <String>[];
 
   @override
   Future<void> setThreadName({
@@ -1503,6 +1668,16 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
     required String name,
   }) async {
     renamedThreads.add((threadId: threadId, name: name));
+  }
+
+  @override
+  Future<void> archiveThread({required String threadId}) async {
+    archivedThreads.add(threadId);
+  }
+
+  @override
+  Future<void> deleteThread({required String threadId}) async {
+    deletedThreads.add(threadId);
   }
 }
 
@@ -1514,6 +1689,12 @@ class _NoopThreadMutationRunner implements ThreadMutationRunner {
     required String threadId,
     required String name,
   }) async {}
+
+  @override
+  Future<void> archiveThread({required String threadId}) async {}
+
+  @override
+  Future<void> deleteThread({required String threadId}) async {}
 }
 
 class _ConstantTurnRunner implements TurnRunner {

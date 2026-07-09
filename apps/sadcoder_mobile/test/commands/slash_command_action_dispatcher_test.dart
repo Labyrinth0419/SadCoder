@@ -260,6 +260,68 @@ void main() {
     expect(result.command?.command, 'rename');
   });
 
+  test('/archive runs a confirmed thread action', () async {
+    var archives = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      archiveThread: () async {
+        archives++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/archive'),
+      hasActiveTurn: false,
+    );
+
+    expect(archives, 1);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.archiveThread);
+  });
+
+  test('/delete can be cancelled by its confirmation callback', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      deleteThread: () async => SlashCommandCallbackResult.cancelled,
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/delete'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.cancelled);
+    expect(result.command?.command, 'delete');
+  });
+
+  test('archive and delete are unavailable during an active turn', () async {
+    var archiveCalls = 0;
+    var deleteCalls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      archiveThread: () async {
+        archiveCalls++;
+        return SlashCommandCallbackResult.executed;
+      },
+      deleteThread: () async {
+        deleteCalls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final archive = await dispatcher.dispatch(
+      registry.parseComposerText('/archive'),
+      hasActiveTurn: true,
+    );
+    final delete = await dispatcher.dispatch(
+      registry.parseComposerText('/delete'),
+      hasActiveTurn: true,
+    );
+
+    expect(archive.outcome, SlashCommandActionOutcome.unavailable);
+    expect(delete.outcome, SlashCommandActionOutcome.unavailable);
+    expect(archiveCalls, 0);
+    expect(deleteCalls, 0);
+  });
+
   test(
     'unknown and unsupported commands never fall through as prompts',
     () async {

@@ -11,6 +11,7 @@ import '../../i18n/app_localizations.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_list_controller.dart';
+import '../../threads/thread_mutation_runner.dart';
 import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
 import 'chat_status_summary.dart';
@@ -305,6 +306,8 @@ class _ChatPageState extends State<ChatPage> {
           startNewThread: _startNewThread,
           resumeThread: _resumeThread,
           renameThread: _renameThread,
+          archiveThread: _archiveCurrentThread,
+          deleteThread: _deleteCurrentThread,
         );
   }
 
@@ -392,6 +395,65 @@ class _ChatPageState extends State<ChatPage> {
     return true;
   }
 
+  Future<SlashCommandCallbackResult> _archiveCurrentThread() {
+    final l10n = context.l10n;
+    return _confirmThreadMutation(
+      title: l10n.archiveThreadTitle,
+      body: l10n.archiveThreadBody,
+      confirmLabel: l10n.archiveThreadConfirm,
+      mutate: (runner, threadId) => runner.archiveThread(threadId: threadId),
+    );
+  }
+
+  Future<SlashCommandCallbackResult> _deleteCurrentThread() {
+    final l10n = context.l10n;
+    return _confirmThreadMutation(
+      title: l10n.deleteThreadTitle,
+      body: l10n.deleteThreadBody,
+      confirmLabel: l10n.deleteThreadConfirm,
+      mutate: (runner, threadId) => runner.deleteThread(threadId: threadId),
+    );
+  }
+
+  Future<SlashCommandCallbackResult> _confirmThreadMutation({
+    required String title,
+    required String body,
+    required String confirmLabel,
+    required Future<void> Function(ThreadMutationRunner runner, String threadId)
+    mutate,
+  }) async {
+    final runner = widget.sessionController?.threadMutationRunner;
+    final threadId = _currentThreadId();
+    if (runner == null || threadId == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    final cancelLabel = context.l10n.approvalCancel;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(cancelLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+    await mutate(runner, threadId);
+    _clearLocalTranscript();
+    unawaited(widget.threadListController?.refresh());
+    return SlashCommandCallbackResult.executed;
+  }
+
   String? _currentThreadId() {
     final selectedThreadId = widget.threadDetailController?.selectedThreadId;
     if (selectedThreadId != null && selectedThreadId.trim().isNotEmpty) {
@@ -434,10 +496,16 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.newThread => l10n.slashCommandNewThread,
         SlashCommandActionEffect.resumeThread => l10n.slashCommandResumedThread,
         SlashCommandActionEffect.renameThread => l10n.slashCommandRenamedThread,
+        SlashCommandActionEffect.archiveThread =>
+          l10n.slashCommandArchivedThread,
+        SlashCommandActionEffect.deleteThread => l10n.slashCommandDeletedThread,
         SlashCommandActionEffect.none => l10n.slashCommandExecuted(
           result.slash,
         ),
       },
+      SlashCommandActionOutcome.cancelled => l10n.slashCommandCancelled(
+        result.slash,
+      ),
       SlashCommandActionOutcome.unknown => l10n.slashCommandUnknown(
         result.slash,
       ),

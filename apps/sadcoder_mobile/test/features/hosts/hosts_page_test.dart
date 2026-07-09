@@ -781,6 +781,12 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
     required String threadId,
     required String name,
   }) async {}
+
+  @override
+  Future<void> archiveThread({required String threadId}) async {}
+
+  @override
+  Future<void> deleteThread({required String threadId}) async {}
 }
 
 class _FakeReconnectDelayScheduler implements ReconnectDelayScheduler {

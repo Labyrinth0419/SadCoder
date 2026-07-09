@@ -62,6 +62,14 @@ class CodexAppServerClient {
     return _request('thread/name/set', {'threadId': threadId, 'name': name});
   }
 
+  Future<Map<String, Object?>> archiveThread({required String threadId}) {
+    return _request('thread/archive', {'threadId': threadId});
+  }
+
+  Future<Map<String, Object?>> deleteThread({required String threadId}) {
+    return _request('thread/delete', {'threadId': threadId});
+  }
+
   Future<Map<String, Object?>> startTurn({
     required String threadId,
     required String text,

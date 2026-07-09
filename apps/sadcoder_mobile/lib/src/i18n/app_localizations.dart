@@ -129,6 +129,10 @@ class AppLocalizations {
   String get slashCommandNewThread => _text('slashCommandNewThread');
   String get slashCommandResumedThread => _text('slashCommandResumedThread');
   String get slashCommandRenamedThread => _text('slashCommandRenamedThread');
+  String get slashCommandArchivedThread => _text('slashCommandArchivedThread');
+  String get slashCommandDeletedThread => _text('slashCommandDeletedThread');
+  String slashCommandCancelled(String slash) =>
+      _text('slashCommandCancelled').replaceAll('{slash}', slash);
   String slashCommandExecuted(String slash) =>
       _text('slashCommandExecuted').replaceAll('{slash}', slash);
   String slashCommandUnsupported(String slash) =>
@@ -186,6 +190,12 @@ class AppLocalizations {
   String get editTurnOverrides => _text('editTurnOverrides');
   String get applyTurnOverrides => _text('applyTurnOverrides');
   String get clearTurnOverrides => _text('clearTurnOverrides');
+  String get archiveThreadTitle => _text('archiveThreadTitle');
+  String get archiveThreadBody => _text('archiveThreadBody');
+  String get archiveThreadConfirm => _text('archiveThreadConfirm');
+  String get deleteThreadTitle => _text('deleteThreadTitle');
+  String get deleteThreadBody => _text('deleteThreadBody');
+  String get deleteThreadConfirm => _text('deleteThreadConfirm');
   String get serverConfigSnapshot => _text('serverConfigSnapshot');
   String get refreshServerConfig => _text('refreshServerConfig');
   String get serverConfigUnavailable => _text('serverConfigUnavailable');
@@ -330,6 +340,9 @@ const _values = <String, Map<String, String>>{
     'slashCommandNewThread': 'Started a new thread.',
     'slashCommandResumedThread': 'Resumed thread.',
     'slashCommandRenamedThread': 'Renamed thread.',
+    'slashCommandArchivedThread': 'Archived thread.',
+    'slashCommandDeletedThread': 'Deleted thread.',
+    'slashCommandCancelled': 'Canceled {slash}.',
     'slashCommandExecuted': 'Executed {slash}.',
     'slashCommandUnsupported': '{slash} is not implemented yet.',
     'slashCommandUnavailable': '{slash} is unavailable right now.',
@@ -384,6 +397,14 @@ const _values = <String, Map<String, String>>{
     'editTurnOverrides': 'Edit next turn overrides',
     'applyTurnOverrides': 'Apply to next turn',
     'clearTurnOverrides': 'Clear next turn overrides',
+    'archiveThreadTitle': 'Archive thread?',
+    'archiveThreadBody':
+        'This moves the current thread out of the active session list.',
+    'archiveThreadConfirm': 'Archive',
+    'deleteThreadTitle': 'Delete thread?',
+    'deleteThreadBody':
+        'This permanently deletes the current thread and spawned descendant threads. This cannot be undone.',
+    'deleteThreadConfirm': 'Delete',
     'serverConfigSnapshot': 'Server config snapshot',
     'refreshServerConfig': 'Refresh server config',
     'serverConfigUnavailable': 'Connect to a host, then refresh server config.',
@@ -500,6 +521,9 @@ const _values = <String, Map<String, String>>{
     'slashCommandNewThread': '已创建新会话。',
     'slashCommandResumedThread': '已恢复会话。',
     'slashCommandRenamedThread': '已重命名会话。',
+    'slashCommandArchivedThread': '已归档会话。',
+    'slashCommandDeletedThread': '已删除会话。',
+    'slashCommandCancelled': '已取消 {slash}。',
     'slashCommandExecuted': '已执行 {slash}。',
     'slashCommandUnsupported': '{slash} 暂未实现。',
     'slashCommandUnavailable': '{slash} 当前不可用。',
@@ -552,6 +576,12 @@ const _values = <String, Map<String, String>>{
     'editTurnOverrides': '编辑本次回合覆盖',
     'applyTurnOverrides': '应用到本次回合',
     'clearTurnOverrides': '清除本次回合覆盖',
+    'archiveThreadTitle': '归档会话？',
+    'archiveThreadBody': '这会把当前会话移出活动会话列表。',
+    'archiveThreadConfirm': '归档',
+    'deleteThreadTitle': '删除会话？',
+    'deleteThreadBody': '这会永久删除当前会话和派生的子会话，无法撤销。',
+    'deleteThreadConfirm': '删除',
     'serverConfigSnapshot': '服务器配置快照',
     'refreshServerConfig': '刷新服务器配置',
     'serverConfigUnavailable': '连接主机后刷新服务器配置。',

@@ -8,10 +8,15 @@ typedef SlashCommandToggleRawTranscript = bool? Function(String arguments);
 typedef SlashCommandStartNewThread = Future<bool> Function();
 typedef SlashCommandResumeThread = Future<bool> Function(String threadId);
 typedef SlashCommandRenameThread = Future<bool> Function(String name);
+typedef SlashCommandConfirmedThreadAction =
+    Future<SlashCommandCallbackResult> Function();
+
+enum SlashCommandCallbackResult { executed, cancelled, unavailable }
 
 enum SlashCommandActionOutcome {
   ignored,
   executed,
+  cancelled,
   unknown,
   unsupported,
   unavailable,
@@ -28,6 +33,8 @@ enum SlashCommandActionEffect {
   newThread,
   resumeThread,
   renameThread,
+  archiveThread,
+  deleteThread,
 }
 
 class SlashCommandActionResult {
@@ -61,6 +68,17 @@ class SlashCommandActionResult {
          arguments: arguments,
          effect: effect,
          message: message,
+       );
+
+  const SlashCommandActionResult.cancelled({
+    required SlashCommandSpec command,
+    required String rawCommand,
+    required String arguments,
+  }) : this._(
+         outcome: SlashCommandActionOutcome.cancelled,
+         command: command,
+         rawCommand: rawCommand,
+         arguments: arguments,
        );
 
   const SlashCommandActionResult.unknown({
@@ -128,6 +146,8 @@ class SlashCommandActionDispatcher {
     this.startNewThread,
     this.resumeThread,
     this.renameThread,
+    this.archiveThread,
+    this.deleteThread,
   });
 
   final SlashCommandDisconnect? disconnect;
@@ -138,6 +158,8 @@ class SlashCommandActionDispatcher {
   final SlashCommandStartNewThread? startNewThread;
   final SlashCommandResumeThread? resumeThread;
   final SlashCommandRenameThread? renameThread;
+  final SlashCommandConfirmedThreadAction? archiveThread;
+  final SlashCommandConfirmedThreadAction? deleteThread;
 
   Future<SlashCommandActionResult> dispatch(
     SlashCommandParseResult parsed, {
@@ -186,6 +208,18 @@ class SlashCommandActionDispatcher {
         return _resumeThread(parsed);
       case 'rename':
         return _renameThread(parsed);
+      case 'archive':
+        return _confirmedThreadAction(
+          parsed,
+          action: archiveThread,
+          effect: SlashCommandActionEffect.archiveThread,
+        );
+      case 'delete':
+        return _confirmedThreadAction(
+          parsed,
+          action: deleteThread,
+          effect: SlashCommandActionEffect.deleteThread,
+        );
       default:
         return SlashCommandActionResult.unsupported(
           command: command,
@@ -472,6 +506,51 @@ class SlashCommandActionDispatcher {
         arguments: parsed.arguments,
         effect: SlashCommandActionEffect.renameThread,
       );
+    } on Object catch (error) {
+      return SlashCommandActionResult.failed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        error: error,
+      );
+    }
+  }
+
+  Future<SlashCommandActionResult> _confirmedThreadAction(
+    SlashCommandParseResult parsed, {
+    required SlashCommandConfirmedThreadAction? action,
+    required SlashCommandActionEffect effect,
+  }) async {
+    if (action == null) {
+      return SlashCommandActionResult.unsupported(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    try {
+      final result = await action();
+      return switch (result) {
+        SlashCommandCallbackResult.executed =>
+          SlashCommandActionResult.executed(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+            effect: effect,
+          ),
+        SlashCommandCallbackResult.cancelled =>
+          SlashCommandActionResult.cancelled(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+          ),
+        SlashCommandCallbackResult.unavailable =>
+          SlashCommandActionResult.unavailable(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+          ),
+      };
     } on Object catch (error) {
       return SlashCommandActionResult.failed(
         command: parsed.command!,
