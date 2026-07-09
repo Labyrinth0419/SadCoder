@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../agent/agent_snapshot_reader.dart';
 import '../approvals/approval_state_controller.dart';
 import '../ssh/ssh_profile.dart';
+import '../threads/thread_list_reader.dart';
 import 'codex_session_connector.dart';
 import 'reconnect_policy.dart';
 
@@ -54,6 +55,8 @@ class CodexSessionStateController extends ChangeNotifier {
   SshProfile? get profile => _profile;
 
   Object? get error => _error;
+
+  ThreadListReader? get threadListReader => _connection?.threadListReader;
 
   int get reconnectAttempt => _reconnectAttempt;
 

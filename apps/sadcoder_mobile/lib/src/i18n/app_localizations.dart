@@ -17,6 +17,7 @@ class AppLocalizations {
   String get appTitle => _text('appTitle');
   String get hosts => _text('hosts');
   String get chat => _text('chat');
+  String get sessions => _text('sessions');
   String get approvals => _text('approvals');
   String get settings => _text('settings');
   String get sshProfile => _text('sshProfile');
@@ -70,6 +71,13 @@ class AppLocalizations {
   String get slashCommandSurface => _text('slashCommandSurface');
   String get slashCommandSurfaceBody => _text('slashCommandSurfaceBody');
   String get connectBeforeTurn => _text('connectBeforeTurn');
+  String get connectBeforeLoadingThreads =>
+      _text('connectBeforeLoadingThreads');
+  String get refreshThreads => _text('refreshThreads');
+  String get noThreads => _text('noThreads');
+  String get threadListFailed => _text('threadListFailed');
+  String get forkedThread => _text('forkedThread');
+  String get subagentThread => _text('subagentThread');
   String get send => _text('send');
   String get slashCommands => _text('slashCommands');
   String get typeCommandName => _text('typeCommandName');
@@ -135,6 +143,7 @@ const _values = <String, Map<String, String>>{
     'appTitle': 'SadCoder',
     'hosts': 'Hosts',
     'chat': 'Chat',
+    'sessions': 'Sessions',
     'approvals': 'Approvals',
     'settings': 'Settings',
     'sshProfile': 'SSH profile',
@@ -186,6 +195,12 @@ const _values = <String, Map<String, String>>{
     'slashCommandSurfaceBody':
         'Typing / will later open the SadCoder command palette instead of sending slash text as a normal prompt.',
     'connectBeforeTurn': 'Connect to a host before sending a turn',
+    'connectBeforeLoadingThreads': 'Connect to a host to load sessions.',
+    'refreshThreads': 'Refresh sessions',
+    'noThreads': 'No sessions found',
+    'threadListFailed': 'Failed to load sessions',
+    'forkedThread': 'fork',
+    'subagentThread': 'subagent',
     'send': 'Send',
     'slashCommands': 'Slash commands',
     'typeCommandName': 'Type a command name',
@@ -226,6 +241,7 @@ const _values = <String, Map<String, String>>{
     'appTitle': 'SadCoder',
     'hosts': '主机',
     'chat': '对话',
+    'sessions': '会话',
     'approvals': '审批',
     'settings': '设置',
     'sshProfile': 'SSH 配置',
@@ -276,6 +292,12 @@ const _values = <String, Map<String, String>>{
     'slashCommandSurface': '斜杠命令入口',
     'slashCommandSurfaceBody': '输入 / 后会打开 SadCoder 命令面板，而不是把斜杠文本当作普通提示词发送。',
     'connectBeforeTurn': '连接主机后才能发送任务',
+    'connectBeforeLoadingThreads': '连接主机后加载会话。',
+    'refreshThreads': '刷新会话',
+    'noThreads': '暂无会话',
+    'threadListFailed': '会话加载失败',
+    'forkedThread': '分叉',
+    'subagentThread': '子 agent',
     'send': '发送',
     'slashCommands': '斜杠命令',
     'typeCommandName': '输入命令名称',

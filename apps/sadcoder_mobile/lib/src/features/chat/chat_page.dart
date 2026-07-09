@@ -1,12 +1,24 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../commands/slash_command_registry.dart';
 import '../../i18n/app_localizations.dart';
+import '../../session/codex_session_state_controller.dart';
+import '../../threads/thread_list_controller.dart';
+import '../../threads/thread_summary.dart';
 
 class ChatPage extends StatefulWidget {
-  const ChatPage({super.key, this.registry = const SlashCommandRegistry()});
+  const ChatPage({
+    super.key,
+    this.registry = const SlashCommandRegistry(),
+    this.sessionController,
+    this.threadListController,
+  });
 
   final SlashCommandRegistry registry;
+  final CodexSessionStateController? sessionController;
+  final ThreadListController? threadListController;
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -15,10 +27,38 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   SlashCommandParseResult _slashCommand =
       const SlashCommandParseResult.notSlash();
+  CodexSessionStatus? _lastSessionStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.sessionController?.addListener(_handleSessionChanged);
+    _lastSessionStatus = widget.sessionController?.status;
+    _refreshThreadsIfConnected();
+  }
+
+  @override
+  void didUpdateWidget(ChatPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sessionController != widget.sessionController) {
+      oldWidget.sessionController?.removeListener(_handleSessionChanged);
+      widget.sessionController?.addListener(_handleSessionChanged);
+      _lastSessionStatus = widget.sessionController?.status;
+      _refreshThreadsIfConnected();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.sessionController?.removeListener(_handleSessionChanged);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final sessionController = widget.sessionController;
+    final threadListController = widget.threadListController;
     return Column(
       children: [
         Padding(
@@ -31,7 +71,11 @@ class _ChatPageState extends State<ChatPage> {
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
               ),
-              _StateChip(label: l10n.disconnected),
+              _StateChip(
+                label: _connectionLabel(l10n, sessionController?.status),
+                connected:
+                    sessionController?.status == CodexSessionStatus.connected,
+              ),
             ],
           ),
         ),
@@ -48,6 +92,7 @@ class _ChatPageState extends State<ChatPage> {
                 title: l10n.slashCommandSurface,
                 body: l10n.slashCommandSurfaceBody,
               ),
+              _ThreadListPanel(controller: threadListController),
               _SlashCommandPreview(result: _slashCommand),
             ],
           ),
@@ -79,18 +124,197 @@ class _ChatPageState extends State<ChatPage> {
   void _handleComposerChanged(String value) {
     setState(() => _slashCommand = widget.registry.parseComposerText(value));
   }
+
+  void _handleSessionChanged() {
+    final status = widget.sessionController?.status;
+    if (_lastSessionStatus != CodexSessionStatus.connected &&
+        status == CodexSessionStatus.connected) {
+      unawaited(widget.threadListController?.refresh());
+    }
+    _lastSessionStatus = status;
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _refreshThreadsIfConnected() {
+    if (widget.sessionController?.status == CodexSessionStatus.connected) {
+      unawaited(widget.threadListController?.refresh());
+    }
+  }
+
+  String _connectionLabel(AppLocalizations l10n, CodexSessionStatus? status) {
+    return switch (status) {
+      CodexSessionStatus.connected => l10n.connected,
+      CodexSessionStatus.connecting => l10n.connecting,
+      CodexSessionStatus.reconnecting => l10n.reconnecting,
+      CodexSessionStatus.disconnecting => l10n.disconnecting,
+      CodexSessionStatus.failed => l10n.connectionFailed,
+      CodexSessionStatus.idle || null => l10n.disconnected,
+    };
+  }
 }
 
 class _StateChip extends StatelessWidget {
-  const _StateChip({required this.label});
+  const _StateChip({required this.label, required this.connected});
 
   final String label;
+  final bool connected;
 
   @override
   Widget build(BuildContext context) {
     return Chip(
-      avatar: const Icon(Icons.link_off, size: 18),
+      avatar: Icon(connected ? Icons.link : Icons.link_off, size: 18),
       label: Text(label),
+    );
+  }
+}
+
+class _ThreadListPanel extends StatelessWidget {
+  const _ThreadListPanel({required this.controller});
+
+  final ThreadListController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = this.controller;
+    if (controller == null) {
+      return _ThreadListCard(
+        title: context.l10n.sessions,
+        child: Text(context.l10n.connectBeforeLoadingThreads),
+      );
+    }
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) => _ThreadListContent(controller: controller),
+    );
+  }
+}
+
+class _ThreadListContent extends StatelessWidget {
+  const _ThreadListContent({required this.controller});
+
+  final ThreadListController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final title = l10n.sessions;
+    return switch (controller.status) {
+      ThreadListStatus.idle => _ThreadListCard(
+        title: title,
+        action: _RefreshThreadsButton(controller: controller),
+        child: Text(l10n.connectBeforeLoadingThreads),
+      ),
+      ThreadListStatus.loading => _ThreadListCard(
+        title: title,
+        child: const LinearProgressIndicator(),
+      ),
+      ThreadListStatus.failed => _ThreadListCard(
+        title: title,
+        action: _RefreshThreadsButton(controller: controller),
+        child: Text(
+          controller.error?.toString() ?? l10n.threadListFailed,
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+      ),
+      ThreadListStatus.loaded when controller.threads.isEmpty =>
+        _ThreadListCard(
+          title: title,
+          action: _RefreshThreadsButton(controller: controller),
+          child: Text(l10n.noThreads),
+        ),
+      ThreadListStatus.loaded => _ThreadListCard(
+        title: title,
+        action: _RefreshThreadsButton(controller: controller),
+        child: Column(
+          children: [
+            for (final thread in controller.threads)
+              _ThreadListTile(thread: thread),
+          ],
+        ),
+      ),
+    };
+  }
+}
+
+class _ThreadListCard extends StatelessWidget {
+  const _ThreadListCard({
+    required this.title,
+    required this.child,
+    this.action,
+  });
+
+  final String title;
+  final Widget child;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                ?action,
+              ],
+            ),
+            const SizedBox(height: 8),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RefreshThreadsButton extends StatelessWidget {
+  const _RefreshThreadsButton({required this.controller});
+
+  final ThreadListController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: context.l10n.refreshThreads,
+      onPressed: () => controller.refresh(),
+      icon: const Icon(Icons.refresh),
+    );
+  }
+}
+
+class _ThreadListTile extends StatelessWidget {
+  const _ThreadListTile({required this.thread});
+
+  final ThreadSummary thread;
+
+  @override
+  Widget build(BuildContext context) {
+    final badges = <String>[
+      thread.status,
+      if (thread.isFork) context.l10n.forkedThread,
+      if (thread.isSubagent) context.l10n.subagentThread,
+    ];
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.forum_outlined),
+      title: Text(thread.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        [
+          thread.cwd,
+          badges.join(' / '),
+        ].where((value) => value.isNotEmpty).join('\n'),
+      ),
+      isThreeLine: thread.cwd.isNotEmpty && badges.isNotEmpty,
     );
   }
 }

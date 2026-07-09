@@ -11,6 +11,7 @@ import '../session/codex_session_connector.dart';
 import '../session/codex_session_state_controller.dart';
 import '../ssh/dart_ssh_proxy_connector.dart';
 import '../ssh/dart_ssh_remote_command_runner.dart';
+import '../threads/thread_list_controller.dart';
 
 const _defaultSessionConnector = CodexSessionConnector(
   proxyConnector: DartSshProxyConnector(),
@@ -33,6 +34,7 @@ class _AppShellState extends State<AppShell> {
   int _index = 0;
   late ApprovalStateController _approvalController;
   late CodexSessionStateController _sessionController;
+  late ThreadListController _threadListController;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
 
@@ -127,9 +129,13 @@ class _AppShellState extends State<AppShell> {
           approvalController: _approvalController,
           snapshotReader: _defaultAgentRemoteService,
         );
+    _threadListController = ThreadListController(
+      readerProvider: () => _sessionController.threadListReader,
+    );
   }
 
   void _disposeOwnedControllers() {
+    _threadListController.dispose();
     if (_ownsSessionController) {
       _sessionController.dispose();
     }
@@ -141,7 +147,10 @@ class _AppShellState extends State<AppShell> {
   Widget _pageForIndex(int index) {
     return switch (index) {
       0 => HostsPage(sessionController: _sessionController),
-      1 => const ChatPage(),
+      1 => ChatPage(
+        sessionController: _sessionController,
+        threadListController: _threadListController,
+      ),
       2 => ApprovalsPage(
         approvals: _approvalController.approvals,
         onCommandOrFileDecision: _approvalController.canRespond

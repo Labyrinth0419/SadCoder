@@ -14,6 +14,8 @@ import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/reconnect_policy.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
+import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
+import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 
 void main() {
   testWidgets('runs a manual M0 probe from the host form', (tester) async {
@@ -350,6 +352,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   @override
   final SshProfile profile;
 
+  @override
+  ThreadListReader get threadListReader => const _FakeThreadListReader();
+
   final VoidCallback onClose;
   bool _closed = false;
 
@@ -369,6 +374,15 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     }
     _closed = true;
     onClose();
+  }
+}
+
+class _FakeThreadListReader implements ThreadListReader {
+  const _FakeThreadListReader();
+
+  @override
+  Future<ThreadListPage> listThreads({int limit = 20}) async {
+    return const ThreadListPage(threads: []);
   }
 }
 

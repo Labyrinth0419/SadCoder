@@ -14,6 +14,8 @@ import 'package:sadcoder_mobile/src/session/reconnect_policy.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_proxy_connector.dart';
+import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
+import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 
 void main() {
   test('connect opens a session and records state transitions', () async {
@@ -36,6 +38,7 @@ void main() {
     ]);
     expect(controller.isConnected, true);
     expect(controller.profile, _profile);
+    expect(controller.threadListReader, isNotNull);
     expect(connector.connectedProfiles, [_profile]);
     expect(approvalController.canRespond, true);
   });
@@ -384,6 +387,7 @@ void main() {
     await _flushMicrotasks();
 
     expect(controller.status, CodexSessionStatus.idle);
+    expect(controller.threadListReader, isNull);
     expect(connector.connectCount, 1);
     expect(connector.closeCount, 1);
     expect(approvalController.approvals.single.requestId, 'approval-1');
@@ -459,6 +463,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     return CodexSessionConnection(
       profile: profile,
       session: session,
+      threadListReader: const _FakeThreadListReader(),
       proxyConnection: AgentProxyConnection(
         input: const Stream<Uint8List>.empty(),
         output: StreamController<Uint8List>().sink,
@@ -469,6 +474,15 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
         },
       ),
     );
+  }
+}
+
+class _FakeThreadListReader implements ThreadListReader {
+  const _FakeThreadListReader();
+
+  @override
+  Future<ThreadListPage> listThreads({int limit = 20}) async {
+    return const ThreadListPage(threads: []);
   }
 }
 
