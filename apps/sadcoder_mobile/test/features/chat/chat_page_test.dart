@@ -16,6 +16,8 @@ import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_page.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_timeline_controller.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_server_status_controller.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_controller.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_controller.dart';
@@ -1529,6 +1531,149 @@ void main() {
     expect(find.textContaining('Reset credits: 2 available'), findsOneWidget);
   });
 
+  testWidgets('/mcp lists MCP servers with compact detail by default', (
+    tester,
+  ) async {
+    final mcpReader = _RecordingMcpServerStatusReader(
+      page: McpServerStatusPage.fromJson({
+        'data': [
+          {
+            'name': 'filesystem',
+            'authStatus': 'unsupported',
+            'tools': {
+              'read_file': {'name': 'read_file'},
+            },
+          },
+        ],
+      }),
+    );
+    final mcpController = McpServerStatusController(
+      readerProvider: () => mcpReader,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_selected',
+            'sessionId': 'sess_1',
+            'preview': 'Selected thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+            'turns': <Object?>[],
+          }),
+        ),
+      ),
+    );
+    addTearDown(detailController.dispose);
+    addTearDown(mcpController.dispose);
+    await detailController.readThread('thr_selected');
+
+    await _pumpChatPage(
+      tester,
+      threadDetailController: detailController,
+      mcpServerStatusController: mcpController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/mcp',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(mcpReader.threadIds, ['thr_selected']);
+    expect(mcpReader.limits, [25]);
+    expect(mcpReader.details, [McpServerStatusDetail.toolsAndAuthOnly]);
+    expect(find.textContaining('MCP servers'), findsOneWidget);
+    expect(
+      find.textContaining('filesystem: auth: unsupported, tools: 1'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('/mcp verbose requests full MCP detail', (tester) async {
+    final mcpReader = _RecordingMcpServerStatusReader(
+      page: McpServerStatusPage.fromJson({
+        'data': [
+          {
+            'name': 'github',
+            'authStatus': 'oAuth',
+            'serverInfo': {
+              'name': 'github-mcp',
+              'version': '1.2.3',
+              'title': 'GitHub MCP',
+            },
+            'tools': {
+              'search_issues': {
+                'name': 'search_issues',
+                'title': 'Search issues',
+              },
+            },
+            'resources': [
+              {'name': 'readme', 'title': 'README', 'uri': 'repo://readme'},
+            ],
+            'resourceTemplates': [
+              {
+                'name': 'repo_file',
+                'title': 'Repository file',
+                'uriTemplate': 'repo://{path}',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    final mcpController = McpServerStatusController(
+      readerProvider: () => mcpReader,
+    );
+    addTearDown(mcpController.dispose);
+
+    await _pumpChatPage(tester, mcpServerStatusController: mcpController);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/mcp verbose',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(mcpReader.details, [McpServerStatusDetail.full]);
+    expect(find.textContaining('github: auth: oAuth'), findsOneWidget);
+    expect(find.textContaining('server: GitHub MCP'), findsOneWidget);
+    expect(find.textContaining('tools: Search issues'), findsOneWidget);
+    expect(find.textContaining('resources: README'), findsOneWidget);
+    expect(find.textContaining('templates: Repository file'), findsOneWidget);
+  });
+
+  testWidgets('/mcp unsupported arguments do not refresh or send a prompt', (
+    tester,
+  ) async {
+    final mcpReader = _RecordingMcpServerStatusReader(
+      page: const McpServerStatusPage(servers: []),
+    );
+    final mcpController = McpServerStatusController(
+      readerProvider: () => mcpReader,
+    );
+    addTearDown(mcpController.dispose);
+
+    await _pumpChatPage(tester, mcpServerStatusController: mcpController);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/mcp sideways',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(mcpReader.calls, 0);
+    expect(find.text('/mcp is unavailable right now.'), findsOneWidget);
+  });
+
   testWidgets('/raw toggles raw timeline item JSON locally', (tester) async {
     final timelineController = ChatTimelineController();
     addTearDown(timelineController.dispose);
@@ -2306,6 +2451,7 @@ Future<void> _pumpChatPage(
   CodexConfigSnapshotController? configSnapshotController,
   AccountSnapshotController? accountSnapshotController,
   AccountUsageSnapshotController? accountUsageSnapshotController,
+  McpServerStatusController? mcpServerStatusController,
   ModelListController? modelListController,
   PermissionProfileListController? permissionProfileListController,
 }) {
@@ -2329,6 +2475,7 @@ Future<void> _pumpChatPage(
           configSnapshotController: configSnapshotController,
           accountSnapshotController: accountSnapshotController,
           accountUsageSnapshotController: accountUsageSnapshotController,
+          mcpServerStatusController: mcpServerStatusController,
           modelListController: modelListController,
           permissionProfileListController: permissionProfileListController,
         ),
@@ -2458,6 +2605,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
       const _FakeAccountUsageSnapshotReader();
 
   @override
+  McpServerStatusReader get mcpServerStatusReader =>
+      const _FakeMcpServerStatusReader();
+
+  @override
   CodexConfigSnapshotReader get configSnapshotReader =>
       const _FakeConfigSnapshotReader();
 
@@ -2554,6 +2705,46 @@ class _FakeAccountUsageSnapshotReader implements AccountUsageSnapshotReader {
       rateLimitsByLimitId: {},
       rateLimitResetCredits: null,
     );
+  }
+}
+
+class _FakeMcpServerStatusReader implements McpServerStatusReader {
+  const _FakeMcpServerStatusReader();
+
+  @override
+  Future<McpServerStatusPage> listMcpServers({
+    String? threadId,
+    String? cursor,
+    int? limit,
+    McpServerStatusDetail detail = McpServerStatusDetail.toolsAndAuthOnly,
+  }) async {
+    return const McpServerStatusPage(servers: []);
+  }
+}
+
+class _RecordingMcpServerStatusReader implements McpServerStatusReader {
+  _RecordingMcpServerStatusReader({required this.page});
+
+  final McpServerStatusPage page;
+  final threadIds = <String?>[];
+  final cursors = <String?>[];
+  final limits = <int?>[];
+  final details = <McpServerStatusDetail>[];
+  int calls = 0;
+
+  @override
+  Future<McpServerStatusPage> listMcpServers({
+    String? threadId,
+    String? cursor,
+    int? limit,
+    McpServerStatusDetail detail = McpServerStatusDetail.toolsAndAuthOnly,
+  }) async {
+    calls++;
+    threadIds.add(threadId);
+    cursors.add(cursor);
+    limits.add(limit);
+    details.add(detail);
+    return page;
   }
 }
 

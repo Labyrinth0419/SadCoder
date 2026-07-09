@@ -34,6 +34,12 @@ void main() {
     final client = CodexAppServerClient(transport);
     await client.listModels();
     await client.listPermissionProfiles(cwd: '/repo', cursor: '2', limit: 25);
+    await client.listMcpServerStatus(
+      threadId: 'thr_1',
+      detail: 'toolsAndAuthOnly',
+      limit: 25,
+      cursor: 'mcp_cursor',
+    );
     await client.readAccount();
     await client.readAccountRateLimits();
     await client.readAccountUsage();
@@ -51,6 +57,7 @@ void main() {
     expect(requests.map((request) => request.method), [
       'model/list',
       'permissionProfile/list',
+      'mcpServerStatus/list',
       'account/read',
       'account/rateLimits/read',
       'account/usage/read',
@@ -67,21 +74,27 @@ void main() {
     ]);
     expect(requests.first.params, isEmpty);
     expect(requests[1].params, {'cursor': '2', 'limit': 25, 'cwd': '/repo'});
-    expect(requests[2].params, {'refreshToken': false});
-    expect(requests[3].params, isNull);
+    expect(requests[2].params, {
+      'threadId': 'thr_1',
+      'cursor': 'mcp_cursor',
+      'limit': 25,
+      'detail': 'toolsAndAuthOnly',
+    });
+    expect(requests[3].params, {'refreshToken': false});
     expect(requests[4].params, isNull);
-    expect(requests[5].params?['limit'], 5);
-    expect(requests[6].params, {'includeLayers': true, 'cwd': '/repo'});
-    expect(requests[7].params, {'threadId': 'thr_1', 'includeTurns': true});
-    expect(requests[8].params, isEmpty);
-    expect(requests[9].params, {'threadId': 'thr_1'});
-    expect(requests[10].params, {
+    expect(requests[5].params, isNull);
+    expect(requests[6].params?['limit'], 5);
+    expect(requests[7].params, {'includeLayers': true, 'cwd': '/repo'});
+    expect(requests[8].params, {'threadId': 'thr_1', 'includeTurns': true});
+    expect(requests[9].params, isEmpty);
+    expect(requests[10].params, {'threadId': 'thr_1'});
+    expect(requests[11].params, {
       'threadId': 'thr_1',
       'name': 'Renamed thread',
     });
-    expect(requests[11].params, {'threadId': 'thr_1'});
     expect(requests[12].params, {'threadId': 'thr_1'});
-    expect(requests[13].params, {
+    expect(requests[13].params, {'threadId': 'thr_1'});
+    expect(requests[14].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},

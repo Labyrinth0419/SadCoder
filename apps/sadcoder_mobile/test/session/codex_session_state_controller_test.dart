@@ -12,6 +12,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_session.dart';
@@ -569,6 +570,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       configSnapshotReader: const _FakeConfigSnapshotReader(),
       accountSnapshotReader: const _FakeAccountSnapshotReader(),
       accountUsageSnapshotReader: const _FakeAccountUsageSnapshotReader(),
+      mcpServerStatusReader: const _FakeMcpServerStatusReader(),
       modelListReader: const _FakeModelListReader(),
       permissionProfileListReader: const _FakePermissionProfileListReader(),
       threadMutationRunner: const _FakeThreadMutationRunner(),
@@ -619,6 +621,20 @@ class _FakeAccountUsageSnapshotReader implements AccountUsageSnapshotReader {
       rateLimitsByLimitId: {},
       rateLimitResetCredits: null,
     );
+  }
+}
+
+class _FakeMcpServerStatusReader implements McpServerStatusReader {
+  const _FakeMcpServerStatusReader();
+
+  @override
+  Future<McpServerStatusPage> listMcpServers({
+    String? threadId,
+    String? cursor,
+    int? limit,
+    McpServerStatusDetail detail = McpServerStatusDetail.toolsAndAuthOnly,
+  }) async {
+    return const McpServerStatusPage(servers: []);
   }
 }
 

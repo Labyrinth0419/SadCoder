@@ -241,6 +241,16 @@ class AppLocalizations {
   String get accountUsageRecentDaily => _text('accountUsageRecentDaily');
   String get accountUsageRateLimits => _text('accountUsageRateLimits');
   String get accountUsageResetCredits => _text('accountUsageResetCredits');
+  String get mcpServersStatus => _text('mcpServersStatus');
+  String get mcpServersUnavailable => _text('mcpServersUnavailable');
+  String get mcpServersLoadFailed => _text('mcpServersLoadFailed');
+  String get mcpServersEmpty => _text('mcpServersEmpty');
+  String get mcpServerAuthStatus => _text('mcpServerAuthStatus');
+  String get mcpServerTools => _text('mcpServerTools');
+  String get mcpServerResources => _text('mcpServerResources');
+  String get mcpServerResourceTemplates => _text('mcpServerResourceTemplates');
+  String get mcpServerInfo => _text('mcpServerInfo');
+  String get mcpServersMore => _text('mcpServersMore');
   String get lifetimeTokens => _text('lifetimeTokens');
   String get peakDailyTokens => _text('peakDailyTokens');
   String get currentStreakDays => _text('currentStreakDays');
@@ -526,6 +536,16 @@ const _values = <String, Map<String, String>>{
     'accountUsageRecentDaily': 'Recent daily usage',
     'accountUsageRateLimits': 'Rate limits',
     'accountUsageResetCredits': 'Reset credits',
+    'mcpServersStatus': 'MCP servers',
+    'mcpServersUnavailable': 'Connect to a host, then run /mcp.',
+    'mcpServersLoadFailed': 'Failed to load MCP servers',
+    'mcpServersEmpty': 'No MCP servers configured.',
+    'mcpServerAuthStatus': 'auth',
+    'mcpServerTools': 'tools',
+    'mcpServerResources': 'resources',
+    'mcpServerResourceTemplates': 'templates',
+    'mcpServerInfo': 'server',
+    'mcpServersMore': 'More MCP servers are available.',
     'lifetimeTokens': 'Lifetime tokens',
     'peakDailyTokens': 'Peak daily tokens',
     'currentStreakDays': 'Current streak',
@@ -764,6 +784,16 @@ const _values = <String, Map<String, String>>{
     'accountUsageRecentDaily': '最近每日使用量',
     'accountUsageRateLimits': '速率限制',
     'accountUsageResetCredits': '重置额度',
+    'mcpServersStatus': 'MCP 服务器',
+    'mcpServersUnavailable': '连接主机后运行 /mcp。',
+    'mcpServersLoadFailed': 'MCP 服务器加载失败',
+    'mcpServersEmpty': '未配置 MCP 服务器。',
+    'mcpServerAuthStatus': '认证',
+    'mcpServerTools': '工具',
+    'mcpServerResources': '资源',
+    'mcpServerResourceTemplates': '模板',
+    'mcpServerInfo': '服务器',
+    'mcpServersMore': '还有更多 MCP 服务器可用。',
     'lifetimeTokens': '累计 token',
     'peakDailyTokens': '单日峰值 token',
     'currentStreakDays': '当前连续天数',

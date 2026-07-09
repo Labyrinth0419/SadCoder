@@ -1,0 +1,86 @@
+import '../../i18n/app_localizations.dart';
+import '../../mcp/mcp_server_status_controller.dart';
+import '../../mcp/mcp_server_status_reader.dart';
+
+String buildMcpServerStatusSummary({
+  required AppLocalizations l10n,
+  McpServerStatusController? controller,
+  bool verbose = false,
+}) {
+  final lines = <String>[l10n.mcpServersStatus];
+  if (controller == null) {
+    lines.add(l10n.mcpServersUnavailable);
+    return lines.join('\n');
+  }
+
+  if (controller.status == McpServerStatusListStatus.failed) {
+    final error = controller.error;
+    lines.add('${l10n.mcpServersLoadFailed}${error == null ? '' : ': $error'}');
+    return lines.join('\n');
+  }
+
+  final page = controller.page;
+  if (page == null) {
+    lines.add(l10n.mcpServersUnavailable);
+    return lines.join('\n');
+  }
+
+  if (page.servers.isEmpty) {
+    lines.add(l10n.mcpServersEmpty);
+    return lines.join('\n');
+  }
+
+  for (final server in page.servers) {
+    lines.add(_serverSummaryLine(l10n, server));
+    if (verbose) {
+      lines.addAll(_serverVerboseLines(l10n, server));
+    }
+  }
+
+  if (page.nextCursor != null) {
+    lines.add(l10n.mcpServersMore);
+  }
+
+  return lines.join('\n');
+}
+
+String _serverSummaryLine(AppLocalizations l10n, McpServerStatus server) {
+  final counts = [
+    '${l10n.mcpServerTools}: ${server.tools.length}',
+    '${l10n.mcpServerResources}: ${server.resources.length}',
+    '${l10n.mcpServerResourceTemplates}: ${server.resourceTemplates.length}',
+  ].join(', ');
+  return '${server.name}: ${l10n.mcpServerAuthStatus}: ${server.authStatus}, $counts';
+}
+
+Iterable<String> _serverVerboseLines(
+  AppLocalizations l10n,
+  McpServerStatus server,
+) sync* {
+  final info = _serverInfoSummary(server.serverInfo);
+  if (info.isNotEmpty) {
+    yield '  ${l10n.mcpServerInfo}: $info';
+  }
+
+  if (server.tools.isNotEmpty) {
+    yield '  ${l10n.mcpServerTools}: ${server.tools.values.map((tool) => tool.label).join(', ')}';
+  }
+  if (server.resources.isNotEmpty) {
+    yield '  ${l10n.mcpServerResources}: ${server.resources.map((resource) => resource.label).join(', ')}';
+  }
+  if (server.resourceTemplates.isNotEmpty) {
+    yield '  ${l10n.mcpServerResourceTemplates}: ${server.resourceTemplates.map((template) => template.label).join(', ')}';
+  }
+}
+
+String _serverInfoSummary(McpServerInfo? info) {
+  if (info == null) {
+    return '';
+  }
+  return [
+    if (info.title != null) info.title!,
+    '${info.name} ${info.version}',
+    if (info.description != null) info.description!,
+    if (info.websiteUrl != null) info.websiteUrl!,
+  ].join(', ');
+}

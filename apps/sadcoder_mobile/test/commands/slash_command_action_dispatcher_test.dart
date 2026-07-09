@@ -151,6 +151,38 @@ void main() {
     expect(result.message, 'Usage\nToken usage: Lifetime tokens=1234 tokens');
   });
 
+  test('/mcp passes inline arguments to the injected status summary', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      showMcp: (argument) async {
+        arguments.add(argument);
+        return 'MCP servers\nfilesystem: auth: unsupported, tools: 1';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/mcp verbose'),
+      hasActiveTurn: true,
+    );
+
+    expect(arguments, ['verbose']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.mcp);
+    expect(result.message, contains('filesystem'));
+  });
+
+  test('/mcp is unavailable when arguments are not supported', () async {
+    final dispatcher = SlashCommandActionDispatcher(showMcp: (_) => null);
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/mcp sideways'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'mcp');
+  });
+
   test('/raw delegates to the injected raw transcript toggle', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

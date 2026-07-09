@@ -11,6 +11,8 @@ import '../../config/codex_config_override_controller.dart';
 import '../../config/codex_config_overrides.dart';
 import '../../config/codex_config_snapshot_controller.dart';
 import '../../i18n/app_localizations.dart';
+import '../../mcp/mcp_server_status_controller.dart';
+import '../../mcp/mcp_server_status_reader.dart';
 import '../../models/model_list_controller.dart';
 import '../../permissions/permission_profile_list_controller.dart';
 import '../../permissions/permission_profile_list_reader.dart';
@@ -23,6 +25,7 @@ import '../../turns/turn_controller.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import 'chat_status_summary.dart';
 import 'chat_timeline_controller.dart';
+import 'chat_mcp_summary.dart';
 import 'chat_usage_summary.dart';
 import 'config_override_controls.dart';
 import 'config_override_labels.dart';
@@ -43,6 +46,7 @@ class ChatPage extends StatefulWidget {
     this.configSnapshotController,
     this.accountSnapshotController,
     this.accountUsageSnapshotController,
+    this.mcpServerStatusController,
     this.modelListController,
     this.permissionProfileListController,
     this.slashCommandDispatcher,
@@ -58,6 +62,7 @@ class ChatPage extends StatefulWidget {
   final CodexConfigSnapshotController? configSnapshotController;
   final AccountSnapshotController? accountSnapshotController;
   final AccountUsageSnapshotController? accountUsageSnapshotController;
+  final McpServerStatusController? mcpServerStatusController;
   final ModelListController? modelListController;
   final PermissionProfileListController? permissionProfileListController;
   final SlashCommandActionDispatcher? slashCommandDispatcher;
@@ -323,6 +328,7 @@ class _ChatPageState extends State<ChatPage> {
           copyLastResponse: _copyLastResponse,
           showStatus: _buildStatusSummary,
           showUsage: _buildUsageSummary,
+          showMcp: _buildMcpSummary,
           toggleRawTranscript: _toggleRawTranscript,
           startNewThread: _startNewThread,
           resumeThread: _resumeThread,
@@ -359,6 +365,31 @@ class _ChatPageState extends State<ChatPage> {
       await controller.refresh();
     }
     return buildAccountUsageSummary(l10n: l10n, controller: controller);
+  }
+
+  Future<String?> _buildMcpSummary(String arguments) async {
+    final normalized = arguments.trim().toLowerCase();
+    final verbose = normalized == 'verbose';
+    if (normalized.isNotEmpty && !verbose) {
+      return null;
+    }
+
+    final l10n = context.l10n;
+    final controller = widget.mcpServerStatusController;
+    if (controller != null) {
+      await controller.refresh(
+        threadId: _currentThreadId(),
+        limit: 25,
+        detail: verbose
+            ? McpServerStatusDetail.full
+            : McpServerStatusDetail.toolsAndAuthOnly,
+      );
+    }
+    return buildMcpServerStatusSummary(
+      l10n: l10n,
+      controller: controller,
+      verbose: verbose,
+    );
   }
 
   Future<void> _refreshStatusSources() async {
@@ -647,6 +678,7 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.usage => l10n.slashCommandExecuted(
           result.slash,
         ),
+        SlashCommandActionEffect.mcp => l10n.slashCommandExecuted(result.slash),
         SlashCommandActionEffect.rawTranscript =>
           _showRawTranscript
               ? l10n.slashCommandRawEnabled

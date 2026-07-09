@@ -7,6 +7,7 @@ typedef SlashCommandClearTranscript = void Function();
 typedef SlashCommandCopyLastResponse = Future<bool> Function();
 typedef SlashCommandShowStatus = FutureOr<String?> Function();
 typedef SlashCommandShowUsage = FutureOr<String?> Function();
+typedef SlashCommandShowMcp = FutureOr<String?> Function(String arguments);
 typedef SlashCommandToggleRawTranscript = bool? Function(String arguments);
 typedef SlashCommandStartNewThread = Future<bool> Function();
 typedef SlashCommandResumeThread = Future<bool> Function(String threadId);
@@ -35,6 +36,7 @@ enum SlashCommandActionEffect {
   copy,
   status,
   usage,
+  mcp,
   rawTranscript,
   newThread,
   resumeThread,
@@ -152,6 +154,7 @@ class SlashCommandActionDispatcher {
     this.copyLastResponse,
     this.showStatus,
     this.showUsage,
+    this.showMcp,
     this.toggleRawTranscript,
     this.startNewThread,
     this.resumeThread,
@@ -168,6 +171,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandCopyLastResponse? copyLastResponse;
   final SlashCommandShowStatus? showStatus;
   final SlashCommandShowUsage? showUsage;
+  final SlashCommandShowMcp? showMcp;
   final SlashCommandToggleRawTranscript? toggleRawTranscript;
   final SlashCommandStartNewThread? startNewThread;
   final SlashCommandResumeThread? resumeThread;
@@ -237,6 +241,8 @@ class SlashCommandActionDispatcher {
         return _showStatus(parsed);
       case 'usage':
         return _showUsage(parsed);
+      case 'mcp':
+        return _showMcp(parsed);
       case 'raw':
         return _toggleRawTranscript(parsed);
       case 'new':
@@ -378,9 +384,31 @@ class SlashCommandActionDispatcher {
     );
   }
 
+  Future<SlashCommandActionResult> _showMcp(
+    SlashCommandParseResult parsed,
+  ) async {
+    return _showMessageWithArguments(
+      parsed,
+      action: showMcp,
+      effect: SlashCommandActionEffect.mcp,
+    );
+  }
+
   Future<SlashCommandActionResult> _showMessage(
     SlashCommandParseResult parsed, {
     required FutureOr<String?> Function()? action,
+    required SlashCommandActionEffect effect,
+  }) async {
+    return _showMessageWithArguments(
+      parsed,
+      action: action == null ? null : (_) => action(),
+      effect: effect,
+    );
+  }
+
+  Future<SlashCommandActionResult> _showMessageWithArguments(
+    SlashCommandParseResult parsed, {
+    required FutureOr<String?> Function(String arguments)? action,
     required SlashCommandActionEffect effect,
   }) async {
     if (action == null) {
@@ -391,7 +419,7 @@ class SlashCommandActionDispatcher {
       );
     }
     try {
-      final message = (await action())?.trim();
+      final message = (await action(parsed.arguments))?.trim();
       if (message == null || message.isEmpty) {
         return SlashCommandActionResult.unavailable(
           command: parsed.command!,

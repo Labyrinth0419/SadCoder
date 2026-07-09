@@ -6,6 +6,8 @@ import '../approvals/approval_state_controller.dart';
 import '../config/codex_config_snapshot_reader.dart';
 import '../config/codex_config_snapshot_remote_reader.dart';
 import '../events/codex_event.dart';
+import '../mcp/codex_mcp_server_status_reader.dart';
+import '../mcp/mcp_server_status_reader.dart';
 import '../models/codex_model_list_reader.dart';
 import '../models/model_list_reader.dart';
 import '../permissions/codex_permission_profile_list_reader.dart';
@@ -36,6 +38,8 @@ abstract interface class CodexSessionConnectionHandle {
   AccountSnapshotReader get accountSnapshotReader;
 
   AccountUsageSnapshotReader get accountUsageSnapshotReader;
+
+  McpServerStatusReader get mcpServerStatusReader;
 
   ModelListReader get modelListReader;
 
@@ -104,6 +108,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         accountUsageSnapshotReader: CodexAccountUsageSnapshotReader(
           session.client,
         ),
+        mcpServerStatusReader: CodexMcpServerStatusReader(session.client),
         modelListReader: CodexModelListReader(session.client),
         permissionProfileListReader: CodexPermissionProfileListReader(
           session.client,
@@ -159,6 +164,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.configSnapshotReader,
     required this.accountSnapshotReader,
     required this.accountUsageSnapshotReader,
+    required this.mcpServerStatusReader,
     required this.modelListReader,
     required this.permissionProfileListReader,
     required this.threadMutationRunner,
@@ -181,6 +187,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final AccountSnapshotReader accountSnapshotReader;
   @override
   final AccountUsageSnapshotReader accountUsageSnapshotReader;
+  @override
+  final McpServerStatusReader mcpServerStatusReader;
   @override
   final ModelListReader modelListReader;
   @override

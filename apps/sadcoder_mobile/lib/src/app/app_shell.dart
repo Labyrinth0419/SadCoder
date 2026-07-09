@@ -13,6 +13,7 @@ import '../features/chat/chat_timeline_controller.dart';
 import '../features/hosts/hosts_page.dart';
 import '../features/settings/settings_page.dart';
 import '../i18n/app_localizations.dart';
+import '../mcp/mcp_server_status_controller.dart';
 import '../models/model_list_controller.dart';
 import '../permissions/permission_profile_list_controller.dart';
 import '../session/codex_session_connector.dart';
@@ -62,6 +63,7 @@ class _AppShellState extends State<AppShell> {
   late CodexConfigSnapshotController _configSnapshotController;
   late AccountSnapshotController _accountSnapshotController;
   late AccountUsageSnapshotController _accountUsageSnapshotController;
+  late McpServerStatusController _mcpServerStatusController;
   late ModelListController _modelListController;
   late PermissionProfileListController _permissionProfileListController;
   late bool _ownsApprovalController;
@@ -174,6 +176,9 @@ class _AppShellState extends State<AppShell> {
     _accountUsageSnapshotController = AccountUsageSnapshotController(
       readerProvider: () => _sessionController.accountUsageSnapshotReader,
     );
+    _mcpServerStatusController = McpServerStatusController(
+      readerProvider: () => _sessionController.mcpServerStatusReader,
+    );
     _modelListController = ModelListController(
       readerProvider: () => _sessionController.modelListReader,
     );
@@ -203,6 +208,7 @@ class _AppShellState extends State<AppShell> {
     _configSnapshotController.dispose();
     _accountSnapshotController.dispose();
     _accountUsageSnapshotController.dispose();
+    _mcpServerStatusController.dispose();
     _modelListController.dispose();
     _permissionProfileListController.dispose();
     _turnController.dispose();
@@ -232,6 +238,7 @@ class _AppShellState extends State<AppShell> {
         configSnapshotController: _configSnapshotController,
         accountSnapshotController: _accountSnapshotController,
         accountUsageSnapshotController: _accountUsageSnapshotController,
+        mcpServerStatusController: _mcpServerStatusController,
         modelListController: _modelListController,
         permissionProfileListController: _permissionProfileListController,
       ),

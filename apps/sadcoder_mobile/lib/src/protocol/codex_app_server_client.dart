@@ -41,6 +41,28 @@ class CodexAppServerClient {
     return _request('permissionProfile/list', params);
   }
 
+  Future<Map<String, Object?>> listMcpServerStatus({
+    String? threadId,
+    String? cursor,
+    int? limit,
+    String? detail,
+  }) {
+    final params = <String, Object?>{};
+    if (threadId != null && threadId.trim().isNotEmpty) {
+      params['threadId'] = threadId.trim();
+    }
+    if (cursor != null && cursor.trim().isNotEmpty) {
+      params['cursor'] = cursor.trim();
+    }
+    if (limit != null) {
+      params['limit'] = limit;
+    }
+    if (detail != null && detail.trim().isNotEmpty) {
+      params['detail'] = detail.trim();
+    }
+    return _request('mcpServerStatus/list', params);
+  }
+
   Future<Map<String, Object?>> readAccount({bool refreshToken = false}) {
     return _request('account/read', {'refreshToken': refreshToken});
   }

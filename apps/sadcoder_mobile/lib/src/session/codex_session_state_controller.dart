@@ -8,6 +8,7 @@ import '../agent/agent_snapshot_reader.dart';
 import '../approvals/approval_state_controller.dart';
 import '../config/codex_config_snapshot_reader.dart';
 import '../events/codex_event.dart';
+import '../mcp/mcp_server_status_reader.dart';
 import '../models/model_list_reader.dart';
 import '../permissions/permission_profile_list_reader.dart';
 import '../ssh/ssh_profile.dart';
@@ -83,6 +84,9 @@ class CodexSessionStateController extends ChangeNotifier {
 
   AccountUsageSnapshotReader? get accountUsageSnapshotReader =>
       _connection?.accountUsageSnapshotReader;
+
+  McpServerStatusReader? get mcpServerStatusReader =>
+      _connection?.mcpServerStatusReader;
 
   ModelListReader? get modelListReader => _connection?.modelListReader;
 
