@@ -7,6 +7,7 @@ class CodexConfigOverrides {
     this.summary,
     this.approvalPolicy,
     this.sandboxPolicy,
+    this.permissionProfile,
     this.cwd,
     this.personality,
     this.serviceTier,
@@ -19,6 +20,7 @@ class CodexConfigOverrides {
   final String? summary;
   final Object? approvalPolicy;
   final Map<String, Object?>? sandboxPolicy;
+  final String? permissionProfile;
   final String? cwd;
   final String? personality;
   final String? serviceTier;
@@ -26,6 +28,11 @@ class CodexConfigOverrides {
   bool get isEmpty => toTurnStartParams().isEmpty;
 
   CodexConfigOverrides merge(CodexConfigOverrides higherPriority) {
+    final higherHasPermissionProfile = _hasText(
+      higherPriority.permissionProfile,
+    );
+    final higherHasSandboxPolicy =
+        !higherHasPermissionProfile && _hasMap(higherPriority.sandboxPolicy);
     return CodexConfigOverrides(
       model: _stringOverride(model, higherPriority.model),
       effort: _stringOverride(effort, higherPriority.effort),
@@ -34,7 +41,15 @@ class CodexConfigOverrides {
         approvalPolicy,
         higherPriority.approvalPolicy,
       ),
-      sandboxPolicy: _mapOverride(sandboxPolicy, higherPriority.sandboxPolicy),
+      sandboxPolicy: higherHasPermissionProfile
+          ? null
+          : _mapOverride(sandboxPolicy, higherPriority.sandboxPolicy),
+      permissionProfile: higherHasSandboxPolicy
+          ? null
+          : _stringOverride(
+              permissionProfile,
+              higherPriority.permissionProfile,
+            ),
       cwd: _stringOverride(cwd, higherPriority.cwd),
       personality: _stringOverride(personality, higherPriority.personality),
       serviceTier: _stringOverride(serviceTier, higherPriority.serviceTier),
@@ -47,7 +62,9 @@ class CodexConfigOverrides {
       if (_hasText(effort)) 'effort': effort,
       if (_hasText(summary)) 'summary': summary,
       if (_hasObjectOverride(approvalPolicy)) 'approvalPolicy': approvalPolicy,
-      if (_hasMap(sandboxPolicy)) 'sandboxPolicy': sandboxPolicy,
+      if (_hasText(permissionProfile)) 'permissions': permissionProfile!.trim(),
+      if (!_hasText(permissionProfile) && _hasMap(sandboxPolicy))
+        'sandboxPolicy': sandboxPolicy,
       if (_hasText(cwd)) 'cwd': cwd,
       if (_hasText(personality)) 'personality': personality,
       if (_hasText(serviceTier)) 'serviceTier': serviceTier,
@@ -74,13 +91,24 @@ class CodexConfigOverrideLayers {
   }
 
   CodexConfigOverrideSource sourceFor(String fieldName) {
-    if (turn.toTurnStartParams().containsKey(fieldName)) {
+    final resolved = resolve();
+    if (fieldName == 'permissionProfile' &&
+        !_hasText(resolved.permissionProfile)) {
+      return CodexConfigOverrideSource.serverDefault;
+    }
+    if (fieldName == 'sandboxPolicy' && !_hasMap(resolved.sandboxPolicy)) {
+      return CodexConfigOverrideSource.serverDefault;
+    }
+    final wireFieldName = fieldName == 'permissionProfile'
+        ? 'permissions'
+        : fieldName;
+    if (turn.toTurnStartParams().containsKey(wireFieldName)) {
       return CodexConfigOverrideSource.turn;
     }
-    if (session.toTurnStartParams().containsKey(fieldName)) {
+    if (session.toTurnStartParams().containsKey(wireFieldName)) {
       return CodexConfigOverrideSource.session;
     }
-    if (appDefault.toTurnStartParams().containsKey(fieldName)) {
+    if (appDefault.toTurnStartParams().containsKey(wireFieldName)) {
       return CodexConfigOverrideSource.appDefault;
     }
     return CodexConfigOverrideSource.serverDefault;

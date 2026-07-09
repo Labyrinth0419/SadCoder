@@ -13,6 +13,7 @@ void main() {
         model: 'gpt-5',
         effort: 'medium',
         approvalPolicy: 'on-request',
+        permissionProfile: ':workspace',
       ),
       session: const CodexConfigOverrides(model: 'gpt-5-codex'),
       turn: const CodexConfigOverrides(
@@ -31,6 +32,10 @@ void main() {
     });
     expect(layers.sourceFor('model'), CodexConfigOverrideSource.session);
     expect(layers.sourceFor('effort'), CodexConfigOverrideSource.turn);
+    expect(
+      layers.sourceFor('permissionProfile'),
+      CodexConfigOverrideSource.serverDefault,
+    );
     expect(
       layers.sourceFor('summary'),
       CodexConfigOverrideSource.serverDefault,
@@ -64,6 +69,32 @@ void main() {
     expect(
       layers.sourceFor('sandboxPolicy'),
       CodexConfigOverrideSource.appDefault,
+    );
+  });
+
+  test('permission profiles and sandbox policies are mutually exclusive', () {
+    final profileWins = const CodexConfigOverrideLayers(
+      appDefault: CodexConfigOverrides(sandboxPolicy: {'type': 'readOnly'}),
+      session: CodexConfigOverrides(permissionProfile: ':workspace'),
+    );
+    final sandboxWins = const CodexConfigOverrideLayers(
+      appDefault: CodexConfigOverrides(permissionProfile: ':workspace'),
+      session: CodexConfigOverrides(sandboxPolicy: {'type': 'readOnly'}),
+    );
+
+    expect(profileWins.resolve().toTurnStartParams(), {
+      'permissions': ':workspace',
+    });
+    expect(sandboxWins.resolve().toTurnStartParams(), {
+      'sandboxPolicy': {'type': 'readOnly'},
+    });
+    expect(
+      profileWins.sourceFor('permissionProfile'),
+      CodexConfigOverrideSource.session,
+    );
+    expect(
+      sandboxWins.sourceFor('permissionProfile'),
+      CodexConfigOverrideSource.serverDefault,
     );
   });
 }

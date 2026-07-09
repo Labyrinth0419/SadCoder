@@ -91,6 +91,7 @@ void main() {
     controller.setTurnPermissions(
       approvalPolicy: '',
       sandboxPolicy: {'type': 'dangerFullAccess', 'networkAccess': true},
+      permissionProfile: ':danger-full-access',
     );
 
     expect(controller.layers.session.toTurnStartParams(), {
@@ -100,7 +101,7 @@ void main() {
       'personality': 'concise',
     });
     expect(controller.layers.turn.toTurnStartParams(), {
-      'sandboxPolicy': {'type': 'dangerFullAccess', 'networkAccess': true},
+      'permissions': ':danger-full-access',
       'cwd': '/tmp',
       'effort': 'high',
     });

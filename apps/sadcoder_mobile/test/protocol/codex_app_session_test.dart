@@ -13,6 +13,7 @@ void main() {
       return switch (request.method) {
         'initialize' => {'serverInfo': 'test'},
         'model/list' => {'models': <Object?>[]},
+        'permissionProfile/list' => {'data': <Object?>[]},
         'account/read' => {'account': null, 'requiresOpenaiAuth': false},
         _ => {},
       };
@@ -22,14 +23,17 @@ void main() {
 
     final initialize = await session.initialize();
     final models = await session.client.listModels();
+    final permissionProfiles = await session.client.listPermissionProfiles();
     final account = await session.client.readAccount();
 
     expect(initialize['serverInfo'], 'test');
     expect(models['models'], <Object?>[]);
+    expect(permissionProfiles['data'], <Object?>[]);
     expect(account['requiresOpenaiAuth'], false);
     expect(requests.map((request) => request.method), [
       'initialize',
       'model/list',
+      'permissionProfile/list',
       'account/read',
     ]);
   });

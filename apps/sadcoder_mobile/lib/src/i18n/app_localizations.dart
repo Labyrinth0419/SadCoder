@@ -179,6 +179,7 @@ class AppLocalizations {
   String get effortOverride => _text('effortOverride');
   String get personalityOverride => _text('personalityOverride');
   String get approvalPolicy => _text('approvalPolicy');
+  String get permissionProfile => _text('permissionProfile');
   String get sandboxMode => _text('sandboxMode');
   String get cwdOverride => _text('cwdOverride');
   String get applyOverrides => _text('applyOverrides');
@@ -214,6 +215,11 @@ class AppLocalizations {
   String get permissionsCommandTitle => _text('permissionsCommandTitle');
   String get applyPermissionsOverride => _text('applyPermissionsOverride');
   String get networkAccess => _text('networkAccess');
+  String get permissionProfileLoadFailed =>
+      _text('permissionProfileLoadFailed');
+  String get permissionProfilesEmpty => _text('permissionProfilesEmpty');
+  String get permissionProfileUnavailable =>
+      _text('permissionProfileUnavailable');
   String get permissionsHighRiskWarning => _text('permissionsHighRiskWarning');
   String get serverConfigSnapshot => _text('serverConfigSnapshot');
   String get refreshServerConfig => _text('refreshServerConfig');
@@ -408,6 +414,7 @@ const _values = <String, Map<String, String>>{
     'effortOverride': 'Reasoning effort',
     'personalityOverride': 'Personality',
     'approvalPolicy': 'Approval policy',
+    'permissionProfile': 'Permission profile',
     'sandboxMode': 'Sandbox mode',
     'cwdOverride': 'Working directory',
     'applyOverrides': 'Apply overrides',
@@ -445,6 +452,9 @@ const _values = <String, Map<String, String>>{
     'permissionsCommandTitle': 'Permission override',
     'applyPermissionsOverride': 'Apply permission override',
     'networkAccess': 'Network access',
+    'permissionProfileLoadFailed': 'Failed to load permission profiles',
+    'permissionProfilesEmpty': 'No server permission profiles.',
+    'permissionProfileUnavailable': 'unavailable',
     'permissionsHighRiskWarning':
         'High risk: these permissions can let Codex run with less review or broader filesystem access.',
     'serverConfigSnapshot': 'Server config snapshot',
@@ -610,6 +620,7 @@ const _values = <String, Map<String, String>>{
     'effortOverride': '推理强度',
     'personalityOverride': '协作风格',
     'approvalPolicy': '审批策略',
+    'permissionProfile': '权限配置',
     'sandboxMode': '沙盒模式',
     'cwdOverride': '工作目录',
     'applyOverrides': '应用覆盖',
@@ -645,6 +656,9 @@ const _values = <String, Map<String, String>>{
     'permissionsCommandTitle': '权限覆盖',
     'applyPermissionsOverride': '应用权限覆盖',
     'networkAccess': '网络访问',
+    'permissionProfileLoadFailed': '权限配置加载失败',
+    'permissionProfilesEmpty': '服务器暂无权限配置。',
+    'permissionProfileUnavailable': '不可用',
     'permissionsHighRiskWarning': '高风险：这些权限会减少 Codex 执行前的审批或扩大文件系统访问范围。',
     'serverConfigSnapshot': '服务器配置快照',
     'refreshServerConfig': '刷新服务器配置',

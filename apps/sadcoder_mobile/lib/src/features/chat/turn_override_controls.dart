@@ -78,6 +78,12 @@ class _TurnOverrideBar extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         ConfigOverrideSourceChip(
+                          label: l10n.permissionProfile,
+                          value: controller.layers.resolve().permissionProfile,
+                          source: controller.sourceFor('permissionProfile'),
+                        ),
+                        const SizedBox(width: 8),
+                        ConfigOverrideSourceChip(
                           label: l10n.sandboxMode,
                           value: configOverrideValueLabel(
                             controller.layers.resolve().sandboxPolicy,

@@ -78,6 +78,15 @@ class _SessionOverrideBar extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         ConfigOverrideSourceChip(
+                          label: l10n.permissionProfile,
+                          value: sessionDefault.permissionProfile,
+                          source: _sessionSourceFor(
+                            layers,
+                            'permissionProfile',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ConfigOverrideSourceChip(
                           label: l10n.sandboxMode,
                           value: configOverrideValueLabel(
                             sessionDefault.sandboxPolicy,
@@ -135,15 +144,30 @@ class _SessionOverrideBar extends StatelessWidget {
     CodexConfigOverrideLayers layers,
     String fieldName,
   ) {
-    if (layers.session.toTurnStartParams().containsKey(fieldName)) {
+    final sessionDefault = layers.appDefault.merge(layers.session);
+    if (fieldName == 'permissionProfile' &&
+        !_hasText(sessionDefault.permissionProfile)) {
+      return CodexConfigOverrideSource.serverDefault;
+    }
+    if (fieldName == 'sandboxPolicy' &&
+        (sessionDefault.sandboxPolicy == null ||
+            sessionDefault.sandboxPolicy!.isEmpty)) {
+      return CodexConfigOverrideSource.serverDefault;
+    }
+    final wireFieldName = fieldName == 'permissionProfile'
+        ? 'permissions'
+        : fieldName;
+    if (layers.session.toTurnStartParams().containsKey(wireFieldName)) {
       return CodexConfigOverrideSource.session;
     }
-    if (layers.appDefault.toTurnStartParams().containsKey(fieldName)) {
+    if (layers.appDefault.toTurnStartParams().containsKey(wireFieldName)) {
       return CodexConfigOverrideSource.appDefault;
     }
     return CodexConfigOverrideSource.serverDefault;
   }
 }
+
+bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
 
 class _SessionOverrideSheet extends StatefulWidget {
   const _SessionOverrideSheet({required this.controller});

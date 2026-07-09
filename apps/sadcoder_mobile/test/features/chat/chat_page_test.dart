@@ -18,6 +18,8 @@ import 'package:sadcoder_mobile/src/features/chat/chat_timeline_controller.dart'
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/models/model_list_controller.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
+import 'package:sadcoder_mobile/src/permissions/permission_profile_list_controller.dart';
+import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
@@ -677,6 +679,97 @@ void main() {
     expect(find.text('Permission override updated.'), findsOneWidget);
   });
 
+  testWidgets('/permissions can select permission profiles from server list', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final overrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(cwd: '/repo'),
+      ),
+    );
+    final permissionProfileReader = _RecordingPermissionProfileListReader(
+      page: const PermissionProfileListPage(
+        profiles: [
+          PermissionProfileSummary(
+            id: ':workspace',
+            description: 'Workspace write',
+          ),
+          PermissionProfileSummary(
+            id: ':danger-full-access',
+            description: 'Full access',
+            allowed: false,
+          ),
+        ],
+      ),
+    );
+    final permissionProfileListController = PermissionProfileListController(
+      readerProvider: () => permissionProfileReader,
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => overrideController.layers,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+    addTearDown(permissionProfileListController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+      permissionProfileListController: permissionProfileListController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/permissions',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(permissionProfileReader.cwdValues, ['/repo']);
+    expect(find.text('Permission profile'), findsOneWidget);
+    await _selectDropdownOption(
+      tester,
+      const ValueKey('chat-permissions-command-approval-policy'),
+      'on-request',
+    );
+    await _selectDropdownOption(
+      tester,
+      const ValueKey('chat-permissions-command-permission-profile'),
+      ':workspace / Workspace write',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('chat-permissions-command-apply')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(overrideController.layers.turn.toTurnStartParams(), {
+      'approvalPolicy': 'on-request',
+      'permissions': ':workspace',
+    });
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(find.text('Permission override updated.'), findsOneWidget);
+  });
+
   testWidgets('/model applies a next-turn model override', (tester) async {
     final approvalController = ApprovalStateController();
     final turnRunner = _FakeTurnRunner();
@@ -1214,6 +1307,7 @@ void main() {
         'Model: gpt-5-codex / session override\n'
         'Reasoning effort: server default\n'
         'Approval policy: server default\n'
+        'Permission profile: server default\n'
         'Sandbox mode: server default\n'
         'Working directory: /repo / session override\n'
         'Personality: server default',
@@ -1247,6 +1341,7 @@ void main() {
           'model': 'gpt-5-codex',
           'model_reasoning_effort': 'high',
           'approval_policy': {'type': 'on-request'},
+          'default_permissions': ':workspace',
           'sandbox_mode': {'type': 'workspace-write'},
         },
       }),
@@ -1323,7 +1418,7 @@ void main() {
     expect(accountReader.refreshTokenValues, [false]);
     expect(
       find.textContaining(
-        'Server config snapshot: Model=gpt-5-codex, Reasoning effort=high, Approval policy=on-request, Sandbox mode=workspace-write',
+        'Server config snapshot: Model=gpt-5-codex, Reasoning effort=high, Approval policy=on-request, Permission profile=:workspace, Sandbox mode=workspace-write',
       ),
       findsOneWidget,
     );
@@ -2112,6 +2207,7 @@ Future<void> _pumpChatPage(
   CodexConfigSnapshotController? configSnapshotController,
   AccountSnapshotController? accountSnapshotController,
   ModelListController? modelListController,
+  PermissionProfileListController? permissionProfileListController,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -2133,6 +2229,7 @@ Future<void> _pumpChatPage(
           configSnapshotController: configSnapshotController,
           accountSnapshotController: accountSnapshotController,
           modelListController: modelListController,
+          permissionProfileListController: permissionProfileListController,
         ),
       ),
     ),
@@ -2248,6 +2345,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   ModelListReader get modelListReader => const _FakeModelListReader();
 
   @override
+  PermissionProfileListReader get permissionProfileListReader =>
+      const _FakePermissionProfileListReader();
+
+  @override
   AccountSnapshotReader get accountSnapshotReader =>
       const _FakeAccountSnapshotReader();
 
@@ -2316,6 +2417,17 @@ class _FakeModelListReader implements ModelListReader {
   Future<ModelListPage> listModels() async => const ModelListPage(models: []);
 }
 
+class _FakePermissionProfileListReader implements PermissionProfileListReader {
+  const _FakePermissionProfileListReader();
+
+  @override
+  Future<PermissionProfileListPage> listPermissionProfiles({
+    String? cwd,
+  }) async {
+    return const PermissionProfileListPage(profiles: []);
+  }
+}
+
 class _FakeAccountSnapshotReader implements AccountSnapshotReader {
   const _FakeAccountSnapshotReader();
 
@@ -2347,6 +2459,22 @@ class _RecordingModelListReader implements ModelListReader {
   @override
   Future<ModelListPage> listModels() async {
     calls++;
+    return page;
+  }
+}
+
+class _RecordingPermissionProfileListReader
+    implements PermissionProfileListReader {
+  _RecordingPermissionProfileListReader({required this.page});
+
+  final PermissionProfileListPage page;
+  final cwdValues = <String?>[];
+
+  @override
+  Future<PermissionProfileListPage> listPermissionProfiles({
+    String? cwd,
+  }) async {
+    cwdValues.add(cwd);
     return page;
   }
 }

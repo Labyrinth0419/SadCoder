@@ -12,6 +12,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
+import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
@@ -242,6 +243,10 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
   ModelListReader get modelListReader => const _StaticModelListReader();
 
   @override
+  PermissionProfileListReader get permissionProfileListReader =>
+      const _StaticPermissionProfileListReader();
+
+  @override
   ThreadMutationRunner get threadMutationRunner =>
       const _NoopThreadMutationRunner();
 
@@ -285,6 +290,18 @@ class _StaticModelListReader implements ModelListReader {
   @override
   Future<ModelListPage> listModels() async {
     return const ModelListPage(models: []);
+  }
+}
+
+class _StaticPermissionProfileListReader
+    implements PermissionProfileListReader {
+  const _StaticPermissionProfileListReader();
+
+  @override
+  Future<PermissionProfileListPage> listPermissionProfiles({
+    String? cwd,
+  }) async {
+    return const PermissionProfileListPage(profiles: []);
   }
 }
 

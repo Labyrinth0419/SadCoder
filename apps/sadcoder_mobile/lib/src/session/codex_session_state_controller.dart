@@ -9,6 +9,7 @@ import '../approvals/approval_state_controller.dart';
 import '../config/codex_config_snapshot_reader.dart';
 import '../events/codex_event.dart';
 import '../models/model_list_reader.dart';
+import '../permissions/permission_profile_list_reader.dart';
 import '../ssh/ssh_profile.dart';
 import '../threads/thread_detail_reader.dart';
 import '../threads/thread_list_reader.dart';
@@ -80,6 +81,9 @@ class CodexSessionStateController extends ChangeNotifier {
       _connection?.accountSnapshotReader;
 
   ModelListReader? get modelListReader => _connection?.modelListReader;
+
+  PermissionProfileListReader? get permissionProfileListReader =>
+      _connection?.permissionProfileListReader;
 
   ThreadMutationRunner? get threadMutationRunner =>
       _connection?.threadMutationRunner;

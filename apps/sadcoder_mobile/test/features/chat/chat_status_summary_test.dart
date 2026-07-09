@@ -24,6 +24,7 @@ void main() {
       'Model: gpt-5 / app default\n'
       'Reasoning effort: server default\n'
       'Approval policy: server default\n'
+      'Permission profile: server default\n'
       'Sandbox mode: server default\n'
       'Working directory: /repo / session override\n'
       'Personality: server default',

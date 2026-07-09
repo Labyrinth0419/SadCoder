@@ -62,12 +62,14 @@ class CodexConfigOverrideController extends ChangeNotifier {
   void setSessionPermissions({
     required Object? approvalPolicy,
     required Map<String, Object?> sandboxPolicy,
+    String? permissionProfile,
   }) {
     setSession(
       _withPermissions(
         _layers.session,
         approvalPolicy: approvalPolicy,
         sandboxPolicy: sandboxPolicy,
+        permissionProfile: permissionProfile,
       ),
     );
   }
@@ -75,12 +77,14 @@ class CodexConfigOverrideController extends ChangeNotifier {
   void setTurnPermissions({
     required Object? approvalPolicy,
     required Map<String, Object?> sandboxPolicy,
+    String? permissionProfile,
   }) {
     setTurn(
       _withPermissions(
         _layers.turn,
         approvalPolicy: approvalPolicy,
         sandboxPolicy: sandboxPolicy,
+        permissionProfile: permissionProfile,
       ),
     );
   }
@@ -113,6 +117,7 @@ class CodexConfigOverrideController extends ChangeNotifier {
       summary: overrides.summary,
       approvalPolicy: overrides.approvalPolicy,
       sandboxPolicy: overrides.sandboxPolicy,
+      permissionProfile: overrides.permissionProfile,
       cwd: overrides.cwd,
       personality: overrides.personality,
       serviceTier: overrides.serviceTier,
@@ -129,6 +134,7 @@ class CodexConfigOverrideController extends ChangeNotifier {
       summary: overrides.summary,
       approvalPolicy: overrides.approvalPolicy,
       sandboxPolicy: overrides.sandboxPolicy,
+      permissionProfile: overrides.permissionProfile,
       cwd: overrides.cwd,
       personality: personality,
       serviceTier: overrides.serviceTier,
@@ -139,16 +145,26 @@ class CodexConfigOverrideController extends ChangeNotifier {
     CodexConfigOverrides overrides, {
     required Object? approvalPolicy,
     required Map<String, Object?> sandboxPolicy,
+    String? permissionProfile,
   }) {
+    final normalizedPermissionProfile = _normalizeText(permissionProfile);
     return CodexConfigOverrides(
       model: overrides.model,
       effort: overrides.effort,
       summary: overrides.summary,
       approvalPolicy: approvalPolicy,
-      sandboxPolicy: sandboxPolicy,
+      sandboxPolicy: normalizedPermissionProfile == null ? sandboxPolicy : null,
+      permissionProfile: normalizedPermissionProfile,
       cwd: overrides.cwd,
       personality: overrides.personality,
       serviceTier: overrides.serviceTier,
     );
   }
+}
+
+String? _normalizeText(String? value) {
+  if (value == null || value.trim().isEmpty) {
+    return null;
+  }
+  return value.trim();
 }

@@ -15,6 +15,7 @@ import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/hosts/hosts_page.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
+import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
 import 'package:sadcoder_mobile/src/probe/m0_probe_coordinator.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/reconnect_policy.dart';
@@ -662,6 +663,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   ModelListReader get modelListReader => const _FakeModelListReader();
 
   @override
+  PermissionProfileListReader get permissionProfileListReader =>
+      const _FakePermissionProfileListReader();
+
+  @override
   ThreadMutationRunner get threadMutationRunner =>
       const _FakeThreadMutationRunner();
 
@@ -720,6 +725,17 @@ class _FakeModelListReader implements ModelListReader {
   @override
   Future<ModelListPage> listModels() async {
     return const ModelListPage(models: []);
+  }
+}
+
+class _FakePermissionProfileListReader implements PermissionProfileListReader {
+  const _FakePermissionProfileListReader();
+
+  @override
+  Future<PermissionProfileListPage> listPermissionProfiles({
+    String? cwd,
+  }) async {
+    return const PermissionProfileListPage(profiles: []);
   }
 }
 

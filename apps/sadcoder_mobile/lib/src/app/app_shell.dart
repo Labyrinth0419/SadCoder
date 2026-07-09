@@ -14,6 +14,7 @@ import '../features/hosts/hosts_page.dart';
 import '../features/settings/settings_page.dart';
 import '../i18n/app_localizations.dart';
 import '../models/model_list_controller.dart';
+import '../permissions/permission_profile_list_controller.dart';
 import '../session/codex_session_connector.dart';
 import '../session/codex_session_state_controller.dart';
 import '../ssh/dart_ssh_proxy_connector.dart';
@@ -60,6 +61,7 @@ class _AppShellState extends State<AppShell> {
   late CodexConfigSnapshotController _configSnapshotController;
   late AccountSnapshotController _accountSnapshotController;
   late ModelListController _modelListController;
+  late PermissionProfileListController _permissionProfileListController;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
 
@@ -170,6 +172,9 @@ class _AppShellState extends State<AppShell> {
     _modelListController = ModelListController(
       readerProvider: () => _sessionController.modelListReader,
     );
+    _permissionProfileListController = PermissionProfileListController(
+      readerProvider: () => _sessionController.permissionProfileListReader,
+    );
     _turnController = TurnController(
       runnerProvider: () => _sessionController.turnRunner,
       activeThreadIdProvider: () => _threadDetailController.selectedThreadId,
@@ -193,6 +198,7 @@ class _AppShellState extends State<AppShell> {
     _configSnapshotController.dispose();
     _accountSnapshotController.dispose();
     _modelListController.dispose();
+    _permissionProfileListController.dispose();
     _turnController.dispose();
     _threadDetailController.dispose();
     _threadListController.dispose();
@@ -220,6 +226,7 @@ class _AppShellState extends State<AppShell> {
         configSnapshotController: _configSnapshotController,
         accountSnapshotController: _accountSnapshotController,
         modelListController: _modelListController,
+        permissionProfileListController: _permissionProfileListController,
       ),
       2 => ApprovalsPage(
         approvals: _approvalController.approvals,
@@ -249,6 +256,11 @@ class _AppShellState extends State<AppShell> {
     if (_sessionController.isConnected) {
       unawaited(_configSnapshotController.refresh());
       unawaited(_accountSnapshotController.refresh());
+      unawaited(
+        _permissionProfileListController.refresh(
+          cwd: _configOverrideController.resolved.cwd,
+        ),
+      );
     }
   }
 

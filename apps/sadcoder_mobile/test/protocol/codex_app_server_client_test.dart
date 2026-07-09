@@ -33,6 +33,7 @@ void main() {
 
     final client = CodexAppServerClient(transport);
     await client.listModels();
+    await client.listPermissionProfiles(cwd: '/repo', cursor: '2', limit: 25);
     await client.readAccount();
     await client.listThreads(limit: 5);
     await client.readConfig(cwd: '/repo');
@@ -47,6 +48,7 @@ void main() {
 
     expect(requests.map((request) => request.method), [
       'model/list',
+      'permissionProfile/list',
       'account/read',
       'thread/list',
       'config/read',
@@ -60,16 +62,17 @@ void main() {
       'turn/interrupt',
     ]);
     expect(requests.first.params, isEmpty);
-    expect(requests[1].params, {'refreshToken': false});
-    expect(requests[2].params?['limit'], 5);
-    expect(requests[3].params, {'includeLayers': true, 'cwd': '/repo'});
-    expect(requests[4].params, {'threadId': 'thr_1', 'includeTurns': true});
-    expect(requests[5].params, isEmpty);
-    expect(requests[6].params, {'threadId': 'thr_1'});
-    expect(requests[7].params, {'threadId': 'thr_1', 'name': 'Renamed thread'});
-    expect(requests[8].params, {'threadId': 'thr_1'});
+    expect(requests[1].params, {'cursor': '2', 'limit': 25, 'cwd': '/repo'});
+    expect(requests[2].params, {'refreshToken': false});
+    expect(requests[3].params?['limit'], 5);
+    expect(requests[4].params, {'includeLayers': true, 'cwd': '/repo'});
+    expect(requests[5].params, {'threadId': 'thr_1', 'includeTurns': true});
+    expect(requests[6].params, isEmpty);
+    expect(requests[7].params, {'threadId': 'thr_1'});
+    expect(requests[8].params, {'threadId': 'thr_1', 'name': 'Renamed thread'});
     expect(requests[9].params, {'threadId': 'thr_1'});
-    expect(requests[10].params, {
+    expect(requests[10].params, {'threadId': 'thr_1'});
+    expect(requests[11].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},
@@ -97,6 +100,7 @@ void main() {
           effort: 'high',
           summary: 'detailed',
           approvalPolicy: 'on-request',
+          permissionProfile: ':workspace',
           cwd: '/repo',
           personality: 'pragmatic',
           sandboxPolicy: {'type': 'readOnly', 'networkAccess': false},
@@ -117,7 +121,7 @@ void main() {
         'effort': 'high',
         'summary': 'detailed',
         'approvalPolicy': 'on-request',
-        'sandboxPolicy': {'type': 'readOnly', 'networkAccess': false},
+        'permissions': ':workspace',
         'cwd': '/repo',
         'personality': 'pragmatic',
       });

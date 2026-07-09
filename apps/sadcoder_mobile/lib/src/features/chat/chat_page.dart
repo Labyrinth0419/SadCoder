@@ -12,6 +12,8 @@ import '../../config/codex_config_overrides.dart';
 import '../../config/codex_config_snapshot_controller.dart';
 import '../../i18n/app_localizations.dart';
 import '../../models/model_list_controller.dart';
+import '../../permissions/permission_profile_list_controller.dart';
+import '../../permissions/permission_profile_list_reader.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_list_controller.dart';
@@ -39,6 +41,7 @@ class ChatPage extends StatefulWidget {
     this.configSnapshotController,
     this.accountSnapshotController,
     this.modelListController,
+    this.permissionProfileListController,
     this.slashCommandDispatcher,
   });
 
@@ -52,6 +55,7 @@ class ChatPage extends StatefulWidget {
   final CodexConfigSnapshotController? configSnapshotController;
   final AccountSnapshotController? accountSnapshotController;
   final ModelListController? modelListController;
+  final PermissionProfileListController? permissionProfileListController;
   final SlashCommandActionDispatcher? slashCommandDispatcher;
 
   @override
@@ -431,7 +435,10 @@ class _ChatPageState extends State<ChatPage> {
     final result = await showModalBottomSheet<_PermissionsOverrideResult>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _PermissionsOverrideSheet(controller: controller),
+      builder: (context) => _PermissionsOverrideSheet(
+        controller: controller,
+        permissionProfileListController: widget.permissionProfileListController,
+      ),
     );
     if (!mounted || result == null) {
       return SlashCommandCallbackResult.cancelled;
@@ -441,11 +448,13 @@ class _ChatPageState extends State<ChatPage> {
         controller.setTurnPermissions(
           approvalPolicy: result.approvalPolicy,
           sandboxPolicy: result.sandboxPolicy,
+          permissionProfile: result.permissionProfile,
         );
       case _OverrideScope.session:
         controller.setSessionPermissions(
           approvalPolicy: result.approvalPolicy,
           sandboxPolicy: result.sandboxPolicy,
+          permissionProfile: result.permissionProfile,
         );
     }
     return SlashCommandCallbackResult.executed;
@@ -742,17 +751,23 @@ class _PermissionsOverrideResult {
     required this.scope,
     required this.approvalPolicy,
     required this.sandboxPolicy,
+    required this.permissionProfile,
   });
 
   final _OverrideScope scope;
   final Object? approvalPolicy;
   final Map<String, Object?> sandboxPolicy;
+  final String? permissionProfile;
 }
 
 class _PermissionsOverrideSheet extends StatefulWidget {
-  const _PermissionsOverrideSheet({required this.controller});
+  const _PermissionsOverrideSheet({
+    required this.controller,
+    this.permissionProfileListController,
+  });
 
   final CodexConfigOverrideController controller;
+  final PermissionProfileListController? permissionProfileListController;
 
   @override
   State<_PermissionsOverrideSheet> createState() =>
@@ -762,6 +777,7 @@ class _PermissionsOverrideSheet extends StatefulWidget {
 class _PermissionsOverrideSheetState extends State<_PermissionsOverrideSheet> {
   late _OverrideScope _scope;
   late String _approvalPolicy;
+  late String _permissionProfile;
   late String _sandboxMode;
   late bool _networkAccess;
 
@@ -770,6 +786,7 @@ class _PermissionsOverrideSheetState extends State<_PermissionsOverrideSheet> {
     super.initState();
     _scope = _OverrideScope.turn;
     _loadScopeValues();
+    unawaited(_refreshPermissionProfiles());
   }
 
   @override
@@ -809,12 +826,21 @@ class _PermissionsOverrideSheetState extends State<_PermissionsOverrideSheet> {
               },
             ),
             const SizedBox(height: 12),
+            if (widget.permissionProfileListController != null) ...[
+              _PermissionProfileSelector(
+                controller: widget.permissionProfileListController!,
+                value: _permissionProfile,
+                onChanged: _handlePermissionProfileChanged,
+              ),
+              const SizedBox(height: 12),
+            ],
             _OverrideDropdown(
               key: const ValueKey('chat-permissions-command-sandbox-mode'),
               label: l10n.sandboxMode,
               value: _sandboxMode,
               values: _sandboxModeOptions,
               defaultLabel: l10n.serverDefaultOption,
+              enabled: _permissionProfile.isEmpty,
               onChanged: (value) {
                 setState(() => _sandboxMode = value);
               },
@@ -825,7 +851,7 @@ class _PermissionsOverrideSheetState extends State<_PermissionsOverrideSheet> {
               contentPadding: EdgeInsets.zero,
               title: Text(l10n.networkAccess),
               value: _networkAccess,
-              onChanged: _sandboxMode.isEmpty
+              onChanged: _sandboxMode.isEmpty || _permissionProfile.isNotEmpty
                   ? null
                   : (value) => setState(() => _networkAccess = value),
             ),
@@ -859,7 +885,9 @@ class _PermissionsOverrideSheetState extends State<_PermissionsOverrideSheet> {
   }
 
   bool get _isHighRisk {
-    return _approvalPolicy == 'never' || _sandboxMode == 'dangerFullAccess';
+    return _approvalPolicy == 'never' ||
+        _sandboxMode == 'dangerFullAccess' ||
+        _permissionProfile == ':danger-full-access';
   }
 
   void _apply() {
@@ -868,6 +896,9 @@ class _PermissionsOverrideSheetState extends State<_PermissionsOverrideSheet> {
         scope: _scope,
         approvalPolicy: _approvalPolicy,
         sandboxPolicy: _sandboxPolicy(),
+        permissionProfile: _permissionProfile.isEmpty
+            ? null
+            : _permissionProfile,
       ),
     );
   }
@@ -878,24 +909,148 @@ class _PermissionsOverrideSheetState extends State<_PermissionsOverrideSheet> {
       configOverrideValueLabel(overrides.approvalPolicy) ?? '',
       _approvalPolicyOptions,
     );
+    _permissionProfile = overrides.permissionProfile ?? '';
     final sandboxPolicy = overrides.sandboxPolicy;
-    _sandboxMode = _supportedOption(
-      sandboxPolicy?['type'] as String? ?? '',
-      _sandboxModeOptions,
-    );
-    _networkAccess = sandboxPolicy?['networkAccess'] as bool? ?? false;
+    if (_permissionProfile.isNotEmpty) {
+      _sandboxMode = '';
+      _networkAccess = false;
+    } else {
+      _sandboxMode = _supportedOption(
+        sandboxPolicy?['type'] as String? ?? '',
+        _sandboxModeOptions,
+      );
+      _networkAccess = sandboxPolicy?['networkAccess'] as bool? ?? false;
+    }
   }
 
   Map<String, Object?> _sandboxPolicy() {
-    if (_sandboxMode.isEmpty) {
+    if (_permissionProfile.isNotEmpty || _sandboxMode.isEmpty) {
       return {};
     }
     return {'type': _sandboxMode, 'networkAccess': _networkAccess};
+  }
+
+  Future<void> _refreshPermissionProfiles() async {
+    await widget.permissionProfileListController?.refresh(
+      cwd: widget.controller.resolved.cwd,
+    );
+  }
+
+  void _handlePermissionProfileChanged(String value) {
+    setState(() {
+      _permissionProfile = value;
+      if (_permissionProfile.isNotEmpty) {
+        _sandboxMode = '';
+        _networkAccess = false;
+      }
+    });
   }
 }
 
 String _supportedOption(String value, List<String> options) {
   return options.contains(value) ? value : '';
+}
+
+class _PermissionProfileSelector extends StatelessWidget {
+  const _PermissionProfileSelector({
+    required this.controller,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final PermissionProfileListController controller;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) => _PermissionProfileSelectorContent(
+        controller: controller,
+        value: value,
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+class _PermissionProfileSelectorContent extends StatelessWidget {
+  const _PermissionProfileSelectorContent({
+    required this.controller,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final PermissionProfileListController controller;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final profiles = controller.profiles;
+    final ids = profiles.map((profile) => profile.id).toSet();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InputDecorator(
+          decoration: InputDecoration(
+            labelText: l10n.permissionProfile,
+            border: const OutlineInputBorder(),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              key: const ValueKey(
+                'chat-permissions-command-permission-profile',
+              ),
+              value: value,
+              isExpanded: true,
+              items: [
+                DropdownMenuItem(
+                  value: '',
+                  child: Text(l10n.serverDefaultOption),
+                ),
+                if (value.isNotEmpty && !ids.contains(value))
+                  DropdownMenuItem(value: value, child: Text(value)),
+                for (final profile in profiles)
+                  DropdownMenuItem(
+                    value: profile.id,
+                    enabled: profile.allowed,
+                    child: Text(_profileLabel(l10n, profile)),
+                  ),
+              ],
+              onChanged: (selected) => onChanged(selected ?? ''),
+            ),
+          ),
+        ),
+        if (controller.status == PermissionProfileListStatus.loading) ...[
+          const SizedBox(height: 8),
+          const LinearProgressIndicator(),
+        ] else if (controller.status == PermissionProfileListStatus.failed) ...[
+          const SizedBox(height: 8),
+          Text(
+            '${l10n.permissionProfileLoadFailed}: ${controller.error}',
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ] else if (controller.status == PermissionProfileListStatus.loaded &&
+            profiles.isEmpty) ...[
+          const SizedBox(height: 8),
+          Text(l10n.permissionProfilesEmpty),
+        ],
+      ],
+    );
+  }
+
+  String _profileLabel(
+    AppLocalizations l10n,
+    PermissionProfileSummary profile,
+  ) {
+    if (profile.allowed) {
+      return profile.label;
+    }
+    return '${profile.label} / ${l10n.permissionProfileUnavailable}';
+  }
 }
 
 class _OverrideDropdown extends StatelessWidget {
@@ -906,6 +1061,7 @@ class _OverrideDropdown extends StatelessWidget {
     required this.values,
     required this.defaultLabel,
     required this.onChanged,
+    this.enabled = true,
   });
 
   final String label;
@@ -913,6 +1069,7 @@ class _OverrideDropdown extends StatelessWidget {
   final List<String> values;
   final String defaultLabel;
   final ValueChanged<String> onChanged;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -932,11 +1089,13 @@ class _OverrideDropdown extends StatelessWidget {
                 child: Text(option.isEmpty ? defaultLabel : option),
               ),
           ],
-          onChanged: (value) {
-            if (value != null) {
-              onChanged(value);
-            }
-          },
+          onChanged: enabled
+              ? (value) {
+                  if (value != null) {
+                    onChanged(value);
+                  }
+                }
+              : null,
         ),
       ),
     );

@@ -23,6 +23,24 @@ class CodexAppServerClient {
     return _request('model/list', {});
   }
 
+  Future<Map<String, Object?>> listPermissionProfiles({
+    String? cwd,
+    String? cursor,
+    int? limit,
+  }) {
+    final params = <String, Object?>{};
+    if (cursor != null && cursor.trim().isNotEmpty) {
+      params['cursor'] = cursor.trim();
+    }
+    if (limit != null) {
+      params['limit'] = limit;
+    }
+    if (cwd != null && cwd.trim().isNotEmpty) {
+      params['cwd'] = cwd.trim();
+    }
+    return _request('permissionProfile/list', params);
+  }
+
   Future<Map<String, Object?>> readAccount({bool refreshToken = false}) {
     return _request('account/read', {'refreshToken': refreshToken});
   }
