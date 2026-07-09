@@ -7,6 +7,7 @@ import 'package:sadcoder_mobile/src/agent/agent_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_session.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
@@ -547,6 +548,7 @@ class _FakeTurnRunner implements TurnRunner {
   Future<TurnSummary> startTurn({
     required String threadId,
     required String text,
+    CodexConfigOverrides overrides = CodexConfigOverrides.empty,
   }) async => TurnSummary.fromJson({
     'id': 'turn_1',
     'status': 'inProgress',

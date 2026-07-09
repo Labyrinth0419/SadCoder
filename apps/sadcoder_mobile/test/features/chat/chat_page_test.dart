@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_page.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_timeline_controller.dart';
@@ -601,6 +602,7 @@ class _FakeTurnRunner implements TurnRunner {
   Future<TurnSummary> startTurn({
     required String threadId,
     required String text,
+    CodexConfigOverrides overrides = CodexConfigOverrides.empty,
   }) async {
     startedTurns.add((threadId: threadId, text: text));
     return TurnSummary.fromJson({
@@ -634,6 +636,7 @@ class _ConstantTurnRunner implements TurnRunner {
   Future<TurnSummary> startTurn({
     required String threadId,
     required String text,
+    CodexConfigOverrides overrides = CodexConfigOverrides.empty,
   }) async => TurnSummary.fromJson({
     'id': 'turn_1',
     'status': 'inProgress',

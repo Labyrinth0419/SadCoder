@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../config/codex_config_overrides.dart';
 import '../threads/thread_summary.dart';
 import 'turn_runner.dart';
 
@@ -22,11 +23,14 @@ class TurnController extends ChangeNotifier {
   TurnController({
     required TurnRunnerProvider runnerProvider,
     ActiveThreadIdProvider? activeThreadIdProvider,
+    CodexConfigOverrideLayersProvider? overrideLayersProvider,
   }) : _runnerProvider = runnerProvider,
-       _activeThreadIdProvider = activeThreadIdProvider;
+       _activeThreadIdProvider = activeThreadIdProvider,
+       _overrideLayersProvider = overrideLayersProvider;
 
   final TurnRunnerProvider _runnerProvider;
   final ActiveThreadIdProvider? _activeThreadIdProvider;
+  final CodexConfigOverrideLayersProvider? _overrideLayersProvider;
   TurnControllerStatus _status = TurnControllerStatus.idle;
   Object? _error;
   String? _activeThreadId;
@@ -123,7 +127,11 @@ class TurnController extends ChangeNotifier {
       }
       _activeThreadId = threadId;
       _setState(status: TurnControllerStatus.sendingTurn, error: null);
-      final turn = await runner.startTurn(threadId: threadId, text: trimmed);
+      final turn = await runner.startTurn(
+        threadId: threadId,
+        text: trimmed,
+        overrides: _resolvedOverrides(),
+      );
       if (generation != _generation) {
         return;
       }
@@ -190,6 +198,11 @@ class TurnController extends ChangeNotifier {
       return selectedThreadId;
     }
     return null;
+  }
+
+  CodexConfigOverrides _resolvedOverrides() {
+    return _overrideLayersProvider?.call().resolve() ??
+        CodexConfigOverrides.empty;
   }
 
   void _setState({required TurnControllerStatus status, Object? error}) {

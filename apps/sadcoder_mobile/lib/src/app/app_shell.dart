@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../agent/agent_remote_service.dart';
 import '../approvals/approval_state_controller.dart';
+import '../config/codex_config_override_controller.dart';
 import '../features/approvals/approvals_page.dart';
 import '../features/chat/chat_page.dart';
 import '../features/chat/chat_timeline_controller.dart';
@@ -41,6 +42,7 @@ class _AppShellState extends State<AppShell> {
   late ThreadDetailController _threadDetailController;
   late TurnController _turnController;
   late ChatTimelineController _timelineController;
+  late CodexConfigOverrideController _configOverrideController;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
 
@@ -141,9 +143,11 @@ class _AppShellState extends State<AppShell> {
     _threadDetailController = ThreadDetailController(
       readerProvider: () => _sessionController.threadDetailReader,
     );
+    _configOverrideController = CodexConfigOverrideController();
     _turnController = TurnController(
       runnerProvider: () => _sessionController.turnRunner,
       activeThreadIdProvider: () => _threadDetailController.selectedThreadId,
+      overrideLayersProvider: () => _configOverrideController.layers,
     );
     _timelineController = ChatTimelineController(
       onTurnCompleted: ({required threadId, required turn}) {
@@ -159,6 +163,7 @@ class _AppShellState extends State<AppShell> {
     _sessionController.removeListener(_handleSessionChanged);
     _threadDetailController.removeListener(_handleThreadDetailChanged);
     _timelineController.dispose();
+    _configOverrideController.dispose();
     _turnController.dispose();
     _threadDetailController.dispose();
     _threadListController.dispose();

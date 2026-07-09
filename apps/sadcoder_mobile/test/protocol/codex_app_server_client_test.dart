@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_server_client.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
 
@@ -61,4 +62,50 @@ void main() {
     });
     expect(requests.last.params, {'threadId': 'thr_1', 'turnId': 'turn_1'});
   });
+
+  test(
+    'startTurn omits unset overrides and sends explicit overrides',
+    () async {
+      final requests = <JsonRpcRequest>[];
+      final transport = MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        return {};
+      });
+
+      final client = CodexAppServerClient(transport);
+      await client.startTurn(threadId: 'thr_1', text: 'Use server defaults');
+      await client.startTurn(
+        threadId: 'thr_1',
+        text: 'Override this turn',
+        overrides: const CodexConfigOverrides(
+          model: 'gpt-5-codex',
+          effort: 'high',
+          summary: 'detailed',
+          approvalPolicy: 'on-request',
+          cwd: '/repo',
+          personality: 'pragmatic',
+          sandboxPolicy: {'type': 'readOnly', 'networkAccess': false},
+        ),
+      );
+
+      expect(requests.first.params!.keys, ['threadId', 'input']);
+      expect(requests.last.params, {
+        'threadId': 'thr_1',
+        'input': [
+          {
+            'type': 'text',
+            'text': 'Override this turn',
+            'text_elements': <Object?>[],
+          },
+        ],
+        'model': 'gpt-5-codex',
+        'effort': 'high',
+        'summary': 'detailed',
+        'approvalPolicy': 'on-request',
+        'sandboxPolicy': {'type': 'readOnly', 'networkAccess': false},
+        'cwd': '/repo',
+        'personality': 'pragmatic',
+      });
+    },
+  );
 }

@@ -6,6 +6,7 @@ import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/app/sadcoder_app.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
@@ -272,6 +273,7 @@ class _NoopTurnRunner implements TurnRunner {
   Future<TurnSummary> startTurn({
     required String threadId,
     required String text,
+    CodexConfigOverrides overrides = CodexConfigOverrides.empty,
   }) {
     throw UnimplementedError();
   }

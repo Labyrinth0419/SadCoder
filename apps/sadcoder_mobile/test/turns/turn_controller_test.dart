@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 import 'package:sadcoder_mobile/src/turns/turn_controller.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
@@ -117,6 +118,26 @@ void main() {
     },
   );
 
+  test('submitText resolves and passes explicit config overrides', () async {
+    final runner = _FakeTurnRunner();
+    final controller = TurnController(
+      runnerProvider: () => runner,
+      overrideLayersProvider: () => const CodexConfigOverrideLayers(
+        appDefault: CodexConfigOverrides(model: 'gpt-5'),
+        session: CodexConfigOverrides(model: 'gpt-5-codex'),
+        turn: CodexConfigOverrides(effort: 'high'),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.submitText('Run task');
+
+    expect(runner.startedTurnOverrides.single.toTurnStartParams(), {
+      'model': 'gpt-5-codex',
+      'effort': 'high',
+    });
+  });
+
   test('submitText without runner records failure', () async {
     final controller = TurnController(runnerProvider: () => null);
     addTearDown(controller.dispose);
@@ -132,6 +153,7 @@ class _FakeTurnRunner implements TurnRunner {
   int startedThreads = 0;
   final resumedThreads = <String>[];
   final startedTurns = <({String threadId, String text})>[];
+  final startedTurnOverrides = <CodexConfigOverrides>[];
   final interruptedTurns = <({String threadId, String turnId})>[];
 
   @override
@@ -150,8 +172,10 @@ class _FakeTurnRunner implements TurnRunner {
   Future<TurnSummary> startTurn({
     required String threadId,
     required String text,
+    CodexConfigOverrides overrides = CodexConfigOverrides.empty,
   }) async {
     startedTurns.add((threadId: threadId, text: text));
+    startedTurnOverrides.add(overrides);
     return TurnSummary.fromJson({
       'id': 'turn_${startedTurns.length}',
       'status': 'inProgress',

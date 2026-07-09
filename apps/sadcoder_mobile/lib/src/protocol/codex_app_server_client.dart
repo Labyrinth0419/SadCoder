@@ -1,3 +1,4 @@
+import '../config/codex_config_overrides.dart';
 import 'json_rpc.dart';
 
 class CodexAppServerClient {
@@ -47,12 +48,14 @@ class CodexAppServerClient {
   Future<Map<String, Object?>> startTurn({
     required String threadId,
     required String text,
+    CodexConfigOverrides overrides = CodexConfigOverrides.empty,
   }) {
     return _request('turn/start', {
       'threadId': threadId,
       'input': [
         {'type': 'text', 'text': text, 'text_elements': <Object?>[]},
       ],
+      ...overrides.toTurnStartParams(),
     });
   }
 
