@@ -890,6 +890,22 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
   }
 
   @override
+  Future<ThreadSummary> startSideConversation({
+    required String threadId,
+  }) async {
+    return ThreadSummary.fromJson({
+      'id': 'thr_side',
+      'sessionId': 'sess_1',
+      'preview': 'Side thread',
+      'ephemeral': true,
+      'status': 'idle',
+      'cwd': '/repo',
+      'updatedAt': 1,
+      'forkedFromId': threadId,
+    });
+  }
+
+  @override
   Future<void> compactThread({required String threadId}) async {}
 
   @override

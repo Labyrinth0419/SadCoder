@@ -91,6 +91,7 @@ class _ChatPageState extends State<ChatPage> {
       const SlashCommandParseResult.notSlash();
   final TextEditingController _composerController = TextEditingController();
   final List<_ComposerMention> _composerMentions = [];
+  _SideConversation? _sideConversation;
   CodexSessionStatus? _lastSessionStatus;
   bool _slashPaletteOpen = false;
   bool _showRawTranscript = false;
@@ -179,6 +180,12 @@ class _ChatPageState extends State<ChatPage> {
                 detailController: threadDetailController,
               ),
               _ThreadDetailPanel(controller: threadDetailController),
+              if (_sideConversation != null)
+                _SideConversationPanel(
+                  conversation: _sideConversation!,
+                  canReturn: turnController?.canSubmit == true,
+                  onReturn: _returnToMainThread,
+                ),
               _ChatTimelinePanel(
                 controller: widget.timelineController,
                 showRaw: _showRawTranscript,
@@ -268,6 +275,7 @@ class _ChatPageState extends State<ChatPage> {
         context: context,
         registry: widget.registry,
         hasActiveTurn: widget.turnController?.activeTurnId != null,
+        isSideConversation: _sideConversation != null,
         onSelected: _selectSlashCommand,
       );
     } finally {
@@ -324,6 +332,7 @@ class _ChatPageState extends State<ChatPage> {
     final result = await _slashCommandDispatcher().dispatch(
       parsed,
       hasActiveTurn: widget.turnController?.activeTurnId != null,
+      isSideConversation: _sideConversation != null,
     );
     if (!mounted) {
       return;
@@ -373,6 +382,7 @@ class _ChatPageState extends State<ChatPage> {
           submitFeedback: _submitFeedback,
           configureTheme: _configureTheme,
           mentionFile: _mentionFile,
+          startSideConversation: _startSideConversation,
           forkThread: _forkCurrentThread,
           compactThread: _compactCurrentThread,
           archiveThread: _archiveCurrentThread,
@@ -882,6 +892,7 @@ class _ChatPageState extends State<ChatPage> {
     if (!started) {
       return false;
     }
+    _clearSideConversation();
     widget.threadDetailController?.clear();
     widget.timelineController?.selectThread(turnController.activeThreadId);
     unawaited(widget.threadListController?.refresh());
@@ -901,6 +912,7 @@ class _ChatPageState extends State<ChatPage> {
     if (activeThreadId == null || activeThreadId.isEmpty) {
       return false;
     }
+    _clearSideConversation();
     widget.timelineController?.selectThread(activeThreadId);
     unawaited(widget.threadDetailController?.readThread(activeThreadId));
     unawaited(widget.threadListController?.refresh());
@@ -939,10 +951,83 @@ class _ChatPageState extends State<ChatPage> {
     if (!activated) {
       return SlashCommandCallbackResult.unavailable;
     }
+    _clearSideConversation();
     widget.timelineController?.showThread(forked);
     unawaited(widget.threadDetailController?.readThread(forked.id));
     unawaited(widget.threadListController?.refresh());
     return SlashCommandCallbackResult.executed;
+  }
+
+  Future<SlashCommandCallbackResult> _startSideConversation(
+    String arguments, {
+    required bool btw,
+  }) async {
+    final runner = widget.sessionController?.threadMutationRunner;
+    final turnController = widget.turnController;
+    final parentThreadId = _currentThreadId();
+    if (runner == null || turnController == null || parentThreadId == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    if (!turnController.canSubmit || _sideConversation != null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    final sideThread = await runner.startSideConversation(
+      threadId: parentThreadId,
+    );
+    if (sideThread.id.trim().isEmpty) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    final activated = turnController.activateThread(sideThread.id);
+    if (!activated) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    setState(() {
+      _sideConversation = _SideConversation(
+        parentThreadId: parentThreadId,
+        sideThreadId: sideThread.id,
+        slash: btw ? '/btw' : '/side',
+      );
+    });
+    widget.timelineController?.showThread(sideThread);
+    unawaited(widget.threadDetailController?.readThread(sideThread.id));
+    unawaited(widget.threadListController?.refresh());
+
+    final initialPrompt = arguments.trim();
+    if (initialPrompt.isNotEmpty) {
+      await turnController.submitText(initialPrompt);
+    }
+    return SlashCommandCallbackResult.executed;
+  }
+
+  Future<void> _returnToMainThread() async {
+    final sideConversation = _sideConversation;
+    final turnController = widget.turnController;
+    if (sideConversation == null ||
+        turnController == null ||
+        !turnController.canSubmit) {
+      return;
+    }
+    final activated = turnController.activateThread(
+      sideConversation.parentThreadId,
+    );
+    if (!activated) {
+      return;
+    }
+    _clearSideConversation();
+    widget.timelineController?.selectThread(sideConversation.parentThreadId);
+    unawaited(
+      widget.threadDetailController?.readThread(
+        sideConversation.parentThreadId,
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.slashCommandReturnedToMainThread)),
+    );
   }
 
   Future<SlashCommandCallbackResult> _compactCurrentThread() async {
@@ -1123,6 +1208,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _clearLocalTranscript() {
+    _clearSideConversation();
     widget.threadDetailController?.clear();
     widget.timelineController?.clear();
     widget.turnController?.clearLocalConversation();
@@ -1194,6 +1280,8 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.feedback => l10n.slashCommandFeedbackSubmitted,
         SlashCommandActionEffect.theme => l10n.slashCommandThemeUpdated,
         SlashCommandActionEffect.mention => l10n.slashCommandMentionInserted,
+        SlashCommandActionEffect.sideConversation =>
+          l10n.slashCommandSideConversationStarted,
         SlashCommandActionEffect.modelOverride => l10n.slashCommandModelUpdated,
         SlashCommandActionEffect.personalityOverride =>
           l10n.slashCommandPersonalityUpdated,
@@ -1245,6 +1333,7 @@ class _ChatPageState extends State<ChatPage> {
         status == CodexSessionStatus.connected) {
       unawaited(widget.threadListController?.refresh());
     }
+    _dropSideConversationIfSessionUnavailable(status);
     _lastSessionStatus = status;
     if (mounted) {
       setState(() {});
@@ -1252,6 +1341,13 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _handleTurnChanged() {
+    final sideConversation = _sideConversation;
+    final activeThreadId = widget.turnController?.activeThreadId;
+    if (sideConversation != null &&
+        activeThreadId != null &&
+        activeThreadId != sideConversation.sideThreadId) {
+      _sideConversation = null;
+    }
     if (mounted) {
       setState(() {});
     }
@@ -1265,6 +1361,115 @@ class _ChatPageState extends State<ChatPage> {
 
   String _connectionLabel(AppLocalizations l10n, CodexSessionStatus? status) {
     return sessionStatusLabel(l10n, status);
+  }
+
+  void _clearSideConversation() {
+    if (_sideConversation == null) {
+      return;
+    }
+    if (mounted) {
+      setState(() => _sideConversation = null);
+    } else {
+      _sideConversation = null;
+    }
+  }
+
+  void _dropSideConversationIfSessionUnavailable(CodexSessionStatus? status) {
+    final shouldDrop = switch (status) {
+      CodexSessionStatus.connecting ||
+      CodexSessionStatus.disconnecting ||
+      CodexSessionStatus.idle ||
+      CodexSessionStatus.failed => true,
+      CodexSessionStatus.connected ||
+      CodexSessionStatus.reconnecting ||
+      null => false,
+    };
+    final sideConversation = _sideConversation;
+    if (!shouldDrop || sideConversation == null) {
+      return;
+    }
+
+    _sideConversation = null;
+    widget.threadDetailController?.clear();
+    if (widget.turnController?.canSubmit == true &&
+        widget.turnController!.activateThread(
+          sideConversation.parentThreadId,
+        )) {
+      widget.timelineController?.selectThread(sideConversation.parentThreadId);
+    }
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.sideConversationDropped)),
+    );
+  }
+}
+
+class _SideConversation {
+  const _SideConversation({
+    required this.parentThreadId,
+    required this.sideThreadId,
+    required this.slash,
+  });
+
+  final String parentThreadId;
+  final String sideThreadId;
+  final String slash;
+}
+
+class _SideConversationPanel extends StatelessWidget {
+  const _SideConversationPanel({
+    required this.conversation,
+    required this.canReturn,
+    required this.onReturn,
+  });
+
+  final _SideConversation conversation;
+  final bool canReturn;
+  final VoidCallback onReturn;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Card(
+      key: const ValueKey('chat-side-conversation-panel'),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(Icons.call_split_outlined),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    l10n.sideConversationTitle,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    [
+                      '${l10n.sideConversationCommand}: ${conversation.slash}',
+                      '${l10n.sideConversationThread}: ${conversation.sideThreadId}',
+                      '${l10n.sideConversationParent}: ${conversation.parentThreadId}',
+                    ].join('\n'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton.icon(
+              key: const ValueKey('chat-side-return-main'),
+              onPressed: canReturn ? onReturn : null,
+              icon: const Icon(Icons.keyboard_return),
+              label: Text(l10n.returnToMainThread),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

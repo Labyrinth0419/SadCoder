@@ -1,4 +1,5 @@
 import '../protocol/codex_app_server_client.dart';
+import 'side_conversation.dart';
 import 'thread_mutation_runner.dart';
 import 'thread_summary.dart';
 
@@ -19,6 +20,35 @@ class CodexThreadMutationRunner implements ThreadMutationRunner {
       ephemeral: ephemeral,
     );
     return ThreadSummary.fromThreadResponse(response);
+  }
+
+  @override
+  Future<ThreadSummary> startSideConversation({
+    required String threadId,
+  }) async {
+    final response = await _client.forkThread(
+      threadId: threadId,
+      ephemeral: true,
+      developerInstructions: SideConversationPrompts.developerInstructions,
+    );
+    final sideThread = ThreadSummary.fromThreadResponse(response);
+    if (sideThread.id.trim().isEmpty) {
+      return sideThread;
+    }
+    try {
+      await _client.injectThreadItems(
+        threadId: sideThread.id,
+        items: [SideConversationPrompts.boundaryPromptItem()],
+      );
+    } on Object catch (error, stackTrace) {
+      try {
+        await _client.deleteThread(threadId: sideThread.id);
+      } on Object {
+        // Preserve the injection failure; cleanup is best-effort.
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+    return sideThread;
   }
 
   @override

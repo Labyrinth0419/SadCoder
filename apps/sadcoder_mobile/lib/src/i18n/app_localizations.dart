@@ -123,6 +123,8 @@ class AppLocalizations {
       _text('slashCommandNotSentAsPrompt');
   String get slashCommandUnavailableDuringTask =>
       _text('slashCommandUnavailableDuringTask');
+  String get slashCommandUnavailableInSideConversation =>
+      _text('slashCommandUnavailableInSideConversation');
   String get slashCommandRisk => _text('slashCommandRisk');
   String get slashCommandDisconnected => _text('slashCommandDisconnected');
   String get slashCommandCleared => _text('slashCommandCleared');
@@ -143,6 +145,10 @@ class AppLocalizations {
   String get slashCommandThemeUpdated => _text('slashCommandThemeUpdated');
   String get slashCommandMentionInserted =>
       _text('slashCommandMentionInserted');
+  String get slashCommandSideConversationStarted =>
+      _text('slashCommandSideConversationStarted');
+  String get slashCommandReturnedToMainThread =>
+      _text('slashCommandReturnedToMainThread');
   String get slashCommandModelUpdated => _text('slashCommandModelUpdated');
   String get slashCommandPersonalityUpdated =>
       _text('slashCommandPersonalityUpdated');
@@ -248,6 +254,12 @@ class AppLocalizations {
   String get mentionSearchHint => _text('mentionSearchHint');
   String get mentionNoResults => _text('mentionNoResults');
   String get mentionLoadFailed => _text('mentionLoadFailed');
+  String get sideConversationTitle => _text('sideConversationTitle');
+  String get sideConversationCommand => _text('sideConversationCommand');
+  String get sideConversationThread => _text('sideConversationThread');
+  String get sideConversationParent => _text('sideConversationParent');
+  String get sideConversationDropped => _text('sideConversationDropped');
+  String get returnToMainThread => _text('returnToMainThread');
   String get modelCommandTitle => _text('modelCommandTitle');
   String get modelCommandTurnScope => _text('modelCommandTurnScope');
   String get modelCommandSessionScope => _text('modelCommandSessionScope');
@@ -569,6 +581,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandUnknown': 'Unknown command: {slash}',
     'slashCommandNotSentAsPrompt': 'Not sent as a prompt',
     'slashCommandUnavailableDuringTask': 'Unavailable while a turn is active',
+    'slashCommandUnavailableInSideConversation':
+        'Unavailable in a side conversation',
     'slashCommandRisk': 'Risk',
     'slashCommandDisconnected':
         'Disconnected from the mobile proxy. Server tasks were not interrupted.',
@@ -587,6 +601,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandFeedbackSubmitted': 'Feedback submitted.',
     'slashCommandThemeUpdated': 'Theme updated.',
     'slashCommandMentionInserted': 'File mention inserted.',
+    'slashCommandSideConversationStarted': 'Started side conversation.',
+    'slashCommandReturnedToMainThread': 'Returned to main thread.',
     'slashCommandModelUpdated': 'Model override updated.',
     'slashCommandPersonalityUpdated': 'Personality override updated.',
     'slashCommandPermissionsUpdated': 'Permission override updated.',
@@ -690,6 +706,13 @@ const _values = <String, Map<String, String>>{
     'mentionSearchHint': 'Search files',
     'mentionNoResults': 'No matching files.',
     'mentionLoadFailed': 'Failed to search files',
+    'sideConversationTitle': 'Side conversation',
+    'sideConversationCommand': 'Command',
+    'sideConversationThread': 'Side thread',
+    'sideConversationParent': 'Main thread',
+    'sideConversationDropped':
+        'Side conversation ended because the connection dropped.',
+    'returnToMainThread': 'Return',
     'modelCommandTitle': 'Model override',
     'modelCommandTurnScope': 'Next turn',
     'modelCommandSessionScope': 'Session',
@@ -963,6 +986,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandUnknown': '未知命令：{slash}',
     'slashCommandNotSentAsPrompt': '不会作为普通提示词发送',
     'slashCommandUnavailableDuringTask': '当前回合运行中不可用',
+    'slashCommandUnavailableInSideConversation': '侧聊中不可用',
     'slashCommandRisk': '风险',
     'slashCommandDisconnected': '已断开移动端代理连接，服务器任务未被中断。',
     'slashCommandCleared': '已清除本地事件流。',
@@ -980,6 +1004,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandFeedbackSubmitted': '已提交反馈。',
     'slashCommandThemeUpdated': '已更新主题。',
     'slashCommandMentionInserted': '已插入文件提及。',
+    'slashCommandSideConversationStarted': '已开始侧聊。',
+    'slashCommandReturnedToMainThread': '已返回主线会话。',
     'slashCommandModelUpdated': '已更新模型覆盖。',
     'slashCommandPersonalityUpdated': '已更新协作风格覆盖。',
     'slashCommandPermissionsUpdated': '已更新权限覆盖。',
@@ -1076,6 +1102,12 @@ const _values = <String, Map<String, String>>{
     'mentionSearchHint': '搜索文件',
     'mentionNoResults': '没有匹配的文件。',
     'mentionLoadFailed': '搜索文件失败',
+    'sideConversationTitle': '侧聊',
+    'sideConversationCommand': '命令',
+    'sideConversationThread': '侧聊会话',
+    'sideConversationParent': '主线会话',
+    'sideConversationDropped': '连接已断开，侧聊已结束。',
+    'returnToMainThread': '返回',
     'modelCommandTitle': '模型覆盖',
     'modelCommandTurnScope': '本次回合',
     'modelCommandSessionScope': '本会话',

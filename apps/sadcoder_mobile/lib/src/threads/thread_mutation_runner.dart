@@ -7,6 +7,8 @@ abstract interface class ThreadMutationRunner {
     bool ephemeral = false,
   });
 
+  Future<ThreadSummary> startSideConversation({required String threadId});
+
   Future<void> compactThread({required String threadId});
 
   Future<void> setThreadName({required String threadId, required String name});

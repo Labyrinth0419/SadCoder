@@ -7,6 +7,7 @@ Future<void> showSlashCommandPalette({
   required BuildContext context,
   required SlashCommandRegistry registry,
   required bool hasActiveTurn,
+  required bool isSideConversation,
   required ValueChanged<SlashCommandSpec> onSelected,
 }) {
   return showModalBottomSheet<void>(
@@ -15,6 +16,7 @@ Future<void> showSlashCommandPalette({
     builder: (context) => _SlashCommandPalette(
       registry: registry,
       hasActiveTurn: hasActiveTurn,
+      isSideConversation: isSideConversation,
       onSelected: onSelected,
     ),
   );
@@ -24,11 +26,13 @@ class _SlashCommandPalette extends StatefulWidget {
   const _SlashCommandPalette({
     required this.registry,
     required this.hasActiveTurn,
+    required this.isSideConversation,
     required this.onSelected,
   });
 
   final SlashCommandRegistry registry;
   final bool hasActiveTurn;
+  final bool isSideConversation;
   final ValueChanged<SlashCommandSpec> onSelected;
 
   @override
@@ -91,6 +95,7 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
                 itemBuilder: (context, index) => _SlashCommandTile(
                   command: commands[index],
                   hasActiveTurn: widget.hasActiveTurn,
+                  isSideConversation: widget.isSideConversation,
                   onSelected: widget.onSelected,
                 ),
               ),
@@ -123,23 +128,34 @@ class _SlashCommandTile extends StatelessWidget {
   const _SlashCommandTile({
     required this.command,
     required this.hasActiveTurn,
+    required this.isSideConversation,
     required this.onSelected,
   });
 
   final SlashCommandSpec command;
   final bool hasActiveTurn;
+  final bool isSideConversation;
   final ValueChanged<SlashCommandSpec> onSelected;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final disabled = hasActiveTurn && !command.availableDuringTask;
+    final unavailableDuringTask = hasActiveTurn && !command.availableDuringTask;
+    final unavailableInSide =
+        isSideConversation && !command.availableInSideConversation;
+    final disabled = unavailableDuringTask || unavailableInSide;
     return ListTile(
       key: ValueKey('slash-command-${command.command}'),
       enabled: !disabled,
       leading: Icon(_iconFor(command)),
       title: Text(command.slash),
-      subtitle: Text(_subtitle(l10n, disabled)),
+      subtitle: Text(
+        _subtitle(
+          l10n,
+          unavailableDuringTask: unavailableDuringTask,
+          unavailableInSide: unavailableInSide,
+        ),
+      ),
       trailing: Wrap(
         spacing: 6,
         children: [
@@ -156,15 +172,22 @@ class _SlashCommandTile extends StatelessWidget {
     );
   }
 
-  String _subtitle(AppLocalizations l10n, bool disabled) {
+  String _subtitle(
+    AppLocalizations l10n, {
+    required bool unavailableDuringTask,
+    required bool unavailableInSide,
+  }) {
     final details = <String>[command.description];
     if (command.aliases.isNotEmpty) {
       details.add(
         'aliases: ${command.aliases.map((alias) => '/$alias').join(', ')}',
       );
     }
-    if (disabled) {
+    if (unavailableDuringTask) {
       details.add(l10n.slashCommandUnavailableDuringTask);
+    }
+    if (unavailableInSide) {
+      details.add(l10n.slashCommandUnavailableInSideConversation);
     }
     if (command.riskLevel != SlashCommandRiskLevel.low) {
       details.add('${l10n.slashCommandRisk}: ${command.riskLevel.name}');

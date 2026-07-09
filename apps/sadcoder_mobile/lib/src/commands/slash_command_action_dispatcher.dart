@@ -31,6 +31,11 @@ typedef SlashCommandSubmitFeedback =
 typedef SlashCommandConfigureTheme =
     Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandMentionFile = Future<SlashCommandCallbackResult> Function();
+typedef SlashCommandStartSideConversation =
+    Future<SlashCommandCallbackResult> Function(
+      String arguments, {
+      required bool btw,
+    });
 typedef SlashCommandConfirmedThreadAction =
     Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfiguredAction =
@@ -78,6 +83,7 @@ enum SlashCommandActionEffect {
   feedback,
   theme,
   mention,
+  sideConversation,
   modelOverride,
   personalityOverride,
   permissionsOverride,
@@ -208,6 +214,7 @@ class SlashCommandActionDispatcher {
     this.submitFeedback,
     this.configureTheme,
     this.mentionFile,
+    this.startSideConversation,
     this.forkThread,
     this.compactThread,
     this.archiveThread,
@@ -241,6 +248,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandSubmitFeedback? submitFeedback;
   final SlashCommandConfigureTheme? configureTheme;
   final SlashCommandMentionFile? mentionFile;
+  final SlashCommandStartSideConversation? startSideConversation;
   final SlashCommandConfiguredAction? forkThread;
   final SlashCommandConfiguredAction? compactThread;
   final SlashCommandConfirmedThreadAction? archiveThread;
@@ -252,6 +260,7 @@ class SlashCommandActionDispatcher {
   Future<SlashCommandActionResult> dispatch(
     SlashCommandParseResult parsed, {
     required bool hasActiveTurn,
+    bool isSideConversation = false,
   }) async {
     switch (parsed.kind) {
       case SlashCommandParseKind.notSlash || SlashCommandParseKind.empty:
@@ -262,16 +271,28 @@ class SlashCommandActionDispatcher {
           arguments: parsed.arguments,
         );
       case SlashCommandParseKind.known:
-        return _dispatchKnown(parsed, hasActiveTurn: hasActiveTurn);
+        return _dispatchKnown(
+          parsed,
+          hasActiveTurn: hasActiveTurn,
+          isSideConversation: isSideConversation,
+        );
     }
   }
 
   Future<SlashCommandActionResult> _dispatchKnown(
     SlashCommandParseResult parsed, {
     required bool hasActiveTurn,
+    required bool isSideConversation,
   }) async {
     final command = parsed.command!;
     if (hasActiveTurn && !command.availableDuringTask) {
+      return SlashCommandActionResult.unavailable(
+        command: command,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    if (isSideConversation && !command.availableInSideConversation) {
       return SlashCommandActionResult.unavailable(
         command: command,
         rawCommand: parsed.rawCommand,
@@ -370,6 +391,10 @@ class SlashCommandActionDispatcher {
         return _configureTheme(parsed);
       case 'mention':
         return _mentionFile(parsed);
+      case 'side':
+        return _startSideConversation(parsed, btw: false);
+      case 'btw':
+        return _startSideConversation(parsed, btw: true);
       default:
         return SlashCommandActionResult.unsupported(
           command: command,
@@ -885,6 +910,51 @@ class SlashCommandActionDispatcher {
       action: mentionFile,
       effect: SlashCommandActionEffect.mention,
     );
+  }
+
+  Future<SlashCommandActionResult> _startSideConversation(
+    SlashCommandParseResult parsed, {
+    required bool btw,
+  }) async {
+    final startSideConversation = this.startSideConversation;
+    if (startSideConversation == null) {
+      return SlashCommandActionResult.unsupported(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    try {
+      final result = await startSideConversation(parsed.arguments, btw: btw);
+      return switch (result) {
+        SlashCommandCallbackResult.executed =>
+          SlashCommandActionResult.executed(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+            effect: SlashCommandActionEffect.sideConversation,
+          ),
+        SlashCommandCallbackResult.cancelled =>
+          SlashCommandActionResult.cancelled(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+          ),
+        SlashCommandCallbackResult.unavailable =>
+          SlashCommandActionResult.unavailable(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+          ),
+      };
+    } on Object catch (error) {
+      return SlashCommandActionResult.failed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        error: error,
+      );
+    }
   }
 
   Future<SlashCommandActionResult> _configuredAction(

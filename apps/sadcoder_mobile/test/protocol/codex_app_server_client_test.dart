@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_server_client.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
+import 'package:sadcoder_mobile/src/threads/side_conversation.dart';
 import 'package:sadcoder_mobile/src/turns/turn_text_element.dart';
 
 void main() {
@@ -290,6 +291,49 @@ void main() {
       });
     },
   );
+
+  test(
+    'forkThread sends side conversation fork options when provided',
+    () async {
+      final requests = <JsonRpcRequest>[];
+      final transport = MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        return {};
+      });
+
+      final client = CodexAppServerClient(transport);
+      await client.forkThread(
+        threadId: 'thr_parent',
+        ephemeral: true,
+        developerInstructions: '  side instructions  ',
+      );
+
+      expect(requests.single.method, 'thread/fork');
+      expect(requests.single.params, {
+        'threadId': 'thr_parent',
+        'developerInstructions': 'side instructions',
+        'ephemeral': true,
+      });
+    },
+  );
+
+  test('injectThreadItems sends thread injection request', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
+    final item = SideConversationPrompts.boundaryPromptItem();
+
+    final client = CodexAppServerClient(transport);
+    await client.injectThreadItems(threadId: 'thr_side', items: [item]);
+
+    expect(requests.single.method, 'thread/inject_items');
+    expect(requests.single.params, {
+      'threadId': 'thr_side',
+      'items': [item],
+    });
+  });
 
   test('background terminal methods use app-server method names', () async {
     final requests = <JsonRpcRequest>[];

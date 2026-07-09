@@ -3575,6 +3575,419 @@ void main() {
     expect(find.text('Forked thread.'), findsOneWidget);
   });
 
+  testWidgets('/side starts a side conversation and returns to main thread', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final mutationRunner = _FakeThreadMutationRunner(
+      sideThread: ThreadSummary.fromJson({
+        'id': 'thr_side',
+        'sessionId': 'sess_1',
+        'preview': 'Side thread',
+        'ephemeral': true,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 2,
+        'forkedFromId': 'thr_selected',
+        'turns': [
+          {
+            'id': 'turn_side_context',
+            'status': 'completed',
+            'items': <Object?>[],
+            'itemsView': 'full',
+          },
+        ],
+      }),
+    );
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(
+        thread: ThreadSummary.fromJson({
+          'id': 'thr_selected',
+          'sessionId': 'sess_1',
+          'preview': 'Selected thread',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 1,
+          'turns': <Object?>[],
+        }),
+      ),
+    );
+    final listReader = _CountingThreadListReader(
+      page: const ThreadListPage(threads: []),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: listReader,
+      turnRunner: turnRunner,
+      threadMutationRunner: mutationRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadListController = ThreadListController(
+      readerProvider: () => sessionController.threadListReader,
+    );
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    addTearDown(threadDetailController.dispose);
+    addTearDown(threadListController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await threadDetailController.readThread('thr_selected');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadListController: threadListController,
+      threadDetailController: threadDetailController,
+      turnController: turnController,
+      timelineController: timelineController,
+    );
+    await tester.pumpAndSettle();
+    final callsBeforeSide = listReader.calls;
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/side',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(mutationRunner.sideStartedThreads, ['thr_selected']);
+    expect(mutationRunner.forkedThreads, isEmpty);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(turnController.activeThreadId, 'thr_side');
+    expect(timelineController.selectedThreadId, 'thr_side');
+    expect(timelineController.turns.single.turnId, 'turn_side_context');
+    expect(threadDetailController.selectedThreadId, 'thr_side');
+    expect(detailReader.threadIds, ['thr_selected', 'thr_side']);
+    expect(listReader.calls, callsBeforeSide + 1);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('chat-side-conversation-panel')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Side conversation'), findsOneWidget);
+    expect(find.textContaining('Side thread: thr_side'), findsOneWidget);
+    expect(find.text('Started side conversation.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('chat-side-return-main')));
+    await tester.pumpAndSettle();
+
+    expect(turnController.activeThreadId, 'thr_selected');
+    expect(timelineController.selectedThreadId, 'thr_selected');
+    expect(threadDetailController.selectedThreadId, 'thr_selected');
+    expect(detailReader.threadIds, [
+      'thr_selected',
+      'thr_side',
+      'thr_selected',
+    ]);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(find.text('Side conversation'), findsNothing);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    expect(find.text('Returned to main thread.'), findsOneWidget);
+  });
+
+  testWidgets('/btw starts side conversation and submits inline prompt', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final mutationRunner = _FakeThreadMutationRunner(
+      sideThread: ThreadSummary.fromJson({
+        'id': 'thr_side',
+        'sessionId': 'sess_1',
+        'preview': 'Side thread',
+        'ephemeral': true,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 2,
+        'forkedFromId': 'thr_selected',
+        'turns': <Object?>[],
+      }),
+    );
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(
+        thread: ThreadSummary.fromJson({
+          'id': 'thr_selected',
+          'sessionId': 'sess_1',
+          'preview': 'Selected thread',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 1,
+          'turns': <Object?>[],
+        }),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+      threadMutationRunner: mutationRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    addTearDown(threadDetailController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await threadDetailController.readThread('thr_selected');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: threadDetailController,
+      turnController: turnController,
+      timelineController: timelineController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/btw quick question',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(mutationRunner.sideStartedThreads, ['thr_selected']);
+    expect(turnRunner.startedTurns, [
+      (threadId: 'thr_side', text: 'quick question'),
+    ]);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(turnController.activeThreadId, 'thr_side');
+    expect(turnController.activeTurnId, 'turn_1');
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('chat-side-conversation-panel')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Command: /btw'), findsOneWidget);
+  });
+
+  testWidgets('side mode rejects unavailable slash commands', (tester) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final mutationRunner = _FakeThreadMutationRunner(
+      sideThread: ThreadSummary.fromJson({
+        'id': 'thr_side',
+        'sessionId': 'sess_1',
+        'preview': 'Side thread',
+        'ephemeral': true,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 2,
+        'forkedFromId': 'thr_selected',
+        'turns': <Object?>[],
+      }),
+    );
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(
+        thread: ThreadSummary.fromJson({
+          'id': 'thr_selected',
+          'sessionId': 'sess_1',
+          'preview': 'Selected thread',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 1,
+          'turns': <Object?>[],
+        }),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+      threadMutationRunner: mutationRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    addTearDown(threadDetailController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await threadDetailController.readThread('thr_selected');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: threadDetailController,
+      turnController: turnController,
+      timelineController: timelineController,
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/side',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/fork',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(mutationRunner.sideStartedThreads, ['thr_selected']);
+    expect(mutationRunner.forkedThreads, isEmpty);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(turnController.activeThreadId, 'thr_side');
+    expect(find.text('/fork is unavailable right now.'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('chat-slash-command-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('slash-command-search-field')),
+      'fork',
+    );
+    await tester.pumpAndSettle();
+
+    final forkTile = tester.widget<ListTile>(
+      find.byKey(const ValueKey('slash-command-fork')),
+    );
+    expect(forkTile.enabled, false);
+    expect(
+      find.textContaining('Unavailable in a side conversation'),
+      findsWidgets,
+    );
+  });
+
+  testWidgets('side mode drops to main thread when the session disconnects', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final mutationRunner = _FakeThreadMutationRunner(
+      sideThread: ThreadSummary.fromJson({
+        'id': 'thr_side',
+        'sessionId': 'sess_1',
+        'preview': 'Side thread',
+        'ephemeral': true,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 2,
+        'forkedFromId': 'thr_selected',
+        'turns': <Object?>[],
+      }),
+    );
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(
+        thread: ThreadSummary.fromJson({
+          'id': 'thr_selected',
+          'sessionId': 'sess_1',
+          'preview': 'Selected thread',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 1,
+          'turns': <Object?>[],
+        }),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+      threadMutationRunner: mutationRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    addTearDown(threadDetailController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await threadDetailController.readThread('thr_selected');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: threadDetailController,
+      turnController: turnController,
+      timelineController: timelineController,
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/side',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(turnController.activeThreadId, 'thr_side');
+    expect(threadDetailController.selectedThreadId, 'thr_side');
+
+    await sessionController.disconnect();
+    await tester.pumpAndSettle();
+
+    expect(sessionController.status, CodexSessionStatus.idle);
+    expect(turnController.activeThreadId, 'thr_selected');
+    expect(timelineController.selectedThreadId, 'thr_selected');
+    expect(threadDetailController.selectedThreadId, isNull);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(find.text('Side conversation'), findsNothing);
+  });
+
   testWidgets('/compact starts compaction for the current thread', (
     tester,
   ) async {
@@ -5046,12 +5459,17 @@ class _FakeTurnRunner implements TurnRunner {
 }
 
 class _FakeThreadMutationRunner implements ThreadMutationRunner {
-  _FakeThreadMutationRunner({ThreadSummary? forkedThread})
-    : forkedThread = forkedThread ?? _thread('thr_fork');
+  _FakeThreadMutationRunner({
+    ThreadSummary? forkedThread,
+    ThreadSummary? sideThread,
+  }) : forkedThread = forkedThread ?? _thread('thr_fork'),
+       sideThread = sideThread ?? _thread('thr_side');
 
   final ThreadSummary forkedThread;
+  final ThreadSummary sideThread;
   final forkedThreads =
       <({String threadId, String? lastTurnId, bool ephemeral})>[];
+  final sideStartedThreads = <String>[];
   final compactedThreads = <String>[];
   final renamedThreads = <({String threadId, String name})>[];
   final archivedThreads = <String>[];
@@ -5069,6 +5487,14 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
       ephemeral: ephemeral,
     ));
     return forkedThread;
+  }
+
+  @override
+  Future<ThreadSummary> startSideConversation({
+    required String threadId,
+  }) async {
+    sideStartedThreads.add(threadId);
+    return sideThread;
   }
 
   @override
@@ -5104,6 +5530,13 @@ class _NoopThreadMutationRunner implements ThreadMutationRunner {
     String? lastTurnId,
     bool ephemeral = false,
   }) async => _thread('thr_fork');
+
+  @override
+  Future<ThreadSummary> startSideConversation({
+    required String threadId,
+  }) async {
+    return _thread('thr_side');
+  }
 
   @override
   Future<void> compactThread({required String threadId}) async {}

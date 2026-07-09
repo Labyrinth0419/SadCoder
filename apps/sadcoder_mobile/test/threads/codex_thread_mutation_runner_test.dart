@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_server_client.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
 import 'package:sadcoder_mobile/src/threads/codex_thread_mutation_runner.dart';
+import 'package:sadcoder_mobile/src/threads/side_conversation.dart';
 
 void main() {
   test(
@@ -48,4 +49,92 @@ void main() {
     expect(requests.single.method, 'thread/compact/start');
     expect(requests.single.params, {'threadId': 'thr_1'});
   });
+
+  test(
+    'startSideConversation forks an ephemeral thread and injects boundary',
+    () async {
+      final requests = <JsonRpcRequest>[];
+      final transport = MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        if (request.method == 'thread/fork') {
+          return {
+            'thread': {
+              'id': 'thr_side',
+              'sessionId': 'sess_1',
+              'preview': 'Side work',
+              'ephemeral': true,
+              'status': 'idle',
+              'cwd': '/repo',
+              'updatedAt': 2,
+              'forkedFromId': 'thr_parent',
+              'turns': <Object?>[],
+            },
+          };
+        }
+        return {};
+      });
+      final runner = CodexThreadMutationRunner(CodexAppServerClient(transport));
+
+      final thread = await runner.startSideConversation(threadId: 'thr_parent');
+
+      expect(thread.id, 'thr_side');
+      expect(thread.ephemeral, true);
+      expect(requests.map((request) => request.method), [
+        'thread/fork',
+        'thread/inject_items',
+      ]);
+      expect(requests[0].params, {
+        'threadId': 'thr_parent',
+        'developerInstructions': SideConversationPrompts.developerInstructions,
+        'ephemeral': true,
+      });
+      expect(requests[1].params, {
+        'threadId': 'thr_side',
+        'items': [SideConversationPrompts.boundaryPromptItem()],
+      });
+    },
+  );
+
+  test(
+    'startSideConversation deletes the side thread when injection fails',
+    () async {
+      final requests = <JsonRpcRequest>[];
+      final injectError = StateError('inject failed');
+      final transport = MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        if (request.method == 'thread/fork') {
+          return {
+            'thread': {
+              'id': 'thr_side',
+              'sessionId': 'sess_1',
+              'preview': 'Side work',
+              'ephemeral': true,
+              'status': 'idle',
+              'cwd': '/repo',
+              'updatedAt': 2,
+              'forkedFromId': 'thr_parent',
+              'turns': <Object?>[],
+            },
+          };
+        }
+        if (request.method == 'thread/inject_items') {
+          throw injectError;
+        }
+        return {};
+      });
+      final runner = CodexThreadMutationRunner(CodexAppServerClient(transport));
+
+      await expectLater(
+        runner.startSideConversation(threadId: 'thr_parent'),
+        throwsA(same(injectError)),
+      );
+
+      expect(requests.map((request) => request.method), [
+        'thread/fork',
+        'thread/inject_items',
+        'thread/delete',
+      ]);
+      expect(requests.last.params, {'threadId': 'thr_side'});
+    },
+  );
 }

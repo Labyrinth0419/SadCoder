@@ -871,6 +871,68 @@ void main() {
     expect(result.effect, SlashCommandActionEffect.compactThread);
   });
 
+  test('/side and /btw start side conversations with inline args', () async {
+    final calls = <({String arguments, bool btw})>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      startSideConversation: (arguments, {required bool btw}) async {
+        calls.add((arguments: arguments, btw: btw));
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final side = await dispatcher.dispatch(
+      registry.parseComposerText('/side inspect this'),
+      hasActiveTurn: false,
+    );
+    final btw = await dispatcher.dispatch(
+      registry.parseComposerText('/btw quick question'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, [
+      (arguments: 'inspect this', btw: false),
+      (arguments: 'quick question', btw: true),
+    ]);
+    expect(side.outcome, SlashCommandActionOutcome.executed);
+    expect(side.effect, SlashCommandActionEffect.sideConversation);
+    expect(btw.outcome, SlashCommandActionOutcome.executed);
+    expect(btw.effect, SlashCommandActionEffect.sideConversation);
+  });
+
+  test('side conversations reject commands unavailable in side mode', () async {
+    var forks = 0;
+    var statuses = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      forkThread: () async {
+        forks++;
+        return SlashCommandCallbackResult.executed;
+      },
+      showStatus: () {
+        statuses++;
+        return 'Status summary';
+      },
+    );
+
+    final fork = await dispatcher.dispatch(
+      registry.parseComposerText('/fork'),
+      hasActiveTurn: false,
+      isSideConversation: true,
+    );
+    final status = await dispatcher.dispatch(
+      registry.parseComposerText('/status'),
+      hasActiveTurn: false,
+      isSideConversation: true,
+    );
+
+    expect(fork.outcome, SlashCommandActionOutcome.unavailable);
+    expect(fork.command?.command, 'fork');
+    expect(status.outcome, SlashCommandActionOutcome.executed);
+    expect(status.effect, SlashCommandActionEffect.status);
+    expect(status.message, 'Status summary');
+    expect(forks, 0);
+    expect(statuses, 1);
+  });
+
   test(
     'thread lifecycle commands are unavailable during an active turn',
     () async {
