@@ -43,6 +43,10 @@ class AgentCachedEvent {
 
   final String method;
   final Object? params;
+
+  Map<String, Object?> toNotification() {
+    return {'method': method, if (params != null) 'params': params};
+  }
 }
 
 List<Map<String, Object?>> _listOfMaps(Object? value) {

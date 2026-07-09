@@ -10,6 +10,7 @@ import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
+import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_session.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
@@ -79,6 +80,30 @@ void main() {
       'approval-from-snapshot',
     );
     expect(approvalController.approvals.single.command, 'cargo test');
+  });
+
+  test('connect backfills recent events from agent snapshot', () async {
+    final approvalController = ApprovalStateController();
+    final snapshotReader = _FakeAgentSnapshotReader(
+      outcomes: [_snapshotWithEvent(threadId: 'thr_snapshot')],
+    );
+    final controller = CodexSessionStateController(
+      connector: _FakeSessionStarter(),
+      approvalController: approvalController,
+      snapshotReader: snapshotReader,
+    );
+    final events = <CodexEvent>[];
+    final subscription = controller.events!.listen(events.add);
+    addTearDown(subscription.cancel);
+    addTearDown(controller.dispose);
+    addTearDown(approvalController.dispose);
+
+    await controller.connect(_profile);
+    await _flushMicrotasks();
+
+    expect(events, hasLength(1));
+    expect(events.single.kind, CodexEventKind.turnStarted);
+    expect(events.single.threadId, 'thr_snapshot');
   });
 
   test('snapshot backfill failure does not fail connection', () async {
@@ -285,6 +310,9 @@ void main() {
         ),
         reconnectDelayScheduler: scheduler,
       );
+      final events = <CodexEvent>[];
+      final subscription = controller.events!.listen(events.add);
+      addTearDown(subscription.cancel);
       addTearDown(controller.dispose);
       addTearDown(approvalController.dispose);
 
@@ -302,18 +330,28 @@ void main() {
 
       snapshotReader.completeAt(
         0,
-        _snapshotWithApproval(requestId: 'stale', command: 'stale command'),
+        _snapshotWithApprovalAndEvent(
+          requestId: 'stale',
+          command: 'stale command',
+          threadId: 'thr_stale',
+        ),
       );
       await _flushMicrotasks();
       expect(approvalController.approvals, isEmpty);
+      expect(events, isEmpty);
 
       snapshotReader.completeAt(
         1,
-        _snapshotWithApproval(requestId: 'current', command: 'current command'),
+        _snapshotWithApprovalAndEvent(
+          requestId: 'current',
+          command: 'current command',
+          threadId: 'thr_current',
+        ),
       );
       await _flushMicrotasks();
       expect(approvalController.approvals.single.requestId, 'current');
       expect(approvalController.approvals.single.command, 'current command');
+      expect(events.single.threadId, 'thr_current');
     },
   );
 
@@ -426,6 +464,47 @@ AgentSnapshot _snapshotWithApproval({
       ),
     ],
     recentEvents: const [],
+  );
+}
+
+AgentSnapshot _snapshotWithEvent({required String threadId}) {
+  return AgentSnapshot(
+    schemaVersion: 1,
+    pendingApprovals: const [],
+    recentEvents: [_turnStartedCachedEvent(threadId)],
+  );
+}
+
+AgentSnapshot _snapshotWithApprovalAndEvent({
+  required Object requestId,
+  required String command,
+  required String threadId,
+}) {
+  return AgentSnapshot(
+    schemaVersion: 1,
+    pendingApprovals: [
+      JsonRpcServerRequest(
+        id: requestId,
+        method: commandExecutionApprovalMethod,
+        params: {'command': command},
+      ),
+    ],
+    recentEvents: [_turnStartedCachedEvent(threadId)],
+  );
+}
+
+AgentCachedEvent _turnStartedCachedEvent(String threadId) {
+  return AgentCachedEvent(
+    method: 'turn/started',
+    params: {
+      'threadId': threadId,
+      'turn': {
+        'id': 'turn_1',
+        'status': 'inProgress',
+        'items': <Object?>[],
+        'itemsView': 'notLoaded',
+      },
+    },
   );
 }
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
@@ -43,7 +44,12 @@ class CodexSessionStateController extends ChangeNotifier {
   final bool _autoReconnect;
   final AgentSnapshotReader? _snapshotReader;
   final ApprovalStateController approvalController;
+  final StreamController<CodexEvent> _eventsController =
+      StreamController.broadcast();
+  final Set<String> _seenEventFingerprints = <String>{};
+  final List<String> _seenEventOrder = <String>[];
   CodexSessionConnectionHandle? _connection;
+  StreamSubscription<CodexEvent>? _eventSubscription;
   CodexSessionStatus _status = CodexSessionStatus.idle;
   SshProfile? _profile;
   Object? _error;
@@ -69,7 +75,7 @@ class CodexSessionStateController extends ChangeNotifier {
 
   TurnRunner? get turnRunner => _connection?.turnRunner;
 
-  Stream<CodexEvent>? get events => _connection?.events;
+  Stream<CodexEvent>? get events => _eventsController.stream;
 
   int get reconnectAttempt => _reconnectAttempt;
 
@@ -85,8 +91,10 @@ class CodexSessionStateController extends ChangeNotifier {
     final existingConnection = _connection;
     if (existingConnection != null) {
       _connection = null;
+      _detachConnectionEvents();
       await existingConnection.close();
     }
+    _clearSeenEvents();
 
     _reconnectAttempt = 0;
     _nextReconnectDelay = null;
@@ -111,6 +119,7 @@ class CodexSessionStateController extends ChangeNotifier {
         return;
       }
       _connection = null;
+      _detachConnectionEvents();
       _setState(
         status: CodexSessionStatus.failed,
         profile: profile,
@@ -132,6 +141,7 @@ class CodexSessionStateController extends ChangeNotifier {
 
     _setState(status: CodexSessionStatus.disconnecting);
     try {
+      _detachConnectionEvents();
       await connection.close();
     } finally {
       _connection = null;
@@ -145,8 +155,10 @@ class CodexSessionStateController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _generation++;
+    unawaited(_eventSubscription?.cancel());
     unawaited(_connection?.close(notifyApprovalController: false));
     _connection = null;
+    unawaited(_eventsController.close());
     super.dispose();
   }
 
@@ -173,6 +185,7 @@ class CodexSessionStateController extends ChangeNotifier {
     }
 
     _connection = null;
+    _detachConnectionEvents();
     await connection.close();
     if (!_isCurrentGeneration(generation)) {
       return;
@@ -237,8 +250,23 @@ class CodexSessionStateController extends ChangeNotifier {
     int generation,
   ) {
     _connection = connection;
+    _attachConnectionEvents(connection);
     _watchConnectionDone(connection, generation);
     unawaited(_backfillAgentSnapshot(profile, generation, connection));
+  }
+
+  void _attachConnectionEvents(CodexSessionConnectionHandle connection) {
+    unawaited(_eventSubscription?.cancel());
+    _eventSubscription = connection.events.listen(
+      _emitLiveEvent,
+      onError: _eventsController.addError,
+    );
+  }
+
+  void _detachConnectionEvents() {
+    final subscription = _eventSubscription;
+    _eventSubscription = null;
+    unawaited(subscription?.cancel());
   }
 
   Future<void> _backfillAgentSnapshot(
@@ -257,9 +285,59 @@ class CodexSessionStateController extends ChangeNotifier {
         return;
       }
       approvalController.ingestServerRequests(snapshot.pendingApprovals);
+      for (final cachedEvent in snapshot.recentEvents) {
+        if (cachedEvent.method.isEmpty) {
+          continue;
+        }
+        _emitSnapshotEvent(
+          CodexEvent.fromNotification(cachedEvent.toNotification()),
+        );
+      }
     } on Object catch (_) {
       return;
     }
+  }
+
+  void _emitLiveEvent(CodexEvent event) {
+    _rememberEvent(event);
+    _eventsController.add(event);
+  }
+
+  void _emitSnapshotEvent(CodexEvent event) {
+    if (!_rememberEvent(event)) {
+      return;
+    }
+    _eventsController.add(event);
+  }
+
+  bool _rememberEvent(CodexEvent event) {
+    final fingerprint = _eventFingerprint(event);
+    if (fingerprint == null) {
+      return true;
+    }
+    if (!_seenEventFingerprints.add(fingerprint)) {
+      return false;
+    }
+    _seenEventOrder.add(fingerprint);
+    const limit = 512;
+    if (_seenEventOrder.length > limit) {
+      final removed = _seenEventOrder.removeAt(0);
+      _seenEventFingerprints.remove(removed);
+    }
+    return true;
+  }
+
+  String? _eventFingerprint(CodexEvent event) {
+    try {
+      return jsonEncode(event.raw);
+    } on Object {
+      return null;
+    }
+  }
+
+  void _clearSeenEvents() {
+    _seenEventFingerprints.clear();
+    _seenEventOrder.clear();
   }
 
   bool _isCurrentGeneration(int generation) {
