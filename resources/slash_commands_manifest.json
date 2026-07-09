@@ -166,8 +166,8 @@
       "availableDuringTask": true,
       "availableInSideConversation": false,
       "platformVisibility": "all",
-      "mappingType": "agentFallback",
-      "mappingTarget": "hooks list/read/update",
+      "mappingType": "appServer",
+      "mappingTarget": "hooks/list read-only + hook loading diagnostics",
       "phase": "secondStage",
       "riskLevel": "medium"
     },

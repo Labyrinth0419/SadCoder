@@ -19,6 +19,7 @@ import 'package:sadcoder_mobile/src/features/chat/chat_page.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_timeline_controller.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
+import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_controller.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
@@ -2496,6 +2497,134 @@ void main() {
     },
   );
 
+  testWidgets('/hooks lists hooks for the selected thread cwd', (tester) async {
+    final approvalController = ApprovalStateController();
+    final hookReader = _RecordingHookListReader(
+      page: HookListPage.fromJson({
+        'data': [
+          {
+            'cwd': '/repo',
+            'hooks': [
+              {
+                'key': 'pre-tool-use-shell',
+                'eventName': 'preToolUse',
+                'handlerType': 'command',
+                'matcher': 'shell',
+                'command': 'scripts/check.sh',
+                'timeoutSec': 30,
+                'statusMessage': 'Checking shell command',
+                'sourcePath': '/repo/.codex/hooks.json',
+                'source': 'project',
+                'displayOrder': 1,
+                'enabled': true,
+                'isManaged': false,
+                'currentHash': 'abc123',
+                'trustStatus': 'trusted',
+              },
+            ],
+            'warnings': ['deprecated hook shape'],
+            'errors': [
+              {'path': '/repo/.codex/bad-hooks.json', 'message': 'bad hook'},
+            ],
+          },
+        ],
+      }),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      hookListReader: hookReader,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_selected',
+            'sessionId': 'sess_1',
+            'preview': 'Selected thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+            'turns': <Object?>[],
+          }),
+        ),
+      ),
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(detailController.dispose);
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_selected');
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/hooks',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(hookReader.cwds, [
+      ['/repo'],
+    ]);
+    expect(find.textContaining('Hooks'), findsOneWidget);
+    expect(find.textContaining('cwd: /repo'), findsOneWidget);
+    expect(
+      find.textContaining('preToolUse (pre-tool-use-shell)'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('command: scripts/check.sh'), findsOneWidget);
+    expect(find.textContaining('deprecated hook shape'), findsOneWidget);
+    expect(find.textContaining('/repo/.codex/bad-hooks.json'), findsOneWidget);
+  });
+
+  testWidgets('/hooks unsupported arguments do not refresh or send a prompt', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final hookReader = _RecordingHookListReader(
+      page: const HookListPage(entries: []),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      hookListReader: hookReader,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+
+    await _pumpChatPage(tester, sessionController: sessionController);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/hooks sideways',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(hookReader.cwds, isEmpty);
+    expect(find.text('/hooks is unavailable right now.'), findsOneWidget);
+  });
+
   testWidgets('/raw toggles raw timeline item JSON locally', (tester) async {
     final timelineController = ChatTimelineController();
     addTearDown(timelineController.dispose);
@@ -3541,6 +3670,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.threadReviewRunner = const _FakeThreadReviewRunner(),
     this.skillListReader = const _FakeSkillListReader(),
     this.pluginListReader = const _FakePluginListReader(),
+    this.hookListReader = const _FakeHookListReader(),
   });
 
   final ThreadListReader threadListReader;
@@ -3551,6 +3681,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final ThreadReviewRunner threadReviewRunner;
   final SkillListReader skillListReader;
   final PluginListReader pluginListReader;
+  final HookListReader hookListReader;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -3567,6 +3698,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       threadReviewRunner: threadReviewRunner,
       skillListReader: skillListReader,
       pluginListReader: pluginListReader,
+      hookListReader: hookListReader,
     );
   }
 }
@@ -3582,6 +3714,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.threadReviewRunner,
     required this.skillListReader,
     required this.pluginListReader,
+    required this.hookListReader,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -3612,6 +3745,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final PluginListReader pluginListReader;
+
+  @override
+  final HookListReader hookListReader;
 
   @override
   ModelListReader get modelListReader => const _FakeModelListReader();
@@ -3767,6 +3903,15 @@ class _FakePluginListReader implements PluginListReader {
     List<PluginMarketplaceKind> marketplaceKinds = const [],
   }) async {
     return const PluginListPage(marketplaces: []);
+  }
+}
+
+class _FakeHookListReader implements HookListReader {
+  const _FakeHookListReader();
+
+  @override
+  Future<HookListPage> listHooks({List<String> cwds = const []}) async {
+    return const HookListPage(entries: []);
   }
 }
 
@@ -4027,6 +4172,19 @@ class _RecordingPluginListReader implements PluginListReader {
   }) async {
     this.cwds.add(List.unmodifiable(cwds));
     this.marketplaceKinds.add(List.unmodifiable(marketplaceKinds));
+    return page;
+  }
+}
+
+class _RecordingHookListReader implements HookListReader {
+  _RecordingHookListReader({required this.page});
+
+  final HookListPage page;
+  final cwds = <List<String>>[];
+
+  @override
+  Future<HookListPage> listHooks({List<String> cwds = const []}) async {
+    this.cwds.add(List.unmodifiable(cwds));
     return page;
   }
 }

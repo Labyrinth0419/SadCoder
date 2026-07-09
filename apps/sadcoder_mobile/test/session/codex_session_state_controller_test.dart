@@ -16,6 +16,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
+import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
@@ -66,6 +67,7 @@ void main() {
     expect(controller.permissionProfileListReader, isNotNull);
     expect(controller.skillListReader, isNotNull);
     expect(controller.pluginListReader, isNotNull);
+    expect(controller.hookListReader, isNotNull);
     expect(controller.turnRunner, isNotNull);
     expect(controller.threadBackgroundTerminalRunner, isNotNull);
     expect(controller.threadReviewRunner, isNotNull);
@@ -462,6 +464,7 @@ void main() {
     expect(controller.permissionProfileListReader, isNull);
     expect(controller.skillListReader, isNull);
     expect(controller.pluginListReader, isNull);
+    expect(controller.hookListReader, isNull);
     expect(controller.turnRunner, isNull);
     expect(connector.connectCount, 1);
     expect(connector.closeCount, 1);
@@ -589,6 +592,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       permissionProfileListReader: const _FakePermissionProfileListReader(),
       skillListReader: const _FakeSkillListReader(),
       pluginListReader: const _FakePluginListReader(),
+      hookListReader: const _FakeHookListReader(),
       threadMutationRunner: const _FakeThreadMutationRunner(),
       threadBackgroundTerminalRunner:
           const _FakeThreadBackgroundTerminalRunner(),
@@ -699,6 +703,15 @@ class _FakePluginListReader implements PluginListReader {
     List<PluginMarketplaceKind> marketplaceKinds = const [],
   }) async {
     return const PluginListPage(marketplaces: []);
+  }
+}
+
+class _FakeHookListReader implements HookListReader {
+  const _FakeHookListReader();
+
+  @override
+  Future<HookListPage> listHooks({List<String> cwds = const []}) async {
+    return const HookListPage(entries: []);
   }
 }
 

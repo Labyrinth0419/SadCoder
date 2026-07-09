@@ -179,6 +179,16 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> listHooks({List<String> cwds = const []}) {
+    final normalizedCwds = [
+      for (final cwd in cwds)
+        if (cwd.trim().isNotEmpty) cwd.trim(),
+    ];
+    return _request('hooks/list', {
+      if (normalizedCwds.isNotEmpty) 'cwds': normalizedCwds,
+    });
+  }
+
   Future<Map<String, Object?>> getThreadGoal({required String threadId}) {
     return _request('thread/goal/get', {'threadId': threadId});
   }

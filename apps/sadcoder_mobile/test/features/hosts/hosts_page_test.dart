@@ -17,6 +17,7 @@ import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/hosts/hosts_page.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
+import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
@@ -696,6 +697,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   PluginListReader get pluginListReader => const _FakePluginListReader();
 
   @override
+  HookListReader get hookListReader => const _FakeHookListReader();
+
+  @override
   ThreadMutationRunner get threadMutationRunner =>
       const _FakeThreadMutationRunner();
 
@@ -828,6 +832,15 @@ class _FakePluginListReader implements PluginListReader {
     List<PluginMarketplaceKind> marketplaceKinds = const [],
   }) async {
     return const PluginListPage(marketplaces: []);
+  }
+}
+
+class _FakeHookListReader implements HookListReader {
+  const _FakeHookListReader();
+
+  @override
+  Future<HookListPage> listHooks({List<String> cwds = const []}) async {
+    return const HookListPage(entries: []);
   }
 }
 

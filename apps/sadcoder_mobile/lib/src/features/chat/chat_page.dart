@@ -25,6 +25,7 @@ import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import 'chat_background_terminal_summary.dart';
+import 'chat_hooks_summary.dart';
 import 'chat_plugins_summary.dart';
 import 'chat_skills_summary.dart';
 import 'chat_status_summary.dart';
@@ -337,6 +338,7 @@ class _ChatPageState extends State<ChatPage> {
           showMcp: _buildMcpSummary,
           showSkills: _buildSkillsSummary,
           showPlugins: _buildPluginsSummary,
+          showHooks: _buildHooksSummary,
           handleGoal: _handleGoalCommand,
           handleReview: _handleReviewCommand,
           showBackgroundTerminals: _buildBackgroundTerminalsSummary,
@@ -446,6 +448,25 @@ class _ChatPageState extends State<ChatPage> {
       return buildPluginsSummary(l10n: l10n, page: page);
     } on Object catch (error) {
       return '${l10n.pluginsTitle}\n${l10n.pluginsLoadFailed}: $error';
+    }
+  }
+
+  Future<String?> _buildHooksSummary(String arguments) async {
+    if (arguments.trim().isNotEmpty) {
+      return null;
+    }
+
+    final l10n = context.l10n;
+    final reader = widget.sessionController?.hookListReader;
+    if (reader == null) {
+      return [l10n.hooksTitle, l10n.hooksUnavailable].join('\n');
+    }
+
+    try {
+      final page = await reader.listHooks(cwds: _currentWorkspaceCwds());
+      return buildHooksSummary(l10n: l10n, page: page);
+    } on Object catch (error) {
+      return '${l10n.hooksTitle}\n${l10n.hooksLoadFailed}: $error';
     }
   }
 
@@ -896,6 +917,9 @@ class _ChatPageState extends State<ChatPage> {
           result.slash,
         ),
         SlashCommandActionEffect.plugins => l10n.slashCommandExecuted(
+          result.slash,
+        ),
+        SlashCommandActionEffect.hooks => l10n.slashCommandExecuted(
           result.slash,
         ),
         SlashCommandActionEffect.goal => l10n.slashCommandExecuted(

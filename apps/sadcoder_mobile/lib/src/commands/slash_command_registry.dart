@@ -334,8 +334,8 @@ const builtInSlashCommands = <SlashCommandSpec>[
   SlashCommandSpec(
     command: 'hooks',
     description: 'view and manage lifecycle hooks',
-    mappingType: SlashCommandMappingType.agentFallback,
-    mappingTarget: 'hooks list/read/update',
+    mappingType: SlashCommandMappingType.appServer,
+    mappingTarget: 'hooks/list read-only + hook loading diagnostics',
     phase: SlashCommandPhase.secondStage,
     riskLevel: SlashCommandRiskLevel.medium,
   ),

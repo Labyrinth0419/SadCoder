@@ -250,6 +250,38 @@ void main() {
     expect(result.command?.command, 'plugins');
   });
 
+  test('/hooks returns the injected hook summary', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      showHooks: (argument) async {
+        arguments.add(argument);
+        return 'Hooks\npreToolUse: enabled';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/hooks'),
+      hasActiveTurn: true,
+    );
+
+    expect(arguments, ['']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.hooks);
+    expect(result.message, contains('preToolUse'));
+  });
+
+  test('/hooks is unavailable when arguments are not supported', () async {
+    final dispatcher = SlashCommandActionDispatcher(showHooks: (_) => null);
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/hooks sideways'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'hooks');
+  });
+
   test('/goal passes inline arguments to the injected goal handler', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

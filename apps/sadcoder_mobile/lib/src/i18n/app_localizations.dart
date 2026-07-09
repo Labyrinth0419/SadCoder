@@ -313,6 +313,25 @@ class AppLocalizations {
   String get pluginEnabled => _text('pluginEnabled');
   String get pluginDisabled => _text('pluginDisabled');
   String get pluginAvailability => _text('pluginAvailability');
+  String get hooksTitle => _text('hooksTitle');
+  String get hooksUnavailable => _text('hooksUnavailable');
+  String get hooksLoadFailed => _text('hooksLoadFailed');
+  String get hooksEmpty => _text('hooksEmpty');
+  String get hooksCwd => _text('hooksCwd');
+  String get hookWarnings => _text('hookWarnings');
+  String get hookErrors => _text('hookErrors');
+  String get hookEnabled => _text('hookEnabled');
+  String get hookDisabled => _text('hookDisabled');
+  String get hookManaged => _text('hookManaged');
+  String get hookUserManaged => _text('hookUserManaged');
+  String get hookTrust => _text('hookTrust');
+  String get hookSource => _text('hookSource');
+  String get hookMatcher => _text('hookMatcher');
+  String get hookCommand => _text('hookCommand');
+  String get hookStatusMessage => _text('hookStatusMessage');
+  String get hookSourcePath => _text('hookSourcePath');
+  String get hookPlugin => _text('hookPlugin');
+  String get hookTimeout => _text('hookTimeout');
   String get lifetimeTokens => _text('lifetimeTokens');
   String get peakDailyTokens => _text('peakDailyTokens');
   String get currentStreakDays => _text('currentStreakDays');
@@ -665,6 +684,25 @@ const _values = <String, Map<String, String>>{
     'pluginEnabled': 'enabled',
     'pluginDisabled': 'disabled',
     'pluginAvailability': 'availability',
+    'hooksTitle': 'Hooks',
+    'hooksUnavailable': 'Connect to a host, then run /hooks.',
+    'hooksLoadFailed': 'Failed to load hooks',
+    'hooksEmpty': 'No hooks configured.',
+    'hooksCwd': 'cwd',
+    'hookWarnings': 'hook warnings',
+    'hookErrors': 'hook errors',
+    'hookEnabled': 'enabled',
+    'hookDisabled': 'disabled',
+    'hookManaged': 'managed',
+    'hookUserManaged': 'user-managed',
+    'hookTrust': 'trust',
+    'hookSource': 'source',
+    'hookMatcher': 'matcher',
+    'hookCommand': 'command',
+    'hookStatusMessage': 'status message',
+    'hookSourcePath': 'source path',
+    'hookPlugin': 'plugin',
+    'hookTimeout': 'timeout',
     'lifetimeTokens': 'Lifetime tokens',
     'peakDailyTokens': 'Peak daily tokens',
     'currentStreakDays': 'Current streak',
@@ -970,6 +1008,25 @@ const _values = <String, Map<String, String>>{
     'pluginEnabled': '已启用',
     'pluginDisabled': '已禁用',
     'pluginAvailability': '可用性',
+    'hooksTitle': 'Hooks',
+    'hooksUnavailable': '连接主机后运行 /hooks。',
+    'hooksLoadFailed': 'Hooks 加载失败',
+    'hooksEmpty': '暂无配置的 hooks。',
+    'hooksCwd': '工作目录',
+    'hookWarnings': 'hook 警告',
+    'hookErrors': 'hook 错误',
+    'hookEnabled': '已启用',
+    'hookDisabled': '已禁用',
+    'hookManaged': '受管',
+    'hookUserManaged': '用户管理',
+    'hookTrust': '信任状态',
+    'hookSource': '来源',
+    'hookMatcher': '匹配器',
+    'hookCommand': '命令',
+    'hookStatusMessage': '状态消息',
+    'hookSourcePath': '来源路径',
+    'hookPlugin': '插件',
+    'hookTimeout': '超时',
     'lifetimeTokens': '累计 token',
     'peakDailyTokens': '单日峰值 token',
     'currentStreakDays': '当前连续天数',
