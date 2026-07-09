@@ -41,7 +41,7 @@ void main() {
     });
   });
 
-  test('noops on non-Android platforms', () async {
+  test('reports unsupported retention on non-Android platforms', () async {
     const channel = MethodChannel(
       'com.sadcoder.sadcoder_mobile/background_connection_noop_test',
     );
@@ -58,10 +58,11 @@ void main() {
       channel: channel,
       platform: TargetPlatform.iOS,
     );
-    final retention = await keeper.retain(
-      const BackgroundConnectionContext(turnId: 'turn_1'),
+
+    await expectLater(
+      keeper.retain(const BackgroundConnectionContext(turnId: 'turn_1')),
+      throwsA(isA<BackgroundConnectionUnsupportedException>()),
     );
-    await retention.release();
 
     expect(calls, isEmpty);
   });

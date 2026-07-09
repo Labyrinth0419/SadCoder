@@ -70,6 +70,19 @@ void main() {
     expect(fixture.disconnects, 1);
     expect(fixture.connected.value, false);
   });
+
+  test('unsupported platform retention disconnects observation', () async {
+    final fixture = _Fixture(
+      activeTurnId: 'turn_1',
+      keeper: const _UnsupportedKeeper(),
+    );
+    addTearDown(fixture.dispose);
+
+    await fixture.coordinator.handleLifecycleState(AppLifecycleState.paused);
+
+    expect(fixture.disconnects, 1);
+    expect(fixture.connected.value, false);
+  });
 }
 
 class _Fixture {
@@ -146,5 +159,16 @@ class _FailingKeeper implements BackgroundConnectionKeeper {
     BackgroundConnectionContext context,
   ) async {
     throw StateError('foreground service unavailable');
+  }
+}
+
+class _UnsupportedKeeper implements BackgroundConnectionKeeper {
+  const _UnsupportedKeeper();
+
+  @override
+  Future<BackgroundConnectionRetention> retain(
+    BackgroundConnectionContext context,
+  ) async {
+    throw const BackgroundConnectionUnsupportedException('unsupported');
   }
 }

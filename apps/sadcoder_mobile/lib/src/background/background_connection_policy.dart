@@ -41,6 +41,15 @@ abstract interface class BackgroundConnectionRetention {
   Future<void> release();
 }
 
+class BackgroundConnectionUnsupportedException implements Exception {
+  const BackgroundConnectionUnsupportedException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class NoopBackgroundConnectionKeeper implements BackgroundConnectionKeeper {
   const NoopBackgroundConnectionKeeper();
 

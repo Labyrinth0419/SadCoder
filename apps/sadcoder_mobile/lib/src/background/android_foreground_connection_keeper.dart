@@ -24,7 +24,9 @@ class AndroidForegroundConnectionKeeper implements BackgroundConnectionKeeper {
     BackgroundConnectionContext context,
   ) async {
     if (_currentPlatform != TargetPlatform.android) {
-      return const NoopBackgroundConnectionRetention();
+      throw const BackgroundConnectionUnsupportedException(
+        'Foreground background connection retention is only supported on Android.',
+      );
     }
 
     await _channel.invokeMethod<void>('retain', {
