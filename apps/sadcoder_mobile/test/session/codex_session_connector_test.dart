@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/agent/agent_remote_service.dart';
+import 'package:sadcoder_mobile/src/agent/agent_status.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
@@ -77,6 +79,36 @@ void main() {
     expect(proxyConnector.methods, ['initialize']);
     expect(proxyConnector.methods, isNot(contains('turn/interrupt')));
   });
+
+  test('connect starts a not-started backend before opening proxy', () async {
+    final proxyConnector = _LineServerProxyConnector();
+    final starter = _FakeStartRunner(_readyStatus);
+    final connector = CodexSessionConnector(
+      proxyConnector: proxyConnector,
+      statusReader: const _FakeStatusReader(_notStartedStatus),
+      startRunner: starter,
+    );
+
+    final connection = await connector.connect(_profile);
+    addTearDown(connection.close);
+
+    expect(starter.startedProfiles, [_profile]);
+    expect(proxyConnector.connectCount, 1);
+    expect(proxyConnector.methods, ['initialize', 'initialized']);
+  });
+
+  test('connect fails before proxy when backend is unavailable', () async {
+    final proxyConnector = _LineServerProxyConnector();
+    final connector = CodexSessionConnector(
+      proxyConnector: proxyConnector,
+      statusReader: const _FakeStatusReader(_unavailableStatus),
+    );
+
+    await expectLater(connector.connect(_profile), throwsA(isA<StateError>()));
+
+    expect(proxyConnector.connectCount, 0);
+    expect(proxyConnector.methods, isEmpty);
+  });
 }
 
 const _profile = SshProfile(
@@ -86,15 +118,72 @@ const _profile = SshProfile(
   username: 'tester',
 );
 
+const _readyStatus = AgentStatus(
+  agentVersion: '0.1.0',
+  platformOs: 'linux',
+  platformArch: 'x86_64',
+  codexPath: 'codex',
+  codexAvailable: true,
+  backendKind: BackendKind.codexAppServerDaemon,
+  backendState: BackendState.ready,
+  backendDetail: 'daemon ready',
+);
+
+const _notStartedStatus = AgentStatus(
+  agentVersion: '0.1.0',
+  platformOs: 'linux',
+  platformArch: 'x86_64',
+  codexPath: 'codex',
+  codexAvailable: true,
+  backendKind: BackendKind.codexAppServerDaemon,
+  backendState: BackendState.notStarted,
+  backendDetail: 'daemon not started',
+);
+
+const _unavailableStatus = AgentStatus(
+  agentVersion: '0.1.0',
+  platformOs: 'linux',
+  platformArch: 'x86_64',
+  codexPath: 'codex',
+  codexAvailable: false,
+  backendKind: BackendKind.unknown,
+  backendState: BackendState.unavailable,
+  backendDetail: 'codex missing',
+);
+
+class _FakeStatusReader implements AgentStatusReader {
+  const _FakeStatusReader(this.status);
+
+  final AgentStatus status;
+
+  @override
+  Future<AgentStatus> readStatus(SshProfile profile) async => status;
+}
+
+class _FakeStartRunner implements AgentStartRunner {
+  _FakeStartRunner(this.status);
+
+  final AgentStatus status;
+  final startedProfiles = <SshProfile>[];
+
+  @override
+  Future<AgentStatus> start(SshProfile profile) async {
+    startedProfiles.add(profile);
+    return status;
+  }
+}
+
 class _LineServerProxyConnector implements AgentProxyConnector {
   _LineServerProxyConnector({this.failMethod});
 
   final String? failMethod;
   final methods = <String>[];
   bool closed = false;
+  int connectCount = 0;
 
   @override
   Future<AgentProxyConnection> connect(SshProfile profile) async {
+    connectCount++;
     final input = StreamController<Uint8List>();
     final output = StreamController<Uint8List>();
 

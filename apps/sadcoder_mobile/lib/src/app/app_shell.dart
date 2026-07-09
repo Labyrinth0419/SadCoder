@@ -23,6 +23,8 @@ import '../turns/turn_controller.dart';
 
 const _defaultSessionConnector = CodexSessionConnector(
   proxyConnector: DartSshProxyConnector(),
+  statusReader: _defaultAgentRemoteService,
+  startRunner: _defaultAgentRemoteService,
 );
 const _defaultAgentRemoteService = AgentRemoteService(
   DartSshRemoteCommandRunner(),

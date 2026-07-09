@@ -1,3 +1,5 @@
+import '../agent/agent_remote_service.dart';
+import '../agent/agent_status.dart';
 import '../approvals/approval_state_controller.dart';
 import '../config/codex_config_snapshot_reader.dart';
 import '../config/codex_config_snapshot_remote_reader.dart';
@@ -40,11 +42,17 @@ abstract interface class CodexSessionConnectionStarter {
 class CodexSessionConnector implements CodexSessionConnectionStarter {
   const CodexSessionConnector({
     required AgentProxyConnector proxyConnector,
+    AgentStatusReader? statusReader,
+    AgentStartRunner? startRunner,
     this.clientName = 'sadcoder-mobile',
     this.experimentalApi = true,
-  }) : _proxyConnector = proxyConnector;
+  }) : _proxyConnector = proxyConnector,
+       _statusReader = statusReader,
+       _startRunner = startRunner;
 
   final AgentProxyConnector _proxyConnector;
+  final AgentStatusReader? _statusReader;
+  final AgentStartRunner? _startRunner;
   final String clientName;
   final bool experimentalApi;
 
@@ -53,6 +61,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
     SshProfile profile, {
     ApprovalStateController? approvalController,
   }) async {
+    await _ensureBackendReady(profile);
     final proxyConnection = await _proxyConnector.connect(profile);
     CodexAppSession? session;
     try {
@@ -78,6 +87,37 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
       await proxyConnection.close();
       rethrow;
     }
+  }
+
+  Future<void> _ensureBackendReady(SshProfile profile) async {
+    final statusReader = _statusReader;
+    if (statusReader == null) {
+      return;
+    }
+
+    final status = await statusReader.readStatus(profile);
+    if (status.backendState == BackendState.ready) {
+      return;
+    }
+
+    final startRunner = _startRunner;
+    if (status.backendState == BackendState.notStarted && startRunner != null) {
+      final started = await startRunner.start(profile);
+      if (started.backendState == BackendState.ready) {
+        return;
+      }
+      throw StateError(_backendNotReadyMessage(started));
+    }
+
+    throw StateError(_backendNotReadyMessage(status));
+  }
+
+  String _backendNotReadyMessage(AgentStatus status) {
+    final detail = status.backendDetail;
+    if (detail == null || detail.trim().isEmpty) {
+      return 'Codex backend is ${status.backendState.name}';
+    }
+    return 'Codex backend is ${status.backendState.name}: $detail';
   }
 }
 
