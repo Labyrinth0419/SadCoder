@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../protocol/json_rpc.dart';
 import 'approval_action_dispatcher.dart';
 import 'approval_coordinator.dart';
 import 'pending_approval.dart';
@@ -61,6 +62,17 @@ class ApprovalStateController extends ChangeNotifier {
       _store.upsert(approval);
     }
     notifyListeners();
+  }
+
+  void ingestServerRequests(Iterable<JsonRpcServerRequest> requests) {
+    var changed = false;
+    for (final request in requests) {
+      _store.ingestServerRequest(request);
+      changed = true;
+    }
+    if (changed) {
+      notifyListeners();
+    }
   }
 
   void upsert(PendingApproval approval) {

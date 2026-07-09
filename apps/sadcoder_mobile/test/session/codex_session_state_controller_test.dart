@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/agent/agent_snapshot.dart';
+import 'package:sadcoder_mobile/src/agent/agent_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
@@ -35,6 +37,59 @@ void main() {
     expect(controller.isConnected, true);
     expect(controller.profile, _profile);
     expect(connector.connectedProfiles, [_profile]);
+    expect(approvalController.canRespond, true);
+  });
+
+  test('connect backfills pending approvals from agent snapshot', () async {
+    final approvalController = ApprovalStateController();
+    final snapshotReader = _FakeAgentSnapshotReader(
+      outcomes: [
+        _snapshotWithApproval(
+          requestId: 'approval-from-snapshot',
+          command: 'cargo test',
+        ),
+      ],
+    );
+    final controller = CodexSessionStateController(
+      connector: _FakeSessionStarter(),
+      approvalController: approvalController,
+      snapshotReader: snapshotReader,
+    );
+    addTearDown(controller.dispose);
+    addTearDown(approvalController.dispose);
+
+    await controller.connect(_profile);
+    await _flushMicrotasks();
+
+    expect(controller.status, CodexSessionStatus.connected);
+    expect(snapshotReader.profiles, [_profile]);
+    expect(
+      approvalController.approvals.single.requestId,
+      'approval-from-snapshot',
+    );
+    expect(approvalController.approvals.single.command, 'cargo test');
+  });
+
+  test('snapshot backfill failure does not fail connection', () async {
+    final approvalController = ApprovalStateController();
+    final snapshotReader = _FakeAgentSnapshotReader(
+      outcomes: [StateError('snapshot failed')],
+    );
+    final controller = CodexSessionStateController(
+      connector: _FakeSessionStarter(),
+      approvalController: approvalController,
+      snapshotReader: snapshotReader,
+    );
+    addTearDown(controller.dispose);
+    addTearDown(approvalController.dispose);
+
+    await controller.connect(_profile);
+    await _flushMicrotasks();
+
+    expect(controller.status, CodexSessionStatus.connected);
+    expect(controller.error, isNull);
+    expect(snapshotReader.profiles, [_profile]);
+    expect(approvalController.approvals, isEmpty);
     expect(approvalController.canRespond, true);
   });
 
@@ -160,6 +215,97 @@ void main() {
     },
   );
 
+  test('reconnect backfills pending approvals from agent snapshot', () async {
+    final approvalController = ApprovalStateController();
+    final connector = _FakeSessionStarter();
+    final scheduler = _FakeReconnectDelayScheduler();
+    final snapshotReader = _FakeAgentSnapshotReader(
+      outcomes: [
+        _emptySnapshot,
+        _snapshotWithApproval(
+          requestId: 'approval-after-reconnect',
+          command: 'dart test',
+        ),
+      ],
+    );
+    final controller = CodexSessionStateController(
+      connector: connector,
+      approvalController: approvalController,
+      snapshotReader: snapshotReader,
+      reconnectPolicy: const ReconnectPolicy.fixed(
+        delays: [Duration(milliseconds: 1)],
+      ),
+      reconnectDelayScheduler: scheduler,
+    );
+    addTearDown(controller.dispose);
+    addTearDown(approvalController.dispose);
+
+    await controller.connect(_profile);
+    await _flushMicrotasks();
+    expect(approvalController.approvals, isEmpty);
+
+    connector.connections.single.completeDone();
+    await _flushMicrotasks();
+    scheduler.completeNext();
+    await _flushMicrotasks();
+
+    expect(controller.status, CodexSessionStatus.connected);
+    expect(snapshotReader.profiles, [_profile, _profile]);
+    expect(
+      approvalController.approvals.single.requestId,
+      'approval-after-reconnect',
+    );
+    expect(approvalController.approvals.single.command, 'dart test');
+  });
+
+  test(
+    'stale snapshot backfill from a dropped connection is ignored',
+    () async {
+      final approvalController = ApprovalStateController();
+      final connector = _FakeSessionStarter();
+      final scheduler = _FakeReconnectDelayScheduler();
+      final snapshotReader = _PendingAgentSnapshotReader();
+      final controller = CodexSessionStateController(
+        connector: connector,
+        approvalController: approvalController,
+        snapshotReader: snapshotReader,
+        reconnectPolicy: const ReconnectPolicy.fixed(
+          delays: [Duration(milliseconds: 1)],
+        ),
+        reconnectDelayScheduler: scheduler,
+      );
+      addTearDown(controller.dispose);
+      addTearDown(approvalController.dispose);
+
+      await controller.connect(_profile);
+      await _flushMicrotasks();
+      expect(snapshotReader.pendingCount, 1);
+
+      connector.connections.single.completeDone();
+      await _flushMicrotasks();
+      scheduler.completeNext();
+      await _flushMicrotasks();
+
+      expect(controller.status, CodexSessionStatus.connected);
+      expect(snapshotReader.pendingCount, 2);
+
+      snapshotReader.completeAt(
+        0,
+        _snapshotWithApproval(requestId: 'stale', command: 'stale command'),
+      );
+      await _flushMicrotasks();
+      expect(approvalController.approvals, isEmpty);
+
+      snapshotReader.completeAt(
+        1,
+        _snapshotWithApproval(requestId: 'current', command: 'current command'),
+      );
+      await _flushMicrotasks();
+      expect(approvalController.approvals.single.requestId, 'current');
+      expect(approvalController.approvals.single.command, 'current command');
+    },
+  );
+
   test('failed reconnect attempts keep retrying with capped backoff', () async {
     final approvalController = ApprovalStateController();
     final connector = _FakeSessionStarter(
@@ -245,6 +391,29 @@ void main() {
   });
 }
 
+const _emptySnapshot = AgentSnapshot(
+  schemaVersion: 1,
+  pendingApprovals: [],
+  recentEvents: [],
+);
+
+AgentSnapshot _snapshotWithApproval({
+  required Object requestId,
+  required String command,
+}) {
+  return AgentSnapshot(
+    schemaVersion: 1,
+    pendingApprovals: [
+      JsonRpcServerRequest(
+        id: requestId,
+        method: commandExecutionApprovalMethod,
+        params: {'command': command},
+      ),
+    ],
+    recentEvents: const [],
+  );
+}
+
 const _profile = SshProfile(
   id: 'local',
   name: 'Local',
@@ -300,6 +469,50 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
         },
       ),
     );
+  }
+}
+
+class _FakeAgentSnapshotReader implements AgentSnapshotReader {
+  _FakeAgentSnapshotReader({required this.outcomes});
+
+  final List<Object> outcomes;
+  final profiles = <SshProfile>[];
+  int _readCount = 0;
+
+  @override
+  Future<AgentSnapshot> readSnapshot(SshProfile profile) async {
+    profiles.add(profile);
+    final index = _readCount < outcomes.length
+        ? _readCount
+        : outcomes.length - 1;
+    _readCount++;
+    final outcome = outcomes[index];
+    if (outcome is AgentSnapshot) {
+      return outcome;
+    }
+    throw outcome;
+  }
+}
+
+class _PendingAgentSnapshotReader implements AgentSnapshotReader {
+  final profiles = <SshProfile>[];
+  final _completers = <Completer<AgentSnapshot>>[];
+
+  int get pendingCount => _completers.length;
+
+  @override
+  Future<AgentSnapshot> readSnapshot(SshProfile profile) {
+    profiles.add(profile);
+    final completer = Completer<AgentSnapshot>();
+    _completers.add(completer);
+    return completer.future;
+  }
+
+  void completeAt(int index, AgentSnapshot snapshot) {
+    final completer = _completers[index];
+    if (!completer.isCompleted) {
+      completer.complete(snapshot);
+    }
   }
 }
 

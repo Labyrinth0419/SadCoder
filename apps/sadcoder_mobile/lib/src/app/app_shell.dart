@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../agent/agent_remote_service.dart';
 import '../approvals/approval_state_controller.dart';
 import '../features/approvals/approvals_page.dart';
 import '../features/chat/chat_page.dart';
@@ -9,9 +10,13 @@ import '../i18n/app_localizations.dart';
 import '../session/codex_session_connector.dart';
 import '../session/codex_session_state_controller.dart';
 import '../ssh/dart_ssh_proxy_connector.dart';
+import '../ssh/dart_ssh_remote_command_runner.dart';
 
 const _defaultSessionConnector = CodexSessionConnector(
   proxyConnector: DartSshProxyConnector(),
+);
+const _defaultAgentRemoteService = AgentRemoteService(
+  DartSshRemoteCommandRunner(),
 );
 
 class AppShell extends StatefulWidget {
@@ -120,6 +125,7 @@ class _AppShellState extends State<AppShell> {
         CodexSessionStateController(
           connector: _defaultSessionConnector,
           approvalController: _approvalController,
+          snapshotReader: _defaultAgentRemoteService,
         );
   }
 

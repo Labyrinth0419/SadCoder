@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../agent/agent_snapshot_reader.dart';
 import '../approvals/approval_state_controller.dart';
 import '../ssh/ssh_profile.dart';
 import 'codex_session_connector.dart';
@@ -24,15 +25,18 @@ class CodexSessionStateController extends ChangeNotifier {
     ReconnectDelayScheduler reconnectDelayScheduler =
         const TimerReconnectDelayScheduler(),
     bool autoReconnect = true,
+    AgentSnapshotReader? snapshotReader,
   }) : _connector = connector,
        _reconnectPolicy = reconnectPolicy ?? ReconnectPolicy(),
        _reconnectDelayScheduler = reconnectDelayScheduler,
-       _autoReconnect = autoReconnect;
+       _autoReconnect = autoReconnect,
+       _snapshotReader = snapshotReader;
 
   final CodexSessionConnectionStarter _connector;
   final ReconnectPolicy _reconnectPolicy;
   final ReconnectDelayScheduler _reconnectDelayScheduler;
   final bool _autoReconnect;
+  final AgentSnapshotReader? _snapshotReader;
   final ApprovalStateController approvalController;
   CodexSessionConnectionHandle? _connection;
   CodexSessionStatus _status = CodexSessionStatus.idle;
@@ -81,8 +85,10 @@ class CodexSessionStateController extends ChangeNotifier {
         await connection.close(notifyApprovalController: false);
         return;
       }
-      _connection = connection;
-      _watchConnectionDone(connection, generation);
+      _activateConnection(connection, profile, generation);
+      if (!_isCurrentGeneration(generation) || _connection != connection) {
+        return;
+      }
       _setState(status: CodexSessionStatus.connected, profile: profile);
     } on Object catch (error) {
       if (!_isCurrentGeneration(generation)) {
@@ -195,15 +201,48 @@ class CodexSessionStateController extends ChangeNotifier {
           await connection.close(notifyApprovalController: false);
           return;
         }
-        _connection = connection;
+        _activateConnection(connection, profile, generation);
+        if (!_isCurrentGeneration(generation) || _connection != connection) {
+          return;
+        }
         _reconnectAttempt = 0;
         _nextReconnectDelay = null;
-        _watchConnectionDone(connection, generation);
         _setState(status: CodexSessionStatus.connected, profile: profile);
         return;
       } on Object catch (error) {
         lastError = error;
       }
+    }
+  }
+
+  void _activateConnection(
+    CodexSessionConnectionHandle connection,
+    SshProfile profile,
+    int generation,
+  ) {
+    _connection = connection;
+    _watchConnectionDone(connection, generation);
+    unawaited(_backfillAgentSnapshot(profile, generation, connection));
+  }
+
+  Future<void> _backfillAgentSnapshot(
+    SshProfile profile,
+    int generation,
+    CodexSessionConnectionHandle connection,
+  ) async {
+    final snapshotReader = _snapshotReader;
+    if (snapshotReader == null) {
+      return;
+    }
+
+    try {
+      final snapshot = await snapshotReader.readSnapshot(profile);
+      if (!_isCurrentGeneration(generation) || _connection != connection) {
+        return;
+      }
+      approvalController.ingestServerRequests(snapshot.pendingApprovals);
+    } on Object catch (_) {
+      return;
     }
   }
 
