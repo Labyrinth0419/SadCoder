@@ -69,8 +69,24 @@ void main() {
             'id': 'turn_1',
             'status': 'completed',
             'items': [
-              {'type': 'message'},
-              {'type': 'command'},
+              {
+                'id': 'item_1',
+                'type': 'userMessage',
+                'content': [
+                  {
+                    'type': 'text',
+                    'text': 'Fix this bug',
+                    'text_elements': <Object?>[],
+                  },
+                ],
+              },
+              {
+                'id': 'item_2',
+                'type': 'commandExecution',
+                'command': 'cargo test',
+                'cwd': '/repo',
+                'aggregatedOutput': 'ok',
+              },
             ],
             'itemsView': 'full',
             'startedAt': 10,
@@ -94,6 +110,10 @@ void main() {
     expect(detail.turns.first.itemCount, 2);
     expect(detail.turns.first.itemsView, 'full');
     expect(detail.turns.first.durationMs, 1000);
+    expect(detail.turns.first.items.first.type, 'userMessage');
+    expect(detail.turns.first.items.first.text, 'Fix this bug');
+    expect(detail.turns.first.items.last.type, 'commandExecution');
+    expect(detail.turns.first.items.last.output, 'ok');
     expect(detail.turns.last.errorMessage, 'failed turn');
   });
 }

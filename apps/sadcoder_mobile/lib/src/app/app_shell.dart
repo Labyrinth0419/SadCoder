@@ -150,12 +150,14 @@ class _AppShellState extends State<AppShell> {
         _turnController.finishTurn(threadId: threadId, turn: turn);
       },
     );
+    _threadDetailController.addListener(_handleThreadDetailChanged);
     _sessionController.addListener(_handleSessionChanged);
     _timelineController.attach(_sessionController.events);
   }
 
   void _disposeOwnedControllers() {
     _sessionController.removeListener(_handleSessionChanged);
+    _threadDetailController.removeListener(_handleThreadDetailChanged);
     _timelineController.dispose();
     _turnController.dispose();
     _threadDetailController.dispose();
@@ -197,5 +199,23 @@ class _AppShellState extends State<AppShell> {
 
   void _handleSessionChanged() {
     _timelineController.attach(_sessionController.events);
+  }
+
+  void _handleThreadDetailChanged() {
+    switch (_threadDetailController.status) {
+      case ThreadDetailStatus.loading:
+        _timelineController.selectThread(
+          _threadDetailController.selectedThreadId,
+        );
+      case ThreadDetailStatus.loaded:
+        final detail = _threadDetailController.detail;
+        if (detail != null) {
+          _timelineController.showThread(detail.thread);
+        }
+      case ThreadDetailStatus.idle:
+        _timelineController.clear();
+      case ThreadDetailStatus.failed:
+        break;
+    }
   }
 }

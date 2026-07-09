@@ -59,6 +59,122 @@ void main() {
     expect(completed?.turn.id, 'turn_1');
   });
 
+  test('showThread backfills turns and items from thread read detail', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Fix bug',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': [
+          {
+            'id': 'turn_1',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': [
+              {
+                'id': 'item_user',
+                'type': 'userMessage',
+                'content': [
+                  {
+                    'type': 'text',
+                    'text': 'Fix login bug',
+                    'text_elements': <Object?>[],
+                  },
+                ],
+              },
+              {'id': 'item_agent', 'type': 'agentMessage', 'text': 'Done'},
+              {
+                'id': 'item_command',
+                'type': 'commandExecution',
+                'aggregatedOutput': 'tests passed',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(controller.selectedThreadId, 'thr_1');
+    expect(controller.turns.single.turnId, 'turn_1');
+    expect(controller.turns.single.status, 'completed');
+    expect(controller.turns.single.items, hasLength(3));
+    expect(controller.turns.single.items[0].text, 'Fix login bug');
+    expect(controller.turns.single.items[1].text, 'Done');
+    expect(controller.turns.single.items[2].output, 'tests passed');
+  });
+
+  test('selected thread filters displayed live events only', () {
+    ({String threadId, TurnSummary turn})? completed;
+    final controller = ChatTimelineController(
+      onTurnCompleted: ({required threadId, required turn}) {
+        completed = (threadId: threadId, turn: turn);
+      },
+    );
+    addTearDown(controller.dispose);
+
+    controller.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Fix bug',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': <Object?>[],
+      }),
+    );
+    controller.ingest(_turnStarted(threadId: 'thr_2', turnId: 'turn_2'));
+    controller.ingest(
+      _turnCompleted(threadId: 'thr_2', turnId: 'turn_2', status: 'completed'),
+    );
+    controller.ingest(_agentDelta('item_1', 'visible'));
+
+    expect(controller.turns, hasLength(1));
+    expect(controller.turns.single.threadId, 'thr_1');
+    expect(controller.turns.single.items.single.text, 'visible');
+    expect(completed?.threadId, 'thr_2');
+  });
+
+  test('showThread preserves live events that arrived during thread read', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.selectThread('thr_1');
+    controller.ingest(_agentDelta('item_agent', 'Done plus live delta'));
+    controller.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Fix bug',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': [
+          {
+            'id': 'turn_1',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': [
+              {'id': 'item_agent', 'type': 'agentMessage', 'text': 'Done'},
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(controller.turns.single.status, 'completed');
+    expect(controller.turns.single.items.single.text, 'Done plus live delta');
+  });
+
   test('attach consumes event streams asynchronously', () async {
     final events = StreamController<CodexEvent>.broadcast();
     ({String threadId, TurnSummary turn})? completed;
@@ -82,13 +198,13 @@ void main() {
   });
 }
 
-CodexEvent _turnStarted() {
+CodexEvent _turnStarted({String threadId = 'thr_1', String turnId = 'turn_1'}) {
   return CodexEvent.fromNotification({
     'method': 'turn/started',
     'params': {
-      'threadId': 'thr_1',
+      'threadId': threadId,
       'turn': {
-        'id': 'turn_1',
+        'id': turnId,
         'status': 'inProgress',
         'items': <Object?>[],
         'itemsView': 'notLoaded',
@@ -97,13 +213,17 @@ CodexEvent _turnStarted() {
   });
 }
 
-CodexEvent _turnCompleted({required String status}) {
+CodexEvent _turnCompleted({
+  String threadId = 'thr_1',
+  String turnId = 'turn_1',
+  required String status,
+}) {
   return CodexEvent.fromNotification({
     'method': 'turn/completed',
     'params': {
-      'threadId': 'thr_1',
+      'threadId': threadId,
       'turn': {
-        'id': 'turn_1',
+        'id': turnId,
         'status': status,
         'items': <Object?>[],
         'itemsView': 'full',

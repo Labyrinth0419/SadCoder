@@ -112,6 +112,7 @@ class TurnSummary {
     required this.status,
     required this.itemCount,
     required this.itemsView,
+    this.items = const [],
     this.startedAtSeconds,
     this.completedAtSeconds,
     this.durationMs,
@@ -120,11 +121,15 @@ class TurnSummary {
   });
 
   factory TurnSummary.fromJson(Map<String, Object?> json) {
+    final items = _listOfMaps(
+      json['items'],
+    ).map(ThreadItemSummary.fromJson).toList(growable: false);
     return TurnSummary(
       id: _stringValue(json['id']) ?? '',
       status: _stringValue(json['status']) ?? 'unknown',
-      itemCount: _listOfMaps(json['items']).length,
+      itemCount: items.length,
       itemsView: _stringValue(json['itemsView']) ?? 'notLoaded',
+      items: items,
       startedAtSeconds: _intValue(json['startedAt']),
       completedAtSeconds: _intValue(json['completedAt']),
       durationMs: _intValue(json['durationMs']),
@@ -141,10 +146,38 @@ class TurnSummary {
   final String status;
   final int itemCount;
   final String itemsView;
+  final List<ThreadItemSummary> items;
   final int? startedAtSeconds;
   final int? completedAtSeconds;
   final int? durationMs;
   final String? errorMessage;
+  final Map<String, Object?> raw;
+}
+
+class ThreadItemSummary {
+  const ThreadItemSummary({
+    required this.id,
+    required this.type,
+    required this.text,
+    required this.output,
+    this.raw = const {},
+  });
+
+  factory ThreadItemSummary.fromJson(Map<String, Object?> json) {
+    final type = _stringValue(json['type']) ?? 'unknown';
+    return ThreadItemSummary(
+      id: _stringValue(json['id']) ?? '',
+      type: type,
+      text: _itemText(type, json),
+      output: _stringValue(json['aggregatedOutput']) ?? '',
+      raw: Map.unmodifiable(json),
+    );
+  }
+
+  final String id;
+  final String type;
+  final String text;
+  final String output;
   final Map<String, Object?> raw;
 }
 
@@ -182,4 +215,53 @@ int? _intValue(Object? value) {
     return value.toInt();
   }
   return null;
+}
+
+String _itemText(String type, Map<String, Object?> json) {
+  return switch (type) {
+    'userMessage' => _userMessageText(json['content']),
+    'agentMessage' || 'plan' => _stringValue(json['text']) ?? '',
+    'reasoning' => [
+      ..._listOfStrings(json['summary']),
+      ..._listOfStrings(json['content']),
+    ].join('\n'),
+    'mcpToolCall' => [
+      _stringValue(json['server']),
+      _stringValue(json['tool']),
+    ].whereType<String>().where((value) => value.isNotEmpty).join('/'),
+    'dynamicToolCall' => _stringValue(json['tool']) ?? '',
+    'webSearch' => _stringValue(json['query']) ?? '',
+    'imageView' => _stringValue(json['path']) ?? '',
+    _ => _stringValue(json['text']) ?? '',
+  };
+}
+
+String _userMessageText(Object? content) {
+  return _listOfMaps(content)
+      .map((entry) {
+        return switch (_stringValue(entry['type'])) {
+          'text' => _stringValue(entry['text']) ?? '',
+          'image' => _bracketed('image', _stringValue(entry['url'])),
+          'localImage' => _bracketed('image', _stringValue(entry['path'])),
+          'skill' => _bracketed('skill', _stringValue(entry['name'])),
+          'mention' => _bracketed('mention', _stringValue(entry['name'])),
+          _ => '',
+        };
+      })
+      .where((value) => value.isNotEmpty)
+      .join('\n');
+}
+
+String _bracketed(String label, String? value) {
+  if (value == null || value.isEmpty) {
+    return '';
+  }
+  return '[$label: $value]';
+}
+
+List<String> _listOfStrings(Object? value) {
+  if (value is! List) {
+    return const [];
+  }
+  return value.whereType<String>().toList(growable: false);
 }
