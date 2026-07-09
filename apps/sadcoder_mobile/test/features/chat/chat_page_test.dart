@@ -2109,12 +2109,12 @@ void main() {
       appearanceController.composerInputMode,
       AppComposerInputMode.standard,
     );
-    expect(find.text('Input mode: Standard'), findsOneWidget);
+    expect(find.textContaining('Input mode: Standard'), findsOneWidget);
 
     await _submitComposerText(tester, '/vim');
 
     expect(appearanceController.composerInputMode, AppComposerInputMode.vim);
-    expect(find.text('Input mode: Vim'), findsOneWidget);
+    expect(find.textContaining('Input mode: Vim'), findsOneWidget);
     expect(find.text('Composer Vim mode enabled.'), findsOneWidget);
   });
 
@@ -2127,7 +2127,7 @@ void main() {
     await _pumpChatPage(tester, appearanceController: appearanceController);
 
     expect(appearanceController.composerInputMode, AppComposerInputMode.vim);
-    expect(find.text('Input mode: Vim'), findsOneWidget);
+    expect(find.textContaining('Input mode: Vim'), findsOneWidget);
 
     await _submitComposerText(tester, '/vim');
 
@@ -2135,8 +2135,83 @@ void main() {
       appearanceController.composerInputMode,
       AppComposerInputMode.standard,
     );
-    expect(find.text('Input mode: Standard'), findsOneWidget);
+    expect(find.textContaining('Input mode: Standard'), findsOneWidget);
     expect(find.text('Composer Vim mode disabled.'), findsOneWidget);
+  });
+
+  testWidgets('/pets opens mobile terminal pet display settings', (
+    tester,
+  ) async {
+    final appearanceController = AppAppearanceController();
+    addTearDown(appearanceController.dispose);
+
+    await _pumpChatPage(tester, appearanceController: appearanceController);
+
+    expect(
+      appearanceController.terminalPetPreference,
+      AppTerminalPetPreference.tuiOnly,
+    );
+    expect(find.textContaining('Pet: TUI-only'), findsOneWidget);
+
+    await _submitComposerText(tester, '/pets');
+
+    expect(find.text('Terminal pet'), findsOneWidget);
+    await tester.tap(find.text('Hidden on mobile'));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('chat-pets-command-apply')));
+    await tester.pumpAndSettle();
+
+    expect(
+      appearanceController.terminalPetPreference,
+      AppTerminalPetPreference.hidden,
+    );
+    expect(find.textContaining('Pet: hidden'), findsOneWidget);
+    expect(find.text('Terminal pet hidden on mobile.'), findsOneWidget);
+  });
+
+  testWidgets('/pet show restores the TUI-only terminal pet state', (
+    tester,
+  ) async {
+    final appearanceController = AppAppearanceController(
+      terminalPetPreference: AppTerminalPetPreference.hidden,
+    );
+    addTearDown(appearanceController.dispose);
+
+    await _pumpChatPage(tester, appearanceController: appearanceController);
+
+    expect(find.textContaining('Pet: hidden'), findsOneWidget);
+
+    await _submitComposerText(tester, '/pet show');
+
+    expect(
+      appearanceController.terminalPetPreference,
+      AppTerminalPetPreference.tuiOnly,
+    );
+    expect(find.textContaining('Pet: TUI-only'), findsOneWidget);
+    expect(
+      find.text('Terminal pet remains TUI-only on mobile.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('/pets unsupported arguments do not send a prompt', (
+    tester,
+  ) async {
+    final appearanceController = AppAppearanceController();
+    final harness = await _pumpConnectedChatPage(
+      tester,
+      appearanceController: appearanceController,
+    );
+    addTearDown(appearanceController.dispose);
+
+    await _submitComposerText(tester, '/pets dragon');
+
+    expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(
+      appearanceController.terminalPetPreference,
+      AppTerminalPetPreference.tuiOnly,
+    );
+    expect(find.text('/pets is unavailable right now.'), findsOneWidget);
   });
 
   testWidgets('/goal reads the selected thread goal', (tester) async {
@@ -4957,8 +5032,9 @@ Future<void> _pumpChatPage(
 }
 
 Future<_ConnectedChatHarness> _pumpConnectedChatPage(
-  WidgetTester tester,
-) async {
+  WidgetTester tester, {
+  AppAppearanceController? appearanceController,
+}) async {
   final approvalController = ApprovalStateController();
   final turnRunner = _FakeTurnRunner();
   final starter = _FakeSessionStarter(
@@ -4983,6 +5059,7 @@ Future<_ConnectedChatHarness> _pumpConnectedChatPage(
     tester,
     sessionController: sessionController,
     turnController: turnController,
+    appearanceController: appearanceController,
   );
   return _ConnectedChatHarness(turnRunner: turnRunner);
 }

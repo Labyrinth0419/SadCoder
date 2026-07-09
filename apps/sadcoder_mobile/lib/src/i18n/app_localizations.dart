@@ -150,6 +150,8 @@ class AppLocalizations {
   String get slashCommandVimModeEnabled => _text('slashCommandVimModeEnabled');
   String get slashCommandVimModeDisabled =>
       _text('slashCommandVimModeDisabled');
+  String get slashCommandPetsTuiOnly => _text('slashCommandPetsTuiOnly');
+  String get slashCommandPetsHidden => _text('slashCommandPetsHidden');
   String get slashCommandMentionInserted =>
       _text('slashCommandMentionInserted');
   String get slashCommandSideConversationStarted =>
@@ -291,6 +293,12 @@ class AppLocalizations {
   String get applyStatusLineDisplay => _text('applyStatusLineDisplay');
   String get composerInputModeStandard => _text('composerInputModeStandard');
   String get composerInputModeVim => _text('composerInputModeVim');
+  String get composerTerminalPetTuiOnly => _text('composerTerminalPetTuiOnly');
+  String get composerTerminalPetHidden => _text('composerTerminalPetHidden');
+  String get terminalPetCommandTitle => _text('terminalPetCommandTitle');
+  String get terminalPetTuiOnly => _text('terminalPetTuiOnly');
+  String get terminalPetHidden => _text('terminalPetHidden');
+  String get applyTerminalPetDisplay => _text('applyTerminalPetDisplay');
   String get diffTitle => _text('diffTitle');
   String get diffUnavailable => _text('diffUnavailable');
   String get diffNotGitRepository => _text('diffNotGitRepository');
@@ -657,6 +665,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandStatusLineDisplayUpdated': 'Status line display updated.',
     'slashCommandVimModeEnabled': 'Composer Vim mode enabled.',
     'slashCommandVimModeDisabled': 'Composer Vim mode disabled.',
+    'slashCommandPetsTuiOnly': 'Terminal pet remains TUI-only on mobile.',
+    'slashCommandPetsHidden': 'Terminal pet hidden on mobile.',
     'slashCommandMentionInserted': 'File mention inserted.',
     'slashCommandSideConversationStarted': 'Started side conversation.',
     'slashCommandReturnedToMainThread': 'Returned to main thread.',
@@ -780,6 +790,12 @@ const _values = <String, Map<String, String>>{
     'applyStatusLineDisplay': 'Apply status line',
     'composerInputModeStandard': 'Input mode: Standard',
     'composerInputModeVim': 'Input mode: Vim',
+    'composerTerminalPetTuiOnly': 'Pet: TUI-only',
+    'composerTerminalPetHidden': 'Pet: hidden',
+    'terminalPetCommandTitle': 'Terminal pet',
+    'terminalPetTuiOnly': 'TUI-only',
+    'terminalPetHidden': 'Hidden on mobile',
+    'applyTerminalPetDisplay': 'Apply pet display',
     'diffTitle': 'Git diff',
     'diffUnavailable': 'Connect to a host to compute git diff.',
     'diffNotGitRepository':
@@ -1098,6 +1114,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandStatusLineDisplayUpdated': '已更新状态栏显示。',
     'slashCommandVimModeEnabled': '已启用编辑器 Vim 模式。',
     'slashCommandVimModeDisabled': '已关闭编辑器 Vim 模式。',
+    'slashCommandPetsTuiOnly': '终端宠物在移动端保持为 TUI 专属。',
+    'slashCommandPetsHidden': '已在移动端隐藏终端宠物。',
     'slashCommandMentionInserted': '已插入文件提及。',
     'slashCommandSideConversationStarted': '已开始侧聊。',
     'slashCommandReturnedToMainThread': '已返回主线会话。',
@@ -1210,6 +1228,12 @@ const _values = <String, Map<String, String>>{
     'applyStatusLineDisplay': '应用状态栏',
     'composerInputModeStandard': '输入模式：标准',
     'composerInputModeVim': '输入模式：Vim',
+    'composerTerminalPetTuiOnly': '终端宠物：仅 TUI',
+    'composerTerminalPetHidden': '终端宠物：已隐藏',
+    'terminalPetCommandTitle': '终端宠物',
+    'terminalPetTuiOnly': '仅 TUI',
+    'terminalPetHidden': '在移动端隐藏',
+    'applyTerminalPetDisplay': '应用终端宠物显示',
     'diffTitle': 'Git 差异',
     'diffUnavailable': '连接到主机后才能计算 Git 差异。',
     'diffNotGitRepository': '当前工作区不在 Git 仓库中。',

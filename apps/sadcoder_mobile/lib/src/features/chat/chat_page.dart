@@ -153,6 +153,9 @@ class _ChatPageState extends State<ChatPage> {
     final composerInputMode =
         widget.appearanceController?.composerInputMode ??
         AppComposerInputMode.standard;
+    final terminalPetPreference =
+        widget.appearanceController?.terminalPetPreference ??
+        AppTerminalPetPreference.tuiOnly;
     return Column(
       children: [
         _ChatHeader(
@@ -217,11 +220,12 @@ class _ChatPageState extends State<ChatPage> {
                   onChanged: _handleComposerChanged,
                   decoration: InputDecoration(
                     hintText: l10n.connectBeforeTurn,
-                    helperText: _composerInputModeLabel(
+                    helperText: _composerHelperText(
                       l10n,
                       composerInputMode,
+                      terminalPetPreference,
                     ),
-                    helperMaxLines: 1,
+                    helperMaxLines: 2,
                     prefixIcon: IconButton(
                       key: const ValueKey('chat-slash-command-button'),
                       onPressed: _openSlashCommandPalette,
@@ -388,6 +392,7 @@ class _ChatPageState extends State<ChatPage> {
           configureTitleDisplay: _configureTitleDisplay,
           configureStatusLineDisplay: _configureStatusLineDisplay,
           toggleComposerVimMode: _toggleComposerVimMode,
+          configureTerminalPets: _configureTerminalPets,
           mentionFile: _mentionFile,
           startSideConversation: _startSideConversation,
           showAgentTopology: _showAgentTopology,
@@ -1212,6 +1217,39 @@ class _ChatPageState extends State<ChatPage> {
     return SlashCommandCallbackResult.executed;
   }
 
+  Future<SlashCommandCallbackResult> _configureTerminalPets(
+    String arguments,
+  ) async {
+    final controller = widget.appearanceController;
+    if (controller == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    final trimmed = arguments.trim();
+    if (trimmed.isNotEmpty) {
+      final preference = AppTerminalPetPreference.parseCommandValue(trimmed);
+      if (preference == null) {
+        return SlashCommandCallbackResult.unavailable;
+      }
+      controller.setTerminalPetPreference(preference);
+      return SlashCommandCallbackResult.executed;
+    }
+
+    final preference = await showModalBottomSheet<AppTerminalPetPreference>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => TerminalPetDisplaySheet(
+        initialPreference: controller.terminalPetPreference,
+      ),
+    );
+    if (!mounted || preference == null) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+
+    controller.setTerminalPetPreference(preference);
+    return SlashCommandCallbackResult.executed;
+  }
+
   Future<SlashCommandCallbackResult> _submitFeedback() async {
     final runner = widget.sessionController?.feedbackUploadRunner;
     if (runner == null) {
@@ -1441,6 +1479,11 @@ class _ChatPageState extends State<ChatPage> {
                   AppComposerInputMode.vim)
               ? l10n.slashCommandVimModeEnabled
               : l10n.slashCommandVimModeDisabled,
+        SlashCommandActionEffect.terminalPets =>
+          (widget.appearanceController?.terminalPetPreference ==
+                  AppTerminalPetPreference.hidden)
+              ? l10n.slashCommandPetsHidden
+              : l10n.slashCommandPetsTuiOnly,
         SlashCommandActionEffect.mention => l10n.slashCommandMentionInserted,
         SlashCommandActionEffect.sideConversation =>
           l10n.slashCommandSideConversationStarted,
@@ -1638,6 +1681,17 @@ class _ChatPageState extends State<ChatPage> {
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 
+  String _composerHelperText(
+    AppLocalizations l10n,
+    AppComposerInputMode inputMode,
+    AppTerminalPetPreference terminalPetPreference,
+  ) {
+    return [
+      _composerInputModeLabel(l10n, inputMode),
+      _terminalPetPreferenceLabel(l10n, terminalPetPreference),
+    ].join(' | ');
+  }
+
   String _composerInputModeLabel(
     AppLocalizations l10n,
     AppComposerInputMode mode,
@@ -1645,6 +1699,16 @@ class _ChatPageState extends State<ChatPage> {
     return switch (mode) {
       AppComposerInputMode.standard => l10n.composerInputModeStandard,
       AppComposerInputMode.vim => l10n.composerInputModeVim,
+    };
+  }
+
+  String _terminalPetPreferenceLabel(
+    AppLocalizations l10n,
+    AppTerminalPetPreference preference,
+  ) {
+    return switch (preference) {
+      AppTerminalPetPreference.tuiOnly => l10n.composerTerminalPetTuiOnly,
+      AppTerminalPetPreference.hidden => l10n.composerTerminalPetHidden,
     };
   }
 

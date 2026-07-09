@@ -228,3 +228,83 @@ class _StatusLineOption extends StatelessWidget {
     );
   }
 }
+
+class TerminalPetDisplaySheet extends StatefulWidget {
+  const TerminalPetDisplaySheet({super.key, required this.initialPreference});
+
+  final AppTerminalPetPreference initialPreference;
+
+  @override
+  State<TerminalPetDisplaySheet> createState() =>
+      _TerminalPetDisplaySheetState();
+}
+
+class _TerminalPetDisplaySheetState extends State<TerminalPetDisplaySheet> {
+  late AppTerminalPetPreference _preference;
+
+  @override
+  void initState() {
+    super.initState();
+    _preference = widget.initialPreference;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.terminalPetCommandTitle,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<AppTerminalPetPreference>(
+              key: const ValueKey('chat-pets-command-mode'),
+              segments: [
+                ButtonSegment(
+                  value: AppTerminalPetPreference.tuiOnly,
+                  icon: const Icon(Icons.terminal),
+                  label: Text(l10n.terminalPetTuiOnly),
+                ),
+                ButtonSegment(
+                  value: AppTerminalPetPreference.hidden,
+                  icon: const Icon(Icons.visibility_off_outlined),
+                  label: Text(l10n.terminalPetHidden),
+                ),
+              ],
+              selected: {_preference},
+              onSelectionChanged: (selection) {
+                setState(() => _preference = selection.single);
+              },
+            ),
+            const SizedBox(height: 16),
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              spacing: 8,
+              overflowSpacing: 8,
+              children: [
+                TextButton.icon(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                  label: Text(l10n.approvalCancel),
+                ),
+                FilledButton.icon(
+                  key: const ValueKey('chat-pets-command-apply'),
+                  onPressed: () => Navigator.of(context).pop(_preference),
+                  icon: const Icon(Icons.check),
+                  label: Text(l10n.applyTerminalPetDisplay),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

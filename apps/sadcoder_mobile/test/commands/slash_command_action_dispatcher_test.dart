@@ -670,6 +670,82 @@ void main() {
     expect(result.command?.command, 'vim');
   });
 
+  test('/pets passes inline arguments to the injected pet action', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      configureTerminalPets: (argument) async {
+        arguments.add(argument);
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/pets hide'),
+      hasActiveTurn: false,
+    );
+
+    expect(arguments, ['hide']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.terminalPets);
+  });
+
+  test('/pet alias routes to the terminal pet action', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      configureTerminalPets: (argument) async {
+        arguments.add(argument);
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/pet show'),
+      hasActiveTurn: false,
+    );
+
+    expect(arguments, ['show']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.command?.command, 'pets');
+    expect(result.rawCommand, 'pet');
+  });
+
+  test(
+    '/pets reports unavailable arguments from the injected action',
+    () async {
+      final dispatcher = SlashCommandActionDispatcher(
+        configureTerminalPets: (_) async =>
+            SlashCommandCallbackResult.unavailable,
+      );
+
+      final result = await dispatcher.dispatch(
+        registry.parseComposerText('/pets dragon'),
+        hasActiveTurn: false,
+      );
+
+      expect(result.outcome, SlashCommandActionOutcome.unavailable);
+      expect(result.command?.command, 'pets');
+    },
+  );
+
+  test('/pets is unavailable during an active turn', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      configureTerminalPets: (_) async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/pets hide'),
+      hasActiveTurn: true,
+    );
+
+    expect(calls, 0);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'pets');
+  });
+
   test('/goal passes inline arguments to the injected goal handler', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

@@ -36,6 +36,30 @@ extension AppThemePreferenceMode on AppThemePreference {
 
 enum AppComposerInputMode { standard, vim }
 
+enum AppTerminalPetPreference {
+  tuiOnly,
+  hidden;
+
+  static AppTerminalPetPreference? parseCommandValue(String value) {
+    return switch (value.trim().toLowerCase()) {
+      '' => null,
+      'show' ||
+      'on' ||
+      'visible' ||
+      'default' ||
+      'tui' ||
+      'terminal' => AppTerminalPetPreference.tuiOnly,
+      'hide' ||
+      'hidden' ||
+      'off' ||
+      'none' ||
+      'disable' ||
+      'disabled' => AppTerminalPetPreference.hidden,
+      _ => null,
+    };
+  }
+}
+
 class AppAppearanceController extends ChangeNotifier {
   AppAppearanceController({
     AppThemePreference theme = AppThemePreference.system,
@@ -43,15 +67,19 @@ class AppAppearanceController extends ChangeNotifier {
     AppStatusLineDisplaySettings statusLineDisplay =
         AppStatusLineDisplaySettings.defaults,
     AppComposerInputMode composerInputMode = AppComposerInputMode.standard,
+    AppTerminalPetPreference terminalPetPreference =
+        AppTerminalPetPreference.tuiOnly,
   }) : _theme = theme,
        _titleDisplay = titleDisplay,
        _statusLineDisplay = statusLineDisplay,
-       _composerInputMode = composerInputMode;
+       _composerInputMode = composerInputMode,
+       _terminalPetPreference = terminalPetPreference;
 
   AppThemePreference _theme;
   AppTitleDisplaySettings _titleDisplay;
   AppStatusLineDisplaySettings _statusLineDisplay;
   AppComposerInputMode _composerInputMode;
+  AppTerminalPetPreference _terminalPetPreference;
 
   AppThemePreference get theme => _theme;
 
@@ -62,6 +90,8 @@ class AppAppearanceController extends ChangeNotifier {
   AppStatusLineDisplaySettings get statusLineDisplay => _statusLineDisplay;
 
   AppComposerInputMode get composerInputMode => _composerInputMode;
+
+  AppTerminalPetPreference get terminalPetPreference => _terminalPetPreference;
 
   void setTheme(AppThemePreference theme) {
     if (_theme == theme) {
@@ -92,6 +122,14 @@ class AppAppearanceController extends ChangeNotifier {
       return;
     }
     _composerInputMode = mode;
+    notifyListeners();
+  }
+
+  void setTerminalPetPreference(AppTerminalPetPreference preference) {
+    if (_terminalPetPreference == preference) {
+      return;
+    }
+    _terminalPetPreference = preference;
     notifyListeners();
   }
 }

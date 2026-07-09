@@ -78,4 +78,37 @@ void main() {
     expect(controller.composerInputMode, AppComposerInputMode.vim);
     expect(notifications, 1);
   });
+
+  test('terminal pet preference parses command values', () {
+    expect(
+      AppTerminalPetPreference.parseCommandValue('show'),
+      AppTerminalPetPreference.tuiOnly,
+    );
+    expect(
+      AppTerminalPetPreference.parseCommandValue('terminal'),
+      AppTerminalPetPreference.tuiOnly,
+    );
+    expect(
+      AppTerminalPetPreference.parseCommandValue('hide'),
+      AppTerminalPetPreference.hidden,
+    );
+    expect(
+      AppTerminalPetPreference.parseCommandValue('off'),
+      AppTerminalPetPreference.hidden,
+    );
+    expect(AppTerminalPetPreference.parseCommandValue('dragon'), isNull);
+  });
+
+  test('controller notifies when terminal pet preference changes', () {
+    final controller = AppAppearanceController();
+    addTearDown(controller.dispose);
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+
+    controller.setTerminalPetPreference(AppTerminalPetPreference.hidden);
+    controller.setTerminalPetPreference(AppTerminalPetPreference.hidden);
+
+    expect(controller.terminalPetPreference, AppTerminalPetPreference.hidden);
+    expect(notifications, 1);
+  });
 }

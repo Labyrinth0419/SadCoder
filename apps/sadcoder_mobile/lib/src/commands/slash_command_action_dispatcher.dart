@@ -36,6 +36,8 @@ typedef SlashCommandConfigureStatusLineDisplay =
     Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandToggleComposerVimMode =
     Future<SlashCommandCallbackResult> Function();
+typedef SlashCommandConfigureTerminalPets =
+    Future<SlashCommandCallbackResult> Function(String arguments);
 typedef SlashCommandMentionFile = Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandStartSideConversation =
     Future<SlashCommandCallbackResult> Function(
@@ -93,6 +95,7 @@ enum SlashCommandActionEffect {
   titleDisplay,
   statusLineDisplay,
   composerVimMode,
+  terminalPets,
   mention,
   sideConversation,
   agentTopology,
@@ -228,6 +231,7 @@ class SlashCommandActionDispatcher {
     this.configureTitleDisplay,
     this.configureStatusLineDisplay,
     this.toggleComposerVimMode,
+    this.configureTerminalPets,
     this.mentionFile,
     this.startSideConversation,
     this.showAgentTopology,
@@ -266,6 +270,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandConfigureTitleDisplay? configureTitleDisplay;
   final SlashCommandConfigureStatusLineDisplay? configureStatusLineDisplay;
   final SlashCommandToggleComposerVimMode? toggleComposerVimMode;
+  final SlashCommandConfigureTerminalPets? configureTerminalPets;
   final SlashCommandMentionFile? mentionFile;
   final SlashCommandStartSideConversation? startSideConversation;
   final SlashCommandShowAgentTopology? showAgentTopology;
@@ -419,6 +424,8 @@ class SlashCommandActionDispatcher {
         return _configureStatusLineDisplay(parsed);
       case 'vim':
         return _toggleComposerVimMode(parsed);
+      case 'pets':
+        return _configureTerminalPets(parsed);
       case 'mention':
         return _mentionFile(parsed);
       case 'side':
@@ -974,6 +981,50 @@ class SlashCommandActionDispatcher {
       action: toggleComposerVimMode,
       effect: SlashCommandActionEffect.composerVimMode,
     );
+  }
+
+  Future<SlashCommandActionResult> _configureTerminalPets(
+    SlashCommandParseResult parsed,
+  ) async {
+    final configureTerminalPets = this.configureTerminalPets;
+    if (configureTerminalPets == null) {
+      return SlashCommandActionResult.unsupported(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    try {
+      final result = await configureTerminalPets(parsed.arguments);
+      return switch (result) {
+        SlashCommandCallbackResult.executed =>
+          SlashCommandActionResult.executed(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+            effect: SlashCommandActionEffect.terminalPets,
+          ),
+        SlashCommandCallbackResult.cancelled =>
+          SlashCommandActionResult.cancelled(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+          ),
+        SlashCommandCallbackResult.unavailable =>
+          SlashCommandActionResult.unavailable(
+            command: parsed.command!,
+            rawCommand: parsed.rawCommand,
+            arguments: parsed.arguments,
+          ),
+      };
+    } on Object catch (error) {
+      return SlashCommandActionResult.failed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        error: error,
+      );
+    }
   }
 
   Future<SlashCommandActionResult> _mentionFile(
