@@ -11,6 +11,7 @@ import '../config/codex_config_snapshot_controller.dart';
 import '../features/approvals/approvals_page.dart';
 import '../features/chat/chat_page.dart';
 import '../features/chat/chat_timeline_controller.dart';
+import '../features/files/workspace_files_page.dart';
 import '../features/hosts/hosts_page.dart';
 import '../features/settings/settings_page.dart';
 import '../i18n/app_localizations.dart';
@@ -122,6 +123,11 @@ class _AppShellState extends State<AppShell> {
             icon: const Icon(Icons.chat_bubble_outline),
             selectedIcon: const Icon(Icons.chat_bubble),
             label: l10n.chat,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.folder_copy_outlined),
+            selectedIcon: const Icon(Icons.folder_copy),
+            label: l10n.files,
           ),
           NavigationDestination(
             icon: const Icon(Icons.verified_user_outlined),
@@ -246,7 +252,12 @@ class _AppShellState extends State<AppShell> {
         modelListController: _modelListController,
         permissionProfileListController: _permissionProfileListController,
       ),
-      2 => ApprovalsPage(
+      2 => WorkspaceFilesPage(
+        sessionController: _sessionController,
+        threadDetailController: _threadDetailController,
+        configOverrideController: _configOverrideController,
+      ),
+      3 => ApprovalsPage(
         approvals: _approvalController.approvals,
         onCommandOrFileDecision: _approvalController.canRespond
             ? _approvalController.sendCommandOrFileDecision
@@ -258,7 +269,7 @@ class _AppShellState extends State<AppShell> {
             ? _approvalController.sendMcpElicitationResponse
             : null,
       ),
-      3 => SettingsPage(
+      4 => SettingsPage(
         appearanceController: widget.appearanceController,
         configOverrideController: _configOverrideController,
         configSnapshotController: _configSnapshotController,

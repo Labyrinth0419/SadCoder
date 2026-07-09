@@ -49,6 +49,7 @@ void main() {
 
     expect(find.text('Hosts'), findsWidgets);
     expect(find.text('Chat'), findsWidgets);
+    expect(find.text('Files'), findsWidgets);
     expect(find.text('Approvals'), findsWidgets);
     expect(find.text('Settings'), findsWidgets);
     expect(find.text('SSH profile'), findsOneWidget);
@@ -60,6 +61,7 @@ void main() {
     expect(find.text('主机'), findsWidgets);
     expect(find.text('SSH 配置'), findsOneWidget);
     expect(find.text('对话'), findsWidgets);
+    expect(find.text('文件'), findsWidgets);
     expect(find.text('审批'), findsWidgets);
     expect(find.text('设置'), findsWidgets);
   });
@@ -218,6 +220,105 @@ void main() {
     expect(find.text('Item: agentMessage'), findsOneWidget);
     expect(find.text('History is visible'), findsOneWidget);
   });
+
+  testWidgets('files page browses the selected thread cwd from the shell', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final directoryReader = _MapWorkspaceDirectoryReader({
+      '': [
+        const WorkspaceDirectoryEntry(
+          root: '/repo',
+          path: 'README.md',
+          name: 'README.md',
+          kind: WorkspaceFileKind.file,
+          isHidden: false,
+        ),
+      ],
+    });
+    final fileReader = _MapWorkspaceFileReader(
+      stats: const {
+        'README.md': WorkspaceFileStat(
+          root: '/repo',
+          path: 'README.md',
+          kind: WorkspaceFileKind.file,
+          language: 'markdown',
+        ),
+      },
+      chunks: const {
+        'README.md': [
+          WorkspaceFileReadChunk(
+            root: '/repo',
+            path: 'README.md',
+            sizeBytes: 20,
+            offset: 0,
+            bytesRead: 20,
+            hasMore: false,
+            encoding: 'utf-8',
+            isBinary: false,
+            content: '# Shell file visible',
+          ),
+        ],
+      },
+    );
+    final sessionController = CodexSessionStateController(
+      connector: _StaticSessionStarter(
+        threads: [
+          ThreadSummary.fromJson({
+            'id': 'thr_1',
+            'sessionId': 'sess_1',
+            'preview': 'Browse files',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+          }),
+        ],
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_1',
+            'sessionId': 'sess_1',
+            'preview': 'Browse files',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+          }),
+        ),
+        workspaceDirectoryReader: directoryReader,
+        workspaceFileReader: fileReader,
+      ),
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await tester.pumpWidget(SadCoderApp(sessionController: sessionController));
+    await tester.tap(find.text('Chat').last);
+    await tester.pumpAndSettle();
+    final threadTile = find.byKey(const ValueKey('thread-summary-thr_1'));
+    await tester.scrollUntilVisible(
+      threadTile,
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(threadTile);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Files').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Root: /repo'), findsOneWidget);
+    expect(find.text('README.md'), findsWidgets);
+
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-entry-README.md')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Shell file visible'), findsOneWidget);
+  });
 }
 
 const _profile = SshProfile(
@@ -238,10 +339,17 @@ class _NeverConnectsSessionStarter implements CodexSessionConnectionStarter {
 }
 
 class _StaticSessionStarter implements CodexSessionConnectionStarter {
-  const _StaticSessionStarter({required this.threads, required this.detail});
+  const _StaticSessionStarter({
+    required this.threads,
+    required this.detail,
+    this.workspaceDirectoryReader = const _NoopWorkspaceDirectoryReader(),
+    this.workspaceFileReader = const _NoopWorkspaceFileReader(),
+  });
 
   final List<ThreadSummary> threads;
   final ThreadDetail detail;
+  final WorkspaceDirectoryReader workspaceDirectoryReader;
+  final WorkspaceFileReader workspaceFileReader;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -252,6 +360,8 @@ class _StaticSessionStarter implements CodexSessionConnectionStarter {
       profile: profile,
       threads: threads,
       detail: detail,
+      workspaceDirectoryReader: workspaceDirectoryReader,
+      workspaceFileReader: workspaceFileReader,
     );
   }
 }
@@ -261,6 +371,8 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
     required this.profile,
     required List<ThreadSummary> threads,
     required ThreadDetail detail,
+    required this.workspaceDirectoryReader,
+    required this.workspaceFileReader,
   }) : threadListReader = _StaticThreadListReader(threads),
        threadDetailReader = _StaticThreadDetailReader(detail),
        _doneCompleter = Completer<void>();
@@ -303,12 +415,10 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
   FileSearchReader get fileSearchReader => const _NoopFileSearchReader();
 
   @override
-  WorkspaceDirectoryReader get workspaceDirectoryReader =>
-      const _NoopWorkspaceDirectoryReader();
+  final WorkspaceDirectoryReader workspaceDirectoryReader;
 
   @override
-  WorkspaceFileReader get workspaceFileReader =>
-      const _NoopWorkspaceFileReader();
+  final WorkspaceFileReader workspaceFileReader;
 
   @override
   McpServerStatusReader get mcpServerStatusReader =>
@@ -475,6 +585,63 @@ class _NoopWorkspaceFileReader implements WorkspaceFileReader {
       isBinary: false,
       content: '',
     );
+  }
+}
+
+class _MapWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
+  const _MapWorkspaceDirectoryReader(this.entriesByPath);
+
+  final Map<String, List<WorkspaceDirectoryEntry>> entriesByPath;
+
+  @override
+  Future<WorkspaceDirectoryPage> listDirectory({
+    required String root,
+    String path = '',
+    int limit = 100,
+    String? cursor,
+    bool includeHidden = false,
+  }) async {
+    return WorkspaceDirectoryPage(
+      root: root,
+      path: path,
+      entries: entriesByPath[path] ?? const [],
+    );
+  }
+}
+
+class _MapWorkspaceFileReader implements WorkspaceFileReader {
+  const _MapWorkspaceFileReader({required this.stats, required this.chunks});
+
+  final Map<String, WorkspaceFileStat> stats;
+  final Map<String, List<WorkspaceFileReadChunk>> chunks;
+
+  @override
+  Future<WorkspaceFileStat> statFile({
+    required String root,
+    required String path,
+  }) async {
+    final stat = stats[path];
+    if (stat == null) {
+      throw StateError('Missing stat for $path');
+    }
+    return stat;
+  }
+
+  @override
+  Future<WorkspaceFileReadChunk> readFile({
+    required String root,
+    required String path,
+    int offset = 0,
+    int limitBytes = 64 * 1024,
+    String encoding = 'utf-8',
+  }) async {
+    final chunk = chunks[path]
+        ?.where((chunk) => chunk.offset == offset)
+        .firstOrNull;
+    if (chunk == null) {
+      throw StateError('Missing chunk for $path at $offset');
+    }
+    return chunk;
   }
 }
 

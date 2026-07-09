@@ -17,6 +17,7 @@ class AppLocalizations {
   String get appTitle => _text('appTitle');
   String get hosts => _text('hosts');
   String get chat => _text('chat');
+  String get files => _text('files');
   String get sessions => _text('sessions');
   String get approvals => _text('approvals');
   String get settings => _text('settings');
@@ -530,6 +531,40 @@ class AppLocalizations {
       _text('debugConfigLayer').replaceAll('{index}', index.toString());
   String get theme => _text('theme');
   String get themeBody => _text('themeBody');
+  String get workspaceFilesTitle => _text('workspaceFilesTitle');
+  String workspaceFilesRoot(String root) =>
+      _text('workspaceFilesRoot').replaceAll('{root}', root);
+  String get workspaceFilesNotConnected => _text('workspaceFilesNotConnected');
+  String get workspaceFilesNoCwd => _text('workspaceFilesNoCwd');
+  String get workspaceFilesRefresh => _text('workspaceFilesRefresh');
+  String get workspaceFilesSearchHint => _text('workspaceFilesSearchHint');
+  String get workspaceFilesShowHidden => _text('workspaceFilesShowHidden');
+  String get workspaceFilesEmptyDirectory =>
+      _text('workspaceFilesEmptyDirectory');
+  String get workspaceFilesLoadMore => _text('workspaceFilesLoadMore');
+  String get workspaceFilesLoading => _text('workspaceFilesLoading');
+  String get workspaceFilesOpenFailed => _text('workspaceFilesOpenFailed');
+  String get workspaceFilesCopyPath => _text('workspaceFilesCopyPath');
+  String get workspaceFilesPathCopied => _text('workspaceFilesPathCopied');
+  String get workspaceFilesPreviewEmpty => _text('workspaceFilesPreviewEmpty');
+  String get workspaceFilesRaw => _text('workspaceFilesRaw');
+  String get workspaceFilesRendered => _text('workspaceFilesRendered');
+  String get workspaceFilesLargeFile => _text('workspaceFilesLargeFile');
+  String get workspaceFilesBinary => _text('workspaceFilesBinary');
+  String get workspaceFilesNotFound => _text('workspaceFilesNotFound');
+  String get workspaceFilesPermissionDenied =>
+      _text('workspaceFilesPermissionDenied');
+  String get workspaceFilesPathOutsideRoot =>
+      _text('workspaceFilesPathOutsideRoot');
+  String get workspaceFilesReadFailed => _text('workspaceFilesReadFailed');
+  String get workspaceFilesTooLarge => _text('workspaceFilesTooLarge');
+  String get workspaceFilesDirectoryLoadFailed =>
+      _text('workspaceFilesDirectoryLoadFailed');
+  String get workspaceFilesRetry => _text('workspaceFilesRetry');
+  String workspaceFilesLoadedBytes(int loaded, int total) =>
+      _text('workspaceFilesLoadedBytes')
+          .replaceAll('{loaded}', loaded.toString())
+          .replaceAll('{total}', total.toString());
 
   String _text(String key) {
     return _values[locale.languageCode]?[key] ?? _values['en']![key] ?? key;
@@ -560,6 +595,7 @@ const _values = <String, Map<String, String>>{
     'appTitle': 'SadCoder',
     'hosts': 'Hosts',
     'chat': 'Chat',
+    'files': 'Files',
     'sessions': 'Sessions',
     'approvals': 'Approvals',
     'settings': 'Settings',
@@ -1019,11 +1055,39 @@ const _values = <String, Map<String, String>>{
     'debugConfigLayer': 'Layer {index}',
     'theme': 'Theme',
     'themeBody': 'System, light, and dark modes are supported.',
+    'workspaceFilesTitle': 'Workspace files',
+    'workspaceFilesRoot': 'Root: {root}',
+    'workspaceFilesNotConnected': 'Connect to a host to browse files.',
+    'workspaceFilesNoCwd': 'Select a thread or set a working directory.',
+    'workspaceFilesRefresh': 'Refresh',
+    'workspaceFilesSearchHint': 'Filter files',
+    'workspaceFilesShowHidden': 'Show hidden files',
+    'workspaceFilesEmptyDirectory': 'No files found',
+    'workspaceFilesLoadMore': 'Load more',
+    'workspaceFilesLoading': 'Loading files',
+    'workspaceFilesOpenFailed': 'File preview failed',
+    'workspaceFilesCopyPath': 'Copy path',
+    'workspaceFilesPathCopied': 'Path copied.',
+    'workspaceFilesPreviewEmpty': 'Select a text file to preview it.',
+    'workspaceFilesRaw': 'Raw',
+    'workspaceFilesRendered': 'Rendered',
+    'workspaceFilesLargeFile':
+        'This file is loaded in chunks. Rendering is limited to loaded text.',
+    'workspaceFilesBinary': 'Binary files cannot be previewed.',
+    'workspaceFilesNotFound': 'Path was not found.',
+    'workspaceFilesPermissionDenied': 'Permission denied while reading path.',
+    'workspaceFilesPathOutsideRoot': 'Path is outside the workspace root.',
+    'workspaceFilesReadFailed': 'Failed to read workspace file.',
+    'workspaceFilesTooLarge': 'File is too large to preview.',
+    'workspaceFilesDirectoryLoadFailed': 'Failed to load directory.',
+    'workspaceFilesRetry': 'Retry',
+    'workspaceFilesLoadedBytes': '{loaded} / {total} bytes loaded',
   },
   'zh': {
     'appTitle': 'SadCoder',
     'hosts': '主机',
     'chat': '对话',
+    'files': '文件',
     'sessions': '会话',
     'approvals': '审批',
     'settings': '设置',
@@ -1466,6 +1530,32 @@ const _values = <String, Map<String, String>>{
     'debugConfigLayer': '第 {index} 层',
     'theme': '主题',
     'themeBody': '支持跟随系统、浅色和深色模式。',
+    'workspaceFilesTitle': '工作区文件',
+    'workspaceFilesRoot': '根目录：{root}',
+    'workspaceFilesNotConnected': '连接主机后浏览文件。',
+    'workspaceFilesNoCwd': '请选择会话或设置工作目录。',
+    'workspaceFilesRefresh': '刷新',
+    'workspaceFilesSearchHint': '过滤文件',
+    'workspaceFilesShowHidden': '显示隐藏文件',
+    'workspaceFilesEmptyDirectory': '未找到文件',
+    'workspaceFilesLoadMore': '加载更多',
+    'workspaceFilesLoading': '正在加载文件',
+    'workspaceFilesOpenFailed': '文件预览失败',
+    'workspaceFilesCopyPath': '复制路径',
+    'workspaceFilesPathCopied': '已复制路径。',
+    'workspaceFilesPreviewEmpty': '选择文本文件进行预览。',
+    'workspaceFilesRaw': '源码',
+    'workspaceFilesRendered': '渲染',
+    'workspaceFilesLargeFile': '此文件按分段加载；渲染仅作用于已加载文本。',
+    'workspaceFilesBinary': '二进制文件不可预览。',
+    'workspaceFilesNotFound': '路径不存在。',
+    'workspaceFilesPermissionDenied': '读取路径时权限不足。',
+    'workspaceFilesPathOutsideRoot': '路径位于工作区根目录之外。',
+    'workspaceFilesReadFailed': '读取工作区文件失败。',
+    'workspaceFilesTooLarge': '文件过大，无法预览。',
+    'workspaceFilesDirectoryLoadFailed': '目录加载失败。',
+    'workspaceFilesRetry': '重试',
+    'workspaceFilesLoadedBytes': '已加载 {loaded} / {total} 字节',
   },
 };
 
