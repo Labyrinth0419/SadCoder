@@ -11,6 +11,7 @@ import '../../threads/thread_list_controller.dart';
 import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
 import 'chat_timeline_controller.dart';
+import 'slash_command_palette.dart';
 import 'turn_override_controls.dart';
 
 class ChatPage extends StatefulWidget {
@@ -42,6 +43,7 @@ class _ChatPageState extends State<ChatPage> {
       const SlashCommandParseResult.notSlash();
   final TextEditingController _composerController = TextEditingController();
   CodexSessionStatus? _lastSessionStatus;
+  bool _slashPaletteOpen = false;
 
   @override
   void initState() {
@@ -152,7 +154,12 @@ class _ChatPageState extends State<ChatPage> {
                   onChanged: _handleComposerChanged,
                   decoration: InputDecoration(
                     hintText: l10n.connectBeforeTurn,
-                    prefixIcon: const Icon(Icons.code),
+                    prefixIcon: IconButton(
+                      key: const ValueKey('chat-slash-command-button'),
+                      onPressed: _openSlashCommandPalette,
+                      icon: const Icon(Icons.manage_search),
+                      tooltip: l10n.slashCommands,
+                    ),
                     suffixIcon: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -182,7 +189,43 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _handleComposerChanged(String value) {
-    setState(() => _slashCommand = widget.registry.parseComposerText(value));
+    final result = widget.registry.parseComposerText(value);
+    setState(() => _slashCommand = result);
+    if (result.kind == SlashCommandParseKind.empty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(_openSlashCommandPalette());
+        }
+      });
+    }
+  }
+
+  Future<void> _openSlashCommandPalette() async {
+    if (_slashPaletteOpen) {
+      return;
+    }
+    _slashPaletteOpen = true;
+    try {
+      await showSlashCommandPalette(
+        context: context,
+        registry: widget.registry,
+        hasActiveTurn: widget.turnController?.activeTurnId != null,
+        onSelected: _selectSlashCommand,
+      );
+    } finally {
+      _slashPaletteOpen = false;
+    }
+  }
+
+  void _selectSlashCommand(SlashCommandSpec command) {
+    final text = command.supportsInlineArgs
+        ? '${command.slash} '
+        : command.slash;
+    _composerController.text = text;
+    _composerController.selection = TextSelection.collapsed(
+      offset: text.length,
+    );
+    _handleComposerChanged(text);
   }
 
   Future<void> _sendComposerText() async {

@@ -67,6 +67,49 @@ void main() {
     expect(find.text('Type a command name'), findsOneWidget);
   });
 
+  testWidgets('slash command button opens a searchable command palette', (
+    tester,
+  ) async {
+    await _pumpChatPage(tester);
+
+    await tester.tap(find.byKey(const ValueKey('chat-slash-command-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('slash-command-search-field')),
+      'stop',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('slash-command-stop')), findsOneWidget);
+    expect(find.text('/stop'), findsOneWidget);
+    expect(find.textContaining('aliases: /clean'), findsOneWidget);
+  });
+
+  testWidgets('selecting a slash command fills the composer only', (
+    tester,
+  ) async {
+    await _pumpChatPage(tester);
+
+    await tester.tap(find.byKey(const ValueKey('chat-slash-command-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('slash-command-search-field')),
+      'rename',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('slash-command-rename')));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('chat-composer-field')))
+          .controller
+          ?.text,
+      '/rename ',
+    );
+    expect(find.text('/rename'), findsOneWidget);
+  });
+
   testWidgets('shows disconnected thread list state without a controller', (
     tester,
   ) async {
@@ -373,6 +416,55 @@ void main() {
     ]);
     expect(find.text('Turn interrupted'), findsOneWidget);
   });
+
+  testWidgets(
+    'command palette disables commands unavailable during active turn',
+    (tester) async {
+      final approvalController = ApprovalStateController();
+      final turnRunner = _FakeTurnRunner();
+      final starter = _FakeSessionStarter(
+        threadListReader: const _FakeThreadListReader(
+          page: ThreadListPage(threads: []),
+        ),
+        turnRunner: turnRunner,
+      );
+      final sessionController = CodexSessionStateController(
+        connector: starter,
+        approvalController: approvalController,
+      );
+      final turnController = TurnController(
+        runnerProvider: () => sessionController.turnRunner,
+      );
+      addTearDown(turnController.dispose);
+      addTearDown(sessionController.dispose);
+      addTearDown(approvalController.dispose);
+
+      await sessionController.connect(_profile);
+      await turnController.submitText('Run long task');
+      await _pumpChatPage(
+        tester,
+        sessionController: sessionController,
+        turnController: turnController,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('chat-slash-command-button')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('slash-command-search-field')),
+        'delete',
+      );
+      await tester.pumpAndSettle();
+
+      final deleteTile = tester.widget<ListTile>(
+        find.byKey(const ValueKey('slash-command-delete')),
+      );
+      expect(deleteTile.enabled, false);
+      expect(
+        find.textContaining('Unavailable while a turn is active'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('renders timeline events and completed turns', (tester) async {
     final timelineController = ChatTimelineController();

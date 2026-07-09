@@ -111,6 +111,9 @@ class AppLocalizations {
       _text('slashCommandUnknown').replaceAll('{slash}', slash);
   String get slashCommandNotSentAsPrompt =>
       _text('slashCommandNotSentAsPrompt');
+  String get slashCommandUnavailableDuringTask =>
+      _text('slashCommandUnavailableDuringTask');
+  String get slashCommandRisk => _text('slashCommandRisk');
   String get noPendingApprovals => _text('noPendingApprovals');
   String get approvalsBody => _text('approvalsBody');
   String get approvalKindCommand => _text('approvalKindCommand');
@@ -281,6 +284,8 @@ const _values = <String, Map<String, String>>{
     'typeCommandName': 'Type a command name',
     'slashCommandUnknown': 'Unknown command: {slash}',
     'slashCommandNotSentAsPrompt': 'Not sent as a prompt',
+    'slashCommandUnavailableDuringTask': 'Unavailable while a turn is active',
+    'slashCommandRisk': 'Risk',
     'noPendingApprovals': 'No pending approvals',
     'approvalsBody':
         'Command, file, and MCP requests will appear here with their thread and turn IDs.',
@@ -426,6 +431,8 @@ const _values = <String, Map<String, String>>{
     'typeCommandName': '输入命令名称',
     'slashCommandUnknown': '未知命令：{slash}',
     'slashCommandNotSentAsPrompt': '不会作为普通提示词发送',
+    'slashCommandUnavailableDuringTask': '当前回合运行中不可用',
+    'slashCommandRisk': '风险',
     'noPendingApprovals': '暂无待审批请求',
     'approvalsBody': '命令、文件和 MCP 请求会在这里显示对应的会话与回合 ID。',
     'approvalKindCommand': '命令审批',
