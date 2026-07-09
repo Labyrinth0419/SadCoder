@@ -29,6 +29,7 @@ import '../threads/thread_detail_controller.dart';
 import '../threads/thread_list_controller.dart';
 import '../turns/turn_controller.dart';
 import '../usage/account_usage_snapshot_controller.dart';
+import 'app_session_recovery_coordinator.dart';
 
 const _defaultSessionConnector = CodexSessionConnector(
   proxyConnector: DartSshProxyConnector(),
@@ -77,6 +78,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late ModelListController _modelListController;
   late PermissionProfileListController _permissionProfileListController;
   late BackgroundConnectionPreferences _backgroundConnectionPreferences;
+  late AppSessionRecoveryCoordinator _sessionRecoveryCoordinator;
   AppLifecycleConnectionCoordinator? _lifecycleConnectionCoordinator;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
@@ -232,6 +234,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         _turnController.finishTurn(threadId: threadId, turn: turn);
       },
     );
+    _sessionRecoveryCoordinator = AppSessionRecoveryCoordinator(
+      threadListController: _threadListController,
+      threadDetailController: _threadDetailController,
+      turnController: _turnController,
+    );
     _lifecycleConnectionCoordinator = AppLifecycleConnectionCoordinator(
       sessionListenable: _sessionController,
       turnListenable: _turnController,
@@ -249,6 +256,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _threadDetailController.addListener(_handleThreadDetailChanged);
     _sessionController.addListener(_handleSessionChanged);
     _timelineController.attach(_sessionController.events);
+    _sessionRecoveryCoordinator.handleSessionStatus(_sessionController.status);
   }
 
   void _disposeOwnedControllers() {
@@ -331,6 +339,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   void _handleSessionChanged() {
     _timelineController.attach(_sessionController.events);
+    _sessionRecoveryCoordinator.handleSessionStatus(_sessionController.status);
     if (_sessionController.isConnected) {
       unawaited(_configSnapshotController.refresh());
       unawaited(_accountSnapshotController.refresh());
