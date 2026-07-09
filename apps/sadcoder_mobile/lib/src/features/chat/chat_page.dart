@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../commands/slash_command_registry.dart';
+import '../../config/codex_config_override_controller.dart';
 import '../../i18n/app_localizations.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../threads/thread_detail_controller.dart';
@@ -10,6 +11,7 @@ import '../../threads/thread_list_controller.dart';
 import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
 import 'chat_timeline_controller.dart';
+import 'turn_override_controls.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({
@@ -20,6 +22,7 @@ class ChatPage extends StatefulWidget {
     this.threadDetailController,
     this.turnController,
     this.timelineController,
+    this.configOverrideController,
   });
 
   final SlashCommandRegistry registry;
@@ -28,6 +31,7 @@ class ChatPage extends StatefulWidget {
   final ThreadDetailController? threadDetailController;
   final TurnController? turnController;
   final ChatTimelineController? timelineController;
+  final CodexConfigOverrideController? configOverrideController;
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -133,32 +137,43 @@ class _ChatPageState extends State<ChatPage> {
           top: false,
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: TextField(
-              key: const ValueKey('chat-composer-field'),
-              controller: _composerController,
-              onChanged: _handleComposerChanged,
-              decoration: InputDecoration(
-                hintText: l10n.connectBeforeTurn,
-                prefixIcon: const Icon(Icons.code),
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      onPressed: turnController?.canInterrupt == true
-                          ? _interruptActiveTurn
-                          : null,
-                      icon: const Icon(Icons.stop_circle_outlined),
-                      tooltip: l10n.interruptTurn,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.configOverrideController != null) ...[
+                  TurnOverrideControls(
+                    controller: widget.configOverrideController!,
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                TextField(
+                  key: const ValueKey('chat-composer-field'),
+                  controller: _composerController,
+                  onChanged: _handleComposerChanged,
+                  decoration: InputDecoration(
+                    hintText: l10n.connectBeforeTurn,
+                    prefixIcon: const Icon(Icons.code),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: turnController?.canInterrupt == true
+                              ? _interruptActiveTurn
+                              : null,
+                          icon: const Icon(Icons.stop_circle_outlined),
+                          tooltip: l10n.interruptTurn,
+                        ),
+                        IconButton(
+                          onPressed: canSend ? _sendComposerText : null,
+                          icon: const Icon(Icons.send),
+                          tooltip: l10n.send,
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      onPressed: canSend ? _sendComposerText : null,
-                      icon: const Icon(Icons.send),
-                      tooltip: l10n.send,
-                    ),
-                  ],
+                    border: const OutlineInputBorder(),
+                  ),
                 ),
-                border: const OutlineInputBorder(),
-              ),
+              ],
             ),
           ),
         ),
@@ -181,6 +196,7 @@ class _ChatPageState extends State<ChatPage> {
     }
     await turnController.submitText(text);
     if (turnController.status != TurnControllerStatus.failed) {
+      widget.configOverrideController?.clearTurn();
       _composerController.clear();
       _handleComposerChanged('');
     }

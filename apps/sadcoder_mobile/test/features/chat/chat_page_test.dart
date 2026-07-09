@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
@@ -212,6 +213,84 @@ void main() {
     ]);
     expect(find.text('Turn submitted: turn_1'), findsOneWidget);
     expect(find.text(' Fix login bug '), findsNothing);
+  });
+
+  testWidgets('applies next-turn overrides once and clears them after send', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final overrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        appDefault: CodexConfigOverrides(model: 'gpt-5'),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => overrideController.layers,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+    );
+
+    expect(find.textContaining('Model: gpt-5 / app default'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('chat-turn-overrides-edit')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-turn-model-override')),
+      'gpt-5-codex',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-turn-effort-override')),
+      'high',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-turn-cwd-override')),
+      '/repo',
+    );
+    await tester.tap(find.byKey(const ValueKey('chat-turn-overrides-apply')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Model: gpt-5-codex / turn override'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      'Use turn overrides',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(turnRunner.startedTurnOverrides.single.toTurnStartParams(), {
+      'model': 'gpt-5-codex',
+      'effort': 'high',
+      'cwd': '/repo',
+    });
+    expect(overrideController.layers.turn.toTurnStartParams(), isEmpty);
+    expect(find.textContaining('Model: gpt-5 / app default'), findsOneWidget);
   });
 
   testWidgets('does not send slash commands as prompt text', (tester) async {
@@ -461,6 +540,7 @@ Future<void> _pumpChatPage(
   ThreadDetailController? threadDetailController,
   TurnController? turnController,
   ChatTimelineController? timelineController,
+  CodexConfigOverrideController? configOverrideController,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -478,6 +558,7 @@ Future<void> _pumpChatPage(
           threadDetailController: threadDetailController,
           turnController: turnController,
           timelineController: timelineController,
+          configOverrideController: configOverrideController,
         ),
       ),
     ),
@@ -585,6 +666,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 class _FakeTurnRunner implements TurnRunner {
   int startedThreads = 0;
   final startedTurns = <({String threadId, String text})>[];
+  final startedTurnOverrides = <CodexConfigOverrides>[];
   final interruptedTurns = <({String threadId, String turnId})>[];
 
   @override
@@ -605,6 +687,7 @@ class _FakeTurnRunner implements TurnRunner {
     CodexConfigOverrides overrides = CodexConfigOverrides.empty,
   }) async {
     startedTurns.add((threadId: threadId, text: text));
+    startedTurnOverrides.add(overrides);
     return TurnSummary.fromJson({
       'id': 'turn_${startedTurns.length}',
       'status': 'inProgress',

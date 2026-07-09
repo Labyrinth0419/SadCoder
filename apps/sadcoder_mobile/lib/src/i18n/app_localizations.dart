@@ -145,6 +145,10 @@ class AppLocalizations {
   String get sourceAppDefault => _text('sourceAppDefault');
   String get sourceSessionOverride => _text('sourceSessionOverride');
   String get sourceTurnOverride => _text('sourceTurnOverride');
+  String get nextTurnOverrides => _text('nextTurnOverrides');
+  String get editTurnOverrides => _text('editTurnOverrides');
+  String get applyTurnOverrides => _text('applyTurnOverrides');
+  String get clearTurnOverrides => _text('clearTurnOverrides');
   String get theme => _text('theme');
   String get themeBody => _text('themeBody');
 
@@ -300,6 +304,10 @@ const _values = <String, Map<String, String>>{
     'sourceAppDefault': 'app default',
     'sourceSessionOverride': 'session override',
     'sourceTurnOverride': 'turn override',
+    'nextTurnOverrides': 'Next turn overrides',
+    'editTurnOverrides': 'Edit next turn overrides',
+    'applyTurnOverrides': 'Apply to next turn',
+    'clearTurnOverrides': 'Clear next turn overrides',
     'theme': 'Theme',
     'themeBody': 'System, light, and dark modes are supported.',
   },
@@ -427,6 +435,10 @@ const _values = <String, Map<String, String>>{
     'sourceAppDefault': 'App 默认',
     'sourceSessionOverride': '会话覆盖',
     'sourceTurnOverride': '本次覆盖',
+    'nextTurnOverrides': '本次回合覆盖',
+    'editTurnOverrides': '编辑本次回合覆盖',
+    'applyTurnOverrides': '应用到本次回合',
+    'clearTurnOverrides': '清除本次回合覆盖',
     'theme': '主题',
     'themeBody': '支持跟随系统、浅色和深色模式。',
   },

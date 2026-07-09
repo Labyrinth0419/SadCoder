@@ -184,6 +184,7 @@ class _AppShellState extends State<AppShell> {
         threadDetailController: _threadDetailController,
         turnController: _turnController,
         timelineController: _timelineController,
+        configOverrideController: _configOverrideController,
       ),
       2 => ApprovalsPage(
         approvals: _approvalController.approvals,
