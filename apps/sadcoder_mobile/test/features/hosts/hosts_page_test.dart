@@ -129,10 +129,7 @@ void main() {
     expect(store.savedProfile?.username, 'alice');
     expect(store.savedProfile?.password, isEmpty);
     expect(store.savedProfile?.agentCommand, 'sadcoder-agent --verbose');
-    expect(
-      find.text('Profile saved. Secrets are not stored in local preferences.'),
-      findsOneWidget,
-    );
+    expect(find.text('Profile saved.'), findsOneWidget);
   });
 
   testWidgets('loads saved host profile metadata into the form', (
@@ -187,7 +184,7 @@ void main() {
           .widget<TextFormField>(find.byKey(const ValueKey('password-field')))
           .controller
           ?.text,
-      isEmpty,
+      'should-not-fill',
     );
     expect(
       tester

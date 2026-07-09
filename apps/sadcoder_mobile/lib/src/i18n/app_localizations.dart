@@ -29,7 +29,7 @@ class AppLocalizations {
   String get agentCommand => _text('agentCommand');
   String get saveProfile => _text('saveProfile');
   String get savingProfile => _text('savingProfile');
-  String get profileSavedWithoutSecrets => _text('profileSavedWithoutSecrets');
+  String get profileSaved => _text('profileSaved');
   String get test => _text('test');
   String get testing => _text('testing');
   String get hostRequired => _text('hostRequired');
@@ -206,8 +206,7 @@ const _values = <String, Map<String, String>>{
     'agentCommand': 'Agent command',
     'saveProfile': 'Save profile',
     'savingProfile': 'Saving',
-    'profileSavedWithoutSecrets':
-        'Profile saved. Secrets are not stored in local preferences.',
+    'profileSaved': 'Profile saved.',
     'test': 'Test',
     'testing': 'Testing',
     'hostRequired': 'Host is required',
@@ -353,7 +352,7 @@ const _values = <String, Map<String, String>>{
     'agentCommand': 'Agent 命令',
     'saveProfile': '保存配置',
     'savingProfile': '保存中',
-    'profileSavedWithoutSecrets': '配置已保存。密码和密钥不会写入普通本地存储。',
+    'profileSaved': '配置已保存。',
     'test': '测试',
     'testing': '测试中',
     'hostRequired': '请填写主机',

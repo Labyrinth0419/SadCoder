@@ -45,6 +45,34 @@ class SshProfile {
 
   String get endpoint => '$username@$host:$port';
 
+  SshProfile copyWith({
+    String? id,
+    String? name,
+    String? host,
+    int? port,
+    String? username,
+    SshAuthType? authType,
+    String? password,
+    String? privateKeyPem,
+    String? passphrase,
+    String? agentCommand,
+    String? defaultCwd,
+  }) {
+    return SshProfile(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      host: host ?? this.host,
+      port: port ?? this.port,
+      username: username ?? this.username,
+      authType: authType ?? this.authType,
+      password: password ?? this.password,
+      privateKeyPem: privateKeyPem ?? this.privateKeyPem,
+      passphrase: passphrase ?? this.passphrase,
+      agentCommand: agentCommand ?? this.agentCommand,
+      defaultCwd: defaultCwd ?? this.defaultCwd,
+    );
+  }
+
   Map<String, Object?> toJson({bool includeSecrets = false}) => {
     'id': id,
     'name': name,

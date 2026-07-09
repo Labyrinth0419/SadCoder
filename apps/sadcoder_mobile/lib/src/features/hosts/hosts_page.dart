@@ -209,9 +209,7 @@ class _HostsPageState extends State<HostsPage> {
     try {
       await store.saveLastProfile(_buildProfile());
       if (mounted) {
-        setState(
-          () => _profileMessage = context.l10n.profileSavedWithoutSecrets,
-        );
+        setState(() => _profileMessage = context.l10n.profileSaved);
       }
     } on Object catch (error) {
       if (mounted) {
@@ -276,6 +274,7 @@ class _HostsPageState extends State<HostsPage> {
     _hostController.text = profile.host;
     _portController.text = profile.port.toString();
     _usernameController.text = profile.username;
+    _passwordController.text = profile.password ?? '';
     _agentCommandController.text = profile.agentCommand;
   }
 
