@@ -4181,6 +4181,109 @@ void main() {
     expect(find.text('Forked thread.'), findsOneWidget);
   });
 
+  testWidgets('/duplicate duplicates and selects the current thread', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final mutationRunner = _FakeThreadMutationRunner(
+      duplicatedThread: ThreadSummary.fromJson({
+        'id': 'thr_duplicate',
+        'sessionId': 'sess_1',
+        'preview': 'Duplicated thread',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 3,
+        'forkedFromId': 'thr_selected',
+        'turns': [
+          {
+            'id': 'turn_duplicate',
+            'status': 'completed',
+            'items': <Object?>[],
+            'itemsView': 'full',
+          },
+        ],
+      }),
+    );
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(
+        thread: ThreadSummary.fromJson({
+          'id': 'thr_duplicate',
+          'sessionId': 'sess_1',
+          'preview': 'Duplicated thread',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 3,
+          'forkedFromId': 'thr_selected',
+          'turns': <Object?>[],
+        }),
+      ),
+    );
+    final listReader = _CountingThreadListReader(
+      page: const ThreadListPage(threads: []),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: listReader,
+      turnRunner: turnRunner,
+      threadMutationRunner: mutationRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadListController = ThreadListController(
+      readerProvider: () => sessionController.threadListReader,
+    );
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    addTearDown(threadDetailController.dispose);
+    addTearDown(threadListController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await threadDetailController.readThread('thr_selected');
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadListController: threadListController,
+      threadDetailController: threadDetailController,
+      turnController: turnController,
+      timelineController: timelineController,
+    );
+    await tester.pumpAndSettle();
+    final callsBeforeDuplicate = listReader.calls;
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/duplicate',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(mutationRunner.duplicatedThreads, ['thr_selected']);
+    expect(mutationRunner.forkedThreads, isEmpty);
+    expect(mutationRunner.rewoundThreads, isEmpty);
+    expect(turnRunner.resumedThreads, isEmpty);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(turnController.activeThreadId, 'thr_duplicate');
+    expect(threadDetailController.selectedThreadId, 'thr_duplicate');
+    expect(timelineController.selectedThreadId, 'thr_duplicate');
+    expect(listReader.calls, callsBeforeDuplicate + 1);
+    expect(find.text('Duplicated thread.'), findsOneWidget);
+  });
+
   testWidgets('/rewind forks from a turn and selects the rewound thread', (
     tester,
   ) async {
@@ -6550,17 +6653,21 @@ class _FakeTurnRunner implements TurnRunner {
 class _FakeThreadMutationRunner implements ThreadMutationRunner {
   _FakeThreadMutationRunner({
     ThreadSummary? forkedThread,
+    ThreadSummary? duplicatedThread,
     ThreadSummary? rewoundThread,
     ThreadSummary? sideThread,
   }) : forkedThread = forkedThread ?? _thread('thr_fork'),
+       duplicatedThread = duplicatedThread ?? _thread('thr_duplicate'),
        rewoundThread = rewoundThread ?? _thread('thr_rewind'),
        sideThread = sideThread ?? _thread('thr_side');
 
   final ThreadSummary forkedThread;
+  final ThreadSummary duplicatedThread;
   final ThreadSummary rewoundThread;
   final ThreadSummary sideThread;
   final forkedThreads =
       <({String threadId, String? lastTurnId, bool ephemeral})>[];
+  final duplicatedThreads = <String>[];
   final rewoundThreads = <({String threadId, String lastTurnId})>[];
   final sideStartedThreads = <String>[];
   final compactedThreads = <String>[];
@@ -6580,6 +6687,12 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
       ephemeral: ephemeral,
     ));
     return forkedThread;
+  }
+
+  @override
+  Future<ThreadSummary> duplicateThread({required String threadId}) async {
+    duplicatedThreads.add(threadId);
+    return duplicatedThread;
   }
 
   @override
@@ -6632,6 +6745,10 @@ class _NoopThreadMutationRunner implements ThreadMutationRunner {
     String? lastTurnId,
     bool ephemeral = false,
   }) async => _thread('thr_fork');
+
+  @override
+  Future<ThreadSummary> duplicateThread({required String threadId}) async =>
+      _thread('thr_duplicate');
 
   @override
   Future<ThreadSummary> rewindThread({

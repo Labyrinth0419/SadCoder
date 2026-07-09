@@ -443,6 +443,7 @@ class _ChatPageState extends State<ChatPage> {
           startSideConversation: _startSideConversation,
           showAgentTopology: _showAgentTopology,
           forkThread: _forkCurrentThread,
+          duplicateThread: _duplicateCurrentThread,
           rewindThread: _rewindCurrentThread,
           compactThread: _compactCurrentThread,
           archiveThread: _archiveCurrentThread,
@@ -1073,6 +1074,20 @@ class _ChatPageState extends State<ChatPage> {
     return _activateForkedThread(forked);
   }
 
+  Future<SlashCommandCallbackResult> _duplicateCurrentThread() async {
+    final runner = widget.sessionController?.threadMutationRunner;
+    final threadId = _currentThreadId();
+    final turnController = widget.turnController;
+    if (runner == null || threadId == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    if (turnController != null && !turnController.canSubmit) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    final duplicated = await runner.duplicateThread(threadId: threadId);
+    return _activateForkedThread(duplicated);
+  }
+
   Future<SlashCommandCallbackResult> _rewindCurrentThread(
     String lastTurnId,
   ) async {
@@ -1668,6 +1683,8 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.resumeThread => l10n.slashCommandResumedThread,
         SlashCommandActionEffect.renameThread => l10n.slashCommandRenamedThread,
         SlashCommandActionEffect.forkThread => l10n.slashCommandForkedThread,
+        SlashCommandActionEffect.duplicateThread =>
+          l10n.slashCommandDuplicatedThread,
         SlashCommandActionEffect.rewindThread => l10n.slashCommandRewoundThread,
         SlashCommandActionEffect.compactThread =>
           l10n.slashCommandCompactionStarted,

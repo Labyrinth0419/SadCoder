@@ -768,7 +768,7 @@ mod tests {
         let manifest = load_slash_command_manifest().expect("manifest loads");
 
         assert_eq!(manifest.schema_version, 1);
-        assert_eq!(manifest.commands.len(), 56);
+        assert_eq!(manifest.commands.len(), 57);
         assert_eq!(
             manifest
                 .commands
@@ -783,6 +783,14 @@ mod tests {
             .find(|command| command.command == "stop")
             .expect("stop command");
         assert_eq!(stop.aliases, vec!["clean".to_string()]);
+
+        let duplicate = manifest
+            .commands
+            .iter()
+            .find(|command| command.command == "duplicate")
+            .expect("duplicate command");
+        assert!(!duplicate.supports_inline_args);
+        assert_eq!(duplicate.mapping_target, "thread/fork");
 
         let rewind = manifest
             .commands

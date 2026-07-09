@@ -7,6 +7,8 @@ abstract interface class ThreadMutationRunner {
     bool ephemeral = false,
   });
 
+  Future<ThreadSummary> duplicateThread({required String threadId});
+
   Future<ThreadSummary> rewindThread({
     required String threadId,
     required String lastTurnId,

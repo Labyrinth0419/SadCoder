@@ -1078,6 +1078,20 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
   }
 
   @override
+  Future<ThreadSummary> duplicateThread({required String threadId}) async {
+    return ThreadSummary.fromJson({
+      'id': 'thr_duplicate',
+      'sessionId': 'sess_1',
+      'preview': 'Duplicated thread',
+      'ephemeral': false,
+      'status': 'idle',
+      'cwd': '/repo',
+      'updatedAt': 1,
+      'forkedFromId': threadId,
+    });
+  }
+
+  @override
   Future<ThreadSummary> rewindThread({
     required String threadId,
     required String lastTurnId,

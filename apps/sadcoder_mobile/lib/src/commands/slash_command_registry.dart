@@ -399,6 +399,14 @@ const builtInSlashCommands = <SlashCommandSpec>[
     phase: SlashCommandPhase.secondStage,
   ),
   SlashCommandSpec(
+    command: 'duplicate',
+    description: 'duplicate the current chat',
+    availableDuringTask: false,
+    mappingType: SlashCommandMappingType.appServer,
+    mappingTarget: 'thread/fork',
+    phase: SlashCommandPhase.secondStage,
+  ),
+  SlashCommandSpec(
     command: 'rewind',
     description: 'fork the current chat from a turn checkpoint',
     supportsInlineArgs: true,

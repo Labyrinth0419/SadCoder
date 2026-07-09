@@ -1190,6 +1190,25 @@ void main() {
     expect(result.effect, SlashCommandActionEffect.forkThread);
   });
 
+  test('/duplicate runs the injected duplicate action', () async {
+    var duplicates = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      duplicateThread: () async {
+        duplicates++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/duplicate'),
+      hasActiveTurn: false,
+    );
+
+    expect(duplicates, 1);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.duplicateThread);
+  });
+
   test('/rewind runs the injected rewind action with a turn id', () async {
     final rewindCalls = <String>[];
     final dispatcher = SlashCommandActionDispatcher(
@@ -1313,6 +1332,7 @@ void main() {
     'thread lifecycle commands are unavailable during an active turn',
     () async {
       var forkCalls = 0;
+      var duplicateCalls = 0;
       var rewindCalls = 0;
       var compactCalls = 0;
       var archiveCalls = 0;
@@ -1320,6 +1340,10 @@ void main() {
       final dispatcher = SlashCommandActionDispatcher(
         forkThread: () async {
           forkCalls++;
+          return SlashCommandCallbackResult.executed;
+        },
+        duplicateThread: () async {
+          duplicateCalls++;
           return SlashCommandCallbackResult.executed;
         },
         rewindThread: (_) async {
@@ -1352,6 +1376,10 @@ void main() {
         registry.parseComposerText('/fork'),
         hasActiveTurn: true,
       );
+      final duplicate = await dispatcher.dispatch(
+        registry.parseComposerText('/duplicate'),
+        hasActiveTurn: true,
+      );
       final rewind = await dispatcher.dispatch(
         registry.parseComposerText('/rewind turn_2'),
         hasActiveTurn: true,
@@ -1364,9 +1392,11 @@ void main() {
       expect(archive.outcome, SlashCommandActionOutcome.unavailable);
       expect(delete.outcome, SlashCommandActionOutcome.unavailable);
       expect(fork.outcome, SlashCommandActionOutcome.unavailable);
+      expect(duplicate.outcome, SlashCommandActionOutcome.unavailable);
       expect(rewind.outcome, SlashCommandActionOutcome.unavailable);
       expect(compact.outcome, SlashCommandActionOutcome.unavailable);
       expect(forkCalls, 0);
+      expect(duplicateCalls, 0);
       expect(rewindCalls, 0);
       expect(compactCalls, 0);
       expect(archiveCalls, 0);

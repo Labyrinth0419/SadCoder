@@ -70,6 +70,37 @@ void main() {
     });
   });
 
+  test(
+    'duplicateThread forks the current thread without a checkpoint',
+    () async {
+      final requests = <JsonRpcRequest>[];
+      final transport = MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        return {
+          'thread': {
+            'id': 'thr_duplicate',
+            'sessionId': 'sess_1',
+            'preview': 'Duplicated work',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 2,
+            'forkedFromId': 'thr_source',
+            'turns': <Object?>[],
+          },
+        };
+      });
+      final runner = CodexThreadMutationRunner(CodexAppServerClient(transport));
+
+      final thread = await runner.duplicateThread(threadId: 'thr_source');
+
+      expect(thread.id, 'thr_duplicate');
+      expect(thread.forkedFromId, 'thr_source');
+      expect(requests.single.method, 'thread/fork');
+      expect(requests.single.params, {'threadId': 'thr_source'});
+    },
+  );
+
   test('compactThread starts server compaction for the thread', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {

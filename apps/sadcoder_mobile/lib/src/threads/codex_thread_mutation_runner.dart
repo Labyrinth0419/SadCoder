@@ -23,6 +23,12 @@ class CodexThreadMutationRunner implements ThreadMutationRunner {
   }
 
   @override
+  Future<ThreadSummary> duplicateThread({required String threadId}) async {
+    final response = await _client.forkThread(threadId: threadId);
+    return ThreadSummary.fromThreadResponse(response);
+  }
+
+  @override
   Future<ThreadSummary> rewindThread({
     required String threadId,
     required String lastTurnId,

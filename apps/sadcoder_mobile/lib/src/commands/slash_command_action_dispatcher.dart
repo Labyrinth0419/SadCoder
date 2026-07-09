@@ -94,6 +94,7 @@ enum SlashCommandActionEffect {
   resumeThread,
   renameThread,
   forkThread,
+  duplicateThread,
   rewindThread,
   compactThread,
   archiveThread,
@@ -251,6 +252,7 @@ class SlashCommandActionDispatcher {
     this.startSideConversation,
     this.showAgentTopology,
     this.forkThread,
+    this.duplicateThread,
     this.rewindThread,
     this.compactThread,
     this.archiveThread,
@@ -294,6 +296,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandStartSideConversation? startSideConversation;
   final SlashCommandShowAgentTopology? showAgentTopology;
   final SlashCommandConfiguredAction? forkThread;
+  final SlashCommandConfiguredAction? duplicateThread;
   final SlashCommandArgumentAction? rewindThread;
   final SlashCommandConfiguredAction? compactThread;
   final SlashCommandConfirmedThreadAction? archiveThread;
@@ -417,6 +420,12 @@ class SlashCommandActionDispatcher {
           parsed,
           action: forkThread,
           effect: SlashCommandActionEffect.forkThread,
+        );
+      case 'duplicate':
+        return _configuredAction(
+          parsed,
+          action: duplicateThread,
+          effect: SlashCommandActionEffect.duplicateThread,
         );
       case 'rewind':
         return _configuredArgumentAction(

@@ -263,6 +263,19 @@
       "riskLevel": "low"
     },
     {
+      "command": "duplicate",
+      "aliases": [],
+      "description": "duplicate the current chat",
+      "supportsInlineArgs": false,
+      "availableDuringTask": false,
+      "availableInSideConversation": false,
+      "platformVisibility": "all",
+      "mappingType": "appServer",
+      "mappingTarget": "thread/fork",
+      "phase": "secondStage",
+      "riskLevel": "low"
+    },
+    {
       "command": "rewind",
       "aliases": [],
       "description": "fork the current chat from a turn checkpoint",
