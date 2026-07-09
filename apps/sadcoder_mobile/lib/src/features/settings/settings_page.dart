@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../appearance/app_appearance_controller.dart';
+import '../../background/background_connection_policy.dart';
 import '../../config/codex_config_override_controller.dart';
 import '../../config/codex_config_overrides.dart';
 import '../../config/codex_config_snapshot.dart';
@@ -14,11 +15,13 @@ class SettingsPage extends StatelessWidget {
     this.appearanceController,
     this.configOverrideController,
     this.configSnapshotController,
+    this.backgroundConnectionPreferences,
   });
 
   final AppAppearanceController? appearanceController;
   final CodexConfigOverrideController? configOverrideController;
   final CodexConfigSnapshotController? configSnapshotController;
+  final BackgroundConnectionPreferences? backgroundConnectionPreferences;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +52,34 @@ class SettingsPage extends StatelessWidget {
           )
         else
           _AppearanceSettingsCard(controller: appearanceController!),
+        if (backgroundConnectionPreferences != null)
+          _BackgroundConnectionSettingsCard(
+            preferences: backgroundConnectionPreferences!,
+          ),
       ],
+    );
+  }
+}
+
+class _BackgroundConnectionSettingsCard extends StatelessWidget {
+  const _BackgroundConnectionSettingsCard({required this.preferences});
+
+  final BackgroundConnectionPreferences preferences;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: preferences,
+      builder: (context, _) => Card(
+        child: SwitchListTile(
+          key: const ValueKey('settings-background-active-turn-keepalive'),
+          secondary: const Icon(Icons.notifications_active_outlined),
+          title: Text(context.l10n.backgroundConnectionKeepActiveTurn),
+          subtitle: Text(context.l10n.backgroundConnectionKeepActiveTurnBody),
+          value: preferences.keepConnectionDuringActiveTurn,
+          onChanged: preferences.setKeepConnectionDuringActiveTurn,
+        ),
+      ),
     );
   }
 }

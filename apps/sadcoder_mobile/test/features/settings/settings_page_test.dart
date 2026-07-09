@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/appearance/app_appearance_controller.dart';
+import 'package:sadcoder_mobile/src/background/background_connection_policy.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_controller.dart';
@@ -158,6 +159,40 @@ void main() {
 
     expect(appearanceController.theme, AppThemePreference.dark);
   });
+
+  testWidgets('toggles active-turn background connection retention', (
+    tester,
+  ) async {
+    final overrideController = CodexConfigOverrideController();
+    final preferences = BackgroundConnectionPreferences();
+    addTearDown(overrideController.dispose);
+    addTearDown(preferences.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      backgroundConnectionPreferences: preferences,
+    );
+
+    expect(preferences.keepConnectionDuringActiveTurn, true);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-background-active-turn-keepalive')),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('settings-background-active-turn-keepalive')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('settings-background-active-turn-keepalive')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(preferences.keepConnectionDuringActiveTurn, false);
+  });
 }
 
 Future<void> _pumpSettings(
@@ -165,6 +200,7 @@ Future<void> _pumpSettings(
   CodexConfigOverrideController controller, {
   AppAppearanceController? appearanceController,
   CodexConfigSnapshotController? configSnapshotController,
+  BackgroundConnectionPreferences? backgroundConnectionPreferences,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -180,6 +216,7 @@ Future<void> _pumpSettings(
           appearanceController: appearanceController,
           configOverrideController: controller,
           configSnapshotController: configSnapshotController,
+          backgroundConnectionPreferences: backgroundConnectionPreferences,
         ),
       ),
     ),

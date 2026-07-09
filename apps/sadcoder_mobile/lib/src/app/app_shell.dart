@@ -6,6 +6,7 @@ import '../accounts/account_snapshot_controller.dart';
 import '../agent/agent_remote_service.dart';
 import '../appearance/app_appearance_controller.dart';
 import '../approvals/approval_state_controller.dart';
+import '../background/background_connection_policy.dart';
 import '../config/codex_config_override_controller.dart';
 import '../config/codex_config_snapshot_controller.dart';
 import '../features/approvals/approvals_page.dart';
@@ -44,19 +45,23 @@ class AppShell extends StatefulWidget {
     this.appearanceController,
     this.approvalController,
     this.sessionController,
+    this.backgroundConnectionPreferences,
+    this.backgroundConnectionKeeper,
     this.profileStore,
   });
 
   final AppAppearanceController? appearanceController;
   final ApprovalStateController? approvalController;
   final CodexSessionStateController? sessionController;
+  final BackgroundConnectionPreferences? backgroundConnectionPreferences;
+  final BackgroundConnectionKeeper? backgroundConnectionKeeper;
   final SshProfileStore? profileStore;
 
   @override
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _index = 0;
   late ApprovalStateController _approvalController;
   late CodexSessionStateController _sessionController;
@@ -71,15 +76,20 @@ class _AppShellState extends State<AppShell> {
   late McpServerStatusController _mcpServerStatusController;
   late ModelListController _modelListController;
   late PermissionProfileListController _permissionProfileListController;
+  late BackgroundConnectionPreferences _backgroundConnectionPreferences;
+  AppLifecycleConnectionCoordinator? _lifecycleConnectionCoordinator;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
+  late bool _ownsBackgroundConnectionPreferences;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _setControllers(
       approvalController: widget.approvalController,
       sessionController: widget.sessionController,
+      backgroundConnectionPreferences: widget.backgroundConnectionPreferences,
     );
   }
 
@@ -87,19 +97,30 @@ class _AppShellState extends State<AppShell> {
   void didUpdateWidget(AppShell oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.approvalController != widget.approvalController ||
-        oldWidget.sessionController != widget.sessionController) {
+        oldWidget.sessionController != widget.sessionController ||
+        oldWidget.backgroundConnectionPreferences !=
+            widget.backgroundConnectionPreferences ||
+        oldWidget.backgroundConnectionKeeper !=
+            widget.backgroundConnectionKeeper) {
       _disposeOwnedControllers();
       _setControllers(
         approvalController: widget.approvalController,
         sessionController: widget.sessionController,
+        backgroundConnectionPreferences: widget.backgroundConnectionPreferences,
       );
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _disposeOwnedControllers();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    unawaited(_lifecycleConnectionCoordinator?.handleLifecycleState(state));
   }
 
   @override
@@ -149,6 +170,7 @@ class _AppShellState extends State<AppShell> {
   void _setControllers({
     required ApprovalStateController? approvalController,
     required CodexSessionStateController? sessionController,
+    required BackgroundConnectionPreferences? backgroundConnectionPreferences,
   }) {
     if (approvalController != null &&
         sessionController != null &&
@@ -171,6 +193,10 @@ class _AppShellState extends State<AppShell> {
           snapshotReader: _defaultAgentRemoteService,
           heartbeatRunner: const ThreadListSessionHeartbeatRunner(),
         );
+    _ownsBackgroundConnectionPreferences =
+        backgroundConnectionPreferences == null;
+    _backgroundConnectionPreferences =
+        backgroundConnectionPreferences ?? BackgroundConnectionPreferences();
     _threadListController = ThreadListController(
       readerProvider: () => _sessionController.threadListReader,
     );
@@ -206,12 +232,28 @@ class _AppShellState extends State<AppShell> {
         _turnController.finishTurn(threadId: threadId, turn: turn);
       },
     );
+    _lifecycleConnectionCoordinator = AppLifecycleConnectionCoordinator(
+      sessionListenable: _sessionController,
+      turnListenable: _turnController,
+      preferences: _backgroundConnectionPreferences,
+      keeper:
+          widget.backgroundConnectionKeeper ??
+          const NoopBackgroundConnectionKeeper(),
+      isConnected: () => _sessionController.isConnected,
+      hasActiveTurn: () => _turnController.activeTurnId != null,
+      endpointProvider: () => _sessionController.profile?.endpoint,
+      activeThreadIdProvider: () => _turnController.activeThreadId,
+      activeTurnIdProvider: () => _turnController.activeTurnId,
+      disconnect: _sessionController.disconnect,
+    )..start();
     _threadDetailController.addListener(_handleThreadDetailChanged);
     _sessionController.addListener(_handleSessionChanged);
     _timelineController.attach(_sessionController.events);
   }
 
   void _disposeOwnedControllers() {
+    unawaited(_lifecycleConnectionCoordinator?.dispose());
+    _lifecycleConnectionCoordinator = null;
     _sessionController.removeListener(_handleSessionChanged);
     _threadDetailController.removeListener(_handleThreadDetailChanged);
     _timelineController.dispose();
@@ -227,6 +269,9 @@ class _AppShellState extends State<AppShell> {
     _threadListController.dispose();
     if (_ownsSessionController) {
       _sessionController.dispose();
+    }
+    if (_ownsBackgroundConnectionPreferences) {
+      _backgroundConnectionPreferences.dispose();
     }
     if (_ownsApprovalController) {
       _approvalController.dispose();
@@ -275,6 +320,7 @@ class _AppShellState extends State<AppShell> {
         appearanceController: widget.appearanceController,
         configOverrideController: _configOverrideController,
         configSnapshotController: _configSnapshotController,
+        backgroundConnectionPreferences: _backgroundConnectionPreferences,
       ),
       _ => HostsPage(
         sessionController: _sessionController,

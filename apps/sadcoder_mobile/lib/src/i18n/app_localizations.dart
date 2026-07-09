@@ -338,6 +338,10 @@ class AppLocalizations {
   String get themeSystem => _text('themeSystem');
   String get themeLight => _text('themeLight');
   String get themeDark => _text('themeDark');
+  String get backgroundConnectionKeepActiveTurn =>
+      _text('backgroundConnectionKeepActiveTurn');
+  String get backgroundConnectionKeepActiveTurnBody =>
+      _text('backgroundConnectionKeepActiveTurnBody');
   String get applyTheme => _text('applyTheme');
   String get titleCommandTitle => _text('titleCommandTitle');
   String get titleDisplayThread => _text('titleDisplayThread');
@@ -984,6 +988,10 @@ const _values = <String, Map<String, String>>{
     'themeSystem': 'System',
     'themeLight': 'Light',
     'themeDark': 'Dark',
+    'backgroundConnectionKeepActiveTurn':
+        'Keep active turns connected in background',
+    'backgroundConnectionKeepActiveTurnBody':
+        'When enabled, SadCoder keeps observing an active turn while the app is backgrounded. When disabled, it disconnects and backfills on the next connection.',
     'applyTheme': 'Apply theme',
     'titleCommandTitle': 'Title display',
     'titleDisplayThread': 'Current thread title',
@@ -1493,6 +1501,9 @@ const _values = <String, Map<String, String>>{
     'themeSystem': '跟随系统',
     'themeLight': '浅色',
     'themeDark': '深色',
+    'backgroundConnectionKeepActiveTurn': '后台保持 active turn 连接',
+    'backgroundConnectionKeepActiveTurnBody':
+        '开启后，App 进入后台时会尽量继续观察 active turn。关闭后会断开观察连接，下次连接时回填状态。',
     'applyTheme': '应用主题',
     'titleCommandTitle': '标题显示',
     'titleDisplayThread': '当前会话标题',

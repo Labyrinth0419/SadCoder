@@ -335,6 +335,56 @@ void main() {
 
     expect(find.text('Shell file visible'), findsOneWidget);
   });
+
+  testWidgets('backgrounding without an active turn disconnects observation', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final sessionController = CodexSessionStateController(
+      connector: _StaticSessionStarter(
+        threads: [
+          ThreadSummary.fromJson({
+            'id': 'thr_1',
+            'sessionId': 'sess_1',
+            'preview': 'Idle thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+          }),
+        ],
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_1',
+            'sessionId': 'sess_1',
+            'preview': 'Idle thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+          }),
+        ),
+      ),
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await tester.pumpWidget(SadCoderApp(sessionController: sessionController));
+    await tester.pumpAndSettle();
+
+    expect(sessionController.status, CodexSessionStatus.connected);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pumpAndSettle();
+
+    expect(sessionController.status, CodexSessionStatus.idle);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  });
 }
 
 const _profile = SshProfile(
