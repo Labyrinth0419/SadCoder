@@ -744,6 +744,79 @@ void main() {
     );
   });
 
+  testWidgets('/new starts a new thread without sending a turn', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadListController = ThreadListController(
+      readerProvider: () => sessionController.threadListReader,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    final timelineController = ChatTimelineController();
+    timelineController.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_old',
+        'sessionId': 'sess_1',
+        'preview': 'Old thread',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': [
+          {
+            'id': 'turn_old',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': <Object?>[],
+          },
+        ],
+      }),
+    );
+    addTearDown(timelineController.dispose);
+    addTearDown(threadListController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadListController: threadListController,
+      turnController: turnController,
+      timelineController: timelineController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/new',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(turnRunner.startedThreads, 1);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
+    expect(turnController.activeThreadId, 'thr_new');
+    expect(timelineController.selectedThreadId, 'thr_new');
+    expect(timelineController.turns, isEmpty);
+    expect(find.text('Started a new thread.'), findsOneWidget);
+  });
+
   testWidgets('/clear clears the local transcript without interrupting', (
     tester,
   ) async {

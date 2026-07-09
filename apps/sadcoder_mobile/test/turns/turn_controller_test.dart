@@ -108,6 +108,38 @@ void main() {
   });
 
   test(
+    'startNewThread starts a new idle thread without sending a turn',
+    () async {
+      final runner = _FakeTurnRunner();
+      final controller = TurnController(runnerProvider: () => runner);
+      addTearDown(controller.dispose);
+
+      final started = await controller.startNewThread();
+
+      expect(started, true);
+      expect(runner.startedThreads, 1);
+      expect(runner.startedTurns, isEmpty);
+      expect(controller.status, TurnControllerStatus.idle);
+      expect(controller.activeThreadId, 'thr_new');
+      expect(controller.activeTurnId, isNull);
+    },
+  );
+
+  test('startNewThread is unavailable while a turn is active', () async {
+    final runner = _FakeTurnRunner();
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+
+    await controller.submitText('Run long task');
+    final started = await controller.startNewThread();
+
+    expect(started, false);
+    expect(runner.startedThreads, 1);
+    expect(runner.startedTurns, [(threadId: 'thr_new', text: 'Run long task')]);
+    expect(controller.activeTurnId, 'turn_1');
+  });
+
+  test(
     'finishTurn records failed turns without blocking next submit',
     () async {
       final runner = _FakeTurnRunner();

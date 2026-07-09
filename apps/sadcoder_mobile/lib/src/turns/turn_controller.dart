@@ -146,6 +146,43 @@ class TurnController extends ChangeNotifier {
     }
   }
 
+  Future<bool> startNewThread() async {
+    if (isBusy || _activeTurnId != null) {
+      return false;
+    }
+    final runner = _runnerProvider();
+    if (runner == null) {
+      _setState(
+        status: TurnControllerStatus.failed,
+        error: StateError('No active Codex session'),
+      );
+      return false;
+    }
+
+    final generation = ++_generation;
+    _setState(status: TurnControllerStatus.startingThread, error: null);
+    try {
+      final thread = await runner.startThread();
+      if (generation != _generation) {
+        return false;
+      }
+      if (thread.id.isEmpty) {
+        throw StateError('Codex did not return a thread id');
+      }
+      _activeThreadId = thread.id;
+      _activeTurnId = null;
+      _lastTurn = null;
+      _setState(status: TurnControllerStatus.idle, error: null);
+      return true;
+    } on Object catch (error) {
+      if (generation != _generation) {
+        return false;
+      }
+      _setState(status: TurnControllerStatus.failed, error: error);
+      return false;
+    }
+  }
+
   Future<void> interruptActiveTurn() async {
     if (isBusy) {
       throw StateError('A turn transition is already in progress');

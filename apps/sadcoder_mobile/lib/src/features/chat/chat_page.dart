@@ -302,6 +302,7 @@ class _ChatPageState extends State<ChatPage> {
           copyLastResponse: _copyLastResponse,
           showStatus: _buildStatusSummary,
           toggleRawTranscript: _toggleRawTranscript,
+          startNewThread: _startNewThread,
         );
   }
 
@@ -341,6 +342,21 @@ class _ChatPageState extends State<ChatPage> {
     return null;
   }
 
+  Future<bool> _startNewThread() async {
+    final turnController = widget.turnController;
+    if (turnController == null) {
+      return false;
+    }
+    final started = await turnController.startNewThread();
+    if (!started) {
+      return false;
+    }
+    widget.threadDetailController?.clear();
+    widget.timelineController?.selectThread(turnController.activeThreadId);
+    unawaited(widget.threadListController?.refresh());
+    return true;
+  }
+
   void _clearLocalTranscript() {
     widget.threadDetailController?.clear();
     widget.timelineController?.clear();
@@ -368,6 +384,7 @@ class _ChatPageState extends State<ChatPage> {
           _showRawTranscript
               ? l10n.slashCommandRawEnabled
               : l10n.slashCommandRawDisabled,
+        SlashCommandActionEffect.newThread => l10n.slashCommandNewThread,
         SlashCommandActionEffect.none => l10n.slashCommandExecuted(
           result.slash,
         ),

@@ -155,6 +155,39 @@ void main() {
     expect(result.command?.command, 'raw');
   });
 
+  test('/new starts a thread through the injected callback', () async {
+    var starts = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      startNewThread: () async {
+        starts++;
+        return true;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/new'),
+      hasActiveTurn: false,
+    );
+
+    expect(starts, 1);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.newThread);
+  });
+
+  test('/new is unavailable when a new thread cannot be started', () async {
+    final dispatcher = SlashCommandActionDispatcher(
+      startNewThread: () async => false,
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/new'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'new');
+  });
+
   test(
     'unknown and unsupported commands never fall through as prompts',
     () async {

@@ -126,6 +126,7 @@ class AppLocalizations {
   String get slashCommandCopied => _text('slashCommandCopied');
   String get slashCommandRawEnabled => _text('slashCommandRawEnabled');
   String get slashCommandRawDisabled => _text('slashCommandRawDisabled');
+  String get slashCommandNewThread => _text('slashCommandNewThread');
   String slashCommandExecuted(String slash) =>
       _text('slashCommandExecuted').replaceAll('{slash}', slash);
   String slashCommandUnsupported(String slash) =>
@@ -324,6 +325,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandCopied': 'Copied last response.',
     'slashCommandRawEnabled': 'Raw transcript view enabled.',
     'slashCommandRawDisabled': 'Raw transcript view disabled.',
+    'slashCommandNewThread': 'Started a new thread.',
     'slashCommandExecuted': 'Executed {slash}.',
     'slashCommandUnsupported': '{slash} is not implemented yet.',
     'slashCommandUnavailable': '{slash} is unavailable right now.',
@@ -491,6 +493,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandCopied': '已复制最后一条回复。',
     'slashCommandRawEnabled': '已开启原始事件视图。',
     'slashCommandRawDisabled': '已关闭原始事件视图。',
+    'slashCommandNewThread': '已创建新会话。',
     'slashCommandExecuted': '已执行 {slash}。',
     'slashCommandUnsupported': '{slash} 暂未实现。',
     'slashCommandUnavailable': '{slash} 当前不可用。',

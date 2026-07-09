@@ -5,6 +5,7 @@ typedef SlashCommandClearTranscript = void Function();
 typedef SlashCommandCopyLastResponse = Future<bool> Function();
 typedef SlashCommandShowStatus = String? Function();
 typedef SlashCommandToggleRawTranscript = bool? Function(String arguments);
+typedef SlashCommandStartNewThread = Future<bool> Function();
 
 enum SlashCommandActionOutcome {
   ignored,
@@ -22,6 +23,7 @@ enum SlashCommandActionEffect {
   copy,
   status,
   rawTranscript,
+  newThread,
 }
 
 class SlashCommandActionResult {
@@ -119,6 +121,7 @@ class SlashCommandActionDispatcher {
     this.copyLastResponse,
     this.showStatus,
     this.toggleRawTranscript,
+    this.startNewThread,
   });
 
   final SlashCommandDisconnect? disconnect;
@@ -126,6 +129,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandCopyLastResponse? copyLastResponse;
   final SlashCommandShowStatus? showStatus;
   final SlashCommandToggleRawTranscript? toggleRawTranscript;
+  final SlashCommandStartNewThread? startNewThread;
 
   Future<SlashCommandActionResult> dispatch(
     SlashCommandParseResult parsed, {
@@ -168,6 +172,8 @@ class SlashCommandActionDispatcher {
         return _showStatus(parsed);
       case 'raw':
         return _toggleRawTranscript(parsed);
+      case 'new':
+        return _startNewThread(parsed);
       default:
         return SlashCommandActionResult.unsupported(
           command: command,
@@ -329,6 +335,42 @@ class SlashCommandActionDispatcher {
         rawCommand: parsed.rawCommand,
         arguments: parsed.arguments,
         effect: SlashCommandActionEffect.rawTranscript,
+      );
+    } on Object catch (error) {
+      return SlashCommandActionResult.failed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        error: error,
+      );
+    }
+  }
+
+  Future<SlashCommandActionResult> _startNewThread(
+    SlashCommandParseResult parsed,
+  ) async {
+    final startNewThread = this.startNewThread;
+    if (startNewThread == null) {
+      return SlashCommandActionResult.unsupported(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    try {
+      final started = await startNewThread();
+      if (!started) {
+        return SlashCommandActionResult.unavailable(
+          command: parsed.command!,
+          rawCommand: parsed.rawCommand,
+          arguments: parsed.arguments,
+        );
+      }
+      return SlashCommandActionResult.executed(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+        effect: SlashCommandActionEffect.newThread,
       );
     } on Object catch (error) {
       return SlashCommandActionResult.failed(
