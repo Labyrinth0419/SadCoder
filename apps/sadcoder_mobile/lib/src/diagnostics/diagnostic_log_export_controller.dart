@@ -57,6 +57,7 @@ String formatDiagnosticLogEntries(List<JsonRpcDiagnosticLogEntry> entries) {
         (entry) => jsonEncode({
           'capturedAt': entry.capturedAt.toUtc().toIso8601String(),
           'direction': entry.direction.name,
+          'redactionVersion': entry.redactionVersion,
           'message': entry.redactedJson,
         }),
       )

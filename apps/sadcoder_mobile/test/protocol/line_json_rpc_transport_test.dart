@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc_diagnostic_log.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
 import 'package:sadcoder_mobile/src/protocol/line_json_rpc_transport.dart';
+import 'package:sadcoder_mobile/src/security/log_redactor.dart';
 
 void main() {
   test(
@@ -154,6 +155,7 @@ void main() {
         diagnosticLogSink: RedactingJsonRpcDiagnosticLogSink(
           onEntry: entries.add,
           clock: () => DateTime.fromMillisecondsSinceEpoch(1, isUtc: true),
+          redactor: const LogRedactor(redactionVersion: 7),
         ),
       );
 
@@ -176,6 +178,7 @@ void main() {
         JsonRpcDiagnosticLogDirection.outgoing,
         JsonRpcDiagnosticLogDirection.incoming,
       ]);
+      expect(entries.map((entry) => entry.redactionVersion), [7, 7]);
       expect(
         (entries.first.redactedJson['params'] as Map)['password'],
         '[REDACTED]',

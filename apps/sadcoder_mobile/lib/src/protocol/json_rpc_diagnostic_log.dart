@@ -7,11 +7,13 @@ class JsonRpcDiagnosticLogEntry {
     required this.direction,
     required this.capturedAt,
     required this.redactedJson,
+    this.redactionVersion = LogRedactor.currentVersion,
   });
 
   final JsonRpcDiagnosticLogDirection direction;
   final DateTime capturedAt;
   final Map<String, Object?> redactedJson;
+  final int redactionVersion;
 }
 
 abstract interface class JsonRpcDiagnosticLogSink {
@@ -43,6 +45,7 @@ class RedactingJsonRpcDiagnosticLogSink implements JsonRpcDiagnosticLogSink {
         direction: direction,
         capturedAt: clock(),
         redactedJson: _objectMap(redacted),
+        redactionVersion: redactor.redactionVersion,
       ),
     );
   }
@@ -85,6 +88,7 @@ class RedactingJsonRpcDiagnosticLogBuffer implements JsonRpcDiagnosticLogSink {
         direction: direction,
         capturedAt: clock(),
         redactedJson: _objectMap(redacted),
+        redactionVersion: redactor.redactionVersion,
       ),
     );
   }

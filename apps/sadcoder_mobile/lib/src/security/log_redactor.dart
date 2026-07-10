@@ -1,9 +1,14 @@
 import 'dart:convert';
 
 class LogRedactor {
-  const LogRedactor({this.replacement = '[REDACTED]'});
+  const LogRedactor({
+    this.replacement = '[REDACTED]',
+    this.redactionVersion = currentVersion,
+  });
 
+  static const currentVersion = 1;
   final String replacement;
+  final int redactionVersion;
 
   static const defaultRedactor = LogRedactor();
 

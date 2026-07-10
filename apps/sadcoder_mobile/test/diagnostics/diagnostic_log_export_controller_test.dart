@@ -21,6 +21,7 @@ void main() {
     final decoded = jsonDecode(text) as Map<String, Object?>;
     expect(decoded['capturedAt'], '2026-01-02T03:04:05.000Z');
     expect(decoded['direction'], 'outgoing');
+    expect(decoded['redactionVersion'], 1);
     expect((decoded['message'] as Map)['method'], 'turn/start');
     expect(
       ((decoded['message'] as Map)['params'] as Map)['accessToken'],
