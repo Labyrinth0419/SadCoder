@@ -34,6 +34,7 @@ void main() {
         M0ProbeStep.agentStatus,
         M0ProbeStep.codexVersion,
         M0ProbeStep.proxyConnect,
+        M0ProbeStep.agentHello,
         M0ProbeStep.initialize,
         M0ProbeStep.accountRead,
         M0ProbeStep.modelList,
@@ -42,6 +43,7 @@ void main() {
         M0ProbeStep.threadList,
       ]);
       expect(connector.methods, [
+        'agent/hello',
         'initialize',
         'initialized',
         'account/read',
@@ -79,6 +81,7 @@ void main() {
       M0ProbeStep.codexVersion,
       M0ProbeStep.agentStart,
       M0ProbeStep.proxyConnect,
+      M0ProbeStep.agentHello,
       M0ProbeStep.initialize,
       M0ProbeStep.accountRead,
       M0ProbeStep.modelList,
@@ -174,6 +177,7 @@ void main() {
       M0ProbeStep.agentStatus,
       M0ProbeStep.codexVersion,
       M0ProbeStep.proxyConnect,
+      M0ProbeStep.agentHello,
       M0ProbeStep.initialize,
       M0ProbeStep.accountRead,
       M0ProbeStep.modelList,
@@ -181,6 +185,7 @@ void main() {
     ]);
     expect(report.steps.last.ok, false);
     expect(connector.methods, [
+      'agent/hello',
       'initialize',
       'initialized',
       'account/read',
@@ -259,6 +264,31 @@ void main() {
     ]);
     expect(report.steps.last.ok, false);
     expect(report.steps.last.detail, contains('proxy failed'));
+  });
+
+  test('run stops when agent hello over proxy fails', () async {
+    final connector = _LineServerProxyConnector(failMethod: 'agent/hello');
+    final coordinator = _coordinator(
+      statusReader: _FakeStatusReader(_readyStatus),
+      proxyConnector: connector,
+    );
+
+    final report = await coordinator.run(_profile);
+
+    expect(report.ok, false);
+    expect(report.steps.map((step) => step.step), [
+      M0ProbeStep.tcpConnect,
+      M0ProbeStep.sshHandshake,
+      M0ProbeStep.hostKey,
+      M0ProbeStep.auth,
+      M0ProbeStep.remoteShell,
+      M0ProbeStep.agentStatus,
+      M0ProbeStep.codexVersion,
+      M0ProbeStep.proxyConnect,
+      M0ProbeStep.agentHello,
+    ]);
+    expect(connector.methods, ['agent/hello']);
+    expect(connector.closed, true);
   });
 
   test('run rethrows known-host challenges from status checks', () async {
@@ -546,6 +576,7 @@ class _LineServerProxyConnector implements AgentProxyConnector {
   }
 
   Map<String, Object?> _resultFor(String method) => switch (method) {
+    'agent/hello' => {'agentVersion': '0.1.0'},
     'initialize' => {'serverInfo': 'test'},
     'account/read' => {'account': null, 'requiresOpenaiAuth': false},
     'model/list' => {

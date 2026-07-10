@@ -105,6 +105,7 @@ class AppLocalizations {
   String get agentStatus => _text('agentStatus');
   String get agentStart => _text('agentStart');
   String get proxyConnect => _text('proxyConnect');
+  String get agentHello => _text('agentHello');
   String get initialize => _text('initialize');
   String get accountRead => _text('accountRead');
   String get modelList => _text('modelList');
@@ -929,6 +930,7 @@ const _values = <String, Map<String, String>>{
     'agentStatus': 'Agent status',
     'agentStart': 'Agent start',
     'proxyConnect': 'Proxy connect',
+    'agentHello': 'Agent hello',
     'initialize': 'Initialize',
     'accountRead': 'Account read',
     'modelList': 'Model list',
@@ -1587,6 +1589,7 @@ const _values = <String, Map<String, String>>{
     'agentStatus': 'Agent 状态',
     'agentStart': '启动 Agent',
     'proxyConnect': '代理连接',
+    'agentHello': 'Agent 握手',
     'initialize': '初始化',
     'accountRead': '账户读取',
     'modelList': '模型列表',

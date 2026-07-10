@@ -110,6 +110,13 @@ class M0ProbeCoordinator implements M0ProbeRunner {
 
       if (!await _recordStep(
         steps,
+        M0ProbeStep.agentHello,
+        client.agentHello,
+      )) {
+        return M0ProbeReport(agentStatus: status, steps: steps);
+      }
+      if (!await _recordStep(
+        steps,
         M0ProbeStep.initialize,
         session.initialize,
       )) {

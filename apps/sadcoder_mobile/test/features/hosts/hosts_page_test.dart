@@ -1136,6 +1136,7 @@ const _passedProbeSteps = [
   ),
   M0ProbeStepResult(step: M0ProbeStep.agentStatus, ok: true),
   M0ProbeStepResult(step: M0ProbeStep.proxyConnect, ok: true),
+  M0ProbeStepResult(step: M0ProbeStep.agentHello, ok: true),
   M0ProbeStepResult(step: M0ProbeStep.initialize, ok: true),
   M0ProbeStepResult(step: M0ProbeStep.accountRead, ok: true),
   M0ProbeStepResult(step: M0ProbeStep.modelList, ok: true),

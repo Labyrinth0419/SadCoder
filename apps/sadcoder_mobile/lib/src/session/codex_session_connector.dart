@@ -168,6 +168,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         ),
         approvalController: approvalController,
       );
+      await session.client.agentHello();
       await session.initialize(
         clientName: clientName,
         experimentalApi: experimentalApi,

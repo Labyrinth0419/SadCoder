@@ -48,6 +48,7 @@ void main() {
     );
 
     expect(proxyConnector.methods, [
+      'agent/hello',
       'initialize',
       'initialized',
       'model/list',
@@ -102,7 +103,11 @@ void main() {
       await connection.close();
 
       expect(proxyConnector.closed, true);
-      expect(proxyConnector.methods, ['initialize', 'initialized']);
+      expect(proxyConnector.methods, [
+        'agent/hello',
+        'initialize',
+        'initialized',
+      ]);
       expect(proxyConnector.methods, isNot(contains('turn/interrupt')));
       expect(approvalController.approvals.single.requestId, 'approval-1');
       expect(approvalController.canRespond, false);
@@ -116,7 +121,19 @@ void main() {
     await expectLater(connector.connect(_profile), throwsA(anything));
 
     expect(proxyConnector.closed, true);
-    expect(proxyConnector.methods, ['initialize']);
+    expect(proxyConnector.methods, ['agent/hello', 'initialize']);
+    expect(proxyConnector.methods, isNot(contains('turn/interrupt')));
+  });
+
+  test('failed agent handshake closes proxy before initialize', () async {
+    final proxyConnector = _LineServerProxyConnector(failMethod: 'agent/hello');
+    final connector = CodexSessionConnector(proxyConnector: proxyConnector);
+
+    await expectLater(connector.connect(_profile), throwsA(anything));
+
+    expect(proxyConnector.closed, true);
+    expect(proxyConnector.methods, ['agent/hello']);
+    expect(proxyConnector.methods, isNot(contains('initialize')));
     expect(proxyConnector.methods, isNot(contains('turn/interrupt')));
   });
 
@@ -134,7 +151,11 @@ void main() {
 
     expect(starter.startedProfiles, [_profile]);
     expect(proxyConnector.connectCount, 1);
-    expect(proxyConnector.methods, ['initialize', 'initialized']);
+    expect(proxyConnector.methods, [
+      'agent/hello',
+      'initialize',
+      'initialized',
+    ]);
   });
 
   test('connect fails before proxy when backend is unavailable', () async {
@@ -268,6 +289,7 @@ class _LineServerProxyConnector implements AgentProxyConnector {
   }
 
   Map<String, Object?> _resultFor(String method) => switch (method) {
+    'agent/hello' => {'agentVersion': '0.1.0'},
     'initialize' => {'serverInfo': 'test'},
     'model/list' => {'models': <Object?>[]},
     'permissionProfile/list' => {'data': <Object?>[]},
