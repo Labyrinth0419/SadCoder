@@ -21,17 +21,36 @@ Host prod prod-short
 
     final profiles = const OpenSshConfigParser().parseProfiles(config);
 
-    expect(profiles, hasLength(2));
-    expect(profiles.first.id, 'alice@dev.example.com:2200');
+    expect(profiles, hasLength(3));
+    expect(profiles.first.id, 'alice@dev.example.com:2200#dev');
     expect(profiles.first.name, 'dev');
     expect(profiles.first.host, 'dev.example.com');
     expect(profiles.first.port, 2200);
     expect(profiles.first.username, 'alice');
     expect(profiles.first.authType, SshAuthType.privateKey);
-    expect(profiles.last.id, 'default-user@prod.example.com:22');
-    expect(profiles.last.name, 'prod');
-    expect(profiles.last.username, 'default-user');
-    expect(profiles.last.authType, SshAuthType.password);
+    expect(profiles[1].id, 'default-user@prod.example.com:22#prod');
+    expect(profiles[1].name, 'prod');
+    expect(profiles[1].username, 'default-user');
+    expect(profiles[1].authType, SshAuthType.password);
+    expect(profiles.last.id, 'default-user@prod.example.com:22#prod-short');
+    expect(profiles.last.name, 'prod-short');
+  });
+
+  test('preserves multiple aliases for the same endpoint', () {
+    const config = '''
+Host dev staging
+  HostName 10.0.0.12
+  User alice
+''';
+
+    final profiles = const OpenSshConfigParser().parseProfiles(config);
+
+    expect(profiles.map((profile) => profile.name), ['dev', 'staging']);
+    expect(profiles.map((profile) => profile.host), ['10.0.0.12', '10.0.0.12']);
+    expect(profiles.map((profile) => profile.id), [
+      'alice@10.0.0.12:22#dev',
+      'alice@10.0.0.12:22#staging',
+    ]);
   });
 
   test(

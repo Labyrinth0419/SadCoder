@@ -93,13 +93,19 @@ String sshProfileId({
   required String host,
   required int port,
   required String username,
+  String? name,
 }) {
   final normalizedHost = host.trim().toLowerCase();
   final normalizedUsername = username.trim().toLowerCase();
   if (normalizedHost.isEmpty || normalizedUsername.isEmpty) {
     return 'manual';
   }
-  return '$normalizedUsername@$normalizedHost:$port';
+  final endpointId = '$normalizedUsername@$normalizedHost:$port';
+  final normalizedName = name?.trim().toLowerCase();
+  if (normalizedName == null || normalizedName.isEmpty) {
+    return endpointId;
+  }
+  return '$endpointId#${Uri.encodeComponent(normalizedName)}';
 }
 
 String? _stringValue(Object? value) {

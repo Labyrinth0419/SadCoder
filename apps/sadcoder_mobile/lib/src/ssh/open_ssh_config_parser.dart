@@ -26,7 +26,12 @@ class OpenSshConfigParser {
           continue;
         }
         final port = entry.port ?? 22;
-        final id = sshProfileId(host: host, port: port, username: username);
+        final id = sshProfileId(
+          host: host,
+          port: port,
+          username: username,
+          name: alias,
+        );
         if (!seenIds.add(id)) {
           continue;
         }
