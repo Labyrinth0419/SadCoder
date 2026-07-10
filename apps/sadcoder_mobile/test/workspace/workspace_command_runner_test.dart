@@ -36,4 +36,17 @@ void main() {
       'disableOutputCap': true,
     });
   });
+
+  test('WorkspaceCommandResult parses alternate app-server field names', () {
+    final result = WorkspaceCommandResult.fromJson({
+      'exit_code': 2,
+      'stdOut': 'output',
+      'std_err': 'warning',
+    });
+
+    expect(result.exitCode, 2);
+    expect(result.stdout, 'output');
+    expect(result.stderr, 'warning');
+    expect(result.success, false);
+  });
 }

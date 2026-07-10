@@ -25,9 +25,9 @@ class WorkspaceCommandResult {
 
   factory WorkspaceCommandResult.fromJson(Map<String, Object?> json) {
     return WorkspaceCommandResult(
-      exitCode: json['exitCode'] as int? ?? -1,
-      stdout: json['stdout'] as String? ?? '',
-      stderr: json['stderr'] as String? ?? '',
+      exitCode: _intValue(json['exitCode'] ?? json['exit_code']) ?? -1,
+      stdout: _stringValue(json['stdout'] ?? json['stdOut'] ?? json['std_out']),
+      stderr: _stringValue(json['stderr'] ?? json['stdErr'] ?? json['std_err']),
     );
   }
 
@@ -41,3 +41,15 @@ class WorkspaceCommandResult {
 abstract interface class WorkspaceCommandRunner {
   Future<WorkspaceCommandResult> runCommand(WorkspaceCommand command);
 }
+
+int? _intValue(Object? value) {
+  if (value is int) {
+    return value;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  return null;
+}
+
+String _stringValue(Object? value) => value is String ? value : '';
