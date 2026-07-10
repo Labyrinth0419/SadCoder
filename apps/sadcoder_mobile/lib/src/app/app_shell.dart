@@ -384,6 +384,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         onMcpElicitationResponse: _approvalController.canRespond
             ? _approvalController.sendMcpElicitationResponse
             : null,
+        onToolUserInputResponse: _approvalController.canRespond
+            ? _approvalController.sendToolUserInputResponse
+            : null,
       ),
       4 => SettingsPage(
         appearanceController: widget.appearanceController,

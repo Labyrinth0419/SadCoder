@@ -105,7 +105,7 @@ void main() {
   );
 
   test(
-    'sends permission and MCP responses with their distinct wire shapes',
+    'sends permission, MCP, and user input responses with distinct shapes',
     () async {
       final transport = _FakeJsonRpcTransport();
       final coordinator = ApprovalCoordinator(transport: transport);
@@ -126,6 +126,12 @@ void main() {
         action: McpElicitationAction.accept,
         content: {'repo': 'openai/codex'},
       );
+      await coordinator.sendToolUserInputResponse(
+        requestId: 'input-1',
+        answers: const {
+          'target': ['Core (Recommended)'],
+        },
+      );
 
       expect(transport.responses.first.toJson(), {
         'jsonrpc': '2.0',
@@ -139,12 +145,23 @@ void main() {
           },
         },
       });
-      expect(transport.responses.last.toJson(), {
+      expect(transport.responses[1].toJson(), {
         'jsonrpc': '2.0',
         'id': 'mcp-1',
         'result': {
           'action': 'accept',
           'content': {'repo': 'openai/codex'},
+        },
+      });
+      expect(transport.responses.last.toJson(), {
+        'jsonrpc': '2.0',
+        'id': 'input-1',
+        'result': {
+          'answers': {
+            'target': {
+              'answers': ['Core (Recommended)'],
+            },
+          },
         },
       });
     },

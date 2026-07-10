@@ -267,6 +267,152 @@ void main() {
       (requestId: 'mcp-1', action: McpElicitationAction.cancel),
     ]);
   });
+
+  testWidgets(
+    'collects option, other, and secret answers for tool user input',
+    (tester) async {
+      final responses =
+          <({Object requestId, Map<String, List<String>> answers})>[];
+      await _pumpApprovalsPage(
+        tester,
+        const [
+          PendingApproval(
+            requestId: 'input-1',
+            method: 'item/tool/requestUserInput',
+            kind: PendingApprovalKind.toolUserInput,
+            rawParams: {},
+            threadId: 'thr_1',
+            turnId: 'turn_1',
+            toolUserInputAutoResolutionMs: 60000,
+            toolUserInputQuestions: [
+              ToolUserInputQuestion(
+                id: 'target',
+                header: 'Target',
+                question: 'Which target?',
+                isOther: true,
+                isSecret: false,
+                options: [
+                  ToolUserInputOption(
+                    label: 'Core (Recommended)',
+                    description: 'Inspect core.',
+                  ),
+                  ToolUserInputOption(
+                    label: 'TUI',
+                    description: 'Inspect the terminal UI.',
+                  ),
+                ],
+              ),
+              ToolUserInputQuestion(
+                id: 'details',
+                header: 'Details',
+                question: 'Anything else?',
+                isOther: true,
+                isSecret: false,
+                options: [
+                  ToolUserInputOption(
+                    label: 'No changes',
+                    description: 'Keep the current scope.',
+                  ),
+                ],
+              ),
+              ToolUserInputQuestion(
+                id: 'token',
+                header: 'Token',
+                question: 'Enter a temporary token.',
+                isOther: false,
+                isSecret: true,
+                options: null,
+              ),
+            ],
+          ),
+        ],
+        onToolUserInputResponse: (approval, answers) {
+          responses.add((requestId: approval.requestId, answers: answers));
+        },
+      );
+
+      expect(find.text('Question from Codex'), findsWidgets);
+      expect(
+        find.text('Codex may continue automatically after 60 seconds.'),
+        findsOneWidget,
+      );
+      expect(find.text('Inspect the terminal UI.'), findsOneWidget);
+
+      final targetOption = find.byKey(
+        const ValueKey('tool-user-input-target-option-1'),
+      );
+      await tester.ensureVisible(targetOption);
+      await tester.tap(targetOption);
+      await tester.pump();
+
+      final detailsOther = find.byKey(
+        const ValueKey('tool-user-input-details-other'),
+      );
+      await tester.ensureVisible(detailsOther);
+      await tester.tap(detailsOther);
+      await tester.pump();
+      final detailsField = find.byKey(
+        const ValueKey('tool-user-input-details-text'),
+      );
+      await tester.ensureVisible(detailsField);
+      await tester.enterText(detailsField, 'include snapshots');
+
+      final tokenField = find.byKey(
+        const ValueKey('tool-user-input-token-text'),
+      );
+      await tester.ensureVisible(tokenField);
+      final tokenEditable = find.descendant(
+        of: tokenField,
+        matching: find.byType(EditableText),
+      );
+      expect(tester.widget<EditableText>(tokenEditable).obscureText, isTrue);
+      await tester.enterText(tokenField, 'temporary-secret');
+      await tester.tap(find.byTooltip('Show secret'));
+      await tester.pump();
+      expect(tester.widget<EditableText>(tokenEditable).obscureText, isFalse);
+
+      final submit = find.byKey(const ValueKey('tool-user-input-submit'));
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
+      await tester.pump();
+
+      expect(responses, hasLength(1));
+      expect(responses.single.requestId, 'input-1');
+      expect(responses.single.answers, {
+        'target': ['TUI'],
+        'details': ['user_note: include snapshots'],
+        'token': ['user_note: temporary-secret'],
+      });
+    },
+  );
+
+  testWidgets('validates required tool user input answers', (tester) async {
+    await _pumpApprovalsPage(tester, const [
+      PendingApproval(
+        requestId: 'input-1',
+        method: 'item/tool/requestUserInput',
+        kind: PendingApprovalKind.toolUserInput,
+        rawParams: {},
+        toolUserInputQuestions: [
+          ToolUserInputQuestion(
+            id: 'target',
+            header: 'Target',
+            question: 'Which target?',
+            isOther: true,
+            isSecret: false,
+            options: [
+              ToolUserInputOption(label: 'Core', description: 'Inspect core.'),
+            ],
+          ),
+        ],
+      ),
+    ], onToolUserInputResponse: (_, _) {});
+
+    await tester.tap(find.byKey(const ValueKey('tool-user-input-submit')));
+    await tester.pump();
+
+    expect(find.text('Select an option.'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpApprovalsPage(
@@ -276,6 +422,7 @@ Future<void> _pumpApprovalsPage(
   CommandOrFileApprovalCallback? onCommandOrFileDecision,
   PermissionsApprovalCallback? onPermissionsResponse,
   McpElicitationApprovalCallback? onMcpElicitationResponse,
+  ToolUserInputApprovalCallback? onToolUserInputResponse,
   SshProfile? activeProfile,
 }) {
   return tester.pumpWidget(
@@ -295,6 +442,7 @@ Future<void> _pumpApprovalsPage(
           onCommandOrFileDecision: onCommandOrFileDecision,
           onPermissionsResponse: onPermissionsResponse,
           onMcpElicitationResponse: onMcpElicitationResponse,
+          onToolUserInputResponse: onToolUserInputResponse,
         ),
       ),
     ),

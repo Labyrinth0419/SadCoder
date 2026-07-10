@@ -111,6 +111,14 @@ class ApprovalStateController extends ChangeNotifier {
     return dispatcher.sendMcpElicitationResponse(approval, action);
   }
 
+  Future<void> sendToolUserInputResponse(
+    PendingApproval approval,
+    Map<String, List<String>> answers,
+  ) {
+    final dispatcher = _requireDispatcher();
+    return dispatcher.sendToolUserInputResponse(approval, answers);
+  }
+
   ApprovalActionDispatcher _requireDispatcher() {
     final dispatcher = _dispatcher;
     if (dispatcher == null) {

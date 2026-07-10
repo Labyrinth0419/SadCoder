@@ -103,6 +103,76 @@ void main() {
     });
   });
 
+  test('maps tool user input requests and preserves question metadata', () {
+    final approval = pendingApprovalFromServerRequest(
+      const JsonRpcServerRequest(
+        id: 'input-1',
+        method: toolRequestUserInputMethod,
+        params: {
+          'threadId': 'thr_1',
+          'turnId': 'turn_1',
+          'itemId': 'item_1',
+          'autoResolutionMs': 60000,
+          'questions': [
+            {
+              'id': 'target',
+              'header': 'Target',
+              'question': 'Which target?',
+              'isOther': true,
+              'isSecret': false,
+              'options': [
+                {'label': 'Core (Recommended)', 'description': 'Inspect core.'},
+                {'label': 'TUI', 'description': 'Inspect the terminal UI.'},
+              ],
+            },
+            {
+              'id': 'token',
+              'header': 'Token',
+              'question': 'Enter a temporary token.',
+              'isOther': false,
+              'isSecret': true,
+              'options': null,
+            },
+          ],
+        },
+      ),
+    );
+
+    expect(approval.kind, PendingApprovalKind.toolUserInput);
+    expect(approval.isKnown, isTrue);
+    expect(approval.threadId, 'thr_1');
+    expect(approval.turnId, 'turn_1');
+    expect(approval.itemId, 'item_1');
+    expect(approval.toolUserInputAutoResolutionMs, 60000);
+    expect(approval.toolUserInputQuestions, const [
+      ToolUserInputQuestion(
+        id: 'target',
+        header: 'Target',
+        question: 'Which target?',
+        isOther: true,
+        isSecret: false,
+        options: [
+          ToolUserInputOption(
+            label: 'Core (Recommended)',
+            description: 'Inspect core.',
+          ),
+          ToolUserInputOption(
+            label: 'TUI',
+            description: 'Inspect the terminal UI.',
+          ),
+        ],
+      ),
+      ToolUserInputQuestion(
+        id: 'token',
+        header: 'Token',
+        question: 'Enter a temporary token.',
+        isOther: false,
+        isSecret: true,
+        options: null,
+      ),
+    ]);
+  });
+
   test('maps flattened MCP elicitation requests', () {
     final approval = pendingApprovalFromServerRequest(
       const JsonRpcServerRequest(
@@ -231,6 +301,31 @@ void main() {
       'result': {
         'action': 'accept',
         'content': {'repo': 'openai/codex'},
+      },
+    });
+  });
+
+  test('builds tool user input responses', () {
+    final response = toolUserInputResponse(
+      requestId: 'input-1',
+      answers: const {
+        'target': ['TUI'],
+        'details': ['user_note: include snapshots'],
+      },
+    );
+
+    expect(response.toJson(), {
+      'jsonrpc': '2.0',
+      'id': 'input-1',
+      'result': {
+        'answers': {
+          'target': {
+            'answers': ['TUI'],
+          },
+          'details': {
+            'answers': ['user_note: include snapshots'],
+          },
+        },
       },
     });
   });

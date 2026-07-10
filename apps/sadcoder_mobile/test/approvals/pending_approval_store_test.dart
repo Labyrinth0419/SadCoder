@@ -93,6 +93,43 @@ void main() {
     expect(store.isEmpty, isTrue);
   });
 
+  test('stores and resolves tool user input requests', () {
+    final store = PendingApprovalStore();
+    final approval = store.ingestServerRequest(
+      const JsonRpcServerRequest(
+        id: 'input-1',
+        method: toolRequestUserInputMethod,
+        params: {
+          'threadId': 'thr_1',
+          'questions': [
+            {
+              'id': 'target',
+              'header': 'Target',
+              'question': 'Which target?',
+              'isOther': true,
+              'isSecret': false,
+              'options': [
+                {'label': 'Core', 'description': 'Inspect core.'},
+              ],
+            },
+          ],
+        },
+      ),
+    );
+
+    expect(approval.kind, PendingApprovalKind.toolUserInput);
+    expect(approval.toolUserInputQuestions.single.id, 'target');
+
+    expect(
+      store.applyNotification({
+        'method': serverRequestResolvedMethod,
+        'params': {'requestId': 'input-1'},
+      }),
+      approval,
+    );
+    expect(store.isEmpty, isTrue);
+  });
+
   test('ignores unrelated or malformed notifications', () {
     final store = PendingApprovalStore();
     store.ingestServerRequest(

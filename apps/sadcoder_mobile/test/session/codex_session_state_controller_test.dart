@@ -137,6 +137,35 @@ void main() {
     expect(approvalController.approvals.single.command, 'cargo test');
   });
 
+  test('connect backfills tool user input from agent snapshot', () async {
+    final approvalController = ApprovalStateController();
+    final snapshotReader = _FakeAgentSnapshotReader(
+      outcomes: [_snapshotWithToolUserInput()],
+    );
+    final controller = CodexSessionStateController(
+      connector: _FakeSessionStarter(),
+      approvalController: approvalController,
+      snapshotReader: snapshotReader,
+    );
+    addTearDown(controller.dispose);
+    addTearDown(approvalController.dispose);
+
+    await controller.connect(_profile);
+    await _flushMicrotasks();
+
+    final approval = approvalController.approvals.single;
+    expect(approval.requestId, 'input-from-snapshot');
+    expect(approval.kind, PendingApprovalKind.toolUserInput);
+    expect(approval.threadId, 'thr_snapshot');
+    expect(approval.toolUserInputAutoResolutionMs, 60000);
+    expect(approval.toolUserInputQuestions.single.id, 'confirm_path');
+    expect(
+      approval.toolUserInputQuestions.single.options?.first.label,
+      'Yes (Recommended)',
+    );
+    expect(approvalController.canRespond, true);
+  });
+
   test('connect backfills recent events from agent snapshot', () async {
     final approvalController = ApprovalStateController();
     final snapshotReader = _FakeAgentSnapshotReader(
@@ -667,6 +696,44 @@ AgentSnapshot _snapshotWithApproval({
       ),
     ],
     recentEvents: const [],
+  );
+}
+
+AgentSnapshot _snapshotWithToolUserInput() {
+  return const AgentSnapshot(
+    schemaVersion: 1,
+    pendingApprovals: [
+      JsonRpcServerRequest(
+        id: 'input-from-snapshot',
+        method: toolRequestUserInputMethod,
+        params: {
+          'threadId': 'thr_snapshot',
+          'turnId': 'turn_snapshot',
+          'itemId': 'item_snapshot',
+          'autoResolutionMs': 60000,
+          'questions': [
+            {
+              'id': 'confirm_path',
+              'header': 'Confirm',
+              'question': 'Proceed with the plan?',
+              'isOther': true,
+              'isSecret': false,
+              'options': [
+                {
+                  'label': 'Yes (Recommended)',
+                  'description': 'Continue the current plan.',
+                },
+                {
+                  'label': 'No',
+                  'description': 'Stop and revisit the approach.',
+                },
+              ],
+            },
+          ],
+        },
+      ),
+    ],
+    recentEvents: [],
   );
 }
 

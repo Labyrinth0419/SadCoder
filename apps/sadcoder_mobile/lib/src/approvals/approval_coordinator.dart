@@ -71,6 +71,15 @@ class ApprovalCoordinator {
     );
   }
 
+  Future<void> sendToolUserInputResponse({
+    required Object requestId,
+    required Map<String, List<String>> answers,
+  }) {
+    return _transport.respond(
+      toolUserInputResponse(requestId: requestId, answers: answers),
+    );
+  }
+
   Future<void> close() async {
     await _serverRequests.cancel();
     await _notifications.cancel();

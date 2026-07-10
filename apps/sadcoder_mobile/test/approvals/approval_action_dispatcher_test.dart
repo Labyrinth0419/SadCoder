@@ -100,4 +100,36 @@ void main() {
       'result': {'action': 'cancel', 'content': null},
     });
   });
+
+  test('dispatches tool user input answers through coordinator', () async {
+    final transport = MemoryJsonRpcTransport((_) async => {});
+    final coordinator = ApprovalCoordinator(transport: transport);
+    final dispatcher = ApprovalActionDispatcher(coordinator);
+    addTearDown(coordinator.close);
+    addTearDown(transport.close);
+
+    await dispatcher.sendToolUserInputResponse(
+      const PendingApproval(
+        requestId: 'input-1',
+        method: toolRequestUserInputMethod,
+        kind: PendingApprovalKind.toolUserInput,
+        rawParams: {},
+      ),
+      const {
+        'target': ['TUI'],
+      },
+    );
+
+    expect(transport.responses.single.toJson(), {
+      'jsonrpc': '2.0',
+      'id': 'input-1',
+      'result': {
+        'answers': {
+          'target': {
+            'answers': ['TUI'],
+          },
+        },
+      },
+    });
+  });
 }

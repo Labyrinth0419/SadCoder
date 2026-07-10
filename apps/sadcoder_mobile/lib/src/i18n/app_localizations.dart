@@ -344,6 +344,7 @@ class AppLocalizations {
   String get approvalKindCommand => _text('approvalKindCommand');
   String get approvalKindFileChange => _text('approvalKindFileChange');
   String get approvalKindPermissions => _text('approvalKindPermissions');
+  String get approvalKindUserInput => _text('approvalKindUserInput');
   String get approvalKindMcp => _text('approvalKindMcp');
   String get approvalKindUnknown => _text('approvalKindUnknown');
   String get approvalRequestId => _text('approvalRequestId');
@@ -367,6 +368,21 @@ class AppLocalizations {
   String get approvalSecondConfirmBody => _text('approvalSecondConfirmBody');
   String get approvalSecondConfirmProceed =>
       _text('approvalSecondConfirmProceed');
+  String get toolUserInputOther => _text('toolUserInputOther');
+  String get toolUserInputOtherDescription =>
+      _text('toolUserInputOtherDescription');
+  String get toolUserInputAnswer => _text('toolUserInputAnswer');
+  String get toolUserInputSelectionRequired =>
+      _text('toolUserInputSelectionRequired');
+  String get toolUserInputAnswerRequired =>
+      _text('toolUserInputAnswerRequired');
+  String get toolUserInputSubmit => _text('toolUserInputSubmit');
+  String get toolUserInputSubmitting => _text('toolUserInputSubmitting');
+  String get toolUserInputShowSecret => _text('toolUserInputShowSecret');
+  String get toolUserInputHideSecret => _text('toolUserInputHideSecret');
+  String toolUserInputAutoResolution(int seconds) => _text(
+    'toolUserInputAutoResolution',
+  ).replaceAll('{seconds}', formatNumber(seconds));
   String get serverDefaults => _text('serverDefaults');
   String get serverDefaultsBody => _text('serverDefaultsBody');
   String get appDefaultOverrides => _text('appDefaultOverrides');
@@ -1129,10 +1145,11 @@ const _values = <String, Map<String, String>>{
     'slashCommandFailed': '{slash} failed: {error}',
     'noPendingApprovals': 'No pending approvals',
     'approvalsBody':
-        'Command, file, and MCP requests will appear here with their thread and turn IDs.',
+        'Command, file, Codex question, and MCP requests will appear here with their thread and turn IDs.',
     'approvalKindCommand': 'Command approval',
     'approvalKindFileChange': 'File change approval',
     'approvalKindPermissions': 'Permission approval',
+    'approvalKindUserInput': 'Question from Codex',
     'approvalKindMcp': 'MCP elicitation',
     'approvalKindUnknown': 'Unknown request',
     'approvalRequestId': 'Request',
@@ -1156,6 +1173,17 @@ const _values = <String, Map<String, String>>{
     'approvalSecondConfirmBody':
         'This request looks high-risk. Review the command or file change before approving it.',
     'approvalSecondConfirmProceed': 'Approve anyway',
+    'toolUserInputOther': 'Other',
+    'toolUserInputOtherDescription': 'Enter a different answer.',
+    'toolUserInputAnswer': 'Answer',
+    'toolUserInputSelectionRequired': 'Select an option.',
+    'toolUserInputAnswerRequired': 'Enter an answer.',
+    'toolUserInputSubmit': 'Submit answers',
+    'toolUserInputSubmitting': 'Submitting...',
+    'toolUserInputShowSecret': 'Show secret',
+    'toolUserInputHideSecret': 'Hide secret',
+    'toolUserInputAutoResolution':
+        'Codex may continue automatically after {seconds} seconds.',
     'serverDefaults': 'Server defaults',
     'serverDefaultsBody':
         'Codex configuration is inherited from the server unless an override is explicitly set.',
@@ -1774,10 +1802,11 @@ const _values = <String, Map<String, String>>{
     'slashCommandUnavailable': '{slash} 当前不可用。',
     'slashCommandFailed': '{slash} 执行失败：{error}',
     'noPendingApprovals': '暂无待审批请求',
-    'approvalsBody': '命令、文件和 MCP 请求会在这里显示对应的会话与回合 ID。',
+    'approvalsBody': '命令、文件、Codex 提问和 MCP 请求会在这里显示对应的会话与回合 ID。',
     'approvalKindCommand': '命令审批',
     'approvalKindFileChange': '文件变更审批',
     'approvalKindPermissions': '权限审批',
+    'approvalKindUserInput': 'Codex 提问',
     'approvalKindMcp': 'MCP 表单请求',
     'approvalKindUnknown': '未知请求',
     'approvalRequestId': '请求',
@@ -1800,6 +1829,16 @@ const _values = <String, Map<String, String>>{
     'approvalSecondConfirmTitle': '确认批准',
     'approvalSecondConfirmBody': '此请求看起来风险较高。批准前请再次检查命令或文件变更。',
     'approvalSecondConfirmProceed': '仍然批准',
+    'toolUserInputOther': '其他',
+    'toolUserInputOtherDescription': '输入不同的答案。',
+    'toolUserInputAnswer': '回答',
+    'toolUserInputSelectionRequired': '请选择一个选项。',
+    'toolUserInputAnswerRequired': '请输入回答。',
+    'toolUserInputSubmit': '提交回答',
+    'toolUserInputSubmitting': '正在提交...',
+    'toolUserInputShowSecret': '显示私密内容',
+    'toolUserInputHideSecret': '隐藏私密内容',
+    'toolUserInputAutoResolution': 'Codex 可能会在 {seconds} 秒后自动继续。',
     'serverDefaults': '服务器默认配置',
     'serverDefaultsBody': '默认沿用服务器上的 Codex 配置，只有显式设置时才覆盖。',
     'appDefaultOverrides': 'App 默认覆盖',

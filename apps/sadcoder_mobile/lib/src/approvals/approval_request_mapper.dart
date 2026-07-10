@@ -4,6 +4,7 @@ import 'pending_approval.dart';
 const commandExecutionApprovalMethod = 'item/commandExecution/requestApproval';
 const fileChangeApprovalMethod = 'item/fileChange/requestApproval';
 const permissionsApprovalMethod = 'item/permissions/requestApproval';
+const toolRequestUserInputMethod = 'item/tool/requestUserInput';
 const mcpElicitationMethod = 'mcpServer/elicitation/request';
 
 PendingApproval pendingApprovalFromServerRequest(JsonRpcServerRequest request) {
@@ -15,6 +16,7 @@ PendingApproval pendingApprovalFromServerRequest(JsonRpcServerRequest request) {
     ),
     fileChangeApprovalMethod => _fileChangeApproval(request, params),
     permissionsApprovalMethod => _permissionsApproval(request, params),
+    toolRequestUserInputMethod => _toolUserInput(request, params),
     mcpElicitationMethod => _mcpElicitation(request, params),
     _ => _unknownApproval(request, params),
   };
@@ -58,6 +60,22 @@ JsonRpcResponseMessage mcpElicitationResponse({
     result['_meta'] = meta;
   }
   return JsonRpcResponseMessage(id: requestId, result: result);
+}
+
+JsonRpcResponseMessage toolUserInputResponse({
+  required Object requestId,
+  required Map<String, List<String>> answers,
+}) {
+  return JsonRpcResponseMessage(
+    id: requestId,
+    result: {
+      'answers': answers.map(
+        (questionId, values) => MapEntry(questionId, <String, Object?>{
+          'answers': List<String>.of(values),
+        }),
+      ),
+    },
+  );
 }
 
 PendingApproval _commandExecutionApproval(
@@ -130,6 +148,35 @@ PendingApproval _permissionsApproval(
   );
 }
 
+PendingApproval _toolUserInput(
+  JsonRpcServerRequest request,
+  Map<String, Object?> params,
+) {
+  final questions = _toolUserInputQuestions(params['questions']);
+  final firstQuestion = questions.isEmpty ? null : questions.first;
+  final title = switch (firstQuestion) {
+    null => null,
+    ToolUserInputQuestion(header: final header) when header.isNotEmpty =>
+      header,
+    ToolUserInputQuestion(question: final question) when question.isNotEmpty =>
+      question,
+    _ => null,
+  };
+  return PendingApproval(
+    requestId: request.id,
+    method: request.method,
+    kind: PendingApprovalKind.toolUserInput,
+    rawParams: params,
+    title: title,
+    threadId: _stringValue(params, 'threadId'),
+    turnId: _stringValue(params, 'turnId'),
+    itemId: _stringValue(params, 'itemId'),
+    startedAtMs: _intValue(params, 'startedAtMs'),
+    toolUserInputQuestions: questions,
+    toolUserInputAutoResolutionMs: _intValue(params, 'autoResolutionMs'),
+  );
+}
+
 PendingApproval _mcpElicitation(
   JsonRpcServerRequest request,
   Map<String, Object?> params,
@@ -190,6 +237,45 @@ Map<String, Object?> _mcpRequestParams(Map<String, Object?> params) {
 
 const _mcpEnvelopeKeys = {'threadId', 'turnId', 'serverName'};
 
+List<ToolUserInputQuestion> _toolUserInputQuestions(Object? value) {
+  if (value is! List) {
+    return const [];
+  }
+
+  return List.unmodifiable(
+    value.whereType<Map>().map((question) {
+      final params = _stringKeyedMap(question);
+      return ToolUserInputQuestion(
+        id: _stringValue(params, 'id') ?? '',
+        header: _stringValue(params, 'header') ?? '',
+        question: _stringValue(params, 'question') ?? '',
+        isOther: _boolValue(params, 'isOther') ?? false,
+        isSecret: _boolValue(params, 'isSecret') ?? false,
+        options: _toolUserInputOptions(params['options']),
+      );
+    }),
+  );
+}
+
+List<ToolUserInputOption>? _toolUserInputOptions(Object? value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is! List) {
+    return const [];
+  }
+
+  return List.unmodifiable(
+    value.whereType<Map>().map((option) {
+      final params = _stringKeyedMap(option);
+      return ToolUserInputOption(
+        label: _stringValue(params, 'label') ?? '',
+        description: _stringValue(params, 'description') ?? '',
+      );
+    }),
+  );
+}
+
 Map<String, Object?> _stringKeyedMap(Object? value) {
   if (value is Map<String, Object?>) {
     return Map.unmodifiable(value);
@@ -216,4 +302,9 @@ int? _intValue(Map<String, Object?> params, String key) {
     return value.toInt();
   }
   return null;
+}
+
+bool? _boolValue(Map<String, Object?> params, String key) {
+  final value = params[key];
+  return value is bool ? value : null;
 }

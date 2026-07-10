@@ -100,7 +100,7 @@ impl AgentStateCache {
         let params = object.get("params").cloned();
         let mut changed = false;
         if let Some(id) = object.get("id").cloned() {
-            if is_pending_approval_method(method) {
+            if is_reconnectable_server_request_method(method) {
                 self.upsert_pending_approval(AgentCachedServerRequest {
                     id,
                     method: method.to_string(),
@@ -190,12 +190,13 @@ pub(crate) fn resolve_state_path(configured: Option<&Path>) -> PathBuf {
     std::env::temp_dir().join("sadcoder-agent-state.json")
 }
 
-fn is_pending_approval_method(method: &str) -> bool {
+fn is_reconnectable_server_request_method(method: &str) -> bool {
     matches!(
         method,
         "item/commandExecution/requestApproval"
             | "item/fileChange/requestApproval"
             | "item/permissions/requestApproval"
+            | "item/tool/requestUserInput"
             | "mcpServer/elicitation/request"
     )
 }
@@ -277,6 +278,44 @@ mod tests {
     }
 
     #[test]
+    fn tracks_request_user_input_requests() {
+        let mut cache = AgentStateCache::empty();
+
+        let changed = cache.observe_server_line(
+            r#"{"jsonrpc":"2.0","id":"input-1","method":"item/tool/requestUserInput","params":{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"confirm_path","header":"Confirm","question":"Proceed?","isOther":true,"isSecret":false,"options":[{"label":"Yes (Recommended)","description":"Continue."},{"label":"No","description":"Stop."}]}],"autoResolutionMs":60000}}"#,
+        );
+
+        assert!(changed);
+        assert_eq!(cache.snapshot.pending_approvals.len(), 1);
+        let request = &cache.snapshot.pending_approvals[0];
+        assert_eq!(request.method, "item/tool/requestUserInput");
+        let params = request.params.as_ref().expect("params");
+        assert_eq!(params["threadId"], "thread-1");
+        assert_eq!(params["questions"][0]["id"], "confirm_path");
+        assert_eq!(params["questions"][0]["isOther"], true);
+        assert_eq!(
+            params["questions"][0]["options"][0]["label"],
+            "Yes (Recommended)"
+        );
+        assert_eq!(params["autoResolutionMs"], 60000);
+    }
+
+    #[test]
+    fn resolves_request_user_input_when_client_responds() {
+        let mut cache = AgentStateCache::empty();
+
+        cache.observe_server_line(
+            r#"{"jsonrpc":"2.0","id":"input-1","method":"item/tool/requestUserInput","params":{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"confirm_path","header":"Confirm","question":"Proceed?","isOther":true,"isSecret":false,"options":[{"label":"Yes","description":"Continue."}]}],"autoResolutionMs":null}}"#,
+        );
+        let changed = cache.observe_client_line(
+            r#"{"jsonrpc":"2.0","id":"input-1","result":{"answers":{"confirm_path":{"answers":["Yes"]}}}}"#,
+        );
+
+        assert!(changed);
+        assert!(cache.snapshot.pending_approvals.is_empty());
+    }
+
+    #[test]
     fn ignores_client_requests_when_tracking_pending_approvals() {
         let mut cache = AgentStateCache::empty();
 
@@ -313,7 +352,7 @@ mod tests {
     fn round_trips_snapshot_file() {
         let mut cache = AgentStateCache::empty();
         cache.observe_server_line(
-            r#"{"jsonrpc":"2.0","id":"approval-1","method":"mcpServer/elicitation/request","params":{"serverName":"docs"}}"#,
+            r#"{"jsonrpc":"2.0","id":"input-1","method":"item/tool/requestUserInput","params":{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"confirm_path","header":"Confirm","question":"Proceed?","isOther":true,"isSecret":false,"options":[{"label":"Yes","description":"Continue."}]}],"autoResolutionMs":60000}}"#,
         );
         let path = std::env::temp_dir().join(format!(
             "sadcoder-agent-state-test-{}-{}.json",
@@ -331,7 +370,12 @@ mod tests {
         assert_eq!(loaded.snapshot.pending_approvals.len(), 1);
         assert_eq!(
             loaded.snapshot.pending_approvals[0].method,
-            "mcpServer/elicitation/request"
+            "item/tool/requestUserInput"
         );
+        let params = loaded.snapshot.pending_approvals[0]
+            .params
+            .as_ref()
+            .expect("params");
+        assert_eq!(params["questions"][0]["options"][0]["label"], "Yes");
     }
 }

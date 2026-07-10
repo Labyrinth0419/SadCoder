@@ -6,6 +6,7 @@ import '../../approvals/pending_approval.dart';
 import '../../i18n/app_localizations.dart';
 import '../../security/approval_risk.dart';
 import '../../ssh/ssh_profile.dart';
+import 'tool_user_input_form.dart';
 
 typedef CommandOrFileApprovalCallback =
     FutureOr<void> Function(
@@ -23,6 +24,11 @@ typedef McpElicitationApprovalCallback =
       PendingApproval approval,
       McpElicitationAction action,
     );
+typedef ToolUserInputApprovalCallback =
+    FutureOr<void> Function(
+      PendingApproval approval,
+      Map<String, List<String>> answers,
+    );
 
 class ApprovalsPage extends StatelessWidget {
   const ApprovalsPage({
@@ -31,6 +37,7 @@ class ApprovalsPage extends StatelessWidget {
     this.onCommandOrFileDecision,
     this.onPermissionsResponse,
     this.onMcpElicitationResponse,
+    this.onToolUserInputResponse,
     this.activeProfile,
   });
 
@@ -38,6 +45,7 @@ class ApprovalsPage extends StatelessWidget {
   final CommandOrFileApprovalCallback? onCommandOrFileDecision;
   final PermissionsApprovalCallback? onPermissionsResponse;
   final McpElicitationApprovalCallback? onMcpElicitationResponse;
+  final ToolUserInputApprovalCallback? onToolUserInputResponse;
   final SshProfile? activeProfile;
 
   @override
@@ -67,6 +75,7 @@ class ApprovalsPage extends StatelessWidget {
               onCommandOrFileDecision: onCommandOrFileDecision,
               onPermissionsResponse: onPermissionsResponse,
               onMcpElicitationResponse: onMcpElicitationResponse,
+              onToolUserInputResponse: onToolUserInputResponse,
             ),
       ],
     );
@@ -119,12 +128,14 @@ class _ApprovalCard extends StatelessWidget {
     required this.onCommandOrFileDecision,
     required this.onPermissionsResponse,
     required this.onMcpElicitationResponse,
+    required this.onToolUserInputResponse,
   });
 
   final PendingApproval approval;
   final CommandOrFileApprovalCallback? onCommandOrFileDecision;
   final PermissionsApprovalCallback? onPermissionsResponse;
   final McpElicitationApprovalCallback? onMcpElicitationResponse;
+  final ToolUserInputApprovalCallback? onToolUserInputResponse;
 
   @override
   Widget build(BuildContext context) {
@@ -168,6 +179,7 @@ class _ApprovalCard extends StatelessWidget {
               onCommandOrFileDecision: onCommandOrFileDecision,
               onPermissionsResponse: onPermissionsResponse,
               onMcpElicitationResponse: onMcpElicitationResponse,
+              onToolUserInputResponse: onToolUserInputResponse,
             ),
           ],
         ),
@@ -182,20 +194,36 @@ class _ApprovalActions extends StatelessWidget {
     required this.onCommandOrFileDecision,
     required this.onPermissionsResponse,
     required this.onMcpElicitationResponse,
+    required this.onToolUserInputResponse,
   });
 
   final PendingApproval approval;
   final CommandOrFileApprovalCallback? onCommandOrFileDecision;
   final PermissionsApprovalCallback? onPermissionsResponse;
   final McpElicitationApprovalCallback? onMcpElicitationResponse;
+  final ToolUserInputApprovalCallback? onToolUserInputResponse;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    if (approval.kind == PendingApprovalKind.toolUserInput) {
+      if (approval.toolUserInputQuestions.isEmpty) {
+        return Text(l10n.approvalNoDirectActions);
+      }
+      return ToolUserInputForm(
+        questions: approval.toolUserInputQuestions,
+        autoResolutionMs: approval.toolUserInputAutoResolutionMs,
+        onSubmit: onToolUserInputResponse == null
+            ? null
+            : (answers) => onToolUserInputResponse!(approval, answers),
+      );
+    }
+
     final buttons = switch (approval.kind) {
       PendingApprovalKind.commandExecution ||
       PendingApprovalKind.fileChange => _commandOrFileButtons(context, l10n),
       PendingApprovalKind.permissions => _permissionButtons(l10n),
+      PendingApprovalKind.toolUserInput => const <Widget>[],
       PendingApprovalKind.mcpElicitation => _mcpButtons(l10n),
       PendingApprovalKind.unknown => const <Widget>[],
     };
@@ -395,6 +423,7 @@ String _kindLabel(AppLocalizations l10n, PendingApprovalKind kind) {
     PendingApprovalKind.commandExecution => l10n.approvalKindCommand,
     PendingApprovalKind.fileChange => l10n.approvalKindFileChange,
     PendingApprovalKind.permissions => l10n.approvalKindPermissions,
+    PendingApprovalKind.toolUserInput => l10n.approvalKindUserInput,
     PendingApprovalKind.mcpElicitation => l10n.approvalKindMcp,
     PendingApprovalKind.unknown => l10n.approvalKindUnknown,
   };
@@ -405,6 +434,7 @@ IconData _kindIcon(PendingApprovalKind kind) {
     PendingApprovalKind.commandExecution => Icons.terminal,
     PendingApprovalKind.fileChange => Icons.edit_document,
     PendingApprovalKind.permissions => Icons.admin_panel_settings_outlined,
+    PendingApprovalKind.toolUserInput => Icons.question_answer_outlined,
     PendingApprovalKind.mcpElicitation => Icons.dynamic_form_outlined,
     PendingApprovalKind.unknown => Icons.help_outline,
   };

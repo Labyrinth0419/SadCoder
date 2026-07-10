@@ -89,6 +89,39 @@ void main() {
       'result': {'decision': 'accept'},
     });
   });
+
+  test('sends tool user input answers through attached coordinator', () async {
+    final transport = MemoryJsonRpcTransport((_) async => {});
+    final coordinator = ApprovalCoordinator(transport: transport);
+    final controller = ApprovalStateController(coordinator: coordinator);
+    addTearDown(controller.dispose);
+    addTearDown(coordinator.close);
+    addTearDown(transport.close);
+
+    await controller.sendToolUserInputResponse(
+      const PendingApproval(
+        requestId: 'input-1',
+        method: toolRequestUserInputMethod,
+        kind: PendingApprovalKind.toolUserInput,
+        rawParams: {},
+      ),
+      const {
+        'confirm_path': ['Yes (Recommended)'],
+      },
+    );
+
+    expect(transport.responses.single.toJson(), {
+      'jsonrpc': '2.0',
+      'id': 'input-1',
+      'result': {
+        'answers': {
+          'confirm_path': {
+            'answers': ['Yes (Recommended)'],
+          },
+        },
+      },
+    });
+  });
 }
 
 Future<void> _emitServerRequest(

@@ -38,4 +38,14 @@ class ApprovalActionDispatcher {
       content: null,
     );
   }
+
+  Future<void> sendToolUserInputResponse(
+    PendingApproval approval,
+    Map<String, List<String>> answers,
+  ) {
+    return _coordinator.sendToolUserInputResponse(
+      requestId: approval.requestId,
+      answers: answers,
+    );
+  }
 }
