@@ -5832,6 +5832,101 @@ void main() {
     expect(find.textContaining('Tool: search_issues'), findsOneWidget);
   });
 
+  testWidgets(
+    'uses dark semantic colors for timeline terminal and diff blocks',
+    (tester) async {
+      final timelineController = ChatTimelineController();
+      addTearDown(timelineController.dispose);
+
+      timelineController.showThread(
+        ThreadSummary.fromJson({
+          'id': 'thr_1',
+          'sessionId': 'sess_1',
+          'preview': 'Inspect dark colors',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 1,
+          'turns': [
+            {
+              'id': 'turn_1',
+              'status': 'completed',
+              'itemsView': 'full',
+              'items': [
+                {
+                  'id': 'cmd_1',
+                  'type': 'commandExecution',
+                  'command': 'cargo test',
+                  'status': 'completed',
+                  'aggregatedOutput': 'tests passed',
+                },
+                {
+                  'id': 'file_1',
+                  'type': 'fileChange',
+                  'status': 'completed',
+                  'changes': [
+                    {
+                      'path': 'lib/main.dart',
+                      'kind': 'modify',
+                      'diff': '@@ -1 +1 @@\n-old\n+new',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      );
+
+      await _pumpChatPage(
+        tester,
+        timelineController: timelineController,
+        themeMode: ThemeMode.dark,
+      );
+
+      final terminalBlock = tester.widget<Container>(
+        find.byKey(const ValueKey('timeline-terminal-output')),
+      );
+      expect(
+        (terminalBlock.decoration as BoxDecoration).color,
+        SadCoderThemeColors.dark.terminalBackground,
+      );
+      final terminalText = tester.widget<SelectableText>(
+        find.byWidgetPredicate(
+          (widget) => widget is SelectableText && widget.data == 'tests passed',
+        ),
+      );
+      expect(
+        terminalText.style?.color,
+        SadCoderThemeColors.dark.terminalForeground,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Container &&
+              widget.color == SadCoderThemeColors.dark.diffHeaderBackground,
+        ),
+        findsWidgets,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Container &&
+              widget.color == SadCoderThemeColors.dark.diffRemovedBackground,
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Container &&
+              widget.color == SadCoderThemeColors.dark.diffAddedBackground,
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('refreshes threads when the session becomes connected', (
     tester,
   ) async {
@@ -5893,10 +5988,17 @@ Future<void> _pumpChatPage(
   ModelListController? modelListController,
   PermissionProfileListController? permissionProfileListController,
   Locale? locale,
+  ThemeMode themeMode = ThemeMode.light,
 }) {
   return tester.pumpWidget(
     MaterialApp(
       locale: locale,
+      theme: ThemeData(extensions: const [SadCoderThemeColors.light]),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        extensions: const [SadCoderThemeColors.dark],
+      ),
+      themeMode: themeMode,
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
