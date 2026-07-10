@@ -12,6 +12,8 @@ import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal_runner.dart';
+import 'package:sadcoder_mobile/src/commands/slash_command_manifest_reader.dart';
+import 'package:sadcoder_mobile/src/commands/slash_command_registry.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
@@ -97,6 +99,7 @@ void main() {
     expect(controller.pluginMutationRunner, isNotNull);
     expect(controller.hookListReader, isNotNull);
     expect(controller.appListReader, isNotNull);
+    expect(controller.slashCommandManifestReader, isNotNull);
     expect(controller.turnRunner, isNotNull);
     expect(controller.threadBackgroundTerminalRunner, isNotNull);
     expect(controller.threadReviewRunner, isNotNull);
@@ -789,6 +792,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       pluginMutationRunner: const _FakePluginMutationRunner(),
       hookListReader: const _FakeHookListReader(),
       appListReader: const _FakeAppListReader(),
+      slashCommandManifestReader: const _FakeSlashCommandManifestReader(),
       threadMutationRunner: const _FakeThreadMutationRunner(),
       threadBackgroundTerminalRunner:
           const _FakeThreadBackgroundTerminalRunner(),
@@ -1093,6 +1097,19 @@ class _FakeAppListReader implements AppListReader {
     bool forceRefetch = false,
   }) async {
     return const AppListPage(apps: []);
+  }
+}
+
+class _FakeSlashCommandManifestReader implements SlashCommandManifestReader {
+  const _FakeSlashCommandManifestReader();
+
+  @override
+  Future<SlashCommandManifest> readSlashCommands(SshProfile profile) async {
+    return const SlashCommandManifest(
+      schemaVersion: 1,
+      source: 'test',
+      commands: [],
+    );
   }
 }
 

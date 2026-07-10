@@ -13,6 +13,8 @@ import 'package:sadcoder_mobile/src/agent/agent_status.dart';
 import 'package:sadcoder_mobile/src/apps/app_list_reader.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal_runner.dart';
+import 'package:sadcoder_mobile/src/commands/slash_command_manifest_reader.dart';
+import 'package:sadcoder_mobile/src/commands/slash_command_registry.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
@@ -1511,6 +1513,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   AppListReader get appListReader => const _FakeAppListReader();
 
   @override
+  SlashCommandManifestReader get slashCommandManifestReader =>
+      const _FakeSlashCommandManifestReader();
+
+  @override
   ThreadMutationRunner get threadMutationRunner =>
       const _FakeThreadMutationRunner();
 
@@ -1846,6 +1852,19 @@ class _FakeAppListReader implements AppListReader {
     bool forceRefetch = false,
   }) async {
     return const AppListPage(apps: []);
+  }
+}
+
+class _FakeSlashCommandManifestReader implements SlashCommandManifestReader {
+  const _FakeSlashCommandManifestReader();
+
+  @override
+  Future<SlashCommandManifest> readSlashCommands(SshProfile profile) async {
+    return const SlashCommandManifest(
+      schemaVersion: 1,
+      source: 'test',
+      commands: [],
+    );
   }
 }
 

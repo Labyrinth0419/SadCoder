@@ -9,6 +9,8 @@ import '../accounts/codex_account_snapshot_reader.dart';
 import '../apps/app_list_reader.dart';
 import '../apps/codex_app_list_reader.dart';
 import '../approvals/approval_state_controller.dart';
+import '../commands/codex_slash_command_manifest_reader.dart';
+import '../commands/slash_command_manifest_reader.dart';
 import '../config/codex_config_snapshot_reader.dart';
 import '../config/codex_config_snapshot_remote_reader.dart';
 import '../diffs/codex_git_diff_reader.dart';
@@ -117,6 +119,8 @@ abstract interface class CodexSessionConnectionHandle {
 
   AppListReader get appListReader;
 
+  SlashCommandManifestReader get slashCommandManifestReader;
+
   ThreadMutationRunner get threadMutationRunner;
 
   ThreadBackgroundTerminalRunner get threadBackgroundTerminalRunner;
@@ -217,6 +221,9 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         pluginMutationRunner: CodexPluginMutationRunner(session.client),
         hookListReader: CodexHookListReader(session.client),
         appListReader: CodexAppListReader(session.client),
+        slashCommandManifestReader: CodexSlashCommandManifestReader(
+          session.client,
+        ),
         threadMutationRunner: CodexThreadMutationRunner(session.client),
         threadBackgroundTerminalRunner: CodexThreadBackgroundTerminalRunner(
           session.client,
@@ -293,6 +300,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.pluginMutationRunner,
     required this.hookListReader,
     required this.appListReader,
+    required this.slashCommandManifestReader,
     required this.threadMutationRunner,
     required this.threadBackgroundTerminalRunner,
     required this.threadGoalRunner,
@@ -358,6 +366,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final HookListReader hookListReader;
   @override
   final AppListReader appListReader;
+  @override
+  final SlashCommandManifestReader slashCommandManifestReader;
   @override
   final ThreadMutationRunner threadMutationRunner;
   @override

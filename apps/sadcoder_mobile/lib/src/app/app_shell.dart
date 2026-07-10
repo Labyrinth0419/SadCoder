@@ -252,7 +252,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _activeUiState = AppHostSessionUiState(
       sessionController: _sessionController,
       configOverrideController: _configOverrideController,
-      slashCommandManifestReader: _resolvedSlashCommandManifestReader,
+      fallbackSlashCommandManifestReader: _resolvedSlashCommandManifestReader,
     );
     _configSnapshotController = CodexConfigSnapshotController(
       readerProvider: () => _sessionController.configSnapshotReader,
@@ -481,7 +481,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       () => AppHostSessionUiState(
         sessionController: entry.sessionController,
         configOverrideController: _configOverrideController,
-        slashCommandManifestReader: _resolvedSlashCommandManifestReader,
+        fallbackSlashCommandManifestReader: _resolvedSlashCommandManifestReader,
       ),
     );
   }

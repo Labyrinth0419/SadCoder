@@ -129,7 +129,7 @@ void main() {
     );
   });
 
-  testWidgets('chat page uses remote slash command manifest after connect', (
+  testWidgets('chat page uses active session slash command manifest', (
     tester,
   ) async {
     final approvalController = ApprovalStateController();
@@ -148,7 +148,7 @@ void main() {
       SadCoderApp(
         approvalController: approvalController,
         sessionController: sessionController,
-        slashCommandManifestReader: const _StaticSlashCommandManifestReader(),
+        slashCommandManifestReader: const _FailingSlashCommandManifestReader(),
       ),
     );
     await tester.pumpAndSettle();
@@ -724,6 +724,15 @@ class _NeverConnectsSessionStarter implements CodexSessionConnectionStarter {
   }
 }
 
+class _FailingSlashCommandManifestReader implements SlashCommandManifestReader {
+  const _FailingSlashCommandManifestReader();
+
+  @override
+  Future<SlashCommandManifest> readSlashCommands(SshProfile profile) {
+    throw StateError('fallback reader should not be used');
+  }
+}
+
 class _StaticSlashCommandManifestReader implements SlashCommandManifestReader {
   const _StaticSlashCommandManifestReader();
 
@@ -962,6 +971,10 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   AppListReader get appListReader => const _StaticAppListReader();
+
+  @override
+  SlashCommandManifestReader get slashCommandManifestReader =>
+      const _StaticSlashCommandManifestReader();
 
   @override
   ThreadMutationRunner get threadMutationRunner =>

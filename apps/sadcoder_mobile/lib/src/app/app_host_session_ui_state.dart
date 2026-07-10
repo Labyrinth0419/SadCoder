@@ -14,7 +14,7 @@ class AppHostSessionUiState {
   AppHostSessionUiState({
     required this.sessionController,
     required CodexConfigOverrideController configOverrideController,
-    SlashCommandManifestReader? slashCommandManifestReader,
+    SlashCommandManifestReader? fallbackSlashCommandManifestReader,
   }) {
     threadListController = ThreadListController(
       readerProvider: () => sessionController.threadListReader,
@@ -33,7 +33,9 @@ class AppHostSessionUiState {
       },
     );
     slashCommandRegistryController = SlashCommandRegistryController(
-      readerProvider: () => slashCommandManifestReader,
+      readerProvider: () =>
+          sessionController.slashCommandManifestReader ??
+          fallbackSlashCommandManifestReader,
     );
     _sessionRecoveryCoordinator = AppSessionRecoveryCoordinator(
       threadListController: threadListController,

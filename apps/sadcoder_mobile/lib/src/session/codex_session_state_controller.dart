@@ -9,6 +9,7 @@ import '../agent/agent_snapshot_reader.dart';
 import '../apps/app_list_reader.dart';
 import '../approvals/approval_state_controller.dart';
 import '../background_terminals/thread_background_terminal_runner.dart';
+import '../commands/slash_command_manifest_reader.dart';
 import '../config/codex_config_snapshot_reader.dart';
 import '../diffs/git_diff_reader.dart';
 import '../events/codex_event.dart';
@@ -164,6 +165,9 @@ class CodexSessionStateController extends ChangeNotifier {
   HookListReader? get hookListReader => _connection?.hookListReader;
 
   AppListReader? get appListReader => _connection?.appListReader;
+
+  SlashCommandManifestReader? get slashCommandManifestReader =>
+      _connection?.slashCommandManifestReader;
 
   ThreadMutationRunner? get threadMutationRunner =>
       _connection?.threadMutationRunner;
