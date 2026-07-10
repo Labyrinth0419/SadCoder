@@ -1,9 +1,11 @@
 enum BackendKind {
+  sadcoderAgentService,
   codexAppServerStdio,
   codexAppServerDaemon,
   unknown;
 
   static BackendKind fromWire(String value) => switch (value) {
+    'sadcoder-agent-service' => BackendKind.sadcoderAgentService,
     'codex-app-server-stdio' => BackendKind.codexAppServerStdio,
     'codex-app-server-daemon' => BackendKind.codexAppServerDaemon,
     _ => BackendKind.unknown,

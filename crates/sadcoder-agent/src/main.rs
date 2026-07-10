@@ -20,6 +20,7 @@ use std::io::BufReader;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::Child;
 use std::process::ChildStdin;
 use std::process::ChildStdout;
 use std::process::Stdio;
@@ -28,6 +29,7 @@ use std::sync::Mutex;
 use std::thread;
 
 mod codex_command;
+mod service;
 mod state_cache;
 
 use codex_command::CodexCommandConfig;
@@ -37,6 +39,12 @@ use codex_command::ResolvedCodexCommand;
 use codex_command::persist_codex_command;
 use codex_command::probe_codex_version;
 use codex_command::resolve_codex_command;
+use service::AgentServicePaths;
+use service::load_service_info;
+use service::resolve_service_paths;
+use service::run_service;
+use service::service_is_ready;
+use service::start_service_process;
 use state_cache::AgentStateCache;
 use state_cache::resolve_state_path;
 
@@ -69,6 +77,7 @@ enum BackendMode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SelectedBackend {
+    Service,
     Stdio,
 }
 
@@ -113,6 +122,9 @@ enum AgentCommand {
         #[arg(long)]
         json: bool,
     },
+    /// Run the long-lived SadCoder service that owns the app-server process.
+    #[command(hide = true)]
+    Service,
     /// Proxy this process' stdin/stdout to the selected app-server backend.
     Proxy,
 }
@@ -144,6 +156,10 @@ fn main() -> anyhow::Result<()> {
             path_prepend,
             json,
         } => configure_codex(codex, path_prepend, json),
+        AgentCommand::Service => {
+            let codex = resolve_codex_command(cli_codex_program)?;
+            run_service(&codex, &resolve_state_path(cli.state_path.as_deref()))
+        }
         AgentCommand::Proxy => {
             let codex = resolve_codex_command(cli_codex_program)?;
             proxy_app_server(
@@ -198,8 +214,9 @@ fn print_start(
     state_path: Option<&Path>,
     json: bool,
 ) -> anyhow::Result<()> {
-    start_backend(codex, backend_mode)?;
-    print_status(codex, backend_mode, state_path, json)
+    let state_path = resolve_state_path(state_path);
+    start_backend(codex, backend_mode, &state_path)?;
+    print_status(codex, backend_mode, Some(&state_path), json)
 }
 
 fn print_probe(codex: &ResolvedCodexCommand, json_output: bool) -> anyhow::Result<()> {
@@ -388,7 +405,8 @@ fn collect_status(
     let codex_probe = probe_codex_version(codex);
     let codex_version = codex_probe.as_ref().ok().cloned();
     let codex_available = codex_probe.is_ok();
-    let backend = collect_backend_status(codex_probe.as_ref().err(), backend_mode);
+    let service_paths = resolve_service_paths(state_path);
+    let backend = collect_backend_status(codex_probe.as_ref().err(), backend_mode, &service_paths);
     let reconnect_cache = collect_reconnect_cache_status(state_path);
 
     AgentStatus {
@@ -428,6 +446,7 @@ fn collect_reconnect_cache_status(state_path: &Path) -> AgentReconnectCacheStatu
 fn collect_backend_status(
     codex_failure: Option<&CodexProbeFailure>,
     backend_mode: BackendMode,
+    service_paths: &AgentServicePaths,
 ) -> BackendStatus {
     if let Some(failure) = codex_failure {
         return BackendStatus {
@@ -438,10 +457,11 @@ fn collect_backend_status(
     }
 
     match select_backend(backend_mode) {
+        Ok(SelectedBackend::Service) => collect_service_backend_status(service_paths),
         Ok(SelectedBackend::Stdio) => BackendStatus {
             kind: BackendKind::CodexAppServerStdio,
             state: BackendState::Ready,
-            detail: Some("SadCoder stdio backend; official Codex daemon is not used".into()),
+            detail: Some("direct stdio debug backend; SSH disconnect can end app-server".into()),
         },
         Err(detail) => BackendStatus {
             kind: BackendKind::Unknown,
@@ -451,9 +471,42 @@ fn collect_backend_status(
     }
 }
 
+fn collect_service_backend_status(service_paths: &AgentServicePaths) -> BackendStatus {
+    if service_is_ready(service_paths) {
+        return BackendStatus {
+            kind: BackendKind::SadcoderAgentService,
+            state: BackendState::Ready,
+            detail: Some(format!(
+                "SadCoder service is listening at {}",
+                service_paths.socket_path.display()
+            )),
+        };
+    }
+
+    let detail = match load_service_info(service_paths) {
+        Ok(Some(info)) => format!(
+            "SadCoder service record exists but socket is not ready at {} (service pid {}, app-server pid {})",
+            service_paths.socket_path.display(),
+            info.service_pid,
+            info.app_server_pid
+        ),
+        Ok(None) => format!(
+            "SadCoder service is not running; run sadcoder-agent start (socket {})",
+            service_paths.socket_path.display()
+        ),
+        Err(error) => format!("SadCoder service status could not be read: {error}"),
+    };
+
+    BackendStatus {
+        kind: BackendKind::SadcoderAgentService,
+        state: BackendState::NotStarted,
+        detail: Some(detail),
+    }
+}
+
 fn select_backend(backend_mode: BackendMode) -> Result<SelectedBackend, String> {
     match backend_mode {
-        BackendMode::Auto => Ok(SelectedBackend::Stdio),
+        BackendMode::Auto => Ok(SelectedBackend::Service),
         BackendMode::Stdio => Ok(SelectedBackend::Stdio),
         BackendMode::Daemon => Err(
             "official Codex app-server daemon backend is disabled in SadCoder; use auto or stdio"
@@ -462,8 +515,16 @@ fn select_backend(backend_mode: BackendMode) -> Result<SelectedBackend, String> 
     }
 }
 
-fn start_backend(_codex: &ResolvedCodexCommand, backend_mode: BackendMode) -> anyhow::Result<()> {
+fn start_backend(
+    codex: &ResolvedCodexCommand,
+    backend_mode: BackendMode,
+    state_path: &Path,
+) -> anyhow::Result<()> {
     match select_backend(backend_mode) {
+        Ok(SelectedBackend::Service) => {
+            let service_paths = resolve_service_paths(state_path);
+            start_service_process(codex, state_path, &service_paths)
+        }
         Ok(SelectedBackend::Stdio) => Ok(()),
         Err(detail) => anyhow::bail!(detail),
     }
@@ -644,14 +705,39 @@ fn proxy_app_server(
     state_path: PathBuf,
 ) -> anyhow::Result<()> {
     match select_backend(backend_mode) {
+        Ok(SelectedBackend::Service) => proxy_service_app_server(codex, state_path),
         Ok(SelectedBackend::Stdio) => proxy_stdio_app_server(codex, state_path),
         Err(detail) => anyhow::bail!(detail),
     }
 }
 
+fn proxy_service_app_server(
+    codex: &ResolvedCodexCommand,
+    state_path: PathBuf,
+) -> anyhow::Result<()> {
+    start_backend(codex, BackendMode::Auto, &state_path)?;
+    let service_paths = resolve_service_paths(&state_path);
+    let mut command = codex.command()?;
+    let child = command
+        .args(["app-server", "proxy", "--sock"])
+        .arg(&service_paths.socket_path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .with_context(|| {
+            format!(
+                "failed to spawn `{} app-server proxy --sock {}`",
+                codex.display_program(),
+                service_paths.socket_path.display()
+            )
+        })?;
+    proxy_child_process(child, state_path)
+}
+
 fn proxy_stdio_app_server(codex: &ResolvedCodexCommand, state_path: PathBuf) -> anyhow::Result<()> {
     let mut command = codex.command()?;
-    let mut child = command
+    let child = command
         .args(["app-server", "--listen", "stdio://"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -664,6 +750,10 @@ fn proxy_stdio_app_server(codex: &ResolvedCodexCommand, state_path: PathBuf) -> 
             )
         })?;
 
+    proxy_child_process(child, state_path)
+}
+
+fn proxy_child_process(mut child: Child, state_path: PathBuf) -> anyhow::Result<()> {
     let mut child_stdin = child.stdin.take().context("child stdin was not piped")?;
     let mut child_stdout = child.stdout.take().context("child stdout was not piped")?;
     let cache = Arc::new(Mutex::new(
@@ -819,10 +909,10 @@ mod tests {
     }
 
     #[test]
-    fn backend_selection_uses_stdio_by_default_and_rejects_daemon() {
+    fn backend_selection_uses_service_by_default_and_rejects_daemon() {
         assert_eq!(
             select_backend(BackendMode::Auto),
-            Ok(SelectedBackend::Stdio)
+            Ok(SelectedBackend::Service)
         );
         assert_eq!(
             select_backend(BackendMode::Stdio),
@@ -833,6 +923,24 @@ mod tests {
                 .expect_err("daemon should not be selected")
                 .contains("disabled")
         );
+    }
+
+    #[test]
+    fn service_backend_reports_not_started_without_service_record() {
+        let base = std::env::temp_dir().join(format!(
+            "sadcoder-agent-service-status-test-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        let service_paths = resolve_service_paths(&base.join("agent-state.json"));
+
+        let status = collect_backend_status(None, BackendMode::Auto, &service_paths);
+
+        assert_eq!(status.kind, BackendKind::SadcoderAgentService);
+        assert_eq!(status.state, BackendState::NotStarted);
     }
 
     #[test]

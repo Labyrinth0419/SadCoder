@@ -133,6 +133,7 @@ class AppLocalizations {
       _text('probeSuggestionCheckCwdOrPermissions');
   String get probeSuggestionRetryProxy => _text('probeSuggestionRetryProxy');
   String get backend => _text('backend');
+  String get backendAgentService => _text('backendAgentService');
   String get backendDaemon => _text('backendDaemon');
   String get backendStdioFallback => _text('backendStdioFallback');
   String get backendUnknown => _text('backendUnknown');
@@ -960,6 +961,7 @@ const _values = <String, Map<String, String>>{
     'probeSuggestionRetryProxy':
         'Check sadcoder-agent proxy and backend logs, then retry.',
     'backend': 'Backend',
+    'backendAgentService': 'agent service',
     'backendDaemon': 'daemon',
     'backendStdioFallback': 'stdio fallback',
     'backendUnknown': 'unknown',
@@ -1606,6 +1608,7 @@ const _values = <String, Map<String, String>>{
     'probeSuggestionCheckCwdOrPermissions': '检查配置的 cwd 和远端文件权限。',
     'probeSuggestionRetryProxy': '检查 sadcoder-agent proxy 和 backend 日志后重试。',
     'backend': '后端',
+    'backendAgentService': 'agent service',
     'backendDaemon': 'daemon',
     'backendStdioFallback': 'stdio fallback',
     'backendUnknown': '未知',

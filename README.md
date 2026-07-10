@@ -40,17 +40,17 @@ For interactive Codex sessions, the mobile app opens an SSH exec channel to:
 sadcoder-agent proxy
 ```
 
-`proxy` starts `codex app-server --listen stdio://` on the server and forwards
-line-delimited JSON-RPC between the app and Codex. This keeps Codex execution on
-the server side instead of tying task lifetime to the mobile process.
+`start` launches a long-lived `sadcoder-agent service` when needed. The service
+owns `codex app-server --listen unix://...`; `proxy` connects the SSH channel to
+that local service socket. Closing the mobile SSH channel only stops the proxy
+bridge, not the app-server process owned by the service.
 
 Backend selection is controlled by `--backend` or `SADCODER_BACKEND`:
 
-- `auto` uses the SadCoder-managed stdio path and does not call the official
-  Codex app-server daemon.
-- `stdio` forces the same stdio path and is useful for local debugging, but SSH
-  disconnect can end that app-server process until the SadCoder service backend
-  owns the long-lived app-server.
+- `auto` uses the SadCoder service backend and does not call the official Codex
+  app-server daemon.
+- `stdio` forces the direct stdio debug path; SSH disconnect can end that
+  app-server process.
 - `daemon` is accepted for compatibility, but is disabled because npm/NVM Codex
   CLIs can expose daemon commands that still require the official standalone
   installer layout.

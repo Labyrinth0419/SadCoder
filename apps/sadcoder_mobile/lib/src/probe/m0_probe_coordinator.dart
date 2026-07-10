@@ -304,6 +304,7 @@ M0ProbeSuggestion? _backendSuggestion(AgentStatus status) {
     return null;
   }
   return switch (status.backendKind) {
+    BackendKind.sadcoderAgentService => M0ProbeSuggestion.startAgent,
     BackendKind.codexAppServerDaemon => M0ProbeSuggestion.checkDaemon,
     BackendKind.codexAppServerStdio => M0ProbeSuggestion.startAgent,
     BackendKind.unknown => M0ProbeSuggestion.installAgent,

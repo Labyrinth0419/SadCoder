@@ -1691,6 +1691,7 @@ class _ProbeResultPanel extends StatelessWidget {
 
   String _backendSummary(AppLocalizations l10n, AgentStatus status) {
     final kind = switch (status.backendKind) {
+      BackendKind.sadcoderAgentService => l10n.backendAgentService,
       BackendKind.codexAppServerDaemon => l10n.backendDaemon,
       BackendKind.codexAppServerStdio => l10n.backendStdioFallback,
       BackendKind.unknown => l10n.backendUnknown,
