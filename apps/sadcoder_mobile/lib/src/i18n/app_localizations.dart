@@ -501,6 +501,10 @@ class AppLocalizations {
   String get diffNotGitRepository => _text('diffNotGitRepository');
   String get diffNoChanges => _text('diffNoChanges');
   String get diffLoadFailed => _text('diffLoadFailed');
+  String diffTruncated(int shown, int total) => _text('diffTruncated')
+      .replaceAll('{shown}', formatNumber(shown))
+      .replaceAll('{total}', formatNumber(total));
+  String get diffShowFull => _text('diffShowFull');
   String get mentionCommandTitle => _text('mentionCommandTitle');
   String get ideContextCommandTitle => _text('ideContextCommandTitle');
   String get mentionSearchHint => _text('mentionSearchHint');
@@ -1308,6 +1312,8 @@ const _values = <String, Map<String, String>>{
         'The current workspace is not inside a Git repository.',
     'diffNoChanges': 'No tracked or untracked changes.',
     'diffLoadFailed': 'Failed to compute diff',
+    'diffTruncated': 'Showing {shown} of {total} diff lines.',
+    'diffShowFull': 'Show full diff',
     'mentionCommandTitle': 'Mention file',
     'ideContextCommandTitle': 'Mobile context',
     'mentionSearchHint': 'Search files',
@@ -1955,6 +1961,8 @@ const _values = <String, Map<String, String>>{
     'diffNotGitRepository': '当前工作区不在 Git 仓库中。',
     'diffNoChanges': '没有已跟踪或未跟踪的变更。',
     'diffLoadFailed': '计算差异失败',
+    'diffTruncated': '正在显示 {shown} / {total} 行差异。',
+    'diffShowFull': '显示完整差异',
     'mentionCommandTitle': '提及文件',
     'ideContextCommandTitle': '移动端上下文',
     'mentionSearchHint': '搜索文件',
