@@ -6,6 +6,15 @@ abstract interface class SessionHeartbeatRunner {
   Future<void> ping(CodexSessionConnectionHandle connection);
 }
 
+class AgentPingSessionHeartbeatRunner implements SessionHeartbeatRunner {
+  const AgentPingSessionHeartbeatRunner();
+
+  @override
+  Future<void> ping(CodexSessionConnectionHandle connection) async {
+    await connection.agentPing();
+  }
+}
+
 class ThreadListSessionHeartbeatRunner implements SessionHeartbeatRunner {
   const ThreadListSessionHeartbeatRunner();
 

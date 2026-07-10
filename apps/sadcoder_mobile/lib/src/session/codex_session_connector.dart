@@ -137,6 +137,8 @@ abstract interface class CodexSessionConnectionHandle {
 
   Future<void> get done;
 
+  Future<Map<String, Object?>> agentPing();
+
   Future<Map<String, Object?>> restartBackend();
 
   Future<void> close({bool notifyApprovalController = true});
@@ -389,6 +391,11 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final AgentProxyConnection _proxyConnection;
   final RedactingJsonRpcDiagnosticLogBuffer _diagnosticLogBuffer;
   bool _closed = false;
+
+  @override
+  Future<Map<String, Object?>> agentPing() {
+    return session.client.agentPing();
+  }
 
   @override
   Future<Map<String, Object?>> restartBackend() {

@@ -1003,6 +1003,11 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
   Future<void> get done => _doneCompleter.future;
 
   @override
+  Future<Map<String, Object?>> agentPing() async {
+    return {'ok': true};
+  }
+
+  @override
   Future<Map<String, Object?>> restartBackend() async {
     return {'reconnectRequired': true};
   }
