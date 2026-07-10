@@ -43,8 +43,9 @@ sadcoder-agent proxy
 `start` launches a long-lived `sadcoder-agent service` when needed. The service
 owns `codex app-server --listen unix://...`; `proxy` connects the SSH channel to
 that local service socket and bridges the app's JSONL messages to app-server
-WebSocket text frames. Closing the mobile SSH channel only stops the proxy
-subscription, not the app-server process owned by the service.
+WebSocket text frames. The service is spawned in a detached Unix session or
+Windows process group with job breakaway, so closing the mobile SSH channel only
+stops the proxy subscription, not the app-server process owned by the service.
 
 Backend selection is controlled by `--backend` or `SADCODER_BACKEND`:
 

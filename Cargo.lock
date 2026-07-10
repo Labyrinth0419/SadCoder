@@ -249,10 +249,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "libc",
  "sadcoder-protocol",
  "serde",
  "serde_json",
  "uds_windows",
+ "windows-sys",
 ]
 
 [[package]]

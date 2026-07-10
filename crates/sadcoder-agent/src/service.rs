@@ -115,6 +115,7 @@ pub(crate) fn start_service_process(
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
+    configure_detached_service_process(&mut command);
     command
         .spawn()
         .context("failed to spawn sadcoder-agent service")?;
@@ -150,6 +151,35 @@ fn service_process_command(
     }
     command
 }
+
+#[cfg(unix)]
+fn configure_detached_service_process(command: &mut Command) {
+    use std::os::unix::process::CommandExt;
+
+    // SAFETY: `setsid` is async-signal-safe and the closure performs no other
+    // work before `exec`, so the service starts outside the SSH session.
+    unsafe {
+        command.pre_exec(|| {
+            if libc::setsid() == -1 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(())
+        });
+    }
+}
+
+#[cfg(windows)]
+fn configure_detached_service_process(command: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    use windows_sys::Win32::System::Threading::CREATE_BREAKAWAY_FROM_JOB;
+    use windows_sys::Win32::System::Threading::CREATE_NEW_PROCESS_GROUP;
+    use windows_sys::Win32::System::Threading::DETACHED_PROCESS;
+
+    command.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_BREAKAWAY_FROM_JOB);
+}
+
+#[cfg(not(any(unix, windows)))]
+fn configure_detached_service_process(_command: &mut Command) {}
 
 pub(crate) fn restart_service_process(
     codex: &ResolvedCodexCommand,
