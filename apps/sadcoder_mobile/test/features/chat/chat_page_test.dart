@@ -216,6 +216,21 @@ void main() {
     expect(phaseOffset.dx, moreOrLessEquals(mappingOffset.dx, epsilon: 0.1));
   });
 
+  testWidgets('slash command palette fits on compact screens', (tester) async {
+    tester.view.physicalSize = const Size(360, 320);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpChatPage(tester);
+
+    await tester.tap(find.byKey(const ValueKey('chat-slash-command-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Slash commands'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('slash command palette hides unavailable platform commands', (
     tester,
   ) async {

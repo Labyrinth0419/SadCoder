@@ -59,10 +59,17 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
     final l10n = context.l10n;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final screenHeight = MediaQuery.sizeOf(context).height;
-    final availableHeight = screenHeight - bottomInset;
-    final sheetHeight = (availableHeight * 0.86)
-        .clamp(220.0, screenHeight * 0.86)
+    final availableHeight = (screenHeight - bottomInset)
+        .clamp(0.0, screenHeight)
         .toDouble();
+    final maxSheetHeight = availableHeight <= 0
+        ? screenHeight
+        : availableHeight;
+    final minSheetHeight = maxSheetHeight < 220 ? maxSheetHeight : 220.0;
+    final preferredSheetHeight = maxSheetHeight * 0.86;
+    final sheetHeight = preferredSheetHeight < minSheetHeight
+        ? minSheetHeight
+        : preferredSheetHeight;
     final commands = _filteredCommands(l10n);
     final groups = _groupsFor(commands);
     final selectedGroup = groups.isEmpty
