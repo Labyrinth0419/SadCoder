@@ -263,6 +263,10 @@ class CodexAppServerClient {
     return _request('agent/slashCommands/list');
   }
 
+  Future<Map<String, Object?>> agentRestartBackend() {
+    return _request('agent/restartBackend');
+  }
+
   Future<Map<String, Object?>> agentPing() {
     return _request('agent/ping');
   }

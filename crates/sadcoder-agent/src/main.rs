@@ -48,6 +48,7 @@ use codex_command::resolve_codex_command;
 use service::AgentServicePaths;
 use service::load_service_info;
 use service::resolve_service_paths;
+use service::restart_service_process;
 use service::run_service;
 use service::service_is_ready;
 use service::start_service_process;
@@ -544,6 +545,27 @@ fn start_backend(
     }
 }
 
+fn restart_backend_result(
+    codex: &ResolvedCodexCommand,
+    backend_mode: BackendMode,
+    state_path: &Path,
+) -> anyhow::Result<Value> {
+    match select_backend(backend_mode) {
+        Ok(SelectedBackend::Service) => {
+            let service_paths = resolve_service_paths(state_path);
+            restart_service_process(codex, state_path, &service_paths)?;
+            Ok(json!({
+                "reconnectRequired": true,
+                "status": collect_status(codex, backend_mode, state_path)
+            }))
+        }
+        Ok(SelectedBackend::Stdio) => anyhow::bail!(
+            "agent/restartBackend is only available for the SadCoder service backend; stdio is a direct debug backend"
+        ),
+        Err(detail) => anyhow::bail!(detail),
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ProbeResult {
@@ -955,6 +977,10 @@ fn handle_agent_request(
         AgentRpcMethod::SlashCommands => load_slash_command_manifest()
             .and_then(|manifest| serde_json::to_value(manifest).map_err(Into::into))
             .map_err(|error| error.to_string()),
+        AgentRpcMethod::RestartBackend => {
+            restart_backend_result(&context.codex, context.backend_mode, &context.state_path)
+                .map_err(|error| error.to_string())
+        }
     };
 
     Some(match result {
@@ -1224,6 +1250,28 @@ mod tests {
 
         assert_eq!(response["result"]["schemaVersion"], 1);
         assert_eq!(response["result"]["commands"][0]["command"], "model");
+    }
+
+    #[test]
+    fn local_proxy_rejects_restart_backend_for_stdio_debug_backend() {
+        let mut context = test_proxy_context(std::env::temp_dir().join(format!(
+            "sadcoder-agent-rpc-restart-{}.json",
+            std::process::id()
+        )));
+        context.backend_mode = BackendMode::Stdio;
+
+        let response =
+            local_response_from_client_line(&request_line("agent/restartBackend", None), &context)
+                .expect("local response");
+        let response = response_json(response);
+
+        assert_eq!(response["id"], 7);
+        assert!(
+            response["error"]["message"]
+                .as_str()
+                .expect("error message")
+                .contains("stdio is a direct debug backend")
+        );
     }
 
     #[test]

@@ -440,6 +440,7 @@ void main() {
     await client.agentHealth();
     await client.agentSnapshot();
     await client.agentSlashCommandsList();
+    await client.agentRestartBackend();
     await client.agentPing();
 
     expect(requests.map((request) => request.method), [
@@ -447,9 +448,11 @@ void main() {
       'agent/health',
       'agent/snapshot',
       'agent/slashCommands/list',
+      'agent/restartBackend',
       'agent/ping',
     ]);
     expect(requests.map((request) => request.params), [
+      null,
       null,
       null,
       null,

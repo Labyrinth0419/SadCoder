@@ -20,6 +20,7 @@ const SERVICE_INFO_FILE_NAME: &str = "agent-service.json";
 const SERVICE_SOCKET_FILE_NAME: &str = "app-server.sock";
 const SERVICE_STDERR_FILE_NAME: &str = "app-server.stderr.log";
 const SERVICE_START_TIMEOUT: Duration = Duration::from_secs(10);
+const SERVICE_STOP_TIMEOUT: Duration = Duration::from_secs(5);
 const SERVICE_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -135,6 +136,48 @@ pub(crate) fn start_service_process(
     }
 }
 
+pub(crate) fn restart_service_process(
+    codex: &ResolvedCodexCommand,
+    state_path: &Path,
+    paths: &AgentServicePaths,
+) -> anyhow::Result<()> {
+    stop_service_process(paths)?;
+    start_service_process(codex, state_path, paths)
+}
+
+pub(crate) fn stop_service_process(paths: &AgentServicePaths) -> anyhow::Result<()> {
+    if !service_is_ready(paths) {
+        cleanup_unready_service_files(paths)?;
+        return Ok(());
+    }
+
+    let info = load_service_info(paths)?
+        .context("SadCoder service was ready but service info was missing")?;
+    terminate_service_processes(&info, false);
+    if !wait_for_service_stopped(paths, SERVICE_STOP_TIMEOUT) {
+        terminate_service_processes(&info, true);
+    }
+    if !wait_for_service_stopped(paths, SERVICE_STOP_TIMEOUT) {
+        anyhow::bail!(
+            "sadcoder-agent service did not stop at {} within {} seconds",
+            paths.socket_path.display(),
+            SERVICE_STOP_TIMEOUT.as_secs() * 2
+        );
+    }
+    cleanup_unready_service_files(paths)
+}
+
+fn wait_for_service_stopped(paths: &AgentServicePaths, timeout: Duration) -> bool {
+    let started = std::time::Instant::now();
+    while started.elapsed() < timeout {
+        if !service_is_ready(paths) {
+            return true;
+        }
+        thread::sleep(SERVICE_POLL_INTERVAL);
+    }
+    !service_is_ready(paths)
+}
+
 pub(crate) fn run_service(codex: &ResolvedCodexCommand, state_path: &Path) -> anyhow::Result<()> {
     let paths = resolve_service_paths(state_path);
     if let Some(parent) = paths.info_path.parent() {
@@ -198,6 +241,38 @@ fn cleanup_unready_service_files(paths: &AgentServicePaths) -> anyhow::Result<()
     remove_file_if_exists(&paths.socket_path)
 }
 
+fn terminate_service_processes(info: &AgentServiceInfo, force: bool) {
+    terminate_pid(info.app_server_pid, force);
+    if info.service_pid != info.app_server_pid {
+        terminate_pid(info.service_pid, force);
+    }
+}
+
+#[cfg(unix)]
+fn terminate_pid(pid: u32, force: bool) {
+    if pid == 0 || pid == std::process::id() {
+        return;
+    }
+    let signal = if force { "-KILL" } else { "-TERM" };
+    let _ = Command::new("kill")
+        .arg(signal)
+        .arg(pid.to_string())
+        .status();
+}
+
+#[cfg(windows)]
+fn terminate_pid(pid: u32, force: bool) {
+    if pid == 0 || pid == std::process::id() {
+        return;
+    }
+    let mut command = Command::new("taskkill");
+    command.arg("/PID").arg(pid.to_string()).arg("/T");
+    if force {
+        command.arg("/F");
+    }
+    let _ = command.status();
+}
+
 fn now_unix_ms() -> u128 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -251,6 +326,34 @@ mod tests {
         fs::write(&paths.socket_path, b"stale").expect("write stale socket file");
 
         assert!(!service_is_ready(&paths));
+
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn stop_service_cleans_unready_service_files_without_pid_termination() {
+        let base = std::env::temp_dir().join(format!(
+            "sadcoder-agent-stop-stale-service-{}-{}",
+            std::process::id(),
+            now_unix_ms()
+        ));
+        let paths = resolve_service_paths(&base.join("agent-state.json"));
+        fs::create_dir_all(&base).expect("create state dir");
+        let info = AgentServiceInfo {
+            schema_version: 1,
+            service_pid: 1,
+            app_server_pid: 2,
+            socket_path: paths.socket_path.clone(),
+            listen_url: format!("unix://{}", paths.socket_path.display()),
+            started_at_unix_ms: now_unix_ms(),
+        };
+        write_service_info(&paths.info_path, &info).expect("write service info");
+        fs::write(&paths.socket_path, b"stale").expect("write stale socket file");
+
+        stop_service_process(&paths).expect("stop stale service");
+
+        assert!(!paths.info_path.exists());
+        assert!(!paths.socket_path.exists());
 
         let _ = fs::remove_dir_all(&base);
     }

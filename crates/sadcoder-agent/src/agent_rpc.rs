@@ -14,6 +14,7 @@ pub(crate) enum AgentRpcMethod {
     Health,
     Snapshot,
     SlashCommands,
+    RestartBackend,
     Ping,
 }
 
@@ -24,6 +25,7 @@ impl AgentRpcMethod {
             "agent/health" | "agent/status" => Some(Self::Health),
             "agent/snapshot" => Some(Self::Snapshot),
             "agent/slashCommands/list" => Some(Self::SlashCommands),
+            "agent/restartBackend" => Some(Self::RestartBackend),
             "agent/ping" => Some(Self::Ping),
             _ => None,
         }
@@ -40,6 +42,7 @@ pub(crate) fn hello_result() -> Value {
         "capabilities": {
             "agentRpc": true,
             "health": true,
+            "restartBackend": true,
             "reconnectSnapshot": true,
             "slashCommands": true,
             "workspaceFiles": true
@@ -85,6 +88,7 @@ fn agent_methods() -> Vec<&'static str> {
         "agent/status",
         "agent/snapshot",
         "agent/slashCommands/list",
+        "agent/restartBackend",
         "agent/ping",
     ]
 }
@@ -102,6 +106,7 @@ mod tests {
             ("agent/status", AgentRpcMethod::Health),
             ("agent/snapshot", AgentRpcMethod::Snapshot),
             ("agent/slashCommands/list", AgentRpcMethod::SlashCommands),
+            ("agent/restartBackend", AgentRpcMethod::RestartBackend),
             ("agent/ping", AgentRpcMethod::Ping),
         ] {
             let request = JsonRpcRequest::new(RequestId::Number(1), method, None);
