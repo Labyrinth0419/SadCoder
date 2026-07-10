@@ -56,6 +56,19 @@ class ThreadDetailController extends ChangeNotifier {
     }
   }
 
+  bool backfillTurns({
+    required String threadId,
+    required List<TurnSummary> turns,
+  }) {
+    final detail = _detail;
+    if (_selectedThreadId != threadId || detail?.thread.id != threadId) {
+      return false;
+    }
+    _detail = detail!.withTurns(turns);
+    _setState(status: ThreadDetailStatus.loaded, error: null);
+    return true;
+  }
+
   void clear() {
     _generation++;
     _selectedThreadId = null;

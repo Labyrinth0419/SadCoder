@@ -31,6 +31,8 @@ class AppHostSessionUiState {
       threadListController: threadListController,
       threadDetailController: threadDetailController,
       turnController: turnController,
+      threadTurnListReaderProvider: () =>
+          sessionController.threadTurnListReader,
     );
     threadDetailController.addListener(_handleThreadDetailChanged);
   }

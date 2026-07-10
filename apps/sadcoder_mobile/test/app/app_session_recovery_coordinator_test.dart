@@ -6,6 +6,7 @@ import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
+import 'package:sadcoder_mobile/src/threads/thread_turn_list_reader.dart';
 import 'package:sadcoder_mobile/src/turns/turn_controller.dart';
 
 void main() {
@@ -26,7 +27,7 @@ void main() {
     final fixture = _Fixture();
     addTearDown(fixture.dispose);
     await fixture.threadDetailController.readThread('thr_selected');
-    fixture.threadDetailReader.threadIds.clear();
+    fixture.threadDetailReader.clear();
 
     fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
     fixture.coordinator.handleSessionStatus(CodexSessionStatus.reconnecting);
@@ -38,13 +39,74 @@ void main() {
       'thr_selected',
       'thr_selected',
     ]);
+    expect(fixture.threadDetailReader.includeTurnsValues, [true, true]);
+  });
+
+  test(
+    'backfills recent turns after reconnect with thread turns list',
+    () async {
+      final turnListReader = _RecordingThreadTurnListReader(
+        page: ThreadTurnsPage(
+          turns: [
+            _turn('turn_newer', 'completed', 'newer'),
+            _turn('turn_older', 'completed', 'older'),
+          ],
+          nextCursor: 'older_cursor',
+          backwardsCursor: 'newer_cursor',
+        ),
+      );
+      final fixture = _Fixture(threadTurnListReader: turnListReader);
+      addTearDown(fixture.dispose);
+      await fixture.threadDetailController.readThread('thr_selected');
+      fixture.threadDetailReader.clear();
+
+      fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
+      await _flushMicrotasks();
+
+      expect(fixture.threadDetailReader.threadIds, ['thr_selected']);
+      expect(fixture.threadDetailReader.includeTurnsValues, [false]);
+      expect(turnListReader.calls, [
+        (
+          threadId: 'thr_selected',
+          limit: 50,
+          sortDirection: 'desc',
+          itemsView: 'full',
+        ),
+      ]);
+      expect(
+        fixture.threadDetailController.detail?.turns.map((turn) => turn.id),
+        ['turn_older', 'turn_newer'],
+      );
+      expect(
+        fixture.threadDetailController.detail?.turns.last.items.single.text,
+        'newer',
+      );
+    },
+  );
+
+  test('falls back to full thread read when turns backfill fails', () async {
+    final fixture = _Fixture(
+      threadTurnListReader: _FailingThreadTurnListReader(),
+    );
+    addTearDown(fixture.dispose);
+    await fixture.threadDetailController.readThread('thr_selected');
+    fixture.threadDetailReader.clear();
+
+    fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
+    await _flushMicrotasks();
+
+    expect(fixture.threadDetailReader.threadIds, [
+      'thr_selected',
+      'thr_selected',
+    ]);
+    expect(fixture.threadDetailReader.includeTurnsValues, [false, true]);
   });
 
   test('rereads the active turn thread before the selected thread', () async {
     final fixture = _Fixture();
     addTearDown(fixture.dispose);
     await fixture.threadDetailController.readThread('thr_selected');
-    fixture.threadDetailReader.threadIds.clear();
+    fixture.threadDetailReader.clear();
     fixture.turnController.trackStartedTurn(
       threadId: 'thr_active',
       turn: const TurnSummary(
@@ -63,7 +125,7 @@ void main() {
 }
 
 class _Fixture {
-  _Fixture()
+  _Fixture({ThreadTurnListReader? threadTurnListReader})
     : threadListReader = _RecordingThreadListReader(),
       threadDetailReader = _RecordingThreadDetailReader() {
     threadListController = ThreadListController(
@@ -77,6 +139,9 @@ class _Fixture {
       threadListController: threadListController,
       threadDetailController: threadDetailController,
       turnController: turnController,
+      threadTurnListReaderProvider: threadTurnListReader == null
+          ? null
+          : () => threadTurnListReader,
     );
   }
 
@@ -109,6 +174,12 @@ class _RecordingThreadListReader implements ThreadListReader {
 
 class _RecordingThreadDetailReader implements ThreadDetailReader {
   final threadIds = <String>[];
+  final includeTurnsValues = <bool>[];
+
+  void clear() {
+    threadIds.clear();
+    includeTurnsValues.clear();
+  }
 
   @override
   Future<ThreadDetail> readThread({
@@ -116,7 +187,53 @@ class _RecordingThreadDetailReader implements ThreadDetailReader {
     bool includeTurns = true,
   }) async {
     threadIds.add(threadId);
+    includeTurnsValues.add(includeTurns);
     return ThreadDetail(thread: _thread(threadId));
+  }
+}
+
+class _RecordingThreadTurnListReader implements ThreadTurnListReader {
+  _RecordingThreadTurnListReader({required this.page});
+
+  final ThreadTurnsPage page;
+  final calls =
+      <
+        ({
+          String threadId,
+          int? limit,
+          String? sortDirection,
+          String? itemsView,
+        })
+      >[];
+
+  @override
+  Future<ThreadTurnsPage> listTurns({
+    required String threadId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+    String? itemsView,
+  }) async {
+    calls.add((
+      threadId: threadId,
+      limit: limit,
+      sortDirection: sortDirection,
+      itemsView: itemsView,
+    ));
+    return page;
+  }
+}
+
+class _FailingThreadTurnListReader implements ThreadTurnListReader {
+  @override
+  Future<ThreadTurnsPage> listTurns({
+    required String threadId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+    String? itemsView,
+  }) async {
+    throw StateError('turns list failed');
   }
 }
 
@@ -132,6 +249,19 @@ ThreadSummary _thread(String id) {
   });
 }
 
+TurnSummary _turn(String id, String status, String text) {
+  return TurnSummary.fromJson({
+    'id': id,
+    'status': status,
+    'itemsView': 'full',
+    'items': [
+      {'id': '${id}_item', 'type': 'agentMessage', 'text': text},
+    ],
+  });
+}
+
 Future<void> _flushMicrotasks() async {
+  await Future<void>.delayed(Duration.zero);
+  await Future<void>.delayed(Duration.zero);
   await Future<void>.delayed(Duration.zero);
 }

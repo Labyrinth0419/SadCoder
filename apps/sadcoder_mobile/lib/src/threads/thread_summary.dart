@@ -75,6 +75,10 @@ class ThreadDetail {
   final ThreadSummary thread;
 
   List<TurnSummary> get turns => thread.turns;
+
+  ThreadDetail withTurns(List<TurnSummary> turns) {
+    return ThreadDetail(thread: thread.copyWith(turns: turns));
+  }
 }
 
 class ThreadSummary {
@@ -153,6 +157,26 @@ class ThreadSummary {
       parentThreadId?.trim().isNotEmpty == true ||
       ancestorThreadId?.trim().isNotEmpty == true;
   bool get isFork => forkedFromId?.trim().isNotEmpty == true;
+
+  ThreadSummary copyWith({List<TurnSummary>? turns}) {
+    return ThreadSummary(
+      id: id,
+      sessionId: sessionId,
+      preview: preview,
+      ephemeral: ephemeral,
+      status: status,
+      cwd: cwd,
+      updatedAtSeconds: updatedAtSeconds,
+      name: name,
+      parentThreadId: parentThreadId,
+      ancestorThreadId: ancestorThreadId,
+      forkedFromId: forkedFromId,
+      agentNickname: agentNickname,
+      agentRole: agentRole,
+      turns: turns ?? this.turns,
+      raw: raw,
+    );
+  }
 }
 
 class TurnSummary {
