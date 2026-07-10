@@ -537,6 +537,9 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
   }
 
   void _setPreviewMode(_PreviewMode mode) {
+    if (mode == _PreviewMode.render && !_canRenderMarkdown(_preview)) {
+      return;
+    }
     setState(() => _preview = _preview.copyWith(mode: mode));
   }
 
@@ -990,6 +993,12 @@ _PreviewMode _initialPreviewMode(
     return _PreviewMode.render;
   }
   return _PreviewMode.raw;
+}
+
+bool _canRenderMarkdown(_FilePreviewState preview) {
+  return preview.isMarkdown &&
+      !preview.hasMore &&
+      preview.sizeBytes <= _markdownRenderLimitBytes;
 }
 
 bool _isMarkdownPath(String path) {

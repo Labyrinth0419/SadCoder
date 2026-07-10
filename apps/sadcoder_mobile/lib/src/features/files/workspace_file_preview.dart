@@ -162,10 +162,7 @@ class _PreviewContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final isMarkdown = preview.isMarkdown;
-    final canRenderMarkdown =
-        isMarkdown &&
-        !preview.hasMore &&
-        preview.sizeBytes <= _markdownRenderLimitBytes;
+    final canRenderMarkdown = _canRenderMarkdown(preview);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -216,6 +213,15 @@ class _PreviewContent extends StatelessWidget {
               onModeChanged(selection.single);
             },
           ),
+          if (!canRenderMarkdown) ...[
+            const SizedBox(height: 8),
+            Text(
+              l10n.workspaceFilesMarkdownRenderLimited,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ],
         if (preview.hasMore) ...[
           const SizedBox(height: 12),

@@ -757,6 +757,8 @@ class AppLocalizations {
   String get workspaceFilesPreviewEmpty => _text('workspaceFilesPreviewEmpty');
   String get workspaceFilesRaw => _text('workspaceFilesRaw');
   String get workspaceFilesRendered => _text('workspaceFilesRendered');
+  String get workspaceFilesMarkdownRenderLimited =>
+      _text('workspaceFilesMarkdownRenderLimited');
   String get workspaceFilesLargeFile => _text('workspaceFilesLargeFile');
   String get workspaceFilesBinary => _text('workspaceFilesBinary');
   String get workspaceFilesNotFound => _text('workspaceFilesNotFound');
@@ -1532,6 +1534,8 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesPreviewEmpty': 'Select a text file to preview it.',
     'workspaceFilesRaw': 'Raw',
     'workspaceFilesRendered': 'Rendered',
+    'workspaceFilesMarkdownRenderLimited':
+        'Markdown rendering is available after the full file is loaded and remains under the render limit.',
     'workspaceFilesLargeFile':
         'This file is loaded in chunks. Rendering is limited to loaded text.',
     'workspaceFilesBinary': 'Binary files cannot be previewed.',
@@ -2175,6 +2179,7 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesPreviewEmpty': '选择文本文件进行预览。',
     'workspaceFilesRaw': '源码',
     'workspaceFilesRendered': '渲染',
+    'workspaceFilesMarkdownRenderLimited': 'Markdown 仅在完整加载且低于渲染阈值时可用。',
     'workspaceFilesLargeFile': '此文件按分段加载；渲染仅作用于已加载文本。',
     'workspaceFilesBinary': '二进制文件不可预览。',
     'workspaceFilesNotFound': '路径不存在。',

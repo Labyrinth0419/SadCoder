@@ -111,12 +111,88 @@ void main() {
     expect(find.textContaining('hello'), findsOneWidget);
     expect(find.text('Load more'), findsOneWidget);
 
-    await tester.tap(
-      find.byKey(const ValueKey('workspace-files-preview-load-more')),
+    final loadMore = find.byKey(
+      const ValueKey('workspace-files-preview-load-more'),
     );
+    await tester.ensureVisible(loadMore);
+    await tester.pumpAndSettle();
+    await tester.tap(loadMore);
     await tester.pumpAndSettle();
 
     expect(find.textContaining('hello world'), findsOneWidget);
+  });
+
+  testWidgets('keeps large Markdown in raw mode after loading all chunks', (
+    tester,
+  ) async {
+    const largeMarkdownBytes = 300 * 1024;
+    const secondOffset = 32 * 1024;
+    final directoryReader = _FakeWorkspaceDirectoryReader({
+      '': [_entry(path: 'big.md', name: 'big.md')],
+    });
+    final fileReader = _FakeWorkspaceFileReader(
+      stats: {'big.md': _stat(path: 'big.md', language: 'markdown')},
+      chunks: {
+        'big.md': [
+          _chunk(
+            path: 'big.md',
+            content: '# Big\nfirst\n',
+            sizeBytes: largeMarkdownBytes,
+            bytesRead: secondOffset,
+            nextOffset: secondOffset,
+            hasMore: true,
+          ),
+          _chunk(
+            path: 'big.md',
+            content: 'second\n',
+            offset: secondOffset,
+            sizeBytes: largeMarkdownBytes,
+            bytesRead: largeMarkdownBytes - secondOffset,
+          ),
+        ],
+      },
+    );
+
+    await _pumpFilesPage(
+      tester,
+      directoryReader: directoryReader,
+      fileReader: fileReader,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-entry-big.md')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('# Big'), findsOneWidget);
+    expect(find.text('Big'), findsNothing);
+    expect(
+      find.textContaining('Markdown rendering is available'),
+      findsOneWidget,
+    );
+    expect(_markdownRenderSegmentEnabled(tester), isFalse);
+
+    final markdownLoadMore = find.byKey(
+      const ValueKey('workspace-files-preview-load-more'),
+    );
+    await tester.ensureVisible(markdownLoadMore);
+    await tester.pumpAndSettle();
+    await tester.tap(markdownLoadMore);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('# Big'), findsOneWidget);
+    expect(find.text('Big'), findsNothing);
+    expect(
+      find.textContaining('Markdown rendering is available'),
+      findsOneWidget,
+    );
+    expect(find.text('Load more'), findsNothing);
+    expect(_markdownRenderSegmentEnabled(tester), isFalse);
+
+    await tester.tap(find.text('Rendered'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('# Big'), findsOneWidget);
+    expect(find.text('Big'), findsNothing);
   });
 
   testWidgets('uses semantic code colors in dark file previews', (
@@ -813,6 +889,7 @@ WorkspaceFileReadChunk _chunk({
   required String path,
   required String content,
   int offset = 0,
+  int? bytesRead,
   int? sizeBytes,
   int? nextOffset,
   bool hasMore = false,
@@ -822,13 +899,23 @@ WorkspaceFileReadChunk _chunk({
     path: path,
     sizeBytes: sizeBytes ?? content.length,
     offset: offset,
-    bytesRead: content.length,
+    bytesRead: bytesRead ?? content.length,
     nextOffset: nextOffset,
     hasMore: hasMore,
     encoding: 'utf-8',
     isBinary: false,
     content: content,
   );
+}
+
+bool _markdownRenderSegmentEnabled(WidgetTester tester) {
+  final segmentedButton =
+      tester.widget<Widget>(
+            find.byKey(const ValueKey('workspace-files-markdown-mode')),
+          )
+          as dynamic;
+  final segments = segmentedButton.segments as List<dynamic>;
+  return segments.first.enabled as bool;
 }
 
 class _FakeWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
