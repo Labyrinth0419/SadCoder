@@ -22,7 +22,10 @@ class WorkspacePath {
   final String absolutePath;
 
   WorkspacePath child(String name) {
-    if (name.trim().isEmpty ||
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty ||
+        trimmedName == '.' ||
+        trimmedName == '..' ||
         name.contains('/') ||
         name.contains(r'\') ||
         name.contains('\u0000')) {

@@ -45,7 +45,7 @@ void main() {
 
   test('rejects unsafe child path names from directory responses', () {
     final root = WorkspacePath.fromRoot('/repo');
-    for (final name in ['..', 'lib/main.dart', r'lib\main.dart', '']) {
+    for (final name in ['.', '..', 'lib/main.dart', r'lib\main.dart', '']) {
       expect(
         () => root.child(name),
         throwsA(
