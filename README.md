@@ -49,13 +49,19 @@ stops the proxy subscription, not the app-server process owned by the service.
 
 Backend selection is controlled by `--backend` or `SADCODER_BACKEND`:
 
-- `auto` uses the SadCoder service backend and does not call the official Codex
-  app-server daemon.
+- `auto` uses the SadCoder service backend when it can be prepared and falls
+  back to stdio when the service path is unavailable; it does not call the
+  official Codex app-server daemon.
 - `stdio` forces the direct stdio debug path; SSH disconnect can end that
   app-server process.
 - `daemon` is accepted for compatibility, but falls back to stdio because
   npm/NVM Codex CLIs can expose daemon commands that still require the official
   standalone installer layout.
+
+`status` is non-mutating: in `auto` mode it reports the SadCoder service
+readiness and notes the stdio fallback path. `start --json` and `proxy` use the
+actual selected backend, falling back to stdio if the service cannot be
+prepared.
 
 `slash-commands --json` prints the shared slash command manifest from
 `resources/slash_commands_manifest.json`. The manifest tracks the current Codex
