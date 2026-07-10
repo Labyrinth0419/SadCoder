@@ -14,35 +14,35 @@ void main() {
         MemoryJsonRpcTransport((request) {
           requests.add(request);
           switch (request.method) {
-            case 'fs/getMetadata':
-              expect(
-                request.params?['path'],
-                anyOf('/repo/lib', '/repo/lib/src'),
-              );
-              return {'isDirectory': true, 'isFile': false, 'isSymlink': false};
-            case 'fs/readDirectory':
-              expect(request.params, {'path': '/repo/lib/src'});
+            case 'workspace/fileStat':
+              expect(request.params?['root'], '/repo');
+              expect(request.params?['path'], anyOf('lib', 'lib/src'));
+              return {'type': 'directory', 'isSymlink': false};
+            case 'workspace/directoryList':
+              expect(request.params?['root'], '/repo');
+              expect(request.params?['path'], 'lib/src');
+              expect(request.params?['limit'], 2);
+              expect(request.params?['includeHidden'], false);
+              if (request.params?['cursor'] == '2') {
+                return {
+                  'entries': [
+                    {
+                      'name': 'README.md',
+                      'type': 'file',
+                      'sizeBytes': 42,
+                      'modifiedAtMs': 1700000000000,
+                    },
+                  ],
+                };
+              }
+              expect(request.params?.containsKey('cursor'), false);
               return {
                 'entries': [
-                  {
-                    'fileName': 'main.dart',
-                    'isDirectory': false,
-                    'isFile': true,
-                  },
-                  {'fileName': '.env', 'isDirectory': false, 'isFile': true},
-                  {
-                    'fileName': 'features',
-                    'isDirectory': true,
-                    'isFile': false,
-                  },
-                  {
-                    'fileName': 'README.md',
-                    'isDirectory': false,
-                    'isFile': true,
-                    'sizeBytes': 42,
-                    'modifiedAtMs': 1700000000000,
-                  },
+                  {'name': 'main.dart', 'type': 'file'},
+                  {'name': '.env', 'type': 'file'},
+                  {'name': 'features', 'type': 'directory'},
                 ],
+                'nextCursor': '2',
               };
             default:
               throw StateError('unexpected method ${request.method}');
@@ -80,12 +80,12 @@ void main() {
       );
       expect(secondPage.nextCursor, isNull);
       expect(requests.map((request) => request.method), [
-        'fs/getMetadata',
-        'fs/getMetadata',
-        'fs/readDirectory',
-        'fs/getMetadata',
-        'fs/getMetadata',
-        'fs/readDirectory',
+        'workspace/fileStat',
+        'workspace/fileStat',
+        'workspace/directoryList',
+        'workspace/fileStat',
+        'workspace/fileStat',
+        'workspace/directoryList',
       ]);
     },
   );
@@ -93,14 +93,10 @@ void main() {
   test('listDirectory can include server-marked hidden files', () async {
     final client = CodexAppServerClient(
       MemoryJsonRpcTransport((request) {
+        expect(request.method, 'workspace/directoryList');
         return {
           'entries': [
-            {
-              'fileName': 'secret.env',
-              'isDirectory': false,
-              'isFile': true,
-              'isHidden': true,
-            },
+            {'name': 'secret.env', 'type': 'file', 'isHidden': true},
           ],
         };
       }),
@@ -118,14 +114,10 @@ void main() {
   test('listDirectory preserves symlink metadata', () async {
     final client = CodexAppServerClient(
       MemoryJsonRpcTransport((request) {
+        expect(request.method, 'workspace/directoryList');
         return {
           'entries': [
-            {
-              'fileName': 'linked',
-              'isDirectory': true,
-              'isFile': false,
-              'isSymlink': true,
-            },
+            {'name': 'linked', 'type': 'directory', 'isSymlink': true},
           ],
         };
       }),
@@ -146,9 +138,9 @@ void main() {
       final client = CodexAppServerClient(
         MemoryJsonRpcTransport((request) {
           requests.add(request);
-          expect(request.params, {'path': '/repo/linked'});
-          if (request.method == 'fs/getMetadata') {
-            return {'isDirectory': true, 'isFile': false, 'isSymlink': true};
+          expect(request.params, {'root': '/repo', 'path': 'linked'});
+          if (request.method == 'workspace/fileStat') {
+            return {'type': 'directory', 'isSymlink': true};
           }
           throw StateError('unexpected method ${request.method}');
         }),
@@ -165,7 +157,7 @@ void main() {
           ),
         ),
       );
-      expect(requests.map((request) => request.method), ['fs/getMetadata']);
+      expect(requests.map((request) => request.method), ['workspace/fileStat']);
     },
   );
 
@@ -176,9 +168,9 @@ void main() {
       final client = CodexAppServerClient(
         MemoryJsonRpcTransport((request) {
           requests.add(request);
-          expect(request.method, 'fs/getMetadata');
-          expect(request.params, {'path': '/repo/linked'});
-          return {'isDirectory': true, 'isFile': false, 'isSymlink': true};
+          expect(request.method, 'workspace/fileStat');
+          expect(request.params, {'root': '/repo', 'path': 'linked'});
+          return {'type': 'directory', 'isSymlink': true};
         }),
       );
       final reader = CodexWorkspaceDirectoryReader(client);
@@ -193,7 +185,7 @@ void main() {
           ),
         ),
       );
-      expect(requests.map((request) => request.method), ['fs/getMetadata']);
+      expect(requests.map((request) => request.method), ['workspace/fileStat']);
     },
   );
 
@@ -258,5 +250,42 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('listDirectory falls back to legacy fs methods', () async {
+    final requests = <JsonRpcRequest>[];
+    final client = CodexAppServerClient(
+      MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        switch (request.method) {
+          case 'workspace/fileStat':
+          case 'workspace/directoryList':
+            throw StateError('Method not found');
+          case 'fs/getMetadata':
+            expect(request.params, {'path': '/repo/lib'});
+            return {'isDirectory': true, 'isFile': false, 'isSymlink': false};
+          case 'fs/readDirectory':
+            expect(request.params, {'path': '/repo/lib'});
+            return {
+              'entries': [
+                {'fileName': 'main.dart', 'isDirectory': false, 'isFile': true},
+              ],
+            };
+          default:
+            throw StateError('unexpected method ${request.method}');
+        }
+      }),
+    );
+    final reader = CodexWorkspaceDirectoryReader(client);
+
+    final page = await reader.listDirectory(root: '/repo', path: 'lib');
+
+    expect(page.entries.single.name, 'main.dart');
+    expect(requests.map((request) => request.method), [
+      'workspace/fileStat',
+      'fs/getMetadata',
+      'workspace/directoryList',
+      'fs/readDirectory',
+    ]);
   });
 }

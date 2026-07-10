@@ -13,15 +13,15 @@ void main() {
     final client = CodexAppServerClient(
       MemoryJsonRpcTransport((request) {
         requests.add(request);
-        expect(request.method, 'fs/getMetadata');
+        expect(request.method, 'workspace/fileStat');
+        expect(request.params?['root'], '/repo');
         final path = request.params?['path'];
-        if (path == '/repo/lib') {
-          return {'isDirectory': true, 'isFile': false, 'isSymlink': false};
+        if (path == 'lib') {
+          return {'type': 'directory', 'isSymlink': false};
         }
-        expect(path, '/repo/lib/main.dart');
+        expect(path, 'lib/main.dart');
         return {
-          'isDirectory': false,
-          'isFile': true,
+          'type': 'file',
           'isSymlink': false,
           'modifiedAtMs': 1700000000000,
         };
@@ -41,8 +41,8 @@ void main() {
     );
     expect(stat.language, 'dart');
     expect(requests.map((request) => request.params?['path']), [
-      '/repo/lib',
-      '/repo/lib/main.dart',
+      'lib',
+      'lib/main.dart',
     ]);
   });
 
@@ -52,11 +52,13 @@ void main() {
       MemoryJsonRpcTransport((request) {
         requests.add(request);
         switch (request.method) {
-          case 'fs/getMetadata':
-            return {'isDirectory': false, 'isFile': true, 'isSymlink': false};
-          case 'fs/readFile':
+          case 'workspace/fileStat':
+            expect(request.params, {'root': '/repo', 'path': 'README.md'});
+            return {'type': 'file', 'isSymlink': false};
+          case 'workspace/fileRead':
             expect(request.params, {
-              'path': '/repo/README.md',
+              'root': '/repo',
+              'path': 'README.md',
               'offset': 6,
               'limitBytes': 8,
               'encoding': 'utf-8',
@@ -94,8 +96,8 @@ void main() {
     expect(chunk.hasMore, true);
     expect(chunk.contentVersion, 'hash-1');
     expect(requests.map((request) => request.method), [
-      'fs/getMetadata',
-      'fs/readFile',
+      'workspace/fileStat',
+      'workspace/fileRead',
     ]);
   });
 
@@ -108,10 +110,11 @@ void main() {
         MemoryJsonRpcTransport((request) {
           requests.add(request);
           switch (request.method) {
-            case 'fs/getMetadata':
-              return {'isDirectory': false, 'isFile': true, 'isSymlink': false};
-            case 'fs/readFile':
-              expect(request.params?['path'], '/repo/README.md');
+            case 'workspace/fileStat':
+              return {'type': 'file', 'isSymlink': false};
+            case 'workspace/fileRead':
+              expect(request.params?['root'], '/repo');
+              expect(request.params?['path'], 'README.md');
               expect(request.params?['limitBytes'], 2);
               expect(request.params?['encoding'], 'utf-8');
               return {'dataBase64': base64.encode(utf8.encode(content))};
@@ -157,12 +160,12 @@ void main() {
       expect(thirdChunk.hasMore, false);
       expect(thirdChunk.sizeBytes, 6);
       expect(requests.map((request) => request.method), [
-        'fs/getMetadata',
-        'fs/readFile',
-        'fs/getMetadata',
-        'fs/readFile',
-        'fs/getMetadata',
-        'fs/readFile',
+        'workspace/fileStat',
+        'workspace/fileRead',
+        'workspace/fileStat',
+        'workspace/fileRead',
+        'workspace/fileStat',
+        'workspace/fileRead',
       ]);
     },
   );
@@ -171,12 +174,8 @@ void main() {
     final client = CodexAppServerClient(
       MemoryJsonRpcTransport((request) {
         return switch (request.method) {
-          'fs/getMetadata' => {
-            'isDirectory': false,
-            'isFile': true,
-            'isSymlink': false,
-          },
-          'fs/readFile' => {
+          'workspace/fileStat' => {'type': 'file', 'isSymlink': false},
+          'workspace/fileRead' => {
             'dataBase64': base64.encode([0, 1, 2, 3]),
           },
           _ => throw StateError('unexpected method ${request.method}'),
@@ -200,8 +199,8 @@ void main() {
   test('readFile rejects symlinks to avoid root escape', () async {
     final client = CodexAppServerClient(
       MemoryJsonRpcTransport((request) {
-        expect(request.method, 'fs/getMetadata');
-        return {'isDirectory': false, 'isFile': true, 'isSymlink': true};
+        expect(request.method, 'workspace/fileStat');
+        return {'type': 'file', 'isSymlink': true};
       }),
     );
     final reader = CodexWorkspaceFileReader(client);
@@ -223,9 +222,9 @@ void main() {
     final client = CodexAppServerClient(
       MemoryJsonRpcTransport((request) {
         requests.add(request);
-        expect(request.method, 'fs/getMetadata');
-        expect(request.params, {'path': '/repo/linked'});
-        return {'isDirectory': true, 'isFile': false, 'isSymlink': true};
+        expect(request.method, 'workspace/fileStat');
+        expect(request.params, {'root': '/repo', 'path': 'linked'});
+        return {'type': 'directory', 'isSymlink': true};
       }),
     );
     final reader = CodexWorkspaceFileReader(client);
@@ -240,7 +239,7 @@ void main() {
         ),
       ),
     );
-    expect(requests.map((request) => request.method), ['fs/getMetadata']);
+    expect(requests.map((request) => request.method), ['workspace/fileStat']);
   });
 
   test('readFile rejects traversal paths before calling app-server', () async {
@@ -259,5 +258,53 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('readFile falls back to legacy fs methods', () async {
+    final requests = <JsonRpcRequest>[];
+    final client = CodexAppServerClient(
+      MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        switch (request.method) {
+          case 'workspace/fileStat':
+          case 'workspace/fileRead':
+            throw StateError('Method not found');
+          case 'fs/getMetadata':
+            expect(request.params, {'path': '/repo/README.md'});
+            return {'isDirectory': false, 'isFile': true, 'isSymlink': false};
+          case 'fs/readFile':
+            expect(request.params, {
+              'path': '/repo/README.md',
+              'offset': 0,
+              'limitBytes': 64,
+              'encoding': 'utf-8',
+            });
+            return {
+              'content': 'legacy',
+              'sizeBytes': 6,
+              'offset': 0,
+              'bytesRead': 6,
+              'hasMore': false,
+            };
+          default:
+            throw StateError('unexpected method ${request.method}');
+        }
+      }),
+    );
+    final reader = CodexWorkspaceFileReader(client);
+
+    final chunk = await reader.readFile(
+      root: '/repo',
+      path: 'README.md',
+      limitBytes: 64,
+    );
+
+    expect(chunk.content, 'legacy');
+    expect(requests.map((request) => request.method), [
+      'workspace/fileStat',
+      'fs/getMetadata',
+      'workspace/fileRead',
+      'fs/readFile',
+    ]);
   });
 }

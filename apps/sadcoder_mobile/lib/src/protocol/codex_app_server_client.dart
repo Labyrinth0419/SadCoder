@@ -181,6 +181,58 @@ class CodexAppServerClient {
     return _request('fs/readDirectory', {'path': path.trim()});
   }
 
+  Future<Map<String, Object?>> workspaceDirectoryList({
+    required String root,
+    String path = '',
+    int? limit,
+    String? cursor,
+    bool includeHidden = false,
+  }) {
+    final trimmedCursor = cursor?.trim();
+    final params = <String, Object?>{
+      'root': root.trim(),
+      'path': path.trim(),
+      'includeHidden': includeHidden,
+    };
+    if (limit != null) {
+      params['limit'] = limit;
+    }
+    if (trimmedCursor != null && trimmedCursor.isNotEmpty) {
+      params['cursor'] = trimmedCursor;
+    }
+    return _request('workspace/directoryList', params);
+  }
+
+  Future<Map<String, Object?>> workspaceFileStat({
+    required String root,
+    required String path,
+  }) {
+    return _request('workspace/fileStat', {
+      'root': root.trim(),
+      'path': path.trim(),
+    });
+  }
+
+  Future<Map<String, Object?>> workspaceFileRead({
+    required String root,
+    required String path,
+    int? offset,
+    int? limitBytes,
+    String? encoding,
+  }) {
+    final params = <String, Object?>{'root': root.trim(), 'path': path.trim()};
+    if (offset != null) {
+      params['offset'] = offset;
+    }
+    if (limitBytes != null) {
+      params['limitBytes'] = limitBytes;
+    }
+    if (encoding != null && encoding.trim().isNotEmpty) {
+      params['encoding'] = encoding.trim();
+    }
+    return _request('workspace/fileRead', params);
+  }
+
   Future<Map<String, Object?>> readAccountRateLimits() {
     return _request('account/rateLimits/read');
   }

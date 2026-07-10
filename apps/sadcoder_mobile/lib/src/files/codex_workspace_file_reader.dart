@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import '../protocol/codex_app_server_client.dart';
+import 'codex_workspace_file_api.dart';
 import 'codex_workspace_path_guard.dart';
 import 'workspace_file_failure.dart';
 import 'workspace_file_kind.dart';
@@ -25,8 +26,9 @@ class CodexWorkspaceFileReader implements WorkspaceFileReader {
         workspacePath,
         detail: 'Symbolic link ancestors are not previewed.',
       );
-      final response = await _client.fsGetMetadata(
-        path: workspacePath.absolutePath,
+      final response = await readWorkspaceMetadataWithFallback(
+        _client,
+        workspacePath,
       );
       return _statFromMetadata(response, workspacePath);
     } catch (error) {
@@ -64,14 +66,16 @@ class CodexWorkspaceFileReader implements WorkspaceFileReader {
         workspacePath,
         detail: 'Symbolic link ancestors are not previewed.',
       );
-      final metadata = await _client.fsGetMetadata(
-        path: workspacePath.absolutePath,
+      final metadata = await readWorkspaceMetadataWithFallback(
+        _client,
+        workspacePath,
       );
       final stat = _statFromMetadata(metadata, workspacePath);
       _ensurePreviewableFile(stat);
 
-      final response = await _client.fsReadFile(
-        path: workspacePath.absolutePath,
+      final response = await readWorkspaceFileWithFallback(
+        _client,
+        workspacePath,
         offset: offset,
         limitBytes: limitBytes,
         encoding: normalizedEncoding,
@@ -271,6 +275,18 @@ int _inferredSizeBytes({
 }
 
 WorkspaceFileKind _kindFromMetadata(Map<String, Object?> response) {
+  final kind = _stringValue(
+    response['kind'] ??
+        response['type'] ??
+        response['fileType'] ??
+        response['file_type'],
+  )?.toLowerCase();
+  if (kind == 'directory' || kind == 'dir') {
+    return WorkspaceFileKind.directory;
+  }
+  if (kind == 'file') {
+    return WorkspaceFileKind.file;
+  }
   if (response['isDirectory'] == true || response['is_directory'] == true) {
     return WorkspaceFileKind.directory;
   }

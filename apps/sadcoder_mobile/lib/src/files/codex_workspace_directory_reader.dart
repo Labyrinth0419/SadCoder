@@ -1,4 +1,5 @@
 import '../protocol/codex_app_server_client.dart';
+import 'codex_workspace_file_api.dart';
 import 'codex_workspace_path_guard.dart';
 import 'workspace_directory_reader.dart';
 import 'workspace_file_failure.dart';
@@ -26,17 +27,31 @@ class CodexWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
         detail: 'Symbolic link ancestors are not browsed.',
       );
       await _rejectSymlinkPath(workspacePath);
-      final response = await _client.fsReadDirectory(
-        path: workspacePath.absolutePath,
+      final response = await readWorkspaceDirectoryWithFallback(
+        _client,
+        workspacePath,
+        limit: limit,
+        cursor: cursor,
+        includeHidden: includeHidden,
       );
       final entries = _entriesFromResponse(
-        response,
+        response.body,
         workspacePath,
         includeHidden: includeHidden,
       );
       entries.sort(_compareEntries);
 
       final pageLimit = limit <= 0 ? 100 : limit;
+      if (response.serverPaginated) {
+        return WorkspaceDirectoryPage(
+          root: workspacePath.root,
+          path: workspacePath.relativePath,
+          entries: List.unmodifiable(entries),
+          nextCursor: _stringValue(
+            response.body['nextCursor'] ?? response.body['next_cursor'],
+          ),
+        );
+      }
       final start = _cursorOffset(cursor).clamp(0, entries.length);
       final end = (start + pageLimit).clamp(start, entries.length);
       final pageEntries = entries.sublist(start, end);
@@ -55,8 +70,9 @@ class CodexWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
     if (workspacePath.relativePath.isEmpty) {
       return;
     }
-    final metadata = await _client.fsGetMetadata(
-      path: workspacePath.absolutePath,
+    final metadata = await readWorkspaceMetadataWithFallback(
+      _client,
+      workspacePath,
     );
     if (_optionalBool(metadata['isSymlink'] ?? metadata['is_symlink']) !=
         true) {
@@ -81,7 +97,9 @@ class CodexWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
     final entries = <WorkspaceDirectoryEntry>[];
     for (final rawEntry in rawEntries) {
       final map = _objectMap(rawEntry);
-      final name = _stringValue(map['fileName'] ?? map['file_name']);
+      final name =
+          _stringValue(map['fileName'] ?? map['file_name'] ?? map['name']) ??
+          _nameFromPath(_stringValue(map['path']));
       if (name == null) {
         continue;
       }
@@ -127,6 +145,15 @@ int _compareEntries(
 }
 
 WorkspaceFileKind _entryKind(Map<String, Object?> map) {
+  final kind = _stringValue(
+    map['kind'] ?? map['type'] ?? map['fileType'] ?? map['file_type'],
+  )?.toLowerCase();
+  if (kind == 'directory' || kind == 'dir') {
+    return WorkspaceFileKind.directory;
+  }
+  if (kind == 'file') {
+    return WorkspaceFileKind.file;
+  }
   if (map['isDirectory'] == true || map['is_directory'] == true) {
     return WorkspaceFileKind.directory;
   }
@@ -158,6 +185,15 @@ String? _stringValue(Object? value) {
     return value.trim();
   }
   return null;
+}
+
+String? _nameFromPath(String? path) {
+  if (path == null) {
+    return null;
+  }
+  final normalized = path.replaceAll('\\', '/');
+  final segments = normalized.split('/').where((segment) => segment.isNotEmpty);
+  return segments.isEmpty ? null : segments.last;
 }
 
 int? _intValue(Object? value) {

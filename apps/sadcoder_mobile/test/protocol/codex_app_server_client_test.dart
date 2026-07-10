@@ -347,7 +347,7 @@ void main() {
     },
   );
 
-  test('filesystem methods use app-server fs request names', () async {
+  test('filesystem methods use app-server request names', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {
       requests.add(request);
@@ -363,17 +363,50 @@ void main() {
       limitBytes: 4096,
       encoding: ' utf-8 ',
     );
+    await client.workspaceDirectoryList(
+      root: ' /repo ',
+      path: ' lib ',
+      limit: 25,
+      cursor: ' cursor_1 ',
+      includeHidden: true,
+    );
+    await client.workspaceFileStat(root: ' /repo ', path: ' lib/main.dart ');
+    await client.workspaceFileRead(
+      root: ' /repo ',
+      path: ' lib/main.dart ',
+      offset: 1024,
+      limitBytes: 4096,
+      encoding: ' utf-8 ',
+    );
 
     expect(requests.map((request) => request.method), [
       'fs/readDirectory',
       'fs/getMetadata',
       'fs/readFile',
+      'workspace/directoryList',
+      'workspace/fileStat',
+      'workspace/fileRead',
     ]);
     expect(requests.map((request) => request.params), [
       {'path': '/repo/lib'},
       {'path': '/repo/lib/main.dart'},
       {
         'path': '/repo/lib/main.dart',
+        'offset': 1024,
+        'limitBytes': 4096,
+        'encoding': 'utf-8',
+      },
+      {
+        'root': '/repo',
+        'path': 'lib',
+        'limit': 25,
+        'cursor': 'cursor_1',
+        'includeHidden': true,
+      },
+      {'root': '/repo', 'path': 'lib/main.dart'},
+      {
+        'root': '/repo',
+        'path': 'lib/main.dart',
         'offset': 1024,
         'limitBytes': 4096,
         'encoding': 'utf-8',
