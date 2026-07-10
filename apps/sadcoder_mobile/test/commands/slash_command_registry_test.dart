@@ -7,7 +7,7 @@ import 'package:sadcoder_mobile/src/commands/slash_command_registry.dart';
 void main() {
   const registry = SlashCommandRegistry();
 
-  test('built-in registry covers Codex TUI slash commands in source order', () {
+  test('built-in registry keeps its presentation order explicit', () {
     expect(builtInSlashCommands.map((command) => command.command), [
       'model',
       'ide',
@@ -67,6 +67,73 @@ void main() {
       'debug-m-drop',
       'debug-m-update',
     ]);
+  });
+
+  test('built-in registry covers checked-out Codex TUI slash source', () {
+    final sourceFile = File(
+      '../../refs/codex/codex-rs/tui/src/slash_command.rs',
+    );
+    if (!sourceFile.existsSync()) {
+      return;
+    }
+
+    final codexCommands = _parseCodexSlashCommands(
+      sourceFile.readAsStringSync(),
+    );
+    final builtInCommands = builtInSlashCommands
+        .map((command) => command.command)
+        .toList(growable: false);
+    final builtInByName = {
+      for (final command in builtInSlashCommands) command.command: command,
+    };
+    final codexCommandNames = codexCommands
+        .map((command) => command.command)
+        .toSet();
+
+    expect(
+      [
+        for (final command in codexCommands)
+          if (!builtInByName.containsKey(command.command)) command.command,
+      ],
+      isEmpty,
+      reason: 'SadCoder slash manifest is missing commands from refs/codex.',
+    );
+
+    var searchStart = 0;
+    for (final command in codexCommands) {
+      final index = builtInCommands.indexOf(command.command, searchStart);
+      expect(
+        index,
+        isNot(-1),
+        reason:
+            'SadCoder slash manifest moved /${command.command} before its '
+            'Codex source-order predecessor.',
+      );
+      searchStart = index + 1;
+    }
+
+    for (final command in codexCommands) {
+      final actual = builtInByName[command.command]!;
+      expect(
+        actual.aliases,
+        containsAll(command.aliases),
+        reason:
+            'SadCoder slash manifest is missing aliases for /${command.command}.',
+      );
+    }
+
+    expect(
+      [
+        for (final command in builtInCommands)
+          if (!codexCommandNames.contains(command) &&
+              !_sadCoderSlashCommandExtensions.contains(command))
+            command,
+      ],
+      isEmpty,
+      reason:
+          'SadCoder slash manifest has extra commands not present in refs/codex. '
+          'Add intentional extensions to _sadCoderSlashCommandExtensions.',
+    );
   });
 
   test('built-in registry matches the shared manifest', () {
@@ -215,4 +282,77 @@ void main() {
     expect(unknown.arguments, 'now');
     expect(unknown.shouldSendAsPrompt, false);
   });
+}
+
+const _sadCoderSlashCommandExtensions = {'duplicate', 'rewind'};
+
+List<_CodexSlashCommand> _parseCodexSlashCommands(String source) {
+  final enumMatch = RegExp(
+    r'pub enum SlashCommand \{([\s\S]*?)\n\}',
+  ).firstMatch(source);
+  if (enumMatch == null) {
+    throw const FormatException('Codex SlashCommand enum was not found');
+  }
+
+  final commands = <_CodexSlashCommand>[];
+  final attributes = <String>[];
+  for (final rawLine in enumMatch.group(1)!.split('\n')) {
+    final line = rawLine.trim();
+    if (line.isEmpty || line.startsWith('//')) {
+      continue;
+    }
+    if (line.startsWith('#[strum(')) {
+      attributes.add(line);
+      continue;
+    }
+
+    final variant = RegExp(
+      r'^([A-Za-z][A-Za-z0-9]*),',
+    ).firstMatch(line)?.group(1);
+    if (variant == null) {
+      continue;
+    }
+
+    final attributeText = attributes.join(' ');
+    final toString = RegExp(
+      r'to_string\s*=\s*"([^"]+)"',
+    ).firstMatch(attributeText)?.group(1);
+    final serializes = [
+      for (final match in RegExp(
+        r'serialize\s*=\s*"([^"]+)"',
+      ).allMatches(attributeText))
+        match.group(1)!,
+    ];
+    final command =
+        toString ??
+        (serializes.isNotEmpty ? serializes.first : _kebabCase(variant));
+    commands.add(
+      _CodexSlashCommand(command, [
+        for (final alias in serializes)
+          if (alias != command) alias,
+      ]),
+    );
+    attributes.clear();
+  }
+  return commands;
+}
+
+String _kebabCase(String value) {
+  final buffer = StringBuffer();
+  for (var i = 0; i < value.length; i++) {
+    final char = value[i];
+    final lower = char.toLowerCase();
+    if (i > 0 && char != lower) {
+      buffer.write('-');
+    }
+    buffer.write(lower);
+  }
+  return buffer.toString();
+}
+
+class _CodexSlashCommand {
+  const _CodexSlashCommand(this.command, this.aliases);
+
+  final String command;
+  final List<String> aliases;
 }
