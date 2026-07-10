@@ -261,6 +261,46 @@ void main() {
     expect(find.textContaining('class SearchHit'), findsOneWidget);
   });
 
+  testWidgets('rejects unsafe remote file search result paths before reading', (
+    tester,
+  ) async {
+    final fileReader = _RecordingWorkspaceFileReader();
+    final searchReader = _FakeFileSearchReader(
+      page: const FileSearchResultPage(
+        files: [
+          FileSearchMatch(
+            root: '/repo',
+            path: '../secret.txt',
+            matchType: 'fuzzy',
+            fileName: 'secret.txt',
+            score: 10,
+            indices: [0],
+          ),
+        ],
+      ),
+    );
+
+    await _pumpFilesPage(
+      tester,
+      directoryReader: const _FakeWorkspaceDirectoryReader({'': []}),
+      fileReader: fileReader,
+      fileSearchReader: searchReader,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-remote-search')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('chat-mention-file-../secret.txt')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Path is outside the workspace root.'), findsOneWidget);
+    expect(fileReader.statCalls, isEmpty);
+    expect(fileReader.readCalls, isEmpty);
+  });
+
   testWidgets('formats file row metadata with the active locale', (
     tester,
   ) async {

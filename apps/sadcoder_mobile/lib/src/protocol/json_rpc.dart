@@ -69,6 +69,23 @@ abstract interface class JsonRpcTransport {
   Future<void> close();
 }
 
+class JsonRpcRemoteException implements Exception {
+  const JsonRpcRemoteException(this.message, {this.code, this.data});
+
+  final String message;
+  final int? code;
+  final Object? data;
+
+  @override
+  String toString() {
+    final code = this.code;
+    if (code == null) {
+      return message;
+    }
+    return 'JSON-RPC error $code: $message';
+  }
+}
+
 class MemoryJsonRpcTransport implements JsonRpcTransport {
   MemoryJsonRpcTransport(this._handler);
 

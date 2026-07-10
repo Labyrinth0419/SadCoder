@@ -1,3 +1,5 @@
+import '../protocol/json_rpc.dart';
+
 enum WorkspaceFileFailureCode {
   notConnected,
   noCwd,
@@ -32,6 +34,17 @@ WorkspaceFileException normalizeWorkspaceFileException(
 }) {
   if (error is WorkspaceFileException) {
     return error;
+  }
+  if (error is JsonRpcRemoteException) {
+    final code =
+        _codeFromJsonRpcErrorCode(error.code) ??
+        _codeFromMessage(error.message.toLowerCase()) ??
+        fallbackCode;
+    return WorkspaceFileException(
+      code,
+      _messageForCode(code),
+      detail: error.data ?? error.message,
+    );
   }
 
   final rawMessage = error.toString();
@@ -79,6 +92,18 @@ WorkspaceFileFailureCode? _codeFromMessage(String message) {
   }
   return null;
 }
+
+WorkspaceFileFailureCode? _codeFromJsonRpcErrorCode(int? code) =>
+    switch (code) {
+      -32020 => WorkspaceFileFailureCode.noCwd,
+      -32021 => WorkspaceFileFailureCode.notFound,
+      -32022 => WorkspaceFileFailureCode.permissionDenied,
+      -32023 => WorkspaceFileFailureCode.pathOutsideRoot,
+      -32024 => WorkspaceFileFailureCode.binaryNotPreviewable,
+      -32025 => WorkspaceFileFailureCode.readFailed,
+      -32026 => WorkspaceFileFailureCode.tooLarge,
+      _ => null,
+    };
 
 String _messageForCode(WorkspaceFileFailureCode code) => switch (code) {
   WorkspaceFileFailureCode.notConnected => 'Workspace is not connected.',

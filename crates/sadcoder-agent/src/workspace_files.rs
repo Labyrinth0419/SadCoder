@@ -110,14 +110,18 @@ fn read_file(params: Option<&Value>) -> Result<Value, WorkspaceFileRpcError> {
     let params = object_params(params)?;
     let workspace_path = WorkspacePath::from_params(params, false)?;
     let offset = optional_u64(params, "offset")?.unwrap_or(0);
-    let limit = optional_usize(params, "limitBytes")?
-        .unwrap_or(DEFAULT_FILE_READ_LIMIT)
-        .min(MAX_FILE_READ_LIMIT);
-    if limit == 0 {
+    let requested_limit = optional_usize(params, "limitBytes")?.unwrap_or(DEFAULT_FILE_READ_LIMIT);
+    if requested_limit == 0 {
         return Err(WorkspaceFileRpcError::ReadFailed(
             "read limit must be positive".to_string(),
         ));
     }
+    if requested_limit > MAX_FILE_READ_LIMIT {
+        return Err(WorkspaceFileRpcError::TooLarge(format!(
+            "read limit exceeds the maximum of {MAX_FILE_READ_LIMIT} bytes"
+        )));
+    }
+    let limit = requested_limit;
     let encoding = optional_string(params, "encoding")?.unwrap_or_else(|| "utf-8".to_string());
     if !is_utf8_encoding(&encoding) {
         return Err(WorkspaceFileRpcError::ReadFailed(format!(
@@ -673,6 +677,7 @@ enum WorkspaceFileRpcError {
     PermissionDenied(String),
     PathOutsideRoot(String),
     BinaryNotPreviewable,
+    TooLarge(String),
     ReadFailed(String),
 }
 
@@ -706,6 +711,7 @@ impl WorkspaceFileRpcError {
             Self::PermissionDenied(_) => -32022,
             Self::PathOutsideRoot(_) => -32023,
             Self::BinaryNotPreviewable => -32024,
+            Self::TooLarge(_) => -32026,
             Self::ReadFailed(_) => -32025,
         }
     }
@@ -721,6 +727,7 @@ impl WorkspaceFileRpcError {
                 format!("workspace path is outside the workspace root: {detail}")
             }
             Self::BinaryNotPreviewable => "binary file is not previewable as text".to_string(),
+            Self::TooLarge(detail) => format!("workspace file is too large to preview: {detail}"),
             Self::ReadFailed(detail) => format!("workspace file request failed: {detail}"),
         }
     }
@@ -844,6 +851,29 @@ mod tests {
                 .as_str()
                 .expect("message")
                 .contains("binary")
+        );
+    }
+
+    #[test]
+    fn file_read_rejects_overlarge_single_read_limits() {
+        let root = TempWorkspace::new("file-read-too-large");
+        root.write("README.md", "ok\n");
+
+        let error = workspace_error(
+            "workspace/fileRead",
+            json!({
+                "root": root.path_string(),
+                "path": "README.md",
+                "limitBytes": MAX_FILE_READ_LIMIT + 1,
+            }),
+        );
+
+        assert_eq!(error["code"].as_i64(), Some(-32026));
+        assert!(
+            error["message"]
+                .as_str()
+                .expect("message")
+                .contains("too large")
         );
     }
 

@@ -137,7 +137,14 @@ void main() {
       ),
     );
 
-    await expectLater(future, throwsA(isA<JsonRpcRemoteException>()));
+    await expectLater(
+      future,
+      throwsA(
+        isA<JsonRpcRemoteException>()
+            .having((error) => error.code, 'code', -32600)
+            .having((error) => error.message, 'message', 'bad'),
+      ),
+    );
 
     await transport.close();
   });

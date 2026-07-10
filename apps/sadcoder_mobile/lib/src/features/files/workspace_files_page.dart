@@ -9,6 +9,7 @@ import '../../files/workspace_directory_reader.dart';
 import '../../files/workspace_file_failure.dart';
 import '../../files/workspace_file_kind.dart';
 import '../../files/workspace_file_reader.dart';
+import '../../files/workspace_path.dart';
 import '../../i18n/app_localizations.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../theme/sadcoder_theme.dart';
@@ -375,14 +376,28 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     if (root == null || reader == null) {
       return;
     }
+    late final WorkspacePath workspacePath;
+    try {
+      workspacePath = WorkspacePath.fromRoot(root, path);
+    } on Object catch (error) {
+      setState(() {
+        _preview = _FilePreviewState.failed(
+          root: root,
+          path: path,
+          error: error,
+        );
+      });
+      return;
+    }
+    final relativePath = workspacePath.relativePath;
 
     final requestId = ++_nextFileRequestId;
     setState(() {
-      _preview = _FilePreviewState.loading(root: root, path: path);
+      _preview = _FilePreviewState.loading(root: root, path: relativePath);
     });
 
     try {
-      final stat = await reader.statFile(root: root, path: path);
+      final stat = await reader.statFile(root: root, path: relativePath);
       final unpreviewable = _unpreviewableStatError(stat);
       if (unpreviewable != null) {
         if (!mounted ||
@@ -393,7 +408,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
         setState(() {
           _preview = _FilePreviewState.failed(
             root: root,
-            path: path,
+            path: relativePath,
             stat: stat,
             error: unpreviewable,
           );
@@ -402,7 +417,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
       }
       final chunk = await reader.readFile(
         root: root,
-        path: path,
+        path: relativePath,
         limitBytes: _fileChunkBytes,
       );
       if (!mounted || requestId != _nextFileRequestId || _activeRoot != root) {
@@ -411,7 +426,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
       setState(() {
         _preview = _FilePreviewState.loaded(
           root: root,
-          path: path,
+          path: relativePath,
           stat: stat,
           content: chunk.content,
           sizeBytes: chunk.sizeBytes,
@@ -428,7 +443,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
       setState(() {
         _preview = _FilePreviewState.failed(
           root: root,
-          path: path,
+          path: relativePath,
           error: error,
         );
       });

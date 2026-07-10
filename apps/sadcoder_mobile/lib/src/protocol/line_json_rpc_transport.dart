@@ -84,7 +84,7 @@ class LineJsonRpcTransport implements JsonRpcTransport {
       final completer = _pending.remove(id);
       final error = decoded['error'];
       if (error != null) {
-        completer?.completeError(JsonRpcRemoteException(error.toString()));
+        completer?.completeError(_remoteExceptionFromError(error));
       } else {
         final result = decoded['result'];
         if (result is Map<String, Object?>) {
@@ -137,11 +137,19 @@ class LineJsonRpcTransport implements JsonRpcTransport {
   }
 }
 
-class JsonRpcRemoteException implements Exception {
-  const JsonRpcRemoteException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
+JsonRpcRemoteException _remoteExceptionFromError(Object error) {
+  if (error is Map) {
+    final message = error['message'];
+    final code = error['code'];
+    return JsonRpcRemoteException(
+      message is String ? message : error.toString(),
+      code: code is int
+          ? code
+          : code is num
+          ? code.toInt()
+          : null,
+      data: error['data'],
+    );
+  }
+  return JsonRpcRemoteException(error.toString());
 }
