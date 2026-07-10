@@ -97,6 +97,7 @@ class _ChatPageState extends State<ChatPage> {
   final List<_ComposerMention> _composerMentions = [];
   _SideConversation? _sideConversation;
   CodexSessionStatus? _lastSessionStatus;
+  String? _slashTextPrompt;
   bool _slashPaletteOpen = false;
   bool _showRawTranscript = false;
 
@@ -198,7 +199,14 @@ class _ChatPageState extends State<ChatPage> {
                 showRaw: _showRawTranscript,
               ),
               _TurnStatusPanel(controller: turnController),
-              _SlashCommandPreview(result: _slashCommand),
+              _SlashCommandPreview(
+                result: _slashCommand,
+                sendAsText: _isSlashTextPrompt(
+                  _composerController.text,
+                  _slashCommand,
+                ),
+                onSendAsText: _markSlashInputAsText,
+              ),
             ],
           ),
         ),
@@ -303,7 +311,12 @@ class _ChatPageState extends State<ChatPage> {
   void _handleComposerChanged(String value) {
     _pruneComposerMentions(value);
     final result = widget.registry.parseComposerText(value);
-    setState(() => _slashCommand = result);
+    setState(() {
+      if (_slashTextPrompt != value) {
+        _slashTextPrompt = null;
+      }
+      _slashCommand = result;
+    });
     if (result.kind == SlashCommandParseKind.empty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -336,6 +349,7 @@ class _ChatPageState extends State<ChatPage> {
         ? '${command.slash} '
         : command.slash;
     _composerMentions.clear();
+    _slashTextPrompt = null;
     _composerController.text = text;
     _composerController.selection = TextSelection.collapsed(
       offset: text.length,
@@ -346,6 +360,7 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _sendComposerText() async {
     final text = _composerController.text;
     final parsed = widget.registry.parseComposerText(text);
+    final sendSlashAsText = _isSlashTextPrompt(text, parsed);
     if (!_canSubmitComposerText(
       text,
       isConnected: widget.sessionController?.isConnected == true,
@@ -353,7 +368,7 @@ class _ChatPageState extends State<ChatPage> {
     )) {
       return;
     }
-    if (parsed.kind != SlashCommandParseKind.notSlash) {
+    if (parsed.kind != SlashCommandParseKind.notSlash && !sendSlashAsText) {
       await _dispatchSlashCommand(parsed);
       return;
     }
@@ -367,9 +382,20 @@ class _ChatPageState extends State<ChatPage> {
     if (turnController.status != TurnControllerStatus.failed) {
       widget.configOverrideController?.clearTurn();
       _composerMentions.clear();
+      _slashTextPrompt = null;
       _composerController.clear();
       _handleComposerChanged('');
     }
+  }
+
+  void _markSlashInputAsText() {
+    final text = _composerController.text;
+    final parsed = widget.registry.parseComposerText(text);
+    if (parsed.kind == SlashCommandParseKind.notSlash ||
+        parsed.kind == SlashCommandParseKind.empty) {
+      return;
+    }
+    setState(() => _slashTextPrompt = text);
   }
 
   Future<void> _interruptActiveTurn() async {
@@ -1868,12 +1894,22 @@ class _ChatPageState extends State<ChatPage> {
       return false;
     }
     final parsed = widget.registry.parseComposerText(text);
+    final canSubmitPrompt =
+        isConnected && turnController != null && turnController.canSubmit;
+    if (_isSlashTextPrompt(text, parsed)) {
+      return canSubmitPrompt;
+    }
     return switch (parsed.kind) {
-      SlashCommandParseKind.notSlash =>
-        isConnected && turnController != null && turnController.canSubmit,
+      SlashCommandParseKind.notSlash => canSubmitPrompt,
       SlashCommandParseKind.empty || SlashCommandParseKind.unknown => false,
       SlashCommandParseKind.known => true,
     };
+  }
+
+  bool _isSlashTextPrompt(String text, SlashCommandParseResult parsed) {
+    return _slashTextPrompt == text &&
+        parsed.kind != SlashCommandParseKind.notSlash &&
+        parsed.kind != SlashCommandParseKind.empty;
   }
 
   void _handleSessionChanged() {
@@ -4277,13 +4313,24 @@ class _MessageBlock extends StatelessWidget {
 }
 
 class _SlashCommandPreview extends StatelessWidget {
-  const _SlashCommandPreview({required this.result});
+  const _SlashCommandPreview({
+    required this.result,
+    required this.sendAsText,
+    required this.onSendAsText,
+  });
 
   final SlashCommandParseResult result;
+  final bool sendAsText;
+  final VoidCallback onSendAsText;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final sendAsTextButton = TextButton(
+      key: const ValueKey('slash-command-send-as-text'),
+      onPressed: onSendAsText,
+      child: Text(l10n.slashCommandSendAsText),
+    );
     return switch (result.kind) {
       SlashCommandParseKind.notSlash => const SizedBox.shrink(),
       SlashCommandParseKind.empty => _PreviewCard(
@@ -4294,15 +4341,21 @@ class _SlashCommandPreview extends StatelessWidget {
       SlashCommandParseKind.unknown => _PreviewCard(
         icon: Icons.error_outline,
         title: l10n.slashCommandUnknown('/${result.rawCommand}'),
-        subtitle: l10n.slashCommandNotSentAsPrompt,
+        subtitle: sendAsText
+            ? l10n.slashCommandWillSendAsPrompt
+            : l10n.slashCommandNotSentAsPrompt,
+        trailing: sendAsText ? null : sendAsTextButton,
       ),
       SlashCommandParseKind.known => _PreviewCard(
         icon: Icons.terminal,
         title: result.command!.slash,
-        subtitle: l10n.slashCommandDescription(
-          result.command!.command,
-          result.command!.description,
-        ),
+        subtitle: sendAsText
+            ? l10n.slashCommandWillSendAsPrompt
+            : l10n.slashCommandDescription(
+                result.command!.command,
+                result.command!.description,
+              ),
+        trailing: sendAsText ? null : sendAsTextButton,
       ),
     };
   }
@@ -4313,11 +4366,13 @@ class _PreviewCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.trailing,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -4326,6 +4381,7 @@ class _PreviewCard extends StatelessWidget {
         leading: Icon(icon),
         title: Text(title),
         subtitle: Text(subtitle),
+        trailing: trailing,
       ),
     );
   }

@@ -533,6 +533,39 @@ void main() {
     expect(turnRunner.startedTurns, isEmpty);
   });
 
+  testWidgets('explicitly sends slash input as prompt text', (tester) async {
+    final harness = await _pumpConnectedChatPage(tester);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/does-not-exist now',
+    );
+    await tester.pump();
+
+    var sendButton = tester.widget<IconButton>(
+      find.widgetWithIcon(IconButton, Icons.send),
+    );
+    expect(sendButton.onPressed, isNull);
+    expect(find.text('Not sent as a prompt'), findsOneWidget);
+    expect(find.text('Send as text'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('slash-command-send-as-text')));
+    await tester.pump();
+
+    sendButton = tester.widget<IconButton>(
+      find.widgetWithIcon(IconButton, Icons.send),
+    );
+    expect(sendButton.onPressed, isNotNull);
+    expect(find.text('Will be sent as a prompt'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(harness.turnRunner.startedTurns, [
+      (threadId: 'thr_new', text: '/does-not-exist now'),
+    ]);
+  });
+
   testWidgets('unsupported slash commands report explicit unsupported state', (
     tester,
   ) async {

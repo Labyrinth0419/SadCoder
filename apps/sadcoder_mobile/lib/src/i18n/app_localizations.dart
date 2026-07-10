@@ -152,9 +152,9 @@ class AppLocalizations {
   String get timelineStatus => _text('timelineStatus');
   String get timelineExitCode => _text('timelineExitCode');
   String get timelineDuration => _text('timelineDuration');
-  String timelineDurationMilliseconds(int milliseconds) =>
-      _text('timelineDurationMilliseconds')
-          .replaceAll('{milliseconds}', formatNumber(milliseconds));
+  String timelineDurationMilliseconds(int milliseconds) => _text(
+    'timelineDurationMilliseconds',
+  ).replaceAll('{milliseconds}', formatNumber(milliseconds));
   String get timelineFileChanges => _text('timelineFileChanges');
   String get timelineTool => _text('timelineTool');
   String get forkedThread => _text('forkedThread');
@@ -190,6 +190,9 @@ class AppLocalizations {
       _text('slashCommandArgs').replaceAll('{hint}', hint);
   String get slashCommandNotSentAsPrompt =>
       _text('slashCommandNotSentAsPrompt');
+  String get slashCommandSendAsText => _text('slashCommandSendAsText');
+  String get slashCommandWillSendAsPrompt =>
+      _text('slashCommandWillSendAsPrompt');
   String get slashCommandUnavailableDuringTask =>
       _text('slashCommandUnavailableDuringTask');
   String get slashCommandUnavailableInSideConversation =>
@@ -918,6 +921,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandGroup.debug': 'Debug',
     'slashCommandArgs': 'Args: {hint}',
     'slashCommandNotSentAsPrompt': 'Not sent as a prompt',
+    'slashCommandSendAsText': 'Send as text',
+    'slashCommandWillSendAsPrompt': 'Will be sent as a prompt',
     'slashCommandUnavailableDuringTask': 'Unavailable while a turn is active',
     'slashCommandUnavailableInSideConversation':
         'Unavailable in a side conversation',
@@ -1491,6 +1496,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandGroup.debug': '调试',
     'slashCommandArgs': '参数：{hint}',
     'slashCommandNotSentAsPrompt': '不会作为普通提示词发送',
+    'slashCommandSendAsText': '作为文本发送',
+    'slashCommandWillSendAsPrompt': '将作为普通提示词发送',
     'slashCommandUnavailableDuringTask': '当前回合运行中不可用',
     'slashCommandUnavailableInSideConversation': '侧聊中不可用',
     'slashCommandRisk': '风险',
