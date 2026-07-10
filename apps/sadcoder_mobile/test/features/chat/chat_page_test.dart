@@ -2435,10 +2435,13 @@ void main() {
     expect(find.text('Theme'), findsWidgets);
     await tester.tap(find.text('Dark').last);
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('chat-color-palette-candy')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('chat-theme-command-apply')));
     await tester.pumpAndSettle();
 
     expect(appearanceController.theme, AppThemePreference.dark);
+    expect(appearanceController.colorPalette, AppColorPalette.candy);
     expect(find.text('Theme updated.'), findsOneWidget);
   });
 

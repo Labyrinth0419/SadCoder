@@ -248,6 +248,33 @@ void main() {
     expect(appearanceController.theme, AppThemePreference.dark);
   });
 
+  testWidgets('updates app color palette from settings', (tester) async {
+    final overrideController = CodexConfigOverrideController();
+    final appearanceController = AppAppearanceController();
+    addTearDown(overrideController.dispose);
+    addTearDown(appearanceController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      appearanceController: appearanceController,
+    );
+
+    expect(appearanceController.colorPalette, AppColorPalette.sadcoder);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-color-palette-candy')),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-color-palette-candy')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(appearanceController.colorPalette, AppColorPalette.candy);
+  });
+
   testWidgets('toggles unavailable slash command display from settings', (
     tester,
   ) async {

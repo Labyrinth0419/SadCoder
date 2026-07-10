@@ -1,5 +1,62 @@
 import 'package:flutter/material.dart';
 
+import '../appearance/app_appearance_controller.dart';
+
+ThemeData sadCoderThemeData({
+  required AppColorPalette colorPalette,
+  required Brightness brightness,
+}) {
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: sadCoderColorScheme(
+      colorPalette: colorPalette,
+      brightness: brightness,
+    ),
+    extensions: [
+      brightness == Brightness.dark
+          ? SadCoderThemeColors.dark
+          : SadCoderThemeColors.light,
+    ],
+  );
+}
+
+ColorScheme sadCoderColorScheme({
+  required AppColorPalette colorPalette,
+  required Brightness brightness,
+}) {
+  final base = ColorScheme.fromSeed(
+    seedColor: colorPalette.seedColor,
+    brightness: brightness,
+  );
+  return switch (colorPalette) {
+    AppColorPalette.sadcoder => base,
+    AppColorPalette.candy => base.copyWith(
+      secondary: brightness == Brightness.dark
+          ? const Color(0xFFFFC857)
+          : const Color(0xFF9C6B00),
+      tertiary: brightness == Brightness.dark
+          ? const Color(0xFF67E8F9)
+          : const Color(0xFF007C91),
+    ),
+    AppColorPalette.lagoon => base.copyWith(
+      secondary: brightness == Brightness.dark
+          ? const Color(0xFF2DD4BF)
+          : const Color(0xFF00796B),
+      tertiary: brightness == Brightness.dark
+          ? const Color(0xFF86EFAC)
+          : const Color(0xFF237A3B),
+    ),
+    AppColorPalette.ember => base.copyWith(
+      secondary: brightness == Brightness.dark
+          ? const Color(0xFFFFC971)
+          : const Color(0xFF8B5A00),
+      tertiary: brightness == Brightness.dark
+          ? const Color(0xFFC4B5FD)
+          : const Color(0xFF5B35B1),
+    ),
+  };
+}
+
 class SadCoderThemeColors extends ThemeExtension<SadCoderThemeColors> {
   const SadCoderThemeColors({
     required this.codeBackground,

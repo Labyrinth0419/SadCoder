@@ -17,6 +17,15 @@ void main() {
     expect(AppThemePreference.parse('unknown'), isNull);
   });
 
+  test('color palette parses command values', () {
+    expect(AppColorPalette.parse('sadcoder'), AppColorPalette.sadcoder);
+    expect(AppColorPalette.parse('default'), AppColorPalette.sadcoder);
+    expect(AppColorPalette.parse('candy'), AppColorPalette.candy);
+    expect(AppColorPalette.parse('ocean'), AppColorPalette.lagoon);
+    expect(AppColorPalette.parse('warm'), AppColorPalette.ember);
+    expect(AppColorPalette.parse('unknown'), isNull);
+  });
+
   test('controller notifies when theme changes', () {
     final controller = AppAppearanceController();
     addTearDown(controller.dispose);
@@ -28,6 +37,19 @@ void main() {
 
     expect(controller.theme, AppThemePreference.dark);
     expect(controller.themeMode, ThemeMode.dark);
+    expect(notifications, 1);
+  });
+
+  test('controller notifies when color palette changes', () {
+    final controller = AppAppearanceController();
+    addTearDown(controller.dispose);
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+
+    controller.setColorPalette(AppColorPalette.candy);
+    controller.setColorPalette(AppColorPalette.candy);
+
+    expect(controller.colorPalette, AppColorPalette.candy);
     expect(notifications, 1);
   });
 

@@ -11,6 +11,7 @@ import '../../diagnostics/diagnostic_log_export_controller.dart';
 import '../../i18n/app_localizations.dart';
 import '../../models/model_list_controller.dart';
 import '../../security/permission_risk.dart';
+import '../appearance/app_color_palette_picker.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
@@ -460,6 +461,22 @@ class _AppearanceSettingsContent extends StatelessWidget {
               onSelectionChanged: (selection) {
                 controller.setTheme(selection.single);
               },
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l10n.colorPalette,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l10n.colorPaletteBody,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            AppColorPalettePicker(
+              keyPrefix: 'settings-color-palette',
+              selectedPalette: controller.colorPalette,
+              onSelected: controller.setColorPalette,
             ),
             const SizedBox(height: 12),
             SwitchListTile(

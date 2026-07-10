@@ -65,11 +65,10 @@ class _SadCoderAppState extends State<SadCoderApp> {
 
   @override
   Widget build(BuildContext context) {
-    const seed = Color(0xFF0F766E);
-
     return AnimatedBuilder(
       animation: _appearanceController,
       builder: (context, _) {
+        final colorPalette = _appearanceController.colorPalette;
         return MaterialApp(
           onGenerateTitle: (context) => context.l10n.appTitle,
           debugShowCheckedModeBanner: false,
@@ -82,18 +81,13 @@ class _SadCoderAppState extends State<SadCoderApp> {
           ],
           supportedLocales: AppLocalizations.supportedLocales,
           themeMode: _appearanceController.themeMode,
-          theme: ThemeData(
-            useMaterial3: true,
-            colorScheme: ColorScheme.fromSeed(seedColor: seed),
-            extensions: const [SadCoderThemeColors.light],
+          theme: sadCoderThemeData(
+            colorPalette: colorPalette,
+            brightness: Brightness.light,
           ),
-          darkTheme: ThemeData(
-            useMaterial3: true,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: seed,
-              brightness: Brightness.dark,
-            ),
-            extensions: const [SadCoderThemeColors.dark],
+          darkTheme: sadCoderThemeData(
+            colorPalette: colorPalette,
+            brightness: Brightness.dark,
           ),
           home: AppShell(
             appearanceController: _appearanceController,

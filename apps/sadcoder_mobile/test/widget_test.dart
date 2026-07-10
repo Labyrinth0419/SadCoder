@@ -75,6 +75,7 @@ void main() {
   testWidgets('applies injected appearance theme mode', (tester) async {
     final appearanceController = AppAppearanceController(
       theme: AppThemePreference.dark,
+      colorPalette: AppColorPalette.candy,
     );
     addTearDown(appearanceController.dispose);
 
@@ -92,6 +93,17 @@ void main() {
       SadCoderThemeColors.dark,
     );
     expect(app.themeMode, ThemeMode.dark);
+    expect(
+      app.theme?.colorScheme.primary,
+      isNot(app.darkTheme?.colorScheme.primary),
+    );
+    expect(
+      app.theme?.colorScheme,
+      sadCoderColorScheme(
+        colorPalette: AppColorPalette.candy,
+        brightness: Brightness.light,
+      ),
+    );
 
     appearanceController.setTheme(AppThemePreference.light);
     await tester.pump();
@@ -99,6 +111,17 @@ void main() {
     expect(
       tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
       ThemeMode.light,
+    );
+
+    appearanceController.setColorPalette(AppColorPalette.lagoon);
+    await tester.pump();
+
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).theme?.colorScheme,
+      sadCoderColorScheme(
+        colorPalette: AppColorPalette.lagoon,
+        brightness: Brightness.light,
+      ),
     );
 
     appearanceController.setTheme(AppThemePreference.system);

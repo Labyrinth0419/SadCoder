@@ -34,6 +34,69 @@ extension AppThemePreferenceMode on AppThemePreference {
   }
 }
 
+enum AppColorPalette {
+  sadcoder,
+  candy,
+  lagoon,
+  ember;
+
+  static AppColorPalette? parse(String value) {
+    return switch (value.trim().toLowerCase()) {
+      '' => null,
+      'sadcoder' || 'default' => AppColorPalette.sadcoder,
+      'candy' || 'sweet' => AppColorPalette.candy,
+      'lagoon' || 'blue' || 'ocean' => AppColorPalette.lagoon,
+      'ember' || 'warm' => AppColorPalette.ember,
+      _ => null,
+    };
+  }
+}
+
+extension AppColorPaletteValues on AppColorPalette {
+  String get commandValue {
+    return switch (this) {
+      AppColorPalette.sadcoder => 'sadcoder',
+      AppColorPalette.candy => 'candy',
+      AppColorPalette.lagoon => 'lagoon',
+      AppColorPalette.ember => 'ember',
+    };
+  }
+
+  Color get seedColor {
+    return switch (this) {
+      AppColorPalette.sadcoder => const Color(0xFF0F766E),
+      AppColorPalette.candy => const Color(0xFFE85D9E),
+      AppColorPalette.lagoon => const Color(0xFF2563EB),
+      AppColorPalette.ember => const Color(0xFFC2410C),
+    };
+  }
+
+  List<Color> get swatchColors {
+    return switch (this) {
+      AppColorPalette.sadcoder => const [
+        Color(0xFF0F766E),
+        Color(0xFF14B8A6),
+        Color(0xFF334155),
+      ],
+      AppColorPalette.candy => const [
+        Color(0xFFE85D9E),
+        Color(0xFFFFB703),
+        Color(0xFF00B4D8),
+      ],
+      AppColorPalette.lagoon => const [
+        Color(0xFF2563EB),
+        Color(0xFF06B6D4),
+        Color(0xFF22C55E),
+      ],
+      AppColorPalette.ember => const [
+        Color(0xFFC2410C),
+        Color(0xFFF59E0B),
+        Color(0xFF7C3AED),
+      ],
+    };
+  }
+}
+
 enum AppComposerInputMode { standard, vim }
 
 enum AppComposerSendShortcut {
@@ -88,6 +151,7 @@ enum AppTerminalPetPreference {
 class AppAppearanceController extends ChangeNotifier {
   AppAppearanceController({
     AppThemePreference theme = AppThemePreference.system,
+    AppColorPalette colorPalette = AppColorPalette.sadcoder,
     AppTitleDisplaySettings titleDisplay = AppTitleDisplaySettings.defaults,
     AppStatusLineDisplaySettings statusLineDisplay =
         AppStatusLineDisplaySettings.defaults,
@@ -98,6 +162,7 @@ class AppAppearanceController extends ChangeNotifier {
         AppTerminalPetPreference.tuiOnly,
     bool showUnavailableSlashCommands = false,
   }) : _theme = theme,
+       _colorPalette = colorPalette,
        _titleDisplay = titleDisplay,
        _statusLineDisplay = statusLineDisplay,
        _composerInputMode = composerInputMode,
@@ -106,6 +171,7 @@ class AppAppearanceController extends ChangeNotifier {
        _showUnavailableSlashCommands = showUnavailableSlashCommands;
 
   AppThemePreference _theme;
+  AppColorPalette _colorPalette;
   AppTitleDisplaySettings _titleDisplay;
   AppStatusLineDisplaySettings _statusLineDisplay;
   AppComposerInputMode _composerInputMode;
@@ -114,6 +180,8 @@ class AppAppearanceController extends ChangeNotifier {
   bool _showUnavailableSlashCommands;
 
   AppThemePreference get theme => _theme;
+
+  AppColorPalette get colorPalette => _colorPalette;
 
   ThemeMode get themeMode => _theme.themeMode;
 
@@ -134,6 +202,14 @@ class AppAppearanceController extends ChangeNotifier {
       return;
     }
     _theme = theme;
+    notifyListeners();
+  }
+
+  void setColorPalette(AppColorPalette colorPalette) {
+    if (_colorPalette == colorPalette) {
+      return;
+    }
+    _colorPalette = colorPalette;
     notifyListeners();
   }
 

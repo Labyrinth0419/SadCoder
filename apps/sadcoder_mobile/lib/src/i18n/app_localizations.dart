@@ -379,6 +379,9 @@ class AppLocalizations {
   String get themeSystem => _text('themeSystem');
   String get themeLight => _text('themeLight');
   String get themeDark => _text('themeDark');
+  String get colorPalette => _text('colorPalette');
+  String get colorPaletteBody => _text('colorPaletteBody');
+  String colorPaletteLabel(String palette) => _text('colorPalette.$palette');
   String get backgroundConnectionKeepActiveTurn =>
       _text('backgroundConnectionKeepActiveTurn');
   String get backgroundConnectionKeepActiveTurnBody =>
@@ -1114,6 +1117,13 @@ const _values = <String, Map<String, String>>{
     'themeSystem': 'System',
     'themeLight': 'Light',
     'themeDark': 'Dark',
+    'colorPalette': 'Color palette',
+    'colorPaletteBody':
+        'Choose an app accent palette while code, diff, and terminal colors stay semantic.',
+    'colorPalette.sadcoder': 'SadCoder',
+    'colorPalette.candy': 'Candy',
+    'colorPalette.lagoon': 'Lagoon',
+    'colorPalette.ember': 'Ember',
     'backgroundConnectionKeepActiveTurn':
         'Keep active turns connected in background',
     'backgroundConnectionKeepActiveTurnBody':
@@ -1365,7 +1375,7 @@ const _values = <String, Map<String, String>>{
     'debugConfigLayers': 'Config layers: {count}',
     'debugConfigLayer': 'Layer {index}',
     'theme': 'Theme',
-    'themeBody': 'System, light, and dark modes are supported.',
+    'themeBody': 'System, light, dark, and accent palettes are supported.',
     'workspaceFilesTitle': 'Workspace files',
     'workspaceFilesRoot': 'Root: {root}',
     'workspaceFilesNotConnected': 'Connect to a host to browse files.',
@@ -1697,6 +1707,12 @@ const _values = <String, Map<String, String>>{
     'themeSystem': '跟随系统',
     'themeLight': '浅色',
     'themeDark': '深色',
+    'colorPalette': '配色方案',
+    'colorPaletteBody': '选择 App 强调色方案；代码、diff 和终端颜色仍保持语义配色。',
+    'colorPalette.sadcoder': 'SadCoder',
+    'colorPalette.candy': '糖果',
+    'colorPalette.lagoon': '泻湖',
+    'colorPalette.ember': '余烬',
     'backgroundConnectionKeepActiveTurn': '后台保持 active turn 连接',
     'backgroundConnectionKeepActiveTurnBody':
         '开启后，App 进入后台时会尽量继续观察 active turn。关闭后会断开观察连接，下次连接时回填状态。',
@@ -1942,7 +1958,7 @@ const _values = <String, Map<String, String>>{
     'debugConfigLayers': '配置层：{count}',
     'debugConfigLayer': '第 {index} 层',
     'theme': '主题',
-    'themeBody': '支持跟随系统、浅色和深色模式。',
+    'themeBody': '支持跟随系统、浅色、深色和强调配色方案。',
     'workspaceFilesTitle': '工作区文件',
     'workspaceFilesRoot': '根目录：{root}',
     'workspaceFilesNotConnected': '连接主机后浏览文件。',
