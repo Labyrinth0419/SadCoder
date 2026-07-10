@@ -52,6 +52,58 @@ void main() {
     expect(status.reconnectCache.recentEvents, 7);
   });
 
+  test('readStatus parses snake_case sadcoder-agent status JSON', () async {
+    final runner = _FakeRunner(
+      result: const RemoteCommandResult(
+        exitCode: 0,
+        stdout: '''
+{
+  "agent_version": "0.2.0",
+  "platform_os": "windows",
+  "platform_arch": "x64",
+  "codex_path": "codex.exe",
+  "codex_available": true,
+  "codex_version": "codex-cli 0.143.0",
+  "backend": {
+    "kind": "codex-app-server-daemon",
+    "state": "not-started",
+    "detail": "daemon stopped"
+  },
+  "reconnect_cache": {
+    "state_path": "C:/Users/tester/AppData/Local/SadCoder/agent-state.json",
+    "schema_version": 2,
+    "pending_approvals": 3,
+    "recent_events": 9,
+    "load_error": "cache warning"
+  }
+}
+''',
+        stderr: '',
+      ),
+    );
+    final service = AgentRemoteService(runner);
+
+    final status = await service.readStatus(_profile);
+
+    expect(status.agentVersion, '0.2.0');
+    expect(status.platformOs, 'windows');
+    expect(status.platformArch, 'x64');
+    expect(status.codexPath, 'codex.exe');
+    expect(status.codexAvailable, true);
+    expect(status.codexVersion, 'codex-cli 0.143.0');
+    expect(status.backendKind, BackendKind.codexAppServerDaemon);
+    expect(status.backendState, BackendState.notStarted);
+    expect(status.backendDetail, 'daemon stopped');
+    expect(
+      status.reconnectCache.statePath,
+      'C:/Users/tester/AppData/Local/SadCoder/agent-state.json',
+    );
+    expect(status.reconnectCache.schemaVersion, 2);
+    expect(status.reconnectCache.pendingApprovals, 3);
+    expect(status.reconnectCache.recentEvents, 9);
+    expect(status.reconnectCache.loadError, 'cache warning');
+  });
+
   test('readStatus throws on failed command', () async {
     final service = AgentRemoteService(
       _FakeRunner(
@@ -162,6 +214,44 @@ void main() {
       'item/commandExecution/requestApproval',
     );
     expect(snapshot.recentEvents.single.method, 'thread/item');
+  });
+
+  test('readSnapshot parses snake_case cached payloads', () async {
+    final runner = _FakeRunner(
+      result: const RemoteCommandResult(
+        exitCode: 0,
+        stdout: '''
+{
+  "schema_version": 2,
+  "pending_approvals": [
+    {
+      "id": "approval-2",
+      "method": "item/fileChange/requestApproval",
+      "params": { "path": "lib/main.dart" }
+    }
+  ],
+  "recent_events": [
+    {
+      "method": "thread/turn/completed",
+      "params": { "thread_id": "thr_2" }
+    }
+  ]
+}
+''',
+        stderr: '',
+      ),
+    );
+    final service = AgentRemoteService(runner);
+
+    final snapshot = await service.readSnapshot(_profile);
+
+    expect(snapshot.schemaVersion, 2);
+    expect(snapshot.pendingApprovals.single.id, 'approval-2');
+    expect(
+      snapshot.pendingApprovals.single.method,
+      'item/fileChange/requestApproval',
+    );
+    expect(snapshot.recentEvents.single.method, 'thread/turn/completed');
   });
 }
 

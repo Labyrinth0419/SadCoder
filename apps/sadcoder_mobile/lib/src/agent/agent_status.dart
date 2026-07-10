@@ -39,17 +39,23 @@ class AgentStatus {
   factory AgentStatus.fromJson(Map<String, Object?> json) {
     final backend = _stringKeyedMap(json['backend']);
     return AgentStatus(
-      agentVersion: json['agentVersion'] as String? ?? 'unknown',
-      platformOs: json['platformOs'] as String? ?? 'unknown',
-      platformArch: json['platformArch'] as String? ?? 'unknown',
-      codexPath: json['codexPath'] as String? ?? 'codex',
-      codexAvailable: json['codexAvailable'] as bool? ?? false,
-      codexVersion: json['codexVersion'] as String?,
-      backendKind: BackendKind.fromWire(backend['kind'] as String? ?? ''),
-      backendState: BackendState.fromWire(backend['state'] as String? ?? ''),
-      backendDetail: backend['detail'] as String?,
+      agentVersion:
+          _stringField(json, ['agentVersion', 'agent_version']) ?? 'unknown',
+      platformOs:
+          _stringField(json, ['platformOs', 'platform_os']) ?? 'unknown',
+      platformArch:
+          _stringField(json, ['platformArch', 'platform_arch']) ?? 'unknown',
+      codexPath: _stringField(json, ['codexPath', 'codex_path']) ?? 'codex',
+      codexAvailable:
+          _boolField(json, ['codexAvailable', 'codex_available']) ?? false,
+      codexVersion: _stringField(json, ['codexVersion', 'codex_version']),
+      backendKind: BackendKind.fromWire(_stringValue(backend['kind']) ?? ''),
+      backendState: BackendState.fromWire(_stringValue(backend['state']) ?? ''),
+      backendDetail: _stringValue(backend['detail']),
       reconnectCache: AgentReconnectCacheStatus.fromJson(
-        _stringKeyedMap(json['reconnectCache']),
+        _stringKeyedMap(
+          _valueField(json, ['reconnectCache', 'reconnect_cache']),
+        ),
       ),
     );
   }
@@ -77,11 +83,12 @@ class AgentReconnectCacheStatus {
 
   factory AgentReconnectCacheStatus.fromJson(Map<String, Object?> json) {
     return AgentReconnectCacheStatus(
-      statePath: json['statePath'] as String? ?? '',
-      schemaVersion: _intValue(json['schemaVersion']) ?? 1,
-      pendingApprovals: _intValue(json['pendingApprovals']) ?? 0,
-      recentEvents: _intValue(json['recentEvents']) ?? 0,
-      loadError: json['loadError'] as String?,
+      statePath: _stringField(json, ['statePath', 'state_path']) ?? '',
+      schemaVersion: _intField(json, ['schemaVersion', 'schema_version']) ?? 1,
+      pendingApprovals:
+          _intField(json, ['pendingApprovals', 'pending_approvals']) ?? 0,
+      recentEvents: _intField(json, ['recentEvents', 'recent_events']) ?? 0,
+      loadError: _stringField(json, ['loadError', 'load_error']),
     );
   }
 
@@ -102,12 +109,63 @@ Map<String, Object?> _stringKeyedMap(Object? value) {
   return const {};
 }
 
+String? _stringValue(Object? value) {
+  if (value is String && value.trim().isNotEmpty) {
+    return value.trim();
+  }
+  return null;
+}
+
+String? _stringField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _stringValue(map[key]);
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
+}
+
+bool? _boolValue(Object? value) {
+  return value is bool ? value : null;
+}
+
+bool? _boolField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _boolValue(map[key]);
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
+}
+
 int? _intValue(Object? value) {
   if (value is int) {
     return value;
   }
   if (value is num) {
     return value.toInt();
+  }
+  return null;
+}
+
+int? _intField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _intValue(map[key]);
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
+}
+
+Object? _valueField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = map[key];
+    if (value != null) {
+      return value;
+    }
   }
   return null;
 }
