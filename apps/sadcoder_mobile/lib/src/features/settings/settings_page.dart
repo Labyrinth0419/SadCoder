@@ -38,7 +38,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  _SettingsSection _selectedSection = _SettingsSection.permissions;
+  _SettingsSection? _selectedSection;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +47,8 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (context, constraints) {
         final useWideLayout = constraints.maxWidth >= 720;
         if (useWideLayout) {
+          final selectedSection =
+              _selectedSection ?? _SettingsSection.permissions;
           return Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -61,7 +63,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     const SizedBox(height: 12),
                     _SettingsSectionMenu(
-                      selectedSection: _selectedSection,
+                      selectedSection: selectedSection,
                       onSelected: _selectSection,
                     ),
                   ],
@@ -71,9 +73,23 @@ class _SettingsPageState extends State<SettingsPage> {
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.all(16),
-                  children: _sectionContent(context),
+                  children: _sectionContent(context, selectedSection),
                 ),
               ),
+            ],
+          );
+        }
+        final selectedSection = _selectedSection;
+        if (selectedSection != null) {
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _SettingsDetailHeader(
+                section: selectedSection,
+                onBack: _showSectionMenu,
+              ),
+              const SizedBox(height: 12),
+              ..._sectionContent(context, selectedSection),
             ],
           );
         }
@@ -86,11 +102,9 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 12),
             _SettingsSectionMenu(
-              selectedSection: _selectedSection,
+              selectedSection: null,
               onSelected: _selectSection,
             ),
-            const SizedBox(height: 12),
-            ..._sectionContent(context),
           ],
         );
       },
@@ -104,9 +118,13 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _selectedSection = section);
   }
 
-  List<Widget> _sectionContent(BuildContext context) {
+  void _showSectionMenu() {
+    setState(() => _selectedSection = null);
+  }
+
+  List<Widget> _sectionContent(BuildContext context, _SettingsSection section) {
     final l10n = context.l10n;
-    return switch (_selectedSection) {
+    return switch (section) {
       _SettingsSection.permissions => [
         Card(
           child: ListTile(
@@ -191,58 +209,112 @@ enum _SettingsSection {
   diagnostics,
 }
 
+String _labelForSection(BuildContext context, _SettingsSection section) {
+  final l10n = context.l10n;
+  return switch (section) {
+    _SettingsSection.permissions => l10n.settingsSectionPermissions,
+    _SettingsSection.account => l10n.settingsSectionAccount,
+    _SettingsSection.models => l10n.settingsSectionModels,
+    _SettingsSection.appearance => l10n.settingsSectionAppearance,
+    _SettingsSection.ssh => l10n.settingsSectionSsh,
+    _SettingsSection.diagnostics => l10n.settingsSectionDiagnostics,
+  };
+}
+
+IconData _iconForSection(_SettingsSection section) {
+  return switch (section) {
+    _SettingsSection.permissions => Icons.admin_panel_settings_outlined,
+    _SettingsSection.account => Icons.account_circle_outlined,
+    _SettingsSection.models => Icons.memory_outlined,
+    _SettingsSection.appearance => Icons.palette_outlined,
+    _SettingsSection.ssh => Icons.settings_ethernet_outlined,
+    _SettingsSection.diagnostics => Icons.article_outlined,
+  };
+}
+
 class _SettingsSectionMenu extends StatelessWidget {
   const _SettingsSectionMenu({
     required this.selectedSection,
     required this.onSelected,
   });
 
-  final _SettingsSection selectedSection;
+  final _SettingsSection? selectedSection;
   final ValueChanged<_SettingsSection> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final section in _SettingsSection.values)
-          ChoiceChip(
-            key: ValueKey('settings-section-${section.name}'),
-            avatar: Icon(_iconFor(section), size: 18),
-            label: Text(_labelFor(context, section)),
-            selected: selectedSection == section,
-            onSelected: (selected) {
-              if (selected) {
-                onSelected(section);
-              }
-            },
-          ),
-      ],
+    return Card(
+      child: Column(
+        children: [
+          for (final section in _SettingsSection.values)
+            _SettingsSectionTile(
+              tileKey: ValueKey('settings-section-${section.name}'),
+              icon: _iconForSection(section),
+              label: _labelForSection(context, section),
+              selected: selectedSection == section,
+              onTap: () => onSelected(section),
+            ),
+        ],
+      ),
     );
   }
+}
 
-  String _labelFor(BuildContext context, _SettingsSection section) {
-    final l10n = context.l10n;
-    return switch (section) {
-      _SettingsSection.permissions => l10n.settingsSectionPermissions,
-      _SettingsSection.account => l10n.settingsSectionAccount,
-      _SettingsSection.models => l10n.settingsSectionModels,
-      _SettingsSection.appearance => l10n.settingsSectionAppearance,
-      _SettingsSection.ssh => l10n.settingsSectionSsh,
-      _SettingsSection.diagnostics => l10n.settingsSectionDiagnostics,
-    };
+class _SettingsSectionTile extends StatelessWidget {
+  const _SettingsSectionTile({
+    required this.tileKey,
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Key tileKey;
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      key: tileKey,
+      leading: Icon(icon),
+      title: Text(label),
+      selected: selected,
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
+    );
   }
+}
 
-  IconData _iconFor(_SettingsSection section) {
-    return switch (section) {
-      _SettingsSection.permissions => Icons.admin_panel_settings_outlined,
-      _SettingsSection.account => Icons.account_circle_outlined,
-      _SettingsSection.models => Icons.memory_outlined,
-      _SettingsSection.appearance => Icons.palette_outlined,
-      _SettingsSection.ssh => Icons.settings_ethernet_outlined,
-      _SettingsSection.diagnostics => Icons.article_outlined,
-    };
+class _SettingsDetailHeader extends StatelessWidget {
+  const _SettingsDetailHeader({required this.section, required this.onBack});
+
+  final _SettingsSection section;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        IconButton(
+          key: const ValueKey('settings-section-back'),
+          onPressed: onBack,
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: const Icon(Icons.arrow_back),
+        ),
+        const SizedBox(width: 8),
+        Icon(_iconForSection(section)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            _labelForSection(context, section),
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+        ),
+      ],
+    );
   }
 }
 

@@ -64,6 +64,57 @@ void main() {
     );
   });
 
+  testWidgets('uses a two-level settings menu on narrow screens', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final controller = CodexConfigOverrideController();
+    final appearanceController = AppAppearanceController();
+    addTearDown(controller.dispose);
+    addTearDown(appearanceController.dispose);
+
+    await _pumpSettings(
+      tester,
+      controller,
+      appearanceController: appearanceController,
+    );
+
+    expect(find.text('Settings'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('settings-section-account')),
+      findsOneWidget,
+    );
+    expect(find.text('Server defaults'), findsNothing);
+    expect(find.byKey(const ValueKey('settings-theme-selector')), findsNothing);
+
+    await _openSettingsSection(tester, 'appearance');
+
+    expect(find.text('Appearance'), findsOneWidget);
+    expect(find.byKey(const ValueKey('settings-section-back')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('settings-theme-selector')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('settings-section-account')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('settings-section-back')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('settings-section-account')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('settings-theme-selector')), findsNothing);
+  });
+
   testWidgets('applies and clears app default config overrides', (
     tester,
   ) async {
