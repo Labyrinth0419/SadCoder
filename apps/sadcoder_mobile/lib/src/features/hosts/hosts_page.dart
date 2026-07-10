@@ -1833,7 +1833,7 @@ class _ProbeStepTile extends StatelessWidget {
     M0ProbeSuggestion.updateCodex => l10n.probeSuggestionUpdateCodex,
     M0ProbeSuggestion.installAgent => l10n.probeSuggestionInstallAgent,
     M0ProbeSuggestion.startAgent => l10n.probeSuggestionStartAgent,
-    M0ProbeSuggestion.checkDaemon => l10n.probeSuggestionCheckDaemon,
+    M0ProbeSuggestion.checkBackend => l10n.probeSuggestionCheckBackend,
     M0ProbeSuggestion.loginCodex => l10n.probeSuggestionLoginCodex,
     M0ProbeSuggestion.checkCwdOrPermissions =>
       l10n.probeSuggestionCheckCwdOrPermissions,

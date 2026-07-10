@@ -128,7 +128,8 @@ class AppLocalizations {
   String get probeSuggestionInstallAgent =>
       _text('probeSuggestionInstallAgent');
   String get probeSuggestionStartAgent => _text('probeSuggestionStartAgent');
-  String get probeSuggestionCheckDaemon => _text('probeSuggestionCheckDaemon');
+  String get probeSuggestionCheckBackend =>
+      _text('probeSuggestionCheckBackend');
   String get probeSuggestionLoginCodex => _text('probeSuggestionLoginCodex');
   String get probeSuggestionCheckCwdOrPermissions =>
       _text('probeSuggestionCheckCwdOrPermissions');
@@ -956,8 +957,8 @@ const _values = <String, Map<String, String>>{
         'Install sadcoder-agent or fix the agent command path.',
     'probeSuggestionStartAgent':
         'Start the agent/backend and check its service logs.',
-    'probeSuggestionCheckDaemon':
-        'Check the Codex daemon, Windows service, or Linux fallback status.',
+    'probeSuggestionCheckBackend':
+        'Check the SadCoder agent service/backend status and logs.',
     'probeSuggestionLoginCodex':
         'Run codex login or configure an API key on the remote host.',
     'probeSuggestionCheckCwdOrPermissions':
@@ -966,7 +967,7 @@ const _values = <String, Map<String, String>>{
         'Check sadcoder-agent proxy and backend logs, then retry.',
     'backend': 'Backend',
     'backendAgentService': 'agent service',
-    'backendDaemon': 'daemon',
+    'backendDaemon': 'legacy daemon',
     'backendStdioFallback': 'stdio fallback',
     'backendUnknown': 'unknown',
     'reconnectCacheSummary':
@@ -1609,14 +1610,14 @@ const _values = <String, Map<String, String>>{
     'probeSuggestionUpdateCodex': '将 Codex 更新到受支持版本。',
     'probeSuggestionInstallAgent': '安装 sadcoder-agent，或修正 Agent 命令路径。',
     'probeSuggestionStartAgent': '启动 agent/backend，并检查服务日志。',
-    'probeSuggestionCheckDaemon':
-        '检查 Codex daemon、Windows service 或 Linux fallback 状态。',
+    'probeSuggestionCheckBackend':
+        '检查 SadCoder agent service/backend 状态和日志。',
     'probeSuggestionLoginCodex': '在远端主机运行 codex login，或配置 API key。',
     'probeSuggestionCheckCwdOrPermissions': '检查配置的 cwd 和远端文件权限。',
     'probeSuggestionRetryProxy': '检查 sadcoder-agent proxy 和 backend 日志后重试。',
     'backend': '后端',
     'backendAgentService': 'agent service',
-    'backendDaemon': 'daemon',
+    'backendDaemon': '旧 daemon',
     'backendStdioFallback': 'stdio fallback',
     'backendUnknown': '未知',
     'reconnectCacheSummary':

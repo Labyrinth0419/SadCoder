@@ -30,7 +30,7 @@ enum M0ProbeSuggestion {
   updateCodex,
   installAgent,
   startAgent,
-  checkDaemon,
+  checkBackend,
   loginCodex,
   checkCwdOrPermissions,
   retryProxy,

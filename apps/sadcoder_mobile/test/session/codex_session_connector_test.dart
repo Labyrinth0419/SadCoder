@@ -185,9 +185,9 @@ const _readyStatus = AgentStatus(
   platformArch: 'x86_64',
   codexPath: 'codex',
   codexAvailable: true,
-  backendKind: BackendKind.codexAppServerDaemon,
+  backendKind: BackendKind.sadcoderAgentService,
   backendState: BackendState.ready,
-  backendDetail: 'daemon ready',
+  backendDetail: 'SadCoder service ready',
 );
 
 const _notStartedStatus = AgentStatus(
@@ -196,9 +196,9 @@ const _notStartedStatus = AgentStatus(
   platformArch: 'x86_64',
   codexPath: 'codex',
   codexAvailable: true,
-  backendKind: BackendKind.codexAppServerDaemon,
+  backendKind: BackendKind.sadcoderAgentService,
   backendState: BackendState.notStarted,
-  backendDetail: 'daemon not started',
+  backendDetail: 'SadCoder service not started',
 );
 
 const _unavailableStatus = AgentStatus(

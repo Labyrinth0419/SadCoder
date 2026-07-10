@@ -59,9 +59,9 @@ void main() {
 
   test('run starts a not-started backend before proxy connect', () async {
     final connector = _LineServerProxyConnector();
-    final starter = _FakeStartRunner(_readyDaemonStatus);
+    final starter = _FakeStartRunner(_readyServiceStatus);
     final coordinator = _coordinator(
-      statusReader: _FakeStatusReader(_notStartedDaemonStatus),
+      statusReader: _FakeStatusReader(_notStartedServiceStatus),
       startRunner: starter,
       proxyConnector: connector,
     );
@@ -69,7 +69,7 @@ void main() {
     final report = await coordinator.run(_profile);
 
     expect(report.ok, true);
-    expect(report.agentStatus, _readyDaemonStatus);
+    expect(report.agentStatus, _readyServiceStatus);
     expect(starter.startedProfiles, [_profile]);
     expect(report.steps.map((step) => step.step), [
       M0ProbeStep.tcpConnect,
@@ -95,7 +95,7 @@ void main() {
   test('run stops before proxy when backend start fails', () async {
     final connector = _LineServerProxyConnector();
     final coordinator = _coordinator(
-      statusReader: _FakeStatusReader(_notStartedDaemonStatus),
+      statusReader: _FakeStatusReader(_notStartedServiceStatus),
       startRunner: const _FailingStartRunner('start failed'),
       proxyConnector: connector,
     );
@@ -103,7 +103,7 @@ void main() {
     final report = await coordinator.run(_profile);
 
     expect(report.ok, false);
-    expect(report.agentStatus, _notStartedDaemonStatus);
+    expect(report.agentStatus, _notStartedServiceStatus);
     expect(report.steps.map((step) => step.step), [
       M0ProbeStep.tcpConnect,
       M0ProbeStep.sshHandshake,
@@ -400,28 +400,28 @@ const _readyStatus = AgentStatus(
   backendState: BackendState.ready,
 );
 
-const _notStartedDaemonStatus = AgentStatus(
+const _notStartedServiceStatus = AgentStatus(
   agentVersion: '0.1.0',
   platformOs: 'linux',
   platformArch: 'x86_64',
   codexPath: 'codex',
   codexAvailable: true,
   codexVersion: 'codex-cli 0.142.5',
-  backendKind: BackendKind.codexAppServerDaemon,
+  backendKind: BackendKind.sadcoderAgentService,
   backendState: BackendState.notStarted,
-  backendDetail: 'run sadcoder-agent start',
+  backendDetail: 'SadCoder service is not running; run sadcoder-agent start',
 );
 
-const _readyDaemonStatus = AgentStatus(
+const _readyServiceStatus = AgentStatus(
   agentVersion: '0.1.0',
   platformOs: 'linux',
   platformArch: 'x86_64',
   codexPath: 'codex',
   codexAvailable: true,
   codexVersion: 'codex-cli 0.142.5',
-  backendKind: BackendKind.codexAppServerDaemon,
+  backendKind: BackendKind.sadcoderAgentService,
   backendState: BackendState.ready,
-  backendDetail: 'official daemon backend is running',
+  backendDetail: 'SadCoder service is listening',
 );
 
 const _missingCodexStatus = AgentStatus(

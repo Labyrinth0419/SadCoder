@@ -65,9 +65,9 @@ void main() {
   "codex_available": true,
   "codex_version": "codex-cli 0.143.0",
   "backend": {
-    "kind": "codex-app-server-daemon",
+    "kind": "sadcoder-agent-service",
     "state": "not-started",
-    "detail": "daemon stopped"
+    "detail": "SadCoder service is not running"
   },
   "reconnect_cache": {
     "state_path": "C:/Users/tester/AppData/Local/SadCoder/agent-state.json",
@@ -91,9 +91,9 @@ void main() {
     expect(status.codexPath, 'codex.exe');
     expect(status.codexAvailable, true);
     expect(status.codexVersion, 'codex-cli 0.143.0');
-    expect(status.backendKind, BackendKind.codexAppServerDaemon);
+    expect(status.backendKind, BackendKind.sadcoderAgentService);
     expect(status.backendState, BackendState.notStarted);
-    expect(status.backendDetail, 'daemon stopped');
+    expect(status.backendDetail, 'SadCoder service is not running');
     expect(
       status.reconnectCache.statePath,
       'C:/Users/tester/AppData/Local/SadCoder/agent-state.json',
@@ -102,6 +102,36 @@ void main() {
     expect(status.reconnectCache.pendingApprovals, 3);
     expect(status.reconnectCache.recentEvents, 9);
     expect(status.reconnectCache.loadError, 'cache warning');
+  });
+
+  test('readStatus still parses legacy daemon backend JSON', () async {
+    final runner = _FakeRunner(
+      result: const RemoteCommandResult(
+        exitCode: 0,
+        stdout: '''
+{
+  "agentVersion": "0.1.0",
+  "platformOs": "linux",
+  "platformArch": "x86_64",
+  "codexPath": "codex",
+  "codexAvailable": true,
+  "backend": {
+    "kind": "codex-app-server-daemon",
+    "state": "not-started",
+    "detail": "daemon stopped"
+  }
+}
+''',
+        stderr: '',
+      ),
+    );
+    final service = AgentRemoteService(runner);
+
+    final status = await service.readStatus(_profile);
+
+    expect(status.backendKind, BackendKind.codexAppServerDaemon);
+    expect(status.backendState, BackendState.notStarted);
+    expect(status.backendDetail, 'daemon stopped');
   });
 
   test('readStatus throws on failed command', () async {
@@ -134,9 +164,9 @@ void main() {
   "codexAvailable": true,
   "codexVersion": "codex-cli 0.142.5",
   "backend": {
-    "kind": "codex-app-server-daemon",
+    "kind": "sadcoder-agent-service",
     "state": "ready",
-    "detail": "official daemon backend is running"
+    "detail": "SadCoder service is listening"
   },
   "reconnectCache": {
     "statePath": "/home/tester/.sadcoder/agent-state.json",
@@ -156,7 +186,7 @@ void main() {
 
     expect(runner.lastCommand, 'sadcoder-agent start --json');
     expect(runner.lastTimeout, const Duration(seconds: 60));
-    expect(status.backendKind, BackendKind.codexAppServerDaemon);
+    expect(status.backendKind, BackendKind.sadcoderAgentService);
     expect(status.backendState, BackendState.ready);
   });
 
