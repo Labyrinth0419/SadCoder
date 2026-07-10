@@ -4030,9 +4030,10 @@ class _TimelineItemView extends StatelessWidget {
         '${l10n.approvalWorkingDirectory}: ${item.cwd}',
       if (item.status != null && item.status!.isNotEmpty)
         '${l10n.timelineStatus}: ${item.status}',
-      if (item.exitCode != null) '${l10n.timelineExitCode}: ${item.exitCode}',
+      if (item.exitCode != null)
+        '${l10n.timelineExitCode}: ${l10n.formatNumber(item.exitCode!)}',
       if (item.durationMs != null)
-        '${l10n.timelineDuration}: ${item.durationMs} ms',
+        '${l10n.timelineDuration}: ${l10n.timelineDurationMilliseconds(item.durationMs!)}',
       if (item.server != null && item.server!.isNotEmpty)
         '${l10n.approvalServer}: ${item.server}',
       if (item.tool != null && item.tool!.isNotEmpty)

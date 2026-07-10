@@ -5721,6 +5721,7 @@ void main() {
     expect(find.text('cargo test'), findsOneWidget);
     expect(find.textContaining('Working directory: /repo'), findsOneWidget);
     expect(find.textContaining('Exit code: 0'), findsOneWidget);
+    expect(find.textContaining('Duration: 1,200 ms'), findsOneWidget);
     expect(find.text('tests passed'), findsOneWidget);
     final terminalBlock = tester.widget<Container>(
       find.byKey(const ValueKey('timeline-terminal-output')),

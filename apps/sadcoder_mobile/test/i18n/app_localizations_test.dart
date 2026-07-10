@@ -48,12 +48,14 @@ void main() {
     final en = await AppLocalizations.delegate.load(const Locale('en', 'US'));
     expect(en.tokenCount(1234), '1,234 tokens');
     expect(en.workspaceFilesLoadedBytes(1536, 1048576), '1.5 KB / 1 MB loaded');
+    expect(en.timelineDurationMilliseconds(1200), '1,200 ms');
     expect(en.rateLimitResetsAt(1730947200), contains('2024'));
     expect(en.rateLimitResetsAt(1730947200), isNot(contains('1730947200')));
 
     final zh = await AppLocalizations.delegate.load(const Locale('zh', 'CN'));
     expect(zh.tokenCount(1234), '1,234 个 token');
     expect(zh.workspaceFilesLoadedBytes(1536, 1048576), '已加载 1.5 KB / 1 MB');
+    expect(zh.timelineDurationMilliseconds(1200), '1,200 毫秒');
     expect(zh.rateLimitResetsAt(1730947200), contains('2024'));
     expect(zh.rateLimitResetsAt(1730947200), isNot(contains('1730947200')));
   });

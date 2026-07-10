@@ -152,6 +152,9 @@ class AppLocalizations {
   String get timelineStatus => _text('timelineStatus');
   String get timelineExitCode => _text('timelineExitCode');
   String get timelineDuration => _text('timelineDuration');
+  String timelineDurationMilliseconds(int milliseconds) =>
+      _text('timelineDurationMilliseconds')
+          .replaceAll('{milliseconds}', formatNumber(milliseconds));
   String get timelineFileChanges => _text('timelineFileChanges');
   String get timelineTool => _text('timelineTool');
   String get forkedThread => _text('forkedThread');
@@ -850,6 +853,7 @@ const _values = <String, Map<String, String>>{
     'timelineStatus': 'Status',
     'timelineExitCode': 'Exit code',
     'timelineDuration': 'Duration',
+    'timelineDurationMilliseconds': '{milliseconds} ms',
     'timelineFileChanges': 'File changes',
     'timelineTool': 'Tool',
     'forkedThread': 'fork',
@@ -1395,6 +1399,7 @@ const _values = <String, Map<String, String>>{
     'timelineStatus': '状态',
     'timelineExitCode': '退出码',
     'timelineDuration': '耗时',
+    'timelineDurationMilliseconds': '{milliseconds} 毫秒',
     'timelineFileChanges': '文件变更',
     'timelineTool': '工具',
     'forkedThread': '分叉',
