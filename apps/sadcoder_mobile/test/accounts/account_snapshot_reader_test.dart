@@ -38,6 +38,30 @@ void main() {
     expect(bedrock.account?.label, 'Amazon Bedrock / awsManaged');
   });
 
+  test('AccountSnapshot parses snake_case account fields', () {
+    final chatgpt = AccountSnapshot.fromJson({
+      'account': {
+        'type': 'chatgpt',
+        'email': 'user@example.com',
+        'plan_type': 'team',
+      },
+      'requires_openai_auth': true,
+    });
+    final apiKey = AccountSnapshot.fromJson({
+      'account': {'type': 'api_key'},
+      'requires_openai_auth': false,
+    });
+    final bedrock = AccountSnapshot.fromJson({
+      'account': {'type': 'amazon_bedrock', 'credential_source': 'profile'},
+      'requires_openai_auth': false,
+    });
+
+    expect(chatgpt.requiresOpenaiAuth, true);
+    expect(chatgpt.account?.label, 'ChatGPT / user@example.com / team');
+    expect(apiKey.account?.label, 'API key');
+    expect(bedrock.account?.label, 'Amazon Bedrock / profile');
+  });
+
   test('AccountSnapshot preserves unknown account type labels', () {
     final snapshot = AccountSnapshot.fromJson({
       'account': {'type': 'customProvider'},

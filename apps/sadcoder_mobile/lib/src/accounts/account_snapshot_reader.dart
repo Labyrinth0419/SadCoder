@@ -11,7 +11,9 @@ class AccountSnapshot {
   factory AccountSnapshot.fromJson(Map<String, Object?> json) {
     return AccountSnapshot(
       account: AccountSummary.fromJson(json['account']),
-      requiresOpenaiAuth: json['requiresOpenaiAuth'] == true,
+      requiresOpenaiAuth:
+          _boolField(json, ['requiresOpenaiAuth', 'requires_openai_auth']) ??
+          false,
     );
   }
 
@@ -30,10 +32,7 @@ class AccountSummary {
   });
 
   static AccountSummary? fromJson(Object? value) {
-    if (value is! Map) {
-      return null;
-    }
-    final map = value.map((key, value) => MapEntry(key.toString(), value));
+    final map = _objectMap(value);
     final type = _stringValue(map['type']);
     if (type == null) {
       return null;
@@ -41,8 +40,11 @@ class AccountSummary {
     return AccountSummary(
       type: type,
       email: _nullableStringValue(map['email']),
-      planType: _stringValue(map['planType']),
-      credentialSource: _stringValue(map['credentialSource']),
+      planType: _stringField(map, ['planType', 'plan_type']),
+      credentialSource: _stringField(map, [
+        'credentialSource',
+        'credential_source',
+      ]),
     );
   }
 
@@ -53,9 +55,9 @@ class AccountSummary {
 
   String get label {
     return switch (type) {
-      'apiKey' => 'API key',
+      'apiKey' || 'api_key' => 'API key',
       'chatgpt' => _chatGptLabel,
-      'amazonBedrock' => _amazonBedrockLabel,
+      'amazonBedrock' || 'amazon_bedrock' => _amazonBedrockLabel,
       _ => type,
     };
   }
@@ -79,9 +81,28 @@ class AccountSummary {
   }
 }
 
+Map<String, Object?> _objectMap(Object? value) {
+  if (value is Map) {
+    return Map.unmodifiable(
+      value.map((key, value) => MapEntry(key.toString(), value)),
+    );
+  }
+  return const {};
+}
+
 String? _stringValue(Object? value) {
   if (value is String && value.trim().isNotEmpty) {
     return value.trim();
+  }
+  return null;
+}
+
+String? _stringField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _stringValue(map[key]);
+    if (value != null) {
+      return value;
+    }
   }
   return null;
 }
@@ -91,6 +112,18 @@ String? _nullableStringValue(Object? value) {
     return null;
   }
   return _stringValue(value);
+}
+
+bool? _boolValue(Object? value) => value is bool ? value : null;
+
+bool? _boolField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _boolValue(map[key]);
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
 }
 
 bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
