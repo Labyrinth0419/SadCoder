@@ -9,6 +9,7 @@ Future<void> showSlashCommandPalette({
   required bool hasActiveTurn,
   required bool isSideConversation,
   required ValueChanged<SlashCommandSpec> onSelected,
+  bool showUnavailableCommands = false,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -18,6 +19,7 @@ Future<void> showSlashCommandPalette({
       hasActiveTurn: hasActiveTurn,
       isSideConversation: isSideConversation,
       onSelected: onSelected,
+      showUnavailableCommands: showUnavailableCommands,
     ),
   );
 }
@@ -28,12 +30,14 @@ class _SlashCommandPalette extends StatefulWidget {
     required this.hasActiveTurn,
     required this.isSideConversation,
     required this.onSelected,
+    required this.showUnavailableCommands,
   });
 
   final SlashCommandRegistry registry;
   final bool hasActiveTurn;
   final bool isSideConversation;
   final ValueChanged<SlashCommandSpec> onSelected;
+  final bool showUnavailableCommands;
 
   @override
   State<_SlashCommandPalette> createState() => _SlashCommandPaletteState();
@@ -115,11 +119,14 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
 
   List<SlashCommandSpec> _filteredCommands(AppLocalizations l10n) {
     final normalized = _filter.trim().toLowerCase().replaceFirst('/', '');
+    final visibleCommands = widget.showUnavailableCommands
+        ? widget.registry.commands
+        : widget.registry.commands.where(_isVisibleByDefault);
     if (normalized.isEmpty) {
-      return widget.registry.commands;
+      return visibleCommands.toList(growable: false);
     }
     return [
-      for (final command in widget.registry.commands)
+      for (final command in visibleCommands)
         if (_matches(command, normalized, l10n)) command,
     ];
   }
@@ -151,6 +158,16 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
     }
     return rows;
   }
+}
+
+bool _isVisibleByDefault(SlashCommandSpec command) {
+  return switch (command.platformVisibility) {
+    SlashPlatformVisibility.desktopOnly ||
+    SlashPlatformVisibility.debugOnly => false,
+    SlashPlatformVisibility.all ||
+    SlashPlatformVisibility.windowsOnly ||
+    SlashPlatformVisibility.tuiOnly => true,
+  };
 }
 
 sealed class _SlashCommandPaletteRow {

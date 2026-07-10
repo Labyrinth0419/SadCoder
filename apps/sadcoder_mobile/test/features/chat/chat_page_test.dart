@@ -127,6 +127,28 @@ void main() {
     expect(find.textContaining('aliases: /clean'), findsOneWidget);
   });
 
+  testWidgets('slash command palette hides unavailable platform commands', (
+    tester,
+  ) async {
+    await _pumpChatPage(tester);
+
+    await tester.tap(find.byKey(const ValueKey('chat-slash-command-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('slash-command-search-field')),
+      'rollout',
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('slash-command-rollout')), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('slash-command-search-field')),
+      'continue this session',
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('slash-command-app')), findsNothing);
+  });
+
   testWidgets('slash command palette searches localized descriptions', (
     tester,
   ) async {
