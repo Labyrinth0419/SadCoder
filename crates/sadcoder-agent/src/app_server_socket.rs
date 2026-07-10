@@ -240,6 +240,9 @@ fn apply_mask(payload: &mut [u8], mask_key: [u8; 4]) {
 mod tests {
     use super::*;
     use std::io::Cursor;
+    use std::thread;
+    use std::time::SystemTime;
+    use std::time::UNIX_EPOCH;
 
     #[test]
     fn masked_client_frame_round_trips() {
@@ -271,5 +274,91 @@ mod tests {
         assert!(!websocket_response_is_switching_protocols(
             b"HTTP/1.1 200 OK\r\n\r\n"
         ));
+    }
+
+    #[test]
+    fn connects_to_local_socket_and_bridges_text_frames() {
+        let socket_path = temp_socket_path("bridge");
+        if let Some(parent) = socket_path.parent() {
+            std::fs::create_dir_all(parent).expect("create socket dir");
+        }
+        let listener = TestLocalSocketListener::bind(&socket_path).expect("bind test socket");
+        let server = thread::spawn(move || {
+            let mut stream = listener.accept().expect("accept test socket");
+            let mut request = Vec::new();
+            let mut byte = [0; 1];
+            while !request.ends_with(b"\r\n\r\n") {
+                stream.read_exact(&mut byte).expect("read handshake");
+                request.push(byte[0]);
+            }
+            assert!(request.starts_with(b"GET / HTTP/1.1\r\n"));
+            stream
+                .write_all(
+                    b"HTTP/1.1 101 Switching Protocols\r\n\
+                      Upgrade: websocket\r\n\
+                      Connection: Upgrade\r\n\
+                      \r\n",
+                )
+                .expect("write handshake");
+            stream.flush().expect("flush handshake");
+
+            let frame = read_frame(&mut stream).expect("read client frame");
+            assert_eq!(frame.opcode, OPCODE_TEXT);
+            assert_eq!(frame.payload, b"{\"id\":1}");
+            write_frame(&mut stream, OPCODE_TEXT, b"{\"result\":{}}", false)
+                .expect("write server frame");
+        });
+
+        let mut socket = AppServerSocket::connect(&socket_path).expect("connect socket");
+        socket
+            .writer
+            .write_text_message(b"{\"id\":1}")
+            .expect("write client message");
+        assert_eq!(
+            socket.reader.read_text_message().expect("read message"),
+            Some(b"{\"result\":{}}".to_vec())
+        );
+        let _ = socket.writer.write_close();
+        server.join().expect("server thread");
+        let _ = std::fs::remove_file(&socket_path);
+    }
+
+    fn temp_socket_path(name: &str) -> std::path::PathBuf {
+        std::env::temp_dir().join(format!(
+            "sadcoder-agent-{name}-{}-{}.sock",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ))
+    }
+
+    #[cfg(unix)]
+    struct TestLocalSocketListener(std::os::unix::net::UnixListener);
+
+    #[cfg(unix)]
+    impl TestLocalSocketListener {
+        fn bind(path: &Path) -> io::Result<Self> {
+            std::os::unix::net::UnixListener::bind(path).map(Self)
+        }
+
+        fn accept(&self) -> io::Result<LocalSocketStream> {
+            self.0.accept().map(|(stream, _)| stream)
+        }
+    }
+
+    #[cfg(windows)]
+    struct TestLocalSocketListener(uds_windows::UnixListener);
+
+    #[cfg(windows)]
+    impl TestLocalSocketListener {
+        fn bind(path: &Path) -> io::Result<Self> {
+            uds_windows::UnixListener::bind(path).map(Self)
+        }
+
+        fn accept(&self) -> io::Result<LocalSocketStream> {
+            self.0.accept().map(|(stream, _)| stream)
+        }
     }
 }
