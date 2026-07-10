@@ -48,6 +48,7 @@ import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
+import 'package:sadcoder_mobile/src/ssh/ssh_profile_store.dart';
 import 'package:sadcoder_mobile/src/theme/sadcoder_theme.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
@@ -141,6 +142,42 @@ void main() {
       find.byKey(const ValueKey('chat-turn-overrides-edit')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('host selector connects a saved SSH profile', (tester) async {
+    const remoteProfile = SshProfile(
+      id: 'remote',
+      name: 'Remote Linux',
+      host: 'remote.example.com',
+      username: 'dev',
+    );
+    final approvalController = ApprovalStateController();
+    final sessionController = CodexSessionStateController(
+      connector: const _FakeSessionStarter(
+        threadListReader: _FakeThreadListReader(
+          page: ThreadListPage(threads: []),
+        ),
+      ),
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      profileStore: const _FakeProfileStore([_profile, remoteProfile]),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('chat-host-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('chat-host-option-remote')));
+    await tester.pumpAndSettle();
+
+    expect(sessionController.status, CodexSessionStatus.connected);
+    expect(sessionController.profile?.id, 'remote');
+    expect(find.text('Remote Linux'), findsOneWidget);
   });
 
   testWidgets('slash command button opens a searchable command palette', (
@@ -6203,7 +6240,7 @@ void main() {
     await sessionController.connect(_profile);
     await tester.pumpAndSettle();
 
-    expect(find.text('Connected'), findsOneWidget);
+    expect(find.text('Local'), findsOneWidget);
     expect(find.text('Review patch'), findsOneWidget);
   });
 }
@@ -6223,6 +6260,7 @@ Future<void> _pumpChatPage(
   McpServerStatusController? mcpServerStatusController,
   ModelListController? modelListController,
   PermissionProfileListController? permissionProfileListController,
+  SshProfileStore? profileStore,
   Locale? locale,
   ThemeMode themeMode = ThemeMode.light,
 }) {
@@ -6257,6 +6295,7 @@ Future<void> _pumpChatPage(
           mcpServerStatusController: mcpServerStatusController,
           modelListController: modelListController,
           permissionProfileListController: permissionProfileListController,
+          profileStore: profileStore,
         ),
       ),
     ),
@@ -6329,6 +6368,26 @@ const _profile = SshProfile(
   host: 'localhost',
   username: 'tester',
 );
+
+class _FakeProfileStore implements SshProfileListStore {
+  const _FakeProfileStore(this.profiles);
+
+  final List<SshProfile> profiles;
+
+  @override
+  Future<SshProfile?> loadLastProfile() async {
+    return profiles.isEmpty ? null : profiles.first;
+  }
+
+  @override
+  Future<List<SshProfile>> loadProfiles() async => List.unmodifiable(profiles);
+
+  @override
+  Future<void> saveLastProfile(SshProfile profile) async {}
+
+  @override
+  Future<void> saveProfile(SshProfile profile) async {}
+}
 
 class _FakeThreadListReader implements ThreadListReader {
   const _FakeThreadListReader({required this.page});

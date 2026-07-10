@@ -311,6 +311,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         mcpServerStatusController: _mcpServerStatusController,
         modelListController: _modelListController,
         permissionProfileListController: _permissionProfileListController,
+        profileStore: widget.profileStore,
       ),
       2 => WorkspaceFilesPage(
         sessionController: _sessionController,

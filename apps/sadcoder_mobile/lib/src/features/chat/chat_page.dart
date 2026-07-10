@@ -22,6 +22,8 @@ import '../../plugins/plugin_list_reader.dart';
 import '../../reviews/thread_review_command.dart';
 import '../../security/permission_risk.dart';
 import '../../session/codex_session_state_controller.dart';
+import '../../ssh/ssh_profile.dart';
+import '../../ssh/ssh_profile_store.dart';
 import '../../theme/sadcoder_theme.dart';
 import '../../threads/agent_thread_topology.dart';
 import '../../threads/thread_detail_controller.dart';
@@ -69,6 +71,7 @@ class ChatPage extends StatefulWidget {
     this.mcpServerStatusController,
     this.modelListController,
     this.permissionProfileListController,
+    this.profileStore,
     this.slashCommandDispatcher,
   });
 
@@ -86,6 +89,7 @@ class ChatPage extends StatefulWidget {
   final McpServerStatusController? mcpServerStatusController;
   final ModelListController? modelListController;
   final PermissionProfileListController? permissionProfileListController;
+  final SshProfileStore? profileStore;
   final SlashCommandActionDispatcher? slashCommandDispatcher;
 
   @override
@@ -103,6 +107,9 @@ class _ChatPageState extends State<ChatPage> {
   bool _slashPaletteOpen = false;
   bool _showRawTranscript = false;
   bool _showAdvancedControls = false;
+  List<SshProfile> _savedProfiles = const [];
+  String? _selectedProfileId;
+  Object? _profileLoadError;
 
   @override
   void initState() {
@@ -111,6 +118,7 @@ class _ChatPageState extends State<ChatPage> {
     widget.turnController?.addListener(_handleTurnChanged);
     widget.appearanceController?.addListener(_handleAppearanceChanged);
     _lastSessionStatus = widget.sessionController?.status;
+    unawaited(_loadSavedProfiles());
     _refreshThreadsIfConnected();
   }
 
@@ -130,6 +138,9 @@ class _ChatPageState extends State<ChatPage> {
     if (oldWidget.appearanceController != widget.appearanceController) {
       oldWidget.appearanceController?.removeListener(_handleAppearanceChanged);
       widget.appearanceController?.addListener(_handleAppearanceChanged);
+    }
+    if (oldWidget.profileStore != widget.profileStore) {
+      unawaited(_loadSavedProfiles());
     }
   }
 
@@ -172,6 +183,17 @@ class _ChatPageState extends State<ChatPage> {
           connectionLabel: _connectionLabel(l10n, sessionController?.status),
           connected: sessionController?.status == CodexSessionStatus.connected,
           statusLineParts: _chatStatusLineParts(l10n),
+          connectionControls: _ChatConnectionControls(
+            profiles: _headerProfiles(),
+            selectedProfile: _selectedHeaderProfile(),
+            connectedProfile: sessionController?.profile,
+            status: sessionController?.status ?? CodexSessionStatus.idle,
+            connectionLabel: _connectionLabel(l10n, sessionController?.status),
+            profileLoadError: _profileLoadError,
+            onProfileSelected: sessionController == null
+                ? null
+                : _selectHeaderProfile,
+          ),
         ),
         const Divider(height: 1),
         Expanded(
@@ -406,6 +428,114 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> _interruptActiveTurn() async {
     await widget.turnController?.interruptActiveTurn();
+  }
+
+  Future<void> _loadSavedProfiles() async {
+    final store = widget.profileStore;
+    if (store == null) {
+      if (mounted) {
+        setState(() {
+          _savedProfiles = const [];
+          _selectedProfileId = widget.sessionController?.profile?.id;
+          _profileLoadError = null;
+        });
+      }
+      return;
+    }
+
+    try {
+      late final List<SshProfile> profiles;
+      if (store is SshProfileListStore) {
+        profiles = await store.loadProfiles();
+      } else {
+        final profile = await store.loadLastProfile();
+        profiles = [?profile];
+      }
+      if (!mounted || store != widget.profileStore) {
+        return;
+      }
+      setState(() {
+        _savedProfiles = List.unmodifiable(profiles);
+        _selectedProfileId = _preferredHeaderProfileId(profiles);
+        _profileLoadError = null;
+      });
+    } on Object catch (error) {
+      if (!mounted || store != widget.profileStore) {
+        return;
+      }
+      setState(() {
+        _savedProfiles = const [];
+        _selectedProfileId = widget.sessionController?.profile?.id;
+        _profileLoadError = error;
+      });
+    }
+  }
+
+  String? _preferredHeaderProfileId(List<SshProfile> profiles) {
+    final connectedProfile = widget.sessionController?.profile;
+    if (connectedProfile != null) {
+      return connectedProfile.id;
+    }
+    final selectedProfileId = _selectedProfileId;
+    if (selectedProfileId != null &&
+        profiles.any((profile) => profile.id == selectedProfileId)) {
+      return selectedProfileId;
+    }
+    return profiles.isEmpty ? null : profiles.first.id;
+  }
+
+  List<SshProfile> _headerProfiles() {
+    final connectedProfile = widget.sessionController?.profile;
+    final profiles = <SshProfile>[..._savedProfiles, ?connectedProfile];
+    final seen = <String>{};
+    return List.unmodifiable(
+      profiles.where((profile) => seen.add(profile.id)).toList(),
+    );
+  }
+
+  SshProfile? _selectedHeaderProfile() {
+    final selectedId =
+        widget.sessionController?.profile?.id ?? _selectedProfileId;
+    if (selectedId == null) {
+      return null;
+    }
+    return _profileById(_headerProfiles(), selectedId);
+  }
+
+  SshProfile? _profileById(List<SshProfile> profiles, String profileId) {
+    for (final profile in profiles) {
+      if (profile.id == profileId) {
+        return profile;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _selectHeaderProfile(SshProfile profile) async {
+    setState(() {
+      _selectedProfileId = profile.id;
+      _profileLoadError = null;
+    });
+
+    final sessionController = widget.sessionController;
+    if (sessionController == null) {
+      return;
+    }
+    if (sessionController.status == CodexSessionStatus.connected &&
+        sessionController.profile?.id == profile.id) {
+      return;
+    }
+
+    try {
+      await sessionController.connect(profile);
+    } on Object catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${context.l10n.connectionFailed}: $error')),
+      );
+    }
   }
 
   Future<void> _dispatchSlashCommand(SlashCommandParseResult parsed) async {
@@ -1981,6 +2111,10 @@ class _ChatPageState extends State<ChatPage> {
 
   void _handleSessionChanged() {
     final status = widget.sessionController?.status;
+    final profile = widget.sessionController?.profile;
+    if (profile != null) {
+      _selectedProfileId = profile.id;
+    }
     if (_lastSessionStatus != CodexSessionStatus.connected &&
         status == CodexSessionStatus.connected) {
       unawaited(widget.threadListController?.refresh());
@@ -3643,18 +3777,213 @@ class _StateChip extends StatelessWidget {
   }
 }
 
+class _ChatConnectionControls extends StatelessWidget {
+  const _ChatConnectionControls({
+    required this.profiles,
+    required this.selectedProfile,
+    required this.connectedProfile,
+    required this.status,
+    required this.connectionLabel,
+    required this.profileLoadError,
+    required this.onProfileSelected,
+  });
+
+  final List<SshProfile> profiles;
+  final SshProfile? selectedProfile;
+  final SshProfile? connectedProfile;
+  final CodexSessionStatus status;
+  final String connectionLabel;
+  final Object? profileLoadError;
+  final ValueChanged<SshProfile>? onProfileSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final activeProfile = connectedProfile ?? selectedProfile;
+    final canOpen =
+        onProfileSelected != null &&
+        status != CodexSessionStatus.connecting &&
+        status != CodexSessionStatus.disconnecting;
+    return PopupMenuButton<SshProfile>(
+      key: const ValueKey('chat-host-selector'),
+      enabled: canOpen,
+      tooltip: l10n.host,
+      onSelected: onProfileSelected,
+      itemBuilder: (context) => [
+        if (profileLoadError != null)
+          PopupMenuItem<SshProfile>(
+            enabled: false,
+            child: Text(
+              '${l10n.savedHosts}: $profileLoadError',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+        if (profiles.isEmpty)
+          PopupMenuItem<SshProfile>(
+            enabled: false,
+            child: Text(l10n.noSavedHosts),
+          ),
+        for (final profile in profiles)
+          PopupMenuItem<SshProfile>(
+            key: ValueKey('chat-host-option-${profile.id}'),
+            value: profile,
+            child: _HostMenuItem(
+              profile: profile,
+              selected: activeProfile?.id == profile.id,
+            ),
+          ),
+      ],
+      child: _HostSelectorPill(
+        label: activeProfile == null
+            ? connectionLabel
+            : _chatProfileTitle(activeProfile),
+        connected: status == CodexSessionStatus.connected,
+        busy:
+            status == CodexSessionStatus.connecting ||
+            status == CodexSessionStatus.reconnecting ||
+            status == CodexSessionStatus.disconnecting,
+        enabled: canOpen,
+      ),
+    );
+  }
+}
+
+class _HostSelectorPill extends StatelessWidget {
+  const _HostSelectorPill({
+    required this.label,
+    required this.connected,
+    required this.busy,
+    required this.enabled,
+  });
+
+  final String label;
+  final bool connected;
+  final bool busy;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final foreground = enabled
+        ? colorScheme.onSurface
+        : colorScheme.onSurface.withValues(alpha: 0.45);
+    final borderColor = connected ? colorScheme.primary : colorScheme.outline;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 220),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: connected
+              ? colorScheme.primaryContainer.withValues(alpha: 0.45)
+              : colorScheme.surface,
+          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (busy)
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: foreground,
+                ),
+              )
+            else
+              Icon(
+                connected ? Icons.dns : Icons.dns_outlined,
+                size: 18,
+                color: foreground,
+              ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(color: foreground),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.expand_more, size: 18, color: foreground),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HostMenuItem extends StatelessWidget {
+  const _HostMenuItem({required this.profile, required this.selected});
+
+  final SshProfile profile;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 320),
+      child: Row(
+        children: [
+          Icon(selected ? Icons.check : _chatAuthIcon(profile.authType)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _chatProfileTitle(profile),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  profile.endpoint,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _chatProfileTitle(SshProfile profile) {
+  final name = profile.name.trim();
+  return name.isEmpty ? profile.endpoint : name;
+}
+
+IconData _chatAuthIcon(SshAuthType authType) {
+  return switch (authType) {
+    SshAuthType.password => Icons.password,
+    SshAuthType.privateKey => Icons.vpn_key_outlined,
+  };
+}
+
 class _ChatHeader extends StatelessWidget {
   const _ChatHeader({
     required this.title,
     required this.connectionLabel,
     required this.connected,
     required this.statusLineParts,
+    this.connectionControls,
   });
 
   final String title;
   final String connectionLabel;
   final bool connected;
   final List<String> statusLineParts;
+  final Widget? connectionControls;
 
   @override
   Widget build(BuildContext context) {
@@ -3672,7 +4001,8 @@ class _ChatHeader extends StatelessWidget {
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
               ),
-              _StateChip(label: connectionLabel, connected: connected),
+              connectionControls ??
+                  _StateChip(label: connectionLabel, connected: connected),
             ],
           ),
           if (statusLineParts.isNotEmpty) ...[
