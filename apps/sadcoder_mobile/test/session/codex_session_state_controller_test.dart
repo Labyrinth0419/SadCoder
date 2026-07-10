@@ -370,29 +370,45 @@ void main() {
     },
   );
 
-  test('heartbeat sends agent ping while connected', () async {
-    final approvalController = ApprovalStateController();
-    final connector = _FakeSessionStarter();
-    final heartbeatScheduler = _ManualSessionHeartbeatScheduler();
-    final controller = CodexSessionStateController(
-      connector: connector,
-      approvalController: approvalController,
-      heartbeatRunner: const AgentPingSessionHeartbeatRunner(),
-      heartbeatScheduler: heartbeatScheduler,
-    );
-    addTearDown(controller.dispose);
-    addTearDown(approvalController.dispose);
+  test(
+    'layered heartbeats use independent intervals while connected',
+    () async {
+      final approvalController = ApprovalStateController();
+      final threadListReader = _RecordingThreadListReader();
+      final connector = _FakeSessionStarter(
+        threadListReaders: [threadListReader],
+      );
+      final heartbeatScheduler = _ManualSessionHeartbeatScheduler();
+      final controller = CodexSessionStateController(
+        connector: connector,
+        approvalController: approvalController,
+        heartbeatChannels: _layeredHeartbeatChannels,
+        heartbeatScheduler: heartbeatScheduler,
+      );
+      addTearDown(controller.dispose);
+      addTearDown(approvalController.dispose);
 
-    await controller.connect(_profile);
-    await heartbeatScheduler.tick();
+      await controller.connect(_profile);
+      await heartbeatScheduler.tick(index: 0);
 
-    expect(
-      heartbeatScheduler.handles.single.interval,
-      const Duration(seconds: 60),
-    );
-    expect(connector.connections.single.agentPingCount, 1);
-    expect(controller.status, CodexSessionStatus.connected);
-  });
+      expect(heartbeatScheduler.handles, hasLength(2));
+      expect(
+        heartbeatScheduler.handles[0].interval,
+        const Duration(seconds: 20),
+      );
+      expect(
+        heartbeatScheduler.handles[1].interval,
+        const Duration(seconds: 60),
+      );
+      expect(connector.connections.single.agentPingCount, 1);
+      expect(threadListReader.limits, isEmpty);
+
+      await heartbeatScheduler.tick(index: 1);
+
+      expect(threadListReader.limits, [1]);
+      expect(controller.status, CodexSessionStatus.connected);
+    },
+  );
 
   test(
     'heartbeat failure reconnects without clearing pending approvals',
@@ -415,7 +431,7 @@ void main() {
       final controller = CodexSessionStateController(
         connector: connector,
         approvalController: approvalController,
-        heartbeatRunner: const AgentPingSessionHeartbeatRunner(),
+        heartbeatChannels: _layeredHeartbeatChannels,
         heartbeatScheduler: heartbeatScheduler,
         reconnectPolicy: const ReconnectPolicy.fixed(
           delays: [Duration(milliseconds: 1)],
@@ -426,13 +442,16 @@ void main() {
       addTearDown(approvalController.dispose);
 
       await controller.connect(_profile);
-      await heartbeatScheduler.tick();
+      await heartbeatScheduler.tick(index: 0);
       await _flushMicrotasks();
 
       expect(controller.status, CodexSessionStatus.reconnecting);
       expect(controller.error, isA<StateError>());
       expect(connector.closeCount, 1);
-      expect(heartbeatScheduler.handles.first.stopped, true);
+      expect(
+        heartbeatScheduler.handles.take(2).every((handle) => handle.stopped),
+        true,
+      );
       expect(reconnectScheduler.delays, [const Duration(milliseconds: 1)]);
       expect(approvalController.approvals.single.requestId, 'approval-1');
       expect(approvalController.canRespond, false);
@@ -442,8 +461,11 @@ void main() {
 
       expect(controller.status, CodexSessionStatus.connected);
       expect(connector.connectedProfiles, [_profile, _profile]);
-      expect(heartbeatScheduler.handles, hasLength(2));
-      expect(heartbeatScheduler.handles.last.stopped, false);
+      expect(heartbeatScheduler.handles, hasLength(4));
+      expect(
+        heartbeatScheduler.handles.skip(2).every((handle) => !handle.stopped),
+        true,
+      );
       expect(approvalController.approvals.single.requestId, 'approval-1');
       expect(approvalController.canRespond, true);
     },
@@ -451,12 +473,15 @@ void main() {
 
   test('manual disconnect stops heartbeat ticks', () async {
     final approvalController = ApprovalStateController();
-    final connector = _FakeSessionStarter();
+    final threadListReader = _RecordingThreadListReader();
+    final connector = _FakeSessionStarter(
+      threadListReaders: [threadListReader],
+    );
     final heartbeatScheduler = _ManualSessionHeartbeatScheduler();
     final controller = CodexSessionStateController(
       connector: connector,
       approvalController: approvalController,
-      heartbeatRunner: const AgentPingSessionHeartbeatRunner(),
+      heartbeatChannels: _layeredHeartbeatChannels,
       heartbeatScheduler: heartbeatScheduler,
     );
     addTearDown(controller.dispose);
@@ -465,9 +490,11 @@ void main() {
     await controller.connect(_profile);
     await controller.disconnect();
     await heartbeatScheduler.tick(index: 0);
+    await heartbeatScheduler.tick(index: 1);
 
-    expect(heartbeatScheduler.handles.single.stopped, true);
+    expect(heartbeatScheduler.handles.every((handle) => handle.stopped), true);
     expect(connector.connections.single.agentPingCount, 0);
+    expect(threadListReader.limits, isEmpty);
     expect(controller.status, CodexSessionStatus.idle);
   });
 
@@ -782,17 +809,31 @@ const _profile = SshProfile(
   username: 'tester',
 );
 
+const _layeredHeartbeatChannels = [
+  SessionHeartbeatChannel(
+    runner: AgentPingSessionHeartbeatRunner(),
+    interval: Duration(seconds: 20),
+  ),
+  SessionHeartbeatChannel(
+    runner: ThreadListSessionHeartbeatRunner(),
+    interval: Duration(seconds: 60),
+  ),
+];
+
 class _FakeSessionStarter implements CodexSessionConnectionStarter {
   _FakeSessionStarter({
     this.failConnect = false,
     List<Object?>? connectOutcomes,
     List<Object?>? pingOutcomes,
+    List<ThreadListReader>? threadListReaders,
   }) : connectOutcomes = connectOutcomes ?? const [],
-       pingOutcomes = pingOutcomes ?? const [];
+       pingOutcomes = pingOutcomes ?? const [],
+       threadListReaders = threadListReaders ?? const [];
 
   final bool failConnect;
   final List<Object?> connectOutcomes;
   final List<Object?> pingOutcomes;
+  final List<ThreadListReader> threadListReaders;
   final connectedProfiles = <SshProfile>[];
   final connections = <_FakeConnectionRecord>[];
   int connectCount = 0;
@@ -840,7 +881,9 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     return CodexSessionConnection(
       profile: profile,
       session: session,
-      threadListReader: const _FakeThreadListReader(),
+      threadListReader: connectionIndex < threadListReaders.length
+          ? threadListReaders[connectionIndex]
+          : const _FakeThreadListReader(),
       threadDetailReader: const _FakeThreadDetailReader(),
       threadTurnListReader: const _NoopThreadTurnListReader(),
       threadItemListReader: const _NoopThreadItemListReader(),
@@ -1193,6 +1236,19 @@ class _FakeThreadListReader implements ThreadListReader {
     int limit = 20,
     bool archived = false,
   }) async {
+    return const ThreadListPage(threads: []);
+  }
+}
+
+class _RecordingThreadListReader implements ThreadListReader {
+  final limits = <int>[];
+
+  @override
+  Future<ThreadListPage> listThreads({
+    int limit = 20,
+    bool archived = false,
+  }) async {
+    limits.add(limit);
     return const ThreadListPage(threads: []);
   }
 }

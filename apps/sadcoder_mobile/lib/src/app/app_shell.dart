@@ -52,7 +52,16 @@ CodexSessionStateController _createDefaultSessionController(
     connector: _defaultSessionConnector,
     approvalController: approvalController,
     snapshotReader: _defaultAgentRemoteService,
-    heartbeatRunner: const AgentPingSessionHeartbeatRunner(),
+    heartbeatChannels: const [
+      SessionHeartbeatChannel(
+        runner: AgentPingSessionHeartbeatRunner(),
+        interval: Duration(seconds: 20),
+      ),
+      SessionHeartbeatChannel(
+        runner: ThreadListSessionHeartbeatRunner(),
+        interval: Duration(seconds: 60),
+      ),
+    ],
   );
 }
 

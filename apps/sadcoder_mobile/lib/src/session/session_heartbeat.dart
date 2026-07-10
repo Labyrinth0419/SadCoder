@@ -6,6 +6,15 @@ abstract interface class SessionHeartbeatRunner {
   Future<void> ping(CodexSessionConnectionHandle connection);
 }
 
+class SessionHeartbeatChannel {
+  const SessionHeartbeatChannel({required this.runner, required this.interval});
+
+  final SessionHeartbeatRunner runner;
+  final Duration interval;
+
+  bool get isEnabled => interval > Duration.zero;
+}
+
 class AgentPingSessionHeartbeatRunner implements SessionHeartbeatRunner {
   const AgentPingSessionHeartbeatRunner();
 
