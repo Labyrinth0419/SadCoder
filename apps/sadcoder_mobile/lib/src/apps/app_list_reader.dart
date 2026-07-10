@@ -15,7 +15,7 @@ class AppListPage {
       apps: _list(
         json['data'],
       ).map(CodexAppSummary.fromJson).nonNulls.toList(growable: false),
-      nextCursor: _stringValue(json['nextCursor']),
+      nextCursor: _stringField(json, ['nextCursor', 'next_cursor']),
     );
   }
 
@@ -49,14 +49,19 @@ class CodexAppSummary {
       return null;
     }
     final branding = _objectMap(map['branding']);
-    final metadata = _objectMap(map['appMetadata']);
+    final metadata = _objectMap(
+      _valueField(map, ['appMetadata', 'app_metadata']),
+    );
     final review = _objectMap(metadata['review']);
     return CodexAppSummary(
       id: id,
       name: name,
       description: _stringValue(map['description']),
-      installUrl: _stringValue(map['installUrl']),
-      distributionChannel: _stringValue(map['distributionChannel']),
+      installUrl: _stringField(map, ['installUrl', 'install_url']),
+      distributionChannel: _stringField(map, [
+        'distributionChannel',
+        'distribution_channel',
+      ]),
       category:
           _stringValue(branding['category']) ??
           _firstString(metadata['categories']),
@@ -66,9 +71,11 @@ class CodexAppSummary {
       website: _stringValue(branding['website']),
       version: _stringValue(metadata['version']),
       reviewStatus: _stringValue(review['status']),
-      isAccessible: _boolValue(map['isAccessible']) ?? false,
-      isEnabled: _boolValue(map['isEnabled']) ?? true,
-      pluginDisplayNames: _stringList(map['pluginDisplayNames']),
+      isAccessible: _boolField(map, ['isAccessible', 'is_accessible']) ?? false,
+      isEnabled: _boolField(map, ['isEnabled', 'is_enabled']) ?? true,
+      pluginDisplayNames: _stringList(
+        _valueField(map, ['pluginDisplayNames', 'plugin_display_names']),
+      ),
       raw: map,
     );
   }
@@ -109,7 +116,27 @@ String? _stringValue(Object? value) {
   return null;
 }
 
+String? _stringField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _stringValue(map[key]);
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
+}
+
 bool? _boolValue(Object? value) => value is bool ? value : null;
+
+bool? _boolField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _boolValue(map[key]);
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
+}
 
 String? _firstString(Object? value) {
   if (value is! List) {
@@ -134,4 +161,14 @@ List<String> _stringList(Object? value) {
         .map((value) => value.trim())
         .where((value) => value.isNotEmpty),
   );
+}
+
+Object? _valueField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = map[key];
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
 }

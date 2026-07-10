@@ -54,6 +54,49 @@ void main() {
     expect(app.pluginDisplayNames, ['Linear plugin']);
   });
 
+  test('AppListPage parses snake_case app metadata fields', () {
+    final page = AppListPage.fromJson({
+      'data': [
+        {
+          'id': 'github',
+          'name': 'GitHub',
+          'description': 'Review pull requests',
+          'install_url': 'https://github.com/install',
+          'distribution_channel': 'workspace',
+          'branding': {
+            'category': 'Code review',
+            'developer': 'GitHub',
+            'website': 'https://github.com',
+          },
+          'app_metadata': {
+            'review': {'status': 'pending'},
+            'categories': ['Developer tools'],
+            'developer': 'GitHub Inc',
+            'version': '2.3.4',
+          },
+          'is_accessible': false,
+          'is_enabled': true,
+          'plugin_display_names': ['GitHub plugin'],
+        },
+      ],
+      'next_cursor': 'next-snake-page',
+    });
+
+    expect(page.nextCursor, 'next-snake-page');
+    final app = page.apps.single;
+    expect(app.id, 'github');
+    expect(app.installUrl, 'https://github.com/install');
+    expect(app.distributionChannel, 'workspace');
+    expect(app.category, 'Code review');
+    expect(app.developer, 'GitHub');
+    expect(app.website, 'https://github.com');
+    expect(app.version, '2.3.4');
+    expect(app.reviewStatus, 'pending');
+    expect(app.isAccessible, false);
+    expect(app.isEnabled, true);
+    expect(app.pluginDisplayNames, ['GitHub plugin']);
+  });
+
   test('CodexAppListReader calls app-server app/list', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {
