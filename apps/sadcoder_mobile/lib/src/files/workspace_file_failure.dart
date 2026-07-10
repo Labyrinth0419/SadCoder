@@ -37,13 +37,14 @@ WorkspaceFileException normalizeWorkspaceFileException(
   }
   if (error is JsonRpcRemoteException) {
     final code =
+        _codeFromJsonRpcErrorData(error.data) ??
         _codeFromJsonRpcErrorCode(error.code) ??
         _codeFromMessage(error.message.toLowerCase()) ??
         fallbackCode;
     return WorkspaceFileException(
       code,
       _messageForCode(code),
-      detail: error.data ?? error.message,
+      detail: _detailFromJsonRpcErrorData(error.data) ?? error.message,
     );
   }
 
@@ -91,6 +92,47 @@ WorkspaceFileFailureCode? _codeFromMessage(String message) {
     return WorkspaceFileFailureCode.tooLarge;
   }
   return null;
+}
+
+WorkspaceFileFailureCode? _codeFromJsonRpcErrorData(Object? data) {
+  if (data is! Map) {
+    return null;
+  }
+  final code = data['code'];
+  if (code is! String) {
+    return null;
+  }
+  return _codeFromStructuredCode(code);
+}
+
+Object? _detailFromJsonRpcErrorData(Object? data) {
+  if (data is! Map) {
+    return data;
+  }
+  final detail = data['detail'];
+  if (detail != null) {
+    return detail;
+  }
+  final message = data['message'];
+  if (message != null) {
+    return message;
+  }
+  return data;
+}
+
+WorkspaceFileFailureCode? _codeFromStructuredCode(String code) {
+  final normalized = code.trim().toLowerCase().replaceAll('_', '-');
+  return switch (normalized) {
+    'not-connected' => WorkspaceFileFailureCode.notConnected,
+    'no-cwd' => WorkspaceFileFailureCode.noCwd,
+    'not-found' => WorkspaceFileFailureCode.notFound,
+    'permission-denied' => WorkspaceFileFailureCode.permissionDenied,
+    'path-outside-root' => WorkspaceFileFailureCode.pathOutsideRoot,
+    'binary-not-previewable' => WorkspaceFileFailureCode.binaryNotPreviewable,
+    'too-large' => WorkspaceFileFailureCode.tooLarge,
+    'read-failed' => WorkspaceFileFailureCode.readFailed,
+    _ => null,
+  };
 }
 
 WorkspaceFileFailureCode? _codeFromJsonRpcErrorCode(int? code) =>
