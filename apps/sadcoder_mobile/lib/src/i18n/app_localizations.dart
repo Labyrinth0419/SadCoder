@@ -792,6 +792,26 @@ class AppLocalizations {
       _text('workspaceFilesLoadedBytes')
           .replaceAll('{loaded}', formatFileSize(loaded))
           .replaceAll('{total}', formatFileSize(total));
+  String get terminalTitle => _text('terminalTitle');
+  String terminalCwd(String cwd) =>
+      _text('terminalCwd').replaceAll('{cwd}', cwd);
+  String get terminalCommand => _text('terminalCommand');
+  String get terminalRun => _text('terminalRun');
+  String get terminalNotConnected => _text('terminalNotConnected');
+  String get terminalNoCwd => _text('terminalNoCwd');
+  String get terminalNoOutput => _text('terminalNoOutput');
+  String get terminalOutputCapped => _text('terminalOutputCapped');
+  String get terminalInput => _text('terminalInput');
+  String get terminalSendInput => _text('terminalSendInput');
+  String get terminalCloseStdin => _text('terminalCloseStdin');
+  String get terminalTerminate => _text('terminalTerminate');
+  String get terminalIdle => _text('terminalIdle');
+  String get terminalStarting => _text('terminalStarting');
+  String get terminalRunning => _text('terminalRunning');
+  String terminalExitCode(int code) =>
+      _text('terminalExitCode').replaceAll('{code}', formatNumber(code));
+  String terminalFailed(String error) =>
+      _text('terminalFailed').replaceAll('{error}', error);
 
   String formatNumber(num value) =>
       NumberFormat.decimalPattern(_intlLocale).format(value);
@@ -1561,6 +1581,23 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesDirectoryLoadFailed': 'Failed to load directory.',
     'workspaceFilesRetry': 'Retry',
     'workspaceFilesLoadedBytes': '{loaded} / {total} loaded',
+    'terminalTitle': 'Terminal',
+    'terminalCwd': 'Working directory: {cwd}',
+    'terminalCommand': 'Command',
+    'terminalRun': 'Run',
+    'terminalNotConnected': 'Connect to a host to run terminal commands.',
+    'terminalNoCwd': 'Select a workspace before running terminal commands.',
+    'terminalNoOutput': 'No output yet.',
+    'terminalOutputCapped': 'Output was truncated by the server cap.',
+    'terminalInput': 'Input',
+    'terminalSendInput': 'Send input',
+    'terminalCloseStdin': 'Close stdin',
+    'terminalTerminate': 'Terminate',
+    'terminalIdle': 'Idle',
+    'terminalStarting': 'Starting',
+    'terminalRunning': 'Running',
+    'terminalExitCode': 'Exited with code {code}',
+    'terminalFailed': 'Failed: {error}',
   },
   'zh': {
     'appTitle': 'SadCoder',
@@ -2207,6 +2244,23 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesDirectoryLoadFailed': '目录加载失败。',
     'workspaceFilesRetry': '重试',
     'workspaceFilesLoadedBytes': '已加载 {loaded} / {total}',
+    'terminalTitle': '终端',
+    'terminalCwd': '工作目录：{cwd}',
+    'terminalCommand': '命令',
+    'terminalRun': '运行',
+    'terminalNotConnected': '连接主机后才能运行终端命令。',
+    'terminalNoCwd': '选择工作区后才能运行终端命令。',
+    'terminalNoOutput': '暂无输出。',
+    'terminalOutputCapped': '输出已被服务器截断。',
+    'terminalInput': '输入',
+    'terminalSendInput': '发送输入',
+    'terminalCloseStdin': '关闭标准输入',
+    'terminalTerminate': '终止',
+    'terminalIdle': '空闲',
+    'terminalStarting': '正在启动',
+    'terminalRunning': '运行中',
+    'terminalExitCode': '退出码 {code}',
+    'terminalFailed': '失败：{error}',
   },
 };
 

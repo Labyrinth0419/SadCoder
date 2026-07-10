@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../command_exec/command_exec_runner.dart';
 import '../../config/codex_config_override_controller.dart';
 import '../../files/file_search_reader.dart';
 import '../../files/workspace_directory_reader.dart';
@@ -14,6 +15,7 @@ import '../../i18n/app_localizations.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../theme/sadcoder_theme.dart';
 import '../../threads/thread_detail_controller.dart';
+import '../terminal/terminal_page.dart';
 import 'file_search_sheet.dart';
 import 'workspace_markdown_preview.dart';
 import 'workspace_syntax_highlighter.dart';
@@ -34,6 +36,7 @@ class WorkspaceFilesPage extends StatefulWidget {
     this.directoryReader,
     this.fileReader,
     this.fileSearchReader,
+    this.commandExecRunner,
     this.root,
   });
 
@@ -43,6 +46,7 @@ class WorkspaceFilesPage extends StatefulWidget {
   final WorkspaceDirectoryReader? directoryReader;
   final WorkspaceFileReader? fileReader;
   final FileSearchReader? fileSearchReader;
+  final CommandExecRunner? commandExecRunner;
   final String? root;
 
   @override
@@ -138,6 +142,9 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
             includeHidden: _includeHidden,
             onIncludeHiddenChanged: _setIncludeHidden,
             onSearch: _fileSearchReader == null ? null : _searchWorkspace,
+            onOpenTerminal: _commandExecRunner == null
+                ? null
+                : () => _openTerminal(root),
             onRefresh: _refreshWorkspace,
           ),
           const SizedBox(height: 12),
@@ -180,6 +187,9 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
 
   FileSearchReader? get _fileSearchReader =>
       widget.fileSearchReader ?? widget.sessionController?.fileSearchReader;
+
+  CommandExecRunner? get _commandExecRunner =>
+      widget.commandExecRunner ?? widget.sessionController?.commandExecRunner;
 
   String? _resolvedRoot() {
     final explicitRoot = _normalizedText(widget.root);
@@ -488,6 +498,14 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     await _openFilePath(match.path);
   }
 
+  Future<void> _openTerminal(String root) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TerminalPage(runner: _commandExecRunner, root: root),
+      ),
+    );
+  }
+
   Future<void> _loadMorePreview() async {
     final preview = _preview;
     final root = preview.root;
@@ -698,6 +716,7 @@ class _FilesToolbar extends StatelessWidget {
     required this.includeHidden,
     required this.onIncludeHiddenChanged,
     required this.onSearch,
+    required this.onOpenTerminal,
     required this.onRefresh,
   });
 
@@ -705,6 +724,7 @@ class _FilesToolbar extends StatelessWidget {
   final bool includeHidden;
   final ValueChanged<bool> onIncludeHiddenChanged;
   final VoidCallback? onSearch;
+  final VoidCallback? onOpenTerminal;
   final VoidCallback onRefresh;
 
   @override
@@ -744,6 +764,13 @@ class _FilesToolbar extends StatelessWidget {
                   onPressed: onSearch,
                   tooltip: l10n.mentionSearchHint,
                   icon: const Icon(Icons.manage_search),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  key: const ValueKey('workspace-files-terminal'),
+                  onPressed: onOpenTerminal,
+                  tooltip: l10n.terminalTitle,
+                  icon: const Icon(Icons.terminal),
                 ),
                 const SizedBox(width: 8),
                 IconButton.filledTonal(

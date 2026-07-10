@@ -1,0 +1,197 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/command_exec/command_exec_runner.dart';
+import 'package:sadcoder_mobile/src/features/terminal/terminal_page.dart';
+import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/workspace/workspace_command_runner.dart';
+
+void main() {
+  testWidgets('shows unavailable states when runner or cwd is missing', (
+    tester,
+  ) async {
+    await _pumpTerminalPage(tester, runner: null, root: '/repo');
+
+    expect(
+      find.text('Connect to a host to run terminal commands.'),
+      findsOneWidget,
+    );
+
+    await _pumpTerminalPage(
+      tester,
+      runner: _FakeCommandExecRunner(),
+      root: null,
+    );
+
+    expect(
+      find.text('Select a workspace before running terminal commands.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('runs a command and renders terminal output', (tester) async {
+    final runner = _FakeCommandExecRunner();
+    await _pumpTerminalPage(tester, runner: runner, root: '/repo');
+
+    await tester.enterText(
+      find.byKey(const ValueKey('terminal-command-field')),
+      'bash -lc "echo hi"',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('terminal-run-button')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(runner.requests.single.command, ['bash', '-lc', 'echo hi']);
+    expect(find.textContaining('Running'), findsOneWidget);
+    expect(find.text('Working directory: /repo'), findsOneWidget);
+
+    runner.session.addOutput('hello\n');
+    await tester.pump();
+
+    expect(find.textContaining('hello'), findsOneWidget);
+
+    runner.session.complete(exitCode: 0);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.textContaining('Exited with code 0'), findsOneWidget);
+  });
+
+  testWidgets('sends stdin and terminate controls to the session', (
+    tester,
+  ) async {
+    final runner = _FakeCommandExecRunner();
+    await _pumpTerminalPage(tester, runner: runner, root: '/repo');
+
+    await tester.enterText(
+      find.byKey(const ValueKey('terminal-command-field')),
+      'cat',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('terminal-run-button')));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('terminal-stdin-field')),
+      'input',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('terminal-stdin-send')));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('terminal-close-stdin')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('terminal-terminate')));
+    await tester.pump();
+
+    expect(runner.session.writes.single, utf8.encode('input\n'));
+    expect(runner.session.closeStdinCount, 1);
+    expect(runner.session.terminateCount, 1);
+
+    runner.session.complete();
+    await tester.pump();
+    await tester.pump();
+  });
+}
+
+Future<void> _pumpTerminalPage(
+  WidgetTester tester, {
+  CommandExecRunner? runner,
+  String? root,
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: ThemeData(),
+      darkTheme: ThemeData.dark(),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: TerminalPage(runner: runner, root: root),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+class _FakeCommandExecRunner implements CommandExecRunner {
+  final requests = <CommandExecRequest>[];
+  final session = _FakeCommandExecSession();
+
+  @override
+  Future<CommandExecSession> start(CommandExecRequest request) async {
+    requests.add(request);
+    return session;
+  }
+}
+
+class _FakeCommandExecSession implements CommandExecSession {
+  final _outputController = StreamController<CommandExecOutputChunk>();
+  final _done = Completer<WorkspaceCommandResult>();
+  final writes = <List<int>>[];
+  var closeStdinCount = 0;
+  var terminateCount = 0;
+
+  @override
+  String get processId => 'proc_test';
+
+  @override
+  Stream<CommandExecOutputChunk> get output => _outputController.stream;
+
+  @override
+  Future<WorkspaceCommandResult> get done => _done.future;
+
+  @override
+  bool get isCompleted => _done.isCompleted;
+
+  void addOutput(String text, {bool capReached = false}) {
+    _outputController.add(
+      CommandExecOutputChunk(
+        processId: processId,
+        stream: CommandExecOutputStream.stdout,
+        bytes: Uint8List.fromList(utf8.encode(text)),
+        capReached: capReached,
+      ),
+    );
+  }
+
+  void complete({int exitCode = 0}) {
+    if (!_done.isCompleted) {
+      _done.complete(
+        WorkspaceCommandResult(exitCode: exitCode, stdout: '', stderr: ''),
+      );
+    }
+    unawaited(_outputController.close());
+  }
+
+  @override
+  Future<void> write(List<int> bytes, {bool closeStdin = false}) async {
+    writes.add(List<int>.from(bytes));
+    if (closeStdin) {
+      closeStdinCount++;
+    }
+  }
+
+  @override
+  Future<void> closeStdin() async {
+    closeStdinCount++;
+  }
+
+  @override
+  Future<void> resize(CommandExecTerminalSize size) async {}
+
+  @override
+  Future<void> terminate() async {
+    terminateCount++;
+  }
+}

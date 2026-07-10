@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/command_exec/command_exec_runner.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/features/files/workspace_files_page.dart';
@@ -355,6 +356,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('class SearchHit'), findsOneWidget);
+  });
+
+  testWidgets('opens a workspace terminal for the current root', (
+    tester,
+  ) async {
+    await _pumpFilesPage(
+      tester,
+      directoryReader: const _FakeWorkspaceDirectoryReader({'': []}),
+      fileReader: const _FakeWorkspaceFileReader(),
+      commandExecRunner: const _UnavailableCommandExecRunner(),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('workspace-files-terminal')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('terminal-page')), findsOneWidget);
+    expect(find.text('Working directory: /repo'), findsOneWidget);
   });
 
   testWidgets('rejects unsafe remote file search result paths before reading', (
@@ -808,6 +826,7 @@ Future<void> _pumpFilesPage(
   WorkspaceDirectoryReader? directoryReader,
   WorkspaceFileReader? fileReader,
   FileSearchReader? fileSearchReader,
+  CommandExecRunner? commandExecRunner,
   String? root = '/repo',
   ThemeMode themeMode = ThemeMode.light,
   Locale? locale,
@@ -836,6 +855,7 @@ Future<void> _pumpFilesPage(
           directoryReader: directoryReader,
           fileReader: fileReader,
           fileSearchReader: fileSearchReader,
+          commandExecRunner: commandExecRunner,
           configOverrideController: configOverrideController,
           threadDetailController: threadDetailController,
         ),
@@ -963,6 +983,15 @@ class _FakeWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
       entries: visibleEntries.sublist(start, end),
       nextCursor: end < visibleEntries.length ? end.toString() : null,
     );
+  }
+}
+
+class _UnavailableCommandExecRunner implements CommandExecRunner {
+  const _UnavailableCommandExecRunner();
+
+  @override
+  Future<CommandExecSession> start(CommandExecRequest request) {
+    throw UnimplementedError('Terminal execution is not used in this test.');
   }
 }
 
