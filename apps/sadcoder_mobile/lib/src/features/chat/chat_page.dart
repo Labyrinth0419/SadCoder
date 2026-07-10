@@ -116,6 +116,7 @@ class _ChatPageState extends State<ChatPage> {
   bool _slashPaletteOpen = false;
   bool _showRawTranscript = false;
   bool _showAdvancedControls = false;
+  bool _showArchivedThreads = false;
   List<SshProfile> _savedProfiles = const [];
   String? _selectedProfileId;
   Object? _profileLoadError;
@@ -214,6 +215,9 @@ class _ChatPageState extends State<ChatPage> {
               _ThreadListPanel(
                 controller: threadListController,
                 detailController: threadDetailController,
+                archived: _showArchivedThreads,
+                onArchivedChanged: _setThreadArchiveView,
+                onUnarchiveThread: _unarchiveThread,
               ),
               _ThreadDetailPanel(controller: threadDetailController),
               if (_sideConversation != null)
@@ -1066,7 +1070,7 @@ class _ChatPageState extends State<ChatPage> {
       threadId: reviewThreadId,
       turn: result.turn,
     );
-    unawaited(widget.threadListController?.refresh());
+    _refreshVisibleThreads();
     unawaited(widget.threadDetailController?.readThread(reviewThreadId));
     return buildThreadReviewStartedSummary(
       l10n: l10n,
@@ -1291,7 +1295,7 @@ class _ChatPageState extends State<ChatPage> {
     _clearSideConversation();
     widget.threadDetailController?.clear();
     widget.timelineController?.selectThread(turnController.activeThreadId);
-    unawaited(widget.threadListController?.refresh());
+    _refreshVisibleThreads();
     return true;
   }
 
@@ -1311,7 +1315,7 @@ class _ChatPageState extends State<ChatPage> {
     _clearSideConversation();
     widget.timelineController?.selectThread(activeThreadId);
     unawaited(widget.threadDetailController?.readThread(activeThreadId));
-    unawaited(widget.threadListController?.refresh());
+    _refreshVisibleThreads();
     return true;
   }
 
@@ -1322,7 +1326,7 @@ class _ChatPageState extends State<ChatPage> {
       return false;
     }
     await runner.setThreadName(threadId: threadId, name: name);
-    unawaited(widget.threadListController?.refresh());
+    _refreshVisibleThreads();
     if (widget.threadDetailController?.selectedThreadId == threadId) {
       unawaited(widget.threadDetailController?.readThread(threadId));
     }
@@ -1388,7 +1392,7 @@ class _ChatPageState extends State<ChatPage> {
     _clearSideConversation();
     widget.timelineController?.showThread(thread);
     unawaited(widget.threadDetailController?.readThread(thread.id));
-    unawaited(widget.threadListController?.refresh());
+    _refreshVisibleThreads();
     return SlashCommandCallbackResult.executed;
   }
 
@@ -1426,7 +1430,7 @@ class _ChatPageState extends State<ChatPage> {
     });
     widget.timelineController?.showThread(sideThread);
     unawaited(widget.threadDetailController?.readThread(sideThread.id));
-    unawaited(widget.threadListController?.refresh());
+    _refreshVisibleThreads();
 
     final initialPrompt = arguments.trim();
     if (initialPrompt.isNotEmpty) {
@@ -1788,6 +1792,21 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  Future<void> _unarchiveThread(ThreadSummary thread) async {
+    final runner = widget.sessionController?.threadMutationRunner;
+    if (runner == null) {
+      return;
+    }
+    await runner.unarchiveThread(threadId: thread.id);
+    _refreshVisibleThreads();
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.threadUnarchived)));
+  }
+
   Future<SlashCommandCallbackResult> _confirmThreadMutation({
     required String title,
     required String body,
@@ -1823,7 +1842,7 @@ class _ChatPageState extends State<ChatPage> {
     }
     await mutate(runner, threadId);
     _clearLocalTranscript();
-    unawaited(widget.threadListController?.refresh());
+    _refreshVisibleThreads();
     return SlashCommandCallbackResult.executed;
   }
 
@@ -2137,7 +2156,7 @@ class _ChatPageState extends State<ChatPage> {
     }
     if (_lastSessionStatus != CodexSessionStatus.connected &&
         status == CodexSessionStatus.connected) {
-      unawaited(widget.threadListController?.refresh());
+      _refreshVisibleThreads();
     }
     _dropSideConversationIfSessionUnavailable(status);
     _lastSessionStatus = status;
@@ -2161,8 +2180,25 @@ class _ChatPageState extends State<ChatPage> {
 
   void _refreshThreadsIfConnected() {
     if (widget.sessionController?.status == CodexSessionStatus.connected) {
-      unawaited(widget.threadListController?.refresh());
+      _refreshVisibleThreads();
     }
+  }
+
+  void _refreshVisibleThreads({int limit = 20}) {
+    unawaited(
+      widget.threadListController?.refresh(
+        limit: limit,
+        archived: _showArchivedThreads,
+      ),
+    );
+  }
+
+  void _setThreadArchiveView(bool archived) {
+    if (_showArchivedThreads == archived) {
+      return;
+    }
+    setState(() => _showArchivedThreads = archived);
+    _refreshVisibleThreads();
   }
 
   String _chatHeaderTitle(AppLocalizations l10n) {
@@ -3973,10 +4009,16 @@ class _ThreadListPanel extends StatelessWidget {
   const _ThreadListPanel({
     required this.controller,
     required this.detailController,
+    required this.archived,
+    required this.onArchivedChanged,
+    required this.onUnarchiveThread,
   });
 
   final ThreadListController? controller;
   final ThreadDetailController? detailController;
+  final bool archived;
+  final ValueChanged<bool> onArchivedChanged;
+  final Future<void> Function(ThreadSummary thread)? onUnarchiveThread;
 
   @override
   Widget build(BuildContext context) {
@@ -3992,6 +4034,9 @@ class _ThreadListPanel extends StatelessWidget {
       builder: (context, _) => _ThreadListContent(
         controller: controller,
         detailController: detailController,
+        archived: archived,
+        onArchivedChanged: onArchivedChanged,
+        onUnarchiveThread: onUnarchiveThread,
       ),
     );
   }
@@ -4001,10 +4046,16 @@ class _ThreadListContent extends StatelessWidget {
   const _ThreadListContent({
     required this.controller,
     required this.detailController,
+    required this.archived,
+    required this.onArchivedChanged,
+    required this.onUnarchiveThread,
   });
 
   final ThreadListController controller;
   final ThreadDetailController? detailController;
+  final bool archived;
+  final ValueChanged<bool> onArchivedChanged;
+  final Future<void> Function(ThreadSummary thread)? onUnarchiveThread;
 
   @override
   Widget build(BuildContext context) {
@@ -4013,16 +4064,34 @@ class _ThreadListContent extends StatelessWidget {
     return switch (controller.status) {
       ThreadListStatus.idle => _ThreadListCard(
         title: title,
-        action: _RefreshThreadsButton(controller: controller),
+        action: _RefreshThreadsButton(
+          controller: controller,
+          archived: archived,
+        ),
+        modeControl: _ThreadListModeSelector(
+          archived: archived,
+          onChanged: onArchivedChanged,
+        ),
         child: Text(l10n.connectBeforeLoadingThreads),
       ),
       ThreadListStatus.loading => _ThreadListCard(
         title: title,
+        modeControl: _ThreadListModeSelector(
+          archived: archived,
+          onChanged: onArchivedChanged,
+        ),
         child: const LinearProgressIndicator(),
       ),
       ThreadListStatus.failed => _ThreadListCard(
         title: title,
-        action: _RefreshThreadsButton(controller: controller),
+        action: _RefreshThreadsButton(
+          controller: controller,
+          archived: archived,
+        ),
+        modeControl: _ThreadListModeSelector(
+          archived: archived,
+          onChanged: onArchivedChanged,
+        ),
         child: Text(
           controller.error?.toString() ?? l10n.threadListFailed,
           style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -4031,18 +4100,34 @@ class _ThreadListContent extends StatelessWidget {
       ThreadListStatus.loaded when controller.threads.isEmpty =>
         _ThreadListCard(
           title: title,
-          action: _RefreshThreadsButton(controller: controller),
-          child: Text(l10n.noThreads),
+          action: _RefreshThreadsButton(
+            controller: controller,
+            archived: archived,
+          ),
+          modeControl: _ThreadListModeSelector(
+            archived: archived,
+            onChanged: onArchivedChanged,
+          ),
+          child: Text(archived ? l10n.noArchivedThreads : l10n.noThreads),
         ),
       ThreadListStatus.loaded => _ThreadListCard(
         title: title,
-        action: _RefreshThreadsButton(controller: controller),
+        action: _RefreshThreadsButton(
+          controller: controller,
+          archived: archived,
+        ),
+        modeControl: _ThreadListModeSelector(
+          archived: archived,
+          onChanged: onArchivedChanged,
+        ),
         child: Column(
           children: [
             for (final thread in controller.threads)
               _ThreadListTile(
                 thread: thread,
                 detailController: detailController,
+                archived: archived,
+                onUnarchiveThread: onUnarchiveThread,
               ),
           ],
         ),
@@ -4056,11 +4141,13 @@ class _ThreadListCard extends StatelessWidget {
     required this.title,
     required this.child,
     this.action,
+    this.modeControl,
   });
 
   final String title;
   final Widget child;
   final Widget? action;
+  final Widget? modeControl;
 
   @override
   Widget build(BuildContext context) {
@@ -4082,6 +4169,10 @@ class _ThreadListCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
+            if (modeControl != null) ...[
+              modeControl!,
+              const SizedBox(height: 8),
+            ],
             child,
           ],
         ),
@@ -4091,25 +4182,71 @@ class _ThreadListCard extends StatelessWidget {
 }
 
 class _RefreshThreadsButton extends StatelessWidget {
-  const _RefreshThreadsButton({required this.controller});
+  const _RefreshThreadsButton({
+    required this.controller,
+    required this.archived,
+  });
 
   final ThreadListController controller;
+  final bool archived;
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
       tooltip: context.l10n.refreshThreads,
-      onPressed: () => controller.refresh(),
+      onPressed: () => controller.refresh(archived: archived),
       icon: const Icon(Icons.refresh),
     );
   }
 }
 
+class _ThreadListModeSelector extends StatelessWidget {
+  const _ThreadListModeSelector({
+    required this.archived,
+    required this.onChanged,
+  });
+
+  final bool archived;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: SegmentedButton<bool>(
+        showSelectedIcon: false,
+        segments: [
+          ButtonSegment(
+            value: false,
+            icon: const Icon(Icons.forum_outlined),
+            label: Text(l10n.activeThreads),
+          ),
+          ButtonSegment(
+            value: true,
+            icon: const Icon(Icons.archive_outlined),
+            label: Text(l10n.archivedThreads),
+          ),
+        ],
+        selected: {archived},
+        onSelectionChanged: (selection) => onChanged(selection.single),
+      ),
+    );
+  }
+}
+
 class _ThreadListTile extends StatelessWidget {
-  const _ThreadListTile({required this.thread, required this.detailController});
+  const _ThreadListTile({
+    required this.thread,
+    required this.detailController,
+    required this.archived,
+    required this.onUnarchiveThread,
+  });
 
   final ThreadSummary thread;
   final ThreadDetailController? detailController;
+  final bool archived;
+  final Future<void> Function(ThreadSummary thread)? onUnarchiveThread;
 
   @override
   Widget build(BuildContext context) {
@@ -4130,6 +4267,15 @@ class _ThreadListTile extends StatelessWidget {
         ].where((value) => value.isNotEmpty).join('\n'),
       ),
       isThreeLine: thread.cwd.isNotEmpty && badges.isNotEmpty,
+      trailing: archived
+          ? IconButton(
+              tooltip: context.l10n.unarchiveThread,
+              onPressed: onUnarchiveThread == null
+                  ? null
+                  : () => unawaited(onUnarchiveThread!(thread)),
+              icon: const Icon(Icons.unarchive_outlined),
+            )
+          : null,
       onTap: detailController == null
           ? null
           : () => detailController!.readThread(thread.id),

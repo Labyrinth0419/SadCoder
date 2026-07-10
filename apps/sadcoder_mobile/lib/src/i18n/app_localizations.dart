@@ -181,7 +181,10 @@ class AppLocalizations {
   String get connectBeforeLoadingThreads =>
       _text('connectBeforeLoadingThreads');
   String get refreshThreads => _text('refreshThreads');
+  String get activeThreads => _text('activeThreads');
+  String get archivedThreads => _text('archivedThreads');
   String get noThreads => _text('noThreads');
+  String get noArchivedThreads => _text('noArchivedThreads');
   String get threadListFailed => _text('threadListFailed');
   String get threadDetail => _text('threadDetail');
   String get threadDetailFailed => _text('threadDetailFailed');
@@ -397,6 +400,8 @@ class AppLocalizations {
   String get archiveThreadTitle => _text('archiveThreadTitle');
   String get archiveThreadBody => _text('archiveThreadBody');
   String get archiveThreadConfirm => _text('archiveThreadConfirm');
+  String get unarchiveThread => _text('unarchiveThread');
+  String get threadUnarchived => _text('threadUnarchived');
   String get deleteThreadTitle => _text('deleteThreadTitle');
   String get deleteThreadBody => _text('deleteThreadBody');
   String get deleteThreadConfirm => _text('deleteThreadConfirm');
@@ -1003,7 +1008,10 @@ const _values = <String, Map<String, String>>{
     'connectBeforeTurn': 'Connect to a host before sending a turn',
     'connectBeforeLoadingThreads': 'Connect to a host to load sessions.',
     'refreshThreads': 'Refresh sessions',
+    'activeThreads': 'Active',
+    'archivedThreads': 'Archived',
     'noThreads': 'No sessions found',
+    'noArchivedThreads': 'No archived sessions found',
     'threadListFailed': 'Failed to load sessions',
     'threadDetail': 'Thread detail',
     'threadDetailFailed': 'Failed to load thread detail',
@@ -1183,6 +1191,8 @@ const _values = <String, Map<String, String>>{
     'archiveThreadBody':
         'This moves the current thread out of the active session list.',
     'archiveThreadConfirm': 'Archive',
+    'unarchiveThread': 'Restore thread',
+    'threadUnarchived': 'Restored thread.',
     'deleteThreadTitle': 'Delete thread?',
     'deleteThreadBody':
         'This permanently deletes the current thread and spawned descendant threads. This cannot be undone.',
@@ -1610,8 +1620,7 @@ const _values = <String, Map<String, String>>{
     'probeSuggestionUpdateCodex': '将 Codex 更新到受支持版本。',
     'probeSuggestionInstallAgent': '安装 sadcoder-agent，或修正 Agent 命令路径。',
     'probeSuggestionStartAgent': '启动 agent/backend，并检查服务日志。',
-    'probeSuggestionCheckBackend':
-        '检查 SadCoder agent service/backend 状态和日志。',
+    'probeSuggestionCheckBackend': '检查 SadCoder agent service/backend 状态和日志。',
     'probeSuggestionLoginCodex': '在远端主机运行 codex login，或配置 API key。',
     'probeSuggestionCheckCwdOrPermissions': '检查配置的 cwd 和远端文件权限。',
     'probeSuggestionRetryProxy': '检查 sadcoder-agent proxy 和 backend 日志后重试。',
@@ -1652,7 +1661,10 @@ const _values = <String, Map<String, String>>{
     'connectBeforeTurn': '连接主机后才能发送任务',
     'connectBeforeLoadingThreads': '连接主机后加载会话。',
     'refreshThreads': '刷新会话',
+    'activeThreads': '活动',
+    'archivedThreads': '归档',
     'noThreads': '暂无会话',
+    'noArchivedThreads': '暂无归档会话',
     'threadListFailed': '会话加载失败',
     'threadDetail': '会话详情',
     'threadDetailFailed': '会话详情加载失败',
@@ -1821,6 +1833,8 @@ const _values = <String, Map<String, String>>{
     'archiveThreadTitle': '归档会话？',
     'archiveThreadBody': '这会把当前会话移出活动会话列表。',
     'archiveThreadConfirm': '归档',
+    'unarchiveThread': '恢复会话',
+    'threadUnarchived': '已恢复会话。',
     'deleteThreadTitle': '删除会话？',
     'deleteThreadBody': '这会永久删除当前会话和派生的子会话，无法撤销。',
     'deleteThreadConfirm': '删除',

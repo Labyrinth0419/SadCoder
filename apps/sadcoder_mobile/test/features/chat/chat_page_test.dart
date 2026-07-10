@@ -364,6 +364,80 @@ void main() {
     expect(find.text('/repo\nrunning / fork'), findsOneWidget);
   });
 
+  testWidgets('shows archived threads and restores an archived thread', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final listReader = _SwitchingThreadListReader(
+      activePage: ThreadListPage(
+        threads: [
+          ThreadSummary.fromJson({
+            'id': 'thr_active',
+            'sessionId': 'sess_1',
+            'preview': 'Active work',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+          }),
+        ],
+      ),
+      archivedPage: ThreadListPage(
+        threads: [
+          ThreadSummary.fromJson({
+            'id': 'thr_archived',
+            'sessionId': 'sess_1',
+            'preview': 'Archived work',
+            'ephemeral': false,
+            'status': 'closed',
+            'cwd': '/repo',
+            'updatedAt': 2,
+          }),
+        ],
+      ),
+    );
+    final mutationRunner = _FakeThreadMutationRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: listReader,
+      threadMutationRunner: mutationRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadController = ThreadListController(
+      readerProvider: () => sessionController.threadListReader,
+    );
+    addTearDown(threadController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadListController: threadController,
+    );
+    await tester.pumpAndSettle();
+
+    expect(listReader.archivedFilters.last, false);
+    expect(find.text('Active work'), findsOneWidget);
+    expect(find.text('Archived work'), findsNothing);
+
+    await tester.tap(find.text('Archived'));
+    await tester.pumpAndSettle();
+
+    expect(listReader.archivedFilters.last, true);
+    expect(find.text('Archived work'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Restore thread'));
+    await tester.pumpAndSettle();
+
+    expect(mutationRunner.unarchivedThreads, ['thr_archived']);
+    expect(listReader.archivedFilters.last, true);
+    expect(find.text('Restored thread.'), findsOneWidget);
+  });
+
   testWidgets('loads thread detail when tapping a thread summary', (
     tester,
   ) async {
@@ -6431,6 +6505,26 @@ class _FakeThreadListReader implements ThreadListReader {
     int limit = 20,
     bool archived = false,
   }) async => page;
+}
+
+class _SwitchingThreadListReader implements ThreadListReader {
+  _SwitchingThreadListReader({
+    required this.activePage,
+    required this.archivedPage,
+  });
+
+  final ThreadListPage activePage;
+  final ThreadListPage archivedPage;
+  final archivedFilters = <bool>[];
+
+  @override
+  Future<ThreadListPage> listThreads({
+    int limit = 20,
+    bool archived = false,
+  }) async {
+    archivedFilters.add(archived);
+    return archived ? archivedPage : activePage;
+  }
 }
 
 class _CountingThreadListReader implements ThreadListReader {
