@@ -34,7 +34,11 @@ void main() {
     });
 
     final client = CodexAppServerClient(transport);
-    await client.listModels();
+    await client.listModels(
+      cursor: ' model_cursor ',
+      limit: 25,
+      includeHidden: true,
+    );
     await client.listPermissionProfiles(cwd: '/repo', cursor: '2', limit: 25);
     await client.listMcpServerStatus(
       threadId: 'thr_1',
@@ -141,7 +145,11 @@ void main() {
       'turn/start',
       'turn/interrupt',
     ]);
-    expect(requests.first.params, isEmpty);
+    expect(requests.first.params, {
+      'cursor': 'model_cursor',
+      'limit': 25,
+      'includeHidden': true,
+    });
     expect(requests[1].params, {'cursor': '2', 'limit': 25, 'cwd': '/repo'});
     expect(requests[2].params, {
       'threadId': 'thr_1',

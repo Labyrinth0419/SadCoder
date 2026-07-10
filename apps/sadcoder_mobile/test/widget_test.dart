@@ -1156,7 +1156,11 @@ class _StaticModelListReader implements ModelListReader {
   const _StaticModelListReader();
 
   @override
-  Future<ModelListPage> listModels() async {
+  Future<ModelListPage> listModels({
+    String? cursor,
+    int? limit,
+    bool includeHidden = false,
+  }) async {
     return const ModelListPage(models: []);
   }
 }

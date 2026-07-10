@@ -6689,7 +6689,11 @@ class _FakeModelListReader implements ModelListReader {
   const _FakeModelListReader();
 
   @override
-  Future<ModelListPage> listModels() async => const ModelListPage(models: []);
+  Future<ModelListPage> listModels({
+    String? cursor,
+    int? limit,
+    bool includeHidden = false,
+  }) async => const ModelListPage(models: []);
 }
 
 class _FakePermissionProfileListReader implements PermissionProfileListReader {
@@ -7428,7 +7432,11 @@ class _RecordingModelListReader implements ModelListReader {
   int calls = 0;
 
   @override
-  Future<ModelListPage> listModels() async {
+  Future<ModelListPage> listModels({
+    String? cursor,
+    int? limit,
+    bool includeHidden = false,
+  }) async {
     calls++;
     return page;
   }

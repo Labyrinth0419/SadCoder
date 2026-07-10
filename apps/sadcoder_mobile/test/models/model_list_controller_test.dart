@@ -55,7 +55,11 @@ class _FakeModelListReader implements ModelListReader {
   int calls = 0;
 
   @override
-  Future<ModelListPage> listModels() async {
+  Future<ModelListPage> listModels({
+    String? cursor,
+    int? limit,
+    bool includeHidden = false,
+  }) async {
     calls++;
     return page;
   }
@@ -63,7 +67,11 @@ class _FakeModelListReader implements ModelListReader {
 
 class _FailingModelListReader implements ModelListReader {
   @override
-  Future<ModelListPage> listModels() {
+  Future<ModelListPage> listModels({
+    String? cursor,
+    int? limit,
+    bool includeHidden = false,
+  }) {
     throw StateError('model list failed');
   }
 }

@@ -1,9 +1,13 @@
 abstract interface class ModelListReader {
-  Future<ModelListPage> listModels();
+  Future<ModelListPage> listModels({
+    String? cursor,
+    int? limit,
+    bool includeHidden = false,
+  });
 }
 
 class ModelListPage {
-  const ModelListPage({required this.models});
+  const ModelListPage({required this.models, this.nextCursor});
 
   factory ModelListPage.fromJson(Map<String, Object?> json) {
     final rawModels = json['data'] ?? json['models'];
@@ -12,10 +16,12 @@ class ModelListPage {
     }
     return ModelListPage(
       models: List.unmodifiable(rawModels.map(_modelFromJson).nonNulls),
+      nextCursor: _stringValue(json['nextCursor'] ?? json['next_cursor']),
     );
   }
 
   final List<CodexModelSummary> models;
+  final String? nextCursor;
 }
 
 class CodexModelSummary {

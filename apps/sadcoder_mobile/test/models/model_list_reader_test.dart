@@ -43,10 +43,11 @@ void main() {
         },
         {'slug': 'gpt-5.6-luna', 'display_name': 'GPT-5.6 Luna'},
       ],
-      'nextCursor': null,
+      'nextCursor': 'next-page',
     });
 
     expect(page.models, hasLength(3));
+    expect(page.nextCursor, 'next-page');
     expect(page.models[0].id, 'gpt-5.6-sol');
     expect(page.models[0].catalogId, 'gpt-5.6-sol-default');
     expect(page.models[0].label, 'GPT-5.6 Sol');

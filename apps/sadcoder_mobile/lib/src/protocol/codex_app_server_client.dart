@@ -20,8 +20,22 @@ class CodexAppServerClient {
     return result;
   }
 
-  Future<Map<String, Object?>> listModels() {
-    return _request('model/list', {});
+  Future<Map<String, Object?>> listModels({
+    String? cursor,
+    int? limit,
+    bool includeHidden = false,
+  }) {
+    final params = <String, Object?>{};
+    if (cursor != null && cursor.trim().isNotEmpty) {
+      params['cursor'] = cursor.trim();
+    }
+    if (limit != null) {
+      params['limit'] = limit;
+    }
+    if (includeHidden) {
+      params['includeHidden'] = true;
+    }
+    return _request('model/list', params);
   }
 
   Future<Map<String, Object?>> listPermissionProfiles({

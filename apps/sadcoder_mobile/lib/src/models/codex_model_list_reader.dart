@@ -7,8 +7,28 @@ class CodexModelListReader implements ModelListReader {
   final CodexAppServerClient _client;
 
   @override
-  Future<ModelListPage> listModels() async {
-    final result = await _client.listModels();
-    return ModelListPage.fromJson(result);
+  Future<ModelListPage> listModels({
+    String? cursor,
+    int? limit,
+    bool includeHidden = false,
+  }) async {
+    final models = <CodexModelSummary>[];
+    String? nextCursor = cursor;
+    final seenCursors = <String>{};
+    do {
+      final result = await _client.listModels(
+        cursor: nextCursor,
+        limit: limit,
+        includeHidden: includeHidden,
+      );
+      final page = ModelListPage.fromJson(result);
+      models.addAll(page.models);
+      nextCursor = page.nextCursor;
+      if (nextCursor != null && !seenCursors.add(nextCursor)) {
+        throw StateError('model/list returned a repeated cursor');
+      }
+    } while (nextCursor != null);
+
+    return ModelListPage(models: List.unmodifiable(models));
   }
 }
