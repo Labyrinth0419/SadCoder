@@ -31,6 +31,7 @@ class WorkspaceDirectoryEntry {
     required this.name,
     required this.kind,
     required this.isHidden,
+    this.isSymlink = false,
     this.sizeBytes,
     this.modifiedAt,
   });
@@ -42,4 +43,5 @@ class WorkspaceDirectoryEntry {
   final int? sizeBytes;
   final DateTime? modifiedAt;
   final bool isHidden;
+  final bool isSymlink;
 }

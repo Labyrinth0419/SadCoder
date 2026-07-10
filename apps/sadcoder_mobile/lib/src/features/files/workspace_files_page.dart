@@ -336,6 +336,20 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     if (root == null || reader == null) {
       return;
     }
+    if (entry.isSymlink) {
+      setState(() {
+        _preview = _FilePreviewState.failed(
+          root: root,
+          path: entry.path,
+          error: const WorkspaceFileException(
+            WorkspaceFileFailureCode.pathOutsideRoot,
+            'Workspace path is outside the workspace root.',
+            detail: 'Symbolic links are not previewed.',
+          ),
+        );
+      });
+      return;
+    }
 
     final requestId = ++_nextFileRequestId;
     setState(() {
@@ -344,7 +358,23 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
 
     try {
       final stat = await reader.statFile(root: root, path: entry.path);
-      _assertPreviewableStat(stat);
+      final unpreviewable = _unpreviewableStatError(stat);
+      if (unpreviewable != null) {
+        if (!mounted ||
+            requestId != _nextFileRequestId ||
+            _activeRoot != root) {
+          return;
+        }
+        setState(() {
+          _preview = _FilePreviewState.failed(
+            root: root,
+            path: entry.path,
+            stat: stat,
+            error: unpreviewable,
+          );
+        });
+        return;
+      }
       final chunk = await reader.readFile(
         root: root,
         path: entry.path,
@@ -483,7 +513,8 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
       if (!_matchesFilter(entry)) {
         continue;
       }
-      final isDirectory = entry.kind == WorkspaceFileKind.directory;
+      final isDirectory =
+          entry.kind == WorkspaceFileKind.directory && !entry.isSymlink;
       final expanded = _expandedDirectories.contains(entry.path);
       rows.add(
         _WorkspaceEntryRow(
@@ -679,7 +710,8 @@ class _WorkspaceEntryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDirectory = entry.kind == WorkspaceFileKind.directory;
+    final isDirectory =
+        entry.kind == WorkspaceFileKind.directory && !entry.isSymlink;
     return ListTile(
       contentPadding: EdgeInsetsDirectional.only(
         start: 16.0 + depth * 20,
@@ -687,7 +719,9 @@ class _WorkspaceEntryRow extends StatelessWidget {
       ),
       selected: selected,
       leading: Icon(
-        isDirectory
+        entry.isSymlink
+            ? Icons.link
+            : isDirectory
             ? expanded
                   ? Icons.folder_open
                   : Icons.folder_outlined
@@ -797,6 +831,22 @@ IconData _fileIcon(String path) {
   };
 }
 
+String _fileTypeLabel(AppLocalizations l10n, WorkspaceFileStat stat) {
+  final mimeType = _normalizedText(stat.mimeType);
+  if (mimeType != null) {
+    return mimeType;
+  }
+  final language = _normalizedText(stat.language);
+  if (language != null) {
+    return language;
+  }
+  return switch (stat.kind) {
+    WorkspaceFileKind.file => l10n.workspaceFilesKindFile,
+    WorkspaceFileKind.directory => l10n.workspaceFilesKindDirectory,
+    WorkspaceFileKind.unknown => l10n.workspaceFilesKindUnknown,
+  };
+}
+
 String? _normalizedText(String? value) {
   if (value == null || value.trim().isEmpty) {
     return null;
@@ -804,20 +854,28 @@ String? _normalizedText(String? value) {
   return value.trim();
 }
 
-void _assertPreviewableStat(WorkspaceFileStat stat) {
+WorkspaceFileException? _unpreviewableStatError(WorkspaceFileStat stat) {
   if (stat.kind == WorkspaceFileKind.directory) {
-    throw const WorkspaceFileException(
+    return const WorkspaceFileException(
       WorkspaceFileFailureCode.readFailed,
       'Workspace file request failed.',
       detail: 'Path is a directory.',
     );
   }
+  if (stat.isSymlink) {
+    return const WorkspaceFileException(
+      WorkspaceFileFailureCode.pathOutsideRoot,
+      'Workspace path is outside the workspace root.',
+      detail: 'Symbolic links are not previewed.',
+    );
+  }
   if (stat.isBinary == true) {
-    throw const WorkspaceFileException(
+    return const WorkspaceFileException(
       WorkspaceFileFailureCode.binaryNotPreviewable,
       'Binary files cannot be previewed as text.',
     );
   }
+  return null;
 }
 
 _PreviewMode _initialPreviewMode(
@@ -1000,11 +1058,13 @@ class _FilePreviewState {
     required String root,
     required String path,
     required Object error,
+    WorkspaceFileStat? stat,
   }) {
     return _FilePreviewState._(
       status: _PreviewStatus.failed,
       root: root,
       path: path,
+      stat: stat,
       error: error,
     );
   }

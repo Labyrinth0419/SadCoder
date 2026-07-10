@@ -19,6 +19,7 @@ class CodexWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
   }) async {
     try {
       final workspacePath = WorkspacePath.fromRoot(root, path);
+      await _rejectSymlinkPath(workspacePath);
       final response = await _client.fsReadDirectory(
         path: workspacePath.absolutePath,
       );
@@ -42,6 +43,24 @@ class CodexWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
     } catch (error) {
       throw normalizeWorkspaceFileException(error);
     }
+  }
+
+  Future<void> _rejectSymlinkPath(WorkspacePath workspacePath) async {
+    if (workspacePath.relativePath.isEmpty) {
+      return;
+    }
+    final metadata = await _client.fsGetMetadata(
+      path: workspacePath.absolutePath,
+    );
+    if (_optionalBool(metadata['isSymlink'] ?? metadata['is_symlink']) !=
+        true) {
+      return;
+    }
+    throw const WorkspaceFileException(
+      WorkspaceFileFailureCode.pathOutsideRoot,
+      'Workspace path is outside the workspace root.',
+      detail: 'Symbolic links are not browsed.',
+    );
   }
 
   List<WorkspaceDirectoryEntry> _entriesFromResponse(
@@ -80,6 +99,8 @@ class CodexWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
             _intValue(map['modifiedAtMs'] ?? map['modified_at_ms']),
           ),
           isHidden: hidden,
+          isSymlink:
+              _optionalBool(map['isSymlink'] ?? map['is_symlink']) ?? false,
         ),
       );
     }

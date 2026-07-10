@@ -13,22 +13,36 @@ void main() {
       final client = CodexAppServerClient(
         MemoryJsonRpcTransport((request) {
           requests.add(request);
-          expect(request.method, 'fs/readDirectory');
           expect(request.params, {'path': '/repo/lib/src'});
-          return {
-            'entries': [
-              {'fileName': 'main.dart', 'isDirectory': false, 'isFile': true},
-              {'fileName': '.env', 'isDirectory': false, 'isFile': true},
-              {'fileName': 'features', 'isDirectory': true, 'isFile': false},
-              {
-                'fileName': 'README.md',
-                'isDirectory': false,
-                'isFile': true,
-                'sizeBytes': 42,
-                'modifiedAtMs': 1700000000000,
-              },
-            ],
-          };
+          switch (request.method) {
+            case 'fs/getMetadata':
+              return {'isDirectory': true, 'isFile': false, 'isSymlink': false};
+            case 'fs/readDirectory':
+              return {
+                'entries': [
+                  {
+                    'fileName': 'main.dart',
+                    'isDirectory': false,
+                    'isFile': true,
+                  },
+                  {'fileName': '.env', 'isDirectory': false, 'isFile': true},
+                  {
+                    'fileName': 'features',
+                    'isDirectory': true,
+                    'isFile': false,
+                  },
+                  {
+                    'fileName': 'README.md',
+                    'isDirectory': false,
+                    'isFile': true,
+                    'sizeBytes': 42,
+                    'modifiedAtMs': 1700000000000,
+                  },
+                ],
+              };
+            default:
+              throw StateError('unexpected method ${request.method}');
+          }
         }),
       );
       final reader = CodexWorkspaceDirectoryReader(client);
@@ -61,7 +75,12 @@ void main() {
         DateTime.fromMillisecondsSinceEpoch(1700000000000, isUtc: true),
       );
       expect(secondPage.nextCursor, isNull);
-      expect(requests, hasLength(2));
+      expect(requests.map((request) => request.method), [
+        'fs/getMetadata',
+        'fs/readDirectory',
+        'fs/getMetadata',
+        'fs/readDirectory',
+      ]);
     },
   );
 
@@ -89,6 +108,60 @@ void main() {
     expect(page.entries.single.name, 'secret.env');
     expect(page.entries.single.isHidden, true);
   });
+
+  test('listDirectory preserves symlink metadata', () async {
+    final client = CodexAppServerClient(
+      MemoryJsonRpcTransport((request) {
+        return {
+          'entries': [
+            {
+              'fileName': 'linked',
+              'isDirectory': true,
+              'isFile': false,
+              'isSymlink': true,
+            },
+          ],
+        };
+      }),
+    );
+    final reader = CodexWorkspaceDirectoryReader(client);
+
+    final page = await reader.listDirectory(root: '/repo');
+
+    expect(page.entries.single.name, 'linked');
+    expect(page.entries.single.kind, WorkspaceFileKind.directory);
+    expect(page.entries.single.isSymlink, true);
+  });
+
+  test(
+    'listDirectory rejects symlink paths before reading directory',
+    () async {
+      final requests = <JsonRpcRequest>[];
+      final client = CodexAppServerClient(
+        MemoryJsonRpcTransport((request) {
+          requests.add(request);
+          expect(request.params, {'path': '/repo/linked'});
+          if (request.method == 'fs/getMetadata') {
+            return {'isDirectory': true, 'isFile': false, 'isSymlink': true};
+          }
+          throw StateError('unexpected method ${request.method}');
+        }),
+      );
+      final reader = CodexWorkspaceDirectoryReader(client);
+
+      await expectLater(
+        reader.listDirectory(root: '/repo', path: 'linked'),
+        throwsA(
+          isA<WorkspaceFileException>().having(
+            (error) => error.code,
+            'code',
+            WorkspaceFileFailureCode.pathOutsideRoot,
+          ),
+        ),
+      );
+      expect(requests.map((request) => request.method), ['fs/getMetadata']);
+    },
+  );
 
   test(
     'listDirectory rejects traversal and absolute replacement paths',

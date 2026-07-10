@@ -26,6 +26,7 @@ class _PreviewPanel extends StatelessWidget {
           _PreviewStatus.loading => _PreviewLoading(path: preview.path),
           _PreviewStatus.failed => _PreviewError(
             path: preview.path,
+            stat: preview.stat,
             text: errorText ?? l10n.workspaceFilesReadFailed,
           ),
           _PreviewStatus.loaded => _PreviewContent(
@@ -80,13 +81,16 @@ class _PreviewLoading extends StatelessWidget {
 }
 
 class _PreviewError extends StatelessWidget {
-  const _PreviewError({required this.path, required this.text});
+  const _PreviewError({required this.path, required this.text, this.stat});
 
   final String? path;
   final String text;
+  final WorkspaceFileStat? stat;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final stat = this.stat;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -94,11 +98,25 @@ class _PreviewError extends StatelessWidget {
           children: [
             const Icon(Icons.error_outline),
             const SizedBox(width: 12),
-            Expanded(
-              child: Text(path ?? context.l10n.workspaceFilesOpenFailed),
-            ),
+            Expanded(child: Text(path ?? l10n.workspaceFilesOpenFailed)),
           ],
         ),
+        if (stat != null) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (stat.sizeBytes != null)
+                Chip(label: Text(l10n.workspaceFilesFileSize(stat.sizeBytes!))),
+              Chip(
+                label: Text(
+                  l10n.workspaceFilesFileType(_fileTypeLabel(l10n, stat)),
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 8),
         Text(text),
       ],

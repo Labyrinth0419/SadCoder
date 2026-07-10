@@ -637,6 +637,15 @@ class AppLocalizations {
       _text('workspaceFilesPathOutsideRoot');
   String get workspaceFilesReadFailed => _text('workspaceFilesReadFailed');
   String get workspaceFilesTooLarge => _text('workspaceFilesTooLarge');
+  String workspaceFilesFileSize(int sizeBytes) => _text(
+    'workspaceFilesFileSize',
+  ).replaceAll('{size}', formatFileSize(sizeBytes));
+  String workspaceFilesFileType(String type) =>
+      _text('workspaceFilesFileType').replaceAll('{type}', type);
+  String get workspaceFilesKindFile => _text('workspaceFilesKindFile');
+  String get workspaceFilesKindDirectory =>
+      _text('workspaceFilesKindDirectory');
+  String get workspaceFilesKindUnknown => _text('workspaceFilesKindUnknown');
   String get workspaceFilesDirectoryLoadFailed =>
       _text('workspaceFilesDirectoryLoadFailed');
   String get workspaceFilesRetry => _text('workspaceFilesRetry');
@@ -1279,6 +1288,11 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesPathOutsideRoot': 'Path is outside the workspace root.',
     'workspaceFilesReadFailed': 'Failed to read workspace file.',
     'workspaceFilesTooLarge': 'File is too large to preview.',
+    'workspaceFilesFileSize': 'Size: {size}',
+    'workspaceFilesFileType': 'Type: {type}',
+    'workspaceFilesKindFile': 'file',
+    'workspaceFilesKindDirectory': 'directory',
+    'workspaceFilesKindUnknown': 'unknown',
     'workspaceFilesDirectoryLoadFailed': 'Failed to load directory.',
     'workspaceFilesRetry': 'Retry',
     'workspaceFilesLoadedBytes': '{loaded} / {total} loaded',
@@ -1805,6 +1819,11 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesPathOutsideRoot': '路径位于工作区根目录之外。',
     'workspaceFilesReadFailed': '读取工作区文件失败。',
     'workspaceFilesTooLarge': '文件过大，无法预览。',
+    'workspaceFilesFileSize': '大小：{size}',
+    'workspaceFilesFileType': '类型：{type}',
+    'workspaceFilesKindFile': '文件',
+    'workspaceFilesKindDirectory': '目录',
+    'workspaceFilesKindUnknown': '未知',
     'workspaceFilesDirectoryLoadFailed': '目录加载失败。',
     'workspaceFilesRetry': '重试',
     'workspaceFilesLoadedBytes': '已加载 {loaded} / {total}',

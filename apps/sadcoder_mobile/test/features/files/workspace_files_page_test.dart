@@ -233,7 +233,14 @@ void main() {
       '': [_entry(path: 'image.png', name: 'image.png')],
     });
     final fileReader = _FakeWorkspaceFileReader(
-      stats: {'image.png': _stat(path: 'image.png', isBinary: true)},
+      stats: {
+        'image.png': _stat(
+          path: 'image.png',
+          isBinary: true,
+          mimeType: 'image/png',
+          sizeBytes: 2048,
+        ),
+      },
       chunks: const {},
     );
 
@@ -248,6 +255,40 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Binary files cannot be previewed.'), findsOneWidget);
+    expect(find.text('Size: 2 KB'), findsOneWidget);
+    expect(find.text('Type: image/png'), findsOneWidget);
+  });
+
+  testWidgets('does not expand or read symlink directory entries', (
+    tester,
+  ) async {
+    final directoryReader = _FakeWorkspaceDirectoryReader({
+      '': [
+        _entry(
+          path: 'linked',
+          name: 'linked',
+          kind: WorkspaceFileKind.directory,
+          isSymlink: true,
+        ),
+      ],
+      'linked': [_entry(path: 'linked/secret.txt', name: 'secret.txt')],
+    });
+    final fileReader = _RecordingWorkspaceFileReader();
+
+    await _pumpFilesPage(
+      tester,
+      directoryReader: directoryReader,
+      fileReader: fileReader,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-entry-linked')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Path is outside the workspace root.'), findsOneWidget);
+    expect(find.text('secret.txt'), findsNothing);
+    expect(fileReader.statCalls, isEmpty);
+    expect(fileReader.readCalls, isEmpty);
   });
 
   testWidgets('shows empty directory and structured file error states', (
@@ -383,6 +424,7 @@ WorkspaceDirectoryEntry _entry({
   required String path,
   required String name,
   WorkspaceFileKind kind = WorkspaceFileKind.file,
+  bool isSymlink = false,
 }) {
   return WorkspaceDirectoryEntry(
     root: '/repo',
@@ -390,6 +432,7 @@ WorkspaceDirectoryEntry _entry({
     name: name,
     kind: kind,
     isHidden: name.startsWith('.'),
+    isSymlink: isSymlink,
   );
 }
 
@@ -397,12 +440,18 @@ WorkspaceFileStat _stat({
   required String path,
   String? language,
   bool isBinary = false,
+  String? mimeType,
+  int? sizeBytes,
+  bool isSymlink = false,
 }) {
   return WorkspaceFileStat(
     root: '/repo',
     path: path,
     kind: WorkspaceFileKind.file,
+    sizeBytes: sizeBytes,
+    isSymlink: isSymlink,
     isBinary: isBinary,
+    mimeType: mimeType,
     language: language,
   );
 }
