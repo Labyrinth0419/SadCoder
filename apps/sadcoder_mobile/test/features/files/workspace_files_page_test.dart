@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/features/files/workspace_files_page.dart';
 import 'package:sadcoder_mobile/src/files/workspace_directory_reader.dart';
 import 'package:sadcoder_mobile/src/files/workspace_file_failure.dart';
@@ -9,6 +11,9 @@ import 'package:sadcoder_mobile/src/files/workspace_file_kind.dart';
 import 'package:sadcoder_mobile/src/files/workspace_file_reader.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/theme/sadcoder_theme.dart';
+import 'package:sadcoder_mobile/src/threads/thread_detail_controller.dart';
+import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
+import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 
 void main() {
   testWidgets('browses directories and toggles Markdown render/raw modes', (
@@ -455,6 +460,44 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('uses cwd override before selected thread cwd', (tester) async {
+    final calls = <_DirectoryListCall>[];
+    final directoryReader = _FakeWorkspaceDirectoryReader({
+      '': [_entry(path: 'README.md', name: 'README.md')],
+    }, calls);
+    final configOverrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(cwd: '/override'),
+      ),
+    );
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        ThreadDetail(thread: _threadSummary(cwd: '/thread')),
+      ),
+    );
+    addTearDown(configOverrideController.dispose);
+    addTearDown(threadDetailController.dispose);
+    await threadDetailController.readThread('thr_1');
+
+    await _pumpFilesPage(
+      tester,
+      root: null,
+      directoryReader: directoryReader,
+      fileReader: const _FakeWorkspaceFileReader(),
+      configOverrideController: configOverrideController,
+      threadDetailController: threadDetailController,
+    );
+
+    expect(find.text('Root: /override'), findsOneWidget);
+    expect(calls.last.root, '/override');
+
+    configOverrideController.clearSession();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Root: /thread'), findsOneWidget);
+    expect(calls.last.root, '/thread');
+  });
 }
 
 Future<void> _pumpFilesPage(
@@ -463,6 +506,8 @@ Future<void> _pumpFilesPage(
   WorkspaceFileReader? fileReader,
   String? root = '/repo',
   ThemeMode themeMode = ThemeMode.light,
+  CodexConfigOverrideController? configOverrideController,
+  ThreadDetailController? threadDetailController,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -484,6 +529,8 @@ Future<void> _pumpFilesPage(
           root: root,
           directoryReader: directoryReader,
           fileReader: fileReader,
+          configOverrideController: configOverrideController,
+          threadDetailController: threadDetailController,
         ),
       ),
     ),
@@ -568,6 +615,7 @@ class _FakeWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
   }) async {
     calls?.add(
       _DirectoryListCall(
+        root: root,
         path: path,
         cursor: cursor,
         includeHidden: includeHidden,
@@ -598,11 +646,13 @@ class _FakeWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
 
 class _DirectoryListCall {
   const _DirectoryListCall({
+    required this.root,
     required this.path,
     required this.cursor,
     required this.includeHidden,
   });
 
+  final String root;
   final String path;
   final String? cursor;
   final bool includeHidden;
@@ -695,4 +745,30 @@ class _RecordingWorkspaceFileReader implements WorkspaceFileReader {
       'Unexpected read.',
     );
   }
+}
+
+class _FakeThreadDetailReader implements ThreadDetailReader {
+  const _FakeThreadDetailReader(this.detail);
+
+  final ThreadDetail detail;
+
+  @override
+  Future<ThreadDetail> readThread({
+    required String threadId,
+    bool includeTurns = true,
+  }) async {
+    return detail;
+  }
+}
+
+ThreadSummary _threadSummary({required String cwd}) {
+  return ThreadSummary.fromJson({
+    'id': 'thr_1',
+    'sessionId': 'sess_1',
+    'preview': 'Browse files',
+    'ephemeral': false,
+    'status': 'idle',
+    'cwd': cwd,
+    'updatedAt': 1,
+  });
 }
