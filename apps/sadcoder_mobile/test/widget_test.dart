@@ -704,6 +704,9 @@ class _FakeProfileStore implements SshProfileListStore {
 
   @override
   Future<void> saveProfile(SshProfile profile) async {}
+
+  @override
+  Future<void> deleteProfile(String profileId) async {}
 }
 
 class _RecordingStaticSessionStarter implements CodexSessionConnectionStarter {

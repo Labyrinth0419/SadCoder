@@ -103,6 +103,11 @@ void main() {
     expect(metadataStore.savedProfile?.id, 'bob@srv.dev:22');
     expect(credentialStore.savedProfileIds.last, 'bob@srv.dev:22');
     expect(credentialStore.savedSecrets.last.password, 'bob-secret');
+
+    await store.deleteProfile('bob@srv.dev:22');
+
+    expect(metadataStore.deletedProfileIds, ['bob@srv.dev:22']);
+    expect(credentialStore.deletedProfileIds, ['bob@srv.dev:22']);
   });
 }
 
@@ -144,6 +149,13 @@ class _FakeProfileListStore implements SshProfileListStore {
   Future<void> saveProfile(SshProfile profile) async {
     savedProfile = profile;
   }
+
+  final deletedProfileIds = <String>[];
+
+  @override
+  Future<void> deleteProfile(String profileId) async {
+    deletedProfileIds.add(profileId);
+  }
 }
 
 class _FakeCredentialStore implements SshCredentialStore {
@@ -157,6 +169,7 @@ class _FakeCredentialStore implements SshCredentialStore {
   final loadedProfileIds = <String>[];
   final savedProfileIds = <String>[];
   final savedSecrets = <SshProfileSecrets>[];
+  final deletedProfileIds = <String>[];
 
   @override
   Future<SshProfileSecrets> loadSecrets(String profileId) async {
@@ -168,5 +181,10 @@ class _FakeCredentialStore implements SshCredentialStore {
   Future<void> saveSecrets(String profileId, SshProfile profile) async {
     savedProfileIds.add(profileId);
     savedSecrets.add(SshProfileSecrets(password: profile.password));
+  }
+
+  @override
+  Future<void> deleteSecrets(String profileId) async {
+    deletedProfileIds.add(profileId);
   }
 }

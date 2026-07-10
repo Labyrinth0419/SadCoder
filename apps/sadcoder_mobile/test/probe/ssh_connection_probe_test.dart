@@ -19,35 +19,6 @@ void main() {
     expect(runner.commands, ['echo sadcoder-shell-ready']);
     expect(runner.timeouts, [const Duration(seconds: 10)]);
   });
-
-  test('readCodexVersion runs codex --version and trims stdout', () async {
-    final runner = _RecordingCommandRunner(
-      const RemoteCommandResult(
-        exitCode: 0,
-        stdout: 'codex-cli 0.142.5\n',
-        stderr: '',
-      ),
-    );
-    final probe = RemoteCommandShellProbeRunner(runner);
-
-    final version = await probe.readCodexVersion(_profile);
-
-    expect(version, 'codex-cli 0.142.5');
-    expect(runner.commands, ['codex --version']);
-    expect(runner.timeouts, [const Duration(seconds: 20)]);
-  });
-
-  test('readCodexVersion throws on failed command', () async {
-    final runner = _RecordingCommandRunner(
-      const RemoteCommandResult(exitCode: 127, stdout: '', stderr: 'missing'),
-    );
-    final probe = RemoteCommandShellProbeRunner(runner);
-
-    await expectLater(
-      probe.readCodexVersion(_profile),
-      throwsA(isA<RemoteCommandException>()),
-    );
-  });
 }
 
 const _profile = SshProfile(

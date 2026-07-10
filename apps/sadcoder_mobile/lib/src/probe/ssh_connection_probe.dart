@@ -110,22 +110,6 @@ class RemoteCommandShellProbeRunner implements RemoteShellProbeRunner {
       );
     }
   }
-
-  @override
-  Future<String> readCodexVersion(SshProfile profile) async {
-    final result = await _runner.run(
-      profile,
-      'codex --version',
-      timeout: const Duration(seconds: 20),
-    );
-    if (!result.succeeded) {
-      throw RemoteCommandException(
-        'codex --version failed with exit code ${result.exitCode}: '
-        '${result.stderr.trim().isEmpty ? result.stdout : result.stderr}',
-      );
-    }
-    return result.stdout.trim();
-  }
 }
 
 bool _hasStep(List<M0ProbeStepResult> steps, M0ProbeStep step) {

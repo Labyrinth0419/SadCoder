@@ -157,6 +157,7 @@ class _HostsPageState extends State<HostsPage> {
             hostSessions: widget.hostSessions,
             onHostExpandedChanged: _setSavedHostExpanded,
             onProfileSelected: _selectProfile,
+            onProfileDeleted: _deleteProfile,
           ),
           const SizedBox(height: 12),
         ],
@@ -633,6 +634,55 @@ class _HostsPageState extends State<HostsPage> {
     });
   }
 
+  Future<void> _deleteProfile(SshProfile profile) async {
+    final store = _profileStore;
+    if (store is! SshProfileListStore) {
+      return;
+    }
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.delete_outline),
+        title: Text(l10n.deleteSshProfileTitle),
+        content: Text(l10n.deleteSshProfileBody(_profileTitle(profile))),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.deleteSshProfile),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) {
+      return;
+    }
+
+    try {
+      await store.deleteProfile(profile.id);
+      final profiles = await store.loadProfiles();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _profiles = profiles;
+        _profileMessage = l10n.sshProfileDeleted;
+        _profileError = null;
+      });
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() {
+          _profileMessage = null;
+          _profileError = '${l10n.sshProfileDeleteFailed}: $error';
+        });
+      }
+    }
+  }
+
   String? _profileValidationError(AppLocalizations l10n) {
     if (_hostController.text.trim().isEmpty) {
       return l10n.hostRequired;
@@ -773,6 +823,22 @@ String _profileTitle(SshProfile profile) {
   return profile.endpoint;
 }
 
+String _hostGroupTitle(List<SshProfile> profiles, String fallback) {
+  final aliases = <String>{};
+  for (final profile in profiles) {
+    final alias = profile.name.trim();
+    if (alias.isNotEmpty && alias != profile.host.trim()) {
+      aliases.add(alias);
+    }
+  }
+  if (aliases.isEmpty) {
+    return fallback;
+  }
+  final visibleAliases = aliases.take(2).join(', ');
+  final remaining = aliases.length - 2;
+  return remaining > 0 ? '$visibleAliases, +$remaining' : visibleAliases;
+}
+
 String _safeFileNamePart(String value) {
   return value.trim().replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '_');
 }
@@ -798,6 +864,7 @@ class _SavedHostProfilesPanel extends StatelessWidget {
     required this.hostSessions,
     required this.onHostExpandedChanged,
     required this.onProfileSelected,
+    required this.onProfileDeleted,
   });
 
   final List<SshProfile> profiles;
@@ -805,6 +872,7 @@ class _SavedHostProfilesPanel extends StatelessWidget {
   final List<HostSessionSummary> hostSessions;
   final void Function(String hostKey, bool expanded) onHostExpandedChanged;
   final ValueChanged<SshProfile> onProfileSelected;
+  final ValueChanged<SshProfile> onProfileDeleted;
 
   @override
   Widget build(BuildContext context) {
@@ -830,8 +898,10 @@ class _SavedHostProfilesPanel extends StatelessWidget {
               key: ValueKey('saved-host-group-${entry.key}'),
               initiallyExpanded: !collapsedHosts.contains(entry.key),
               leading: const Icon(Icons.dns_outlined),
-              title: Text(entry.key),
-              subtitle: Text(l10n.savedHostProfileCount(entry.value.length)),
+              title: Text(_hostGroupTitle(entry.value, entry.key)),
+              subtitle: Text(
+                '${entry.key} | ${l10n.savedHostProfileCount(entry.value.length)}',
+              ),
               onExpansionChanged: (expanded) =>
                   onHostExpandedChanged(entry.key, expanded),
               children: [
@@ -840,6 +910,7 @@ class _SavedHostProfilesPanel extends StatelessWidget {
                     profile: profile,
                     status: statusByProfileId[hostSessionProfileId(profile)],
                     onProfileSelected: onProfileSelected,
+                    onProfileDeleted: onProfileDeleted,
                   ),
               ],
             ),
@@ -854,11 +925,13 @@ class _SavedHostProfileTile extends StatelessWidget {
     required this.profile,
     required this.status,
     required this.onProfileSelected,
+    required this.onProfileDeleted,
   });
 
   final SshProfile profile;
   final CodexSessionStatus? status;
   final ValueChanged<SshProfile> onProfileSelected;
+  final ValueChanged<SshProfile> onProfileDeleted;
 
   @override
   Widget build(BuildContext context) {
@@ -886,6 +959,12 @@ class _SavedHostProfileTile extends StatelessWidget {
             tooltip: l10n.useSshProfile,
             onPressed: () => onProfileSelected(profile),
             icon: const Icon(Icons.drive_file_move_outline),
+          ),
+          IconButton(
+            key: ValueKey('saved-host-delete-${profile.id}'),
+            tooltip: l10n.deleteSshProfile,
+            onPressed: () => onProfileDeleted(profile),
+            icon: const Icon(Icons.delete_outline),
           ),
         ],
       ),

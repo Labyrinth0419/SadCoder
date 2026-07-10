@@ -64,9 +64,6 @@ class M0ProbeCoordinator implements M0ProbeRunner {
     )) {
       return M0ProbeReport(agentStatus: status, steps: steps);
     }
-    if (!await _recordCodexVersionStep(steps, _shellProbeRunner, profile)) {
-      return M0ProbeReport(agentStatus: status, steps: steps);
-    }
 
     try {
       status = await _statusReader.readStatus(profile);
@@ -90,6 +87,10 @@ class M0ProbeCoordinator implements M0ProbeRunner {
           suggestion: M0ProbeSuggestion.installAgent,
         ),
       );
+      return M0ProbeReport(agentStatus: status, steps: steps);
+    }
+    steps.add(_codexVersionStepFromStatus(status));
+    if (!status.codexAvailable) {
       return M0ProbeReport(agentStatus: status, steps: steps);
     }
 
@@ -211,37 +212,6 @@ class M0ProbeCoordinator implements M0ProbeRunner {
     }
   }
 
-  Future<bool> _recordCodexVersionStep(
-    List<M0ProbeStepResult> steps,
-    RemoteShellProbeRunner runner,
-    SshProfile profile,
-  ) async {
-    try {
-      final version = await runner.readCodexVersion(profile);
-      steps.add(
-        M0ProbeStepResult(
-          step: M0ProbeStep.codexVersion,
-          ok: true,
-          detail: version,
-          suggestion: _codexVersionSuggestion(version),
-        ),
-      );
-      return true;
-    } on KnownHostVerificationException {
-      rethrow;
-    } on Object catch (error) {
-      steps.add(
-        M0ProbeStepResult(
-          step: M0ProbeStep.codexVersion,
-          ok: false,
-          detail: error.toString(),
-          suggestion: M0ProbeSuggestion.installCodex,
-        ),
-      );
-      return false;
-    }
-  }
-
   Future<AgentStatus> _startBackendIfNeeded(
     SshProfile profile,
     AgentStatus status,
@@ -291,6 +261,27 @@ class M0ProbeCoordinator implements M0ProbeRunner {
       // Best-effort cleanup after a failed probe.
     }
   }
+}
+
+M0ProbeStepResult _codexVersionStepFromStatus(AgentStatus status) {
+  final version = status.codexVersion?.trim();
+  final detail = version == null || version.isEmpty
+      ? status.codexPath
+      : version;
+  if (!status.codexAvailable) {
+    return M0ProbeStepResult(
+      step: M0ProbeStep.codexVersion,
+      ok: false,
+      detail: detail,
+      suggestion: M0ProbeSuggestion.installCodex,
+    );
+  }
+  return M0ProbeStepResult(
+    step: M0ProbeStep.codexVersion,
+    ok: true,
+    detail: detail,
+    suggestion: _codexVersionSuggestion(detail),
+  );
 }
 
 M0ProbeSuggestion? _codexVersionSuggestion(String version) {

@@ -50,6 +50,15 @@ class SecureSshProfileStore implements SshProfileListStore {
     await credentialStore.saveSecrets(profile.id, profile);
   }
 
+  @override
+  Future<void> deleteProfile(String profileId) async {
+    final metadata = metadataStore;
+    if (metadata is SshProfileListStore) {
+      await metadata.deleteProfile(profileId);
+    }
+    await credentialStore.deleteSecrets(profileId);
+  }
+
   Future<SshProfile> _withSecrets(SshProfile profile) async {
     final secrets = await credentialStore.loadSecrets(profile.id);
     if (secrets.isEmpty) {

@@ -103,4 +103,38 @@ void main() {
 
     expect(profiles.single.id, 'manual');
   });
+
+  test('deletes saved profiles and updates the last profile', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SharedPreferencesSshProfileStore();
+    await store.saveProfile(
+      const SshProfile(
+        id: 'alice@srv.dev:22',
+        name: 'Dev',
+        host: 'srv.dev',
+        username: 'alice',
+      ),
+    );
+    await store.saveProfile(
+      const SshProfile(
+        id: 'root@prod.dev:2200',
+        name: 'Prod',
+        host: 'prod.dev',
+        port: 2200,
+        username: 'root',
+      ),
+    );
+
+    await store.deleteProfile('root@prod.dev:2200');
+
+    expect((await store.loadProfiles()).map((profile) => profile.id), [
+      'alice@srv.dev:22',
+    ]);
+    expect((await store.loadLastProfile())?.id, 'alice@srv.dev:22');
+
+    await store.deleteProfile('alice@srv.dev:22');
+
+    expect(await store.loadProfiles(), isEmpty);
+    expect(await store.loadLastProfile(), isNull);
+  });
 }

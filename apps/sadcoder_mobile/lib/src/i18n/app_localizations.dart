@@ -51,6 +51,12 @@ class AppLocalizations {
   String get savedHosts => _text('savedHosts');
   String get noSavedHosts => _text('noSavedHosts');
   String get useSshProfile => _text('useSshProfile');
+  String get deleteSshProfile => _text('deleteSshProfile');
+  String get deleteSshProfileTitle => _text('deleteSshProfileTitle');
+  String deleteSshProfileBody(String name) =>
+      _text('deleteSshProfileBody').replaceAll('{name}', name);
+  String get sshProfileDeleted => _text('sshProfileDeleted');
+  String get sshProfileDeleteFailed => _text('sshProfileDeleteFailed');
   String savedHostProfileCount(int count) =>
       _text('savedHostProfileCount').replaceAll('{count}', '$count');
   String get importSshConfig => _text('importSshConfig');
@@ -869,6 +875,12 @@ const _values = <String, Map<String, String>>{
     'savedHosts': 'Saved hosts',
     'noSavedHosts': 'No saved SSH profiles.',
     'useSshProfile': 'Use profile',
+    'deleteSshProfile': 'Delete profile',
+    'deleteSshProfileTitle': 'Delete SSH profile?',
+    'deleteSshProfileBody':
+        'Delete {name} from saved hosts. Stored credentials for this profile will also be removed.',
+    'sshProfileDeleted': 'SSH profile deleted.',
+    'sshProfileDeleteFailed': 'SSH profile delete failed',
     'savedHostProfileCount': '{count} profiles',
     'importSshConfig': 'Import SSH config',
     'importingSshConfig': 'Importing config',
@@ -1524,6 +1536,11 @@ const _values = <String, Map<String, String>>{
     'savedHosts': '已保存主机',
     'noSavedHosts': '暂无已保存 SSH 配置。',
     'useSshProfile': '使用配置',
+    'deleteSshProfile': '删除配置',
+    'deleteSshProfileTitle': '删除 SSH 配置？',
+    'deleteSshProfileBody': '从已保存主机中删除 {name}。此配置保存的凭据也会一起删除。',
+    'sshProfileDeleted': 'SSH 配置已删除。',
+    'sshProfileDeleteFailed': 'SSH 配置删除失败',
     'savedHostProfileCount': '{count} 个配置',
     'importSshConfig': '导入 SSH config',
     'importingSshConfig': '正在导入 config',

@@ -73,6 +73,30 @@ class SharedPreferencesSshProfileStore implements SshProfileListStore {
     await _saveLastProfile(preferences, profile);
   }
 
+  @override
+  Future<void> deleteProfile(String profileId) async {
+    final preferences = await preferencesProvider();
+    final profiles = [
+      for (final profile in await loadProfiles())
+        if (profile.id != profileId) profile,
+    ];
+    await preferences.setString(
+      _profilesKey,
+      jsonEncode([
+        for (final profile in profiles) profile.toJson(includeSecrets: false),
+      ]),
+    );
+    final lastProfile = await loadLastProfile();
+    if (lastProfile?.id != profileId) {
+      return;
+    }
+    if (profiles.isEmpty) {
+      await preferences.remove(_lastProfileKey);
+    } else {
+      await _saveLastProfile(preferences, profiles.first);
+    }
+  }
+
   Future<void> _saveLastProfile(
     SharedPreferences preferences,
     SshProfile profile,

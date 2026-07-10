@@ -31,8 +31,8 @@ void main() {
         M0ProbeStep.hostKey,
         M0ProbeStep.auth,
         M0ProbeStep.remoteShell,
-        M0ProbeStep.codexVersion,
         M0ProbeStep.agentStatus,
+        M0ProbeStep.codexVersion,
         M0ProbeStep.proxyConnect,
         M0ProbeStep.initialize,
         M0ProbeStep.accountRead,
@@ -75,8 +75,8 @@ void main() {
       M0ProbeStep.hostKey,
       M0ProbeStep.auth,
       M0ProbeStep.remoteShell,
-      M0ProbeStep.codexVersion,
       M0ProbeStep.agentStatus,
+      M0ProbeStep.codexVersion,
       M0ProbeStep.agentStart,
       M0ProbeStep.proxyConnect,
       M0ProbeStep.initialize,
@@ -107,8 +107,8 @@ void main() {
       M0ProbeStep.hostKey,
       M0ProbeStep.auth,
       M0ProbeStep.remoteShell,
-      M0ProbeStep.codexVersion,
       M0ProbeStep.agentStatus,
+      M0ProbeStep.codexVersion,
       M0ProbeStep.agentStart,
     ]);
     expect(report.steps.last.detail, contains('start failed'));
@@ -171,8 +171,8 @@ void main() {
       M0ProbeStep.hostKey,
       M0ProbeStep.auth,
       M0ProbeStep.remoteShell,
-      M0ProbeStep.codexVersion,
       M0ProbeStep.agentStatus,
+      M0ProbeStep.codexVersion,
       M0ProbeStep.proxyConnect,
       M0ProbeStep.initialize,
       M0ProbeStep.accountRead,
@@ -206,10 +206,35 @@ void main() {
       M0ProbeStep.hostKey,
       M0ProbeStep.auth,
       M0ProbeStep.remoteShell,
-      M0ProbeStep.codexVersion,
       M0ProbeStep.agentStatus,
     ]);
     expect(report.steps.last.detail, contains('status unavailable'));
+  });
+
+  test('run uses agent status as the Codex availability source', () async {
+    final connector = _LineServerProxyConnector();
+    final coordinator = _coordinator(
+      statusReader: _FakeStatusReader(_missingCodexStatus),
+      proxyConnector: connector,
+    );
+
+    final report = await coordinator.run(_profile);
+
+    expect(report.ok, false);
+    expect(report.agentStatus, _missingCodexStatus);
+    expect(report.steps.map((step) => step.step), [
+      M0ProbeStep.tcpConnect,
+      M0ProbeStep.sshHandshake,
+      M0ProbeStep.hostKey,
+      M0ProbeStep.auth,
+      M0ProbeStep.remoteShell,
+      M0ProbeStep.agentStatus,
+      M0ProbeStep.codexVersion,
+    ]);
+    expect(report.steps.last.ok, false);
+    expect(report.steps.last.detail, 'codex');
+    expect(report.steps.last.suggestion, M0ProbeSuggestion.installCodex);
+    expect(connector.connectCount, 0);
   });
 
   test('run reports proxy connection failure after status succeeds', () async {
@@ -228,8 +253,8 @@ void main() {
       M0ProbeStep.hostKey,
       M0ProbeStep.auth,
       M0ProbeStep.remoteShell,
-      M0ProbeStep.codexVersion,
       M0ProbeStep.agentStatus,
+      M0ProbeStep.codexVersion,
       M0ProbeStep.proxyConnect,
     ]);
     expect(report.steps.last.ok, false);
@@ -321,11 +346,6 @@ class _PassingShellProbeRunner implements RemoteShellProbeRunner {
 
   @override
   Future<void> probeShell(SshProfile profile) async {}
-
-  @override
-  Future<String> readCodexVersion(SshProfile profile) async {
-    return 'codex-cli 0.142.5';
-  }
 }
 
 class _FailingShellProbeRunner implements RemoteShellProbeRunner {
@@ -335,11 +355,6 @@ class _FailingShellProbeRunner implements RemoteShellProbeRunner {
 
   @override
   Future<void> probeShell(SshProfile profile) async {
-    throw StateError(message);
-  }
-
-  @override
-  Future<String> readCodexVersion(SshProfile profile) async {
     throw StateError(message);
   }
 }
@@ -377,6 +392,16 @@ const _readyDaemonStatus = AgentStatus(
   backendKind: BackendKind.codexAppServerDaemon,
   backendState: BackendState.ready,
   backendDetail: 'official daemon backend is running',
+);
+
+const _missingCodexStatus = AgentStatus(
+  agentVersion: '0.1.0',
+  platformOs: 'linux',
+  platformArch: 'x86_64',
+  codexPath: 'codex',
+  codexAvailable: false,
+  backendKind: BackendKind.unknown,
+  backendState: BackendState.unavailable,
 );
 
 class _FakeStatusReader implements AgentStatusReader {

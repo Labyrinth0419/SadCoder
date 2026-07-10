@@ -15,6 +15,8 @@ abstract interface class SshCredentialStore {
   Future<SshProfileSecrets> loadSecrets(String profileId);
 
   Future<void> saveSecrets(String profileId, SshProfile profile);
+
+  Future<void> deleteSecrets(String profileId);
 }
 
 bool _hasText(String? value) => value != null && value.trim().isNotEmpty;

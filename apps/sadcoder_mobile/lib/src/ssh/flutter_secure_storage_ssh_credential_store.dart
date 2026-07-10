@@ -29,6 +29,13 @@ class FlutterSecureStorageSshCredentialStore implements SshCredentialStore {
     await _writeOrDelete(_key(profileId, 'passphrase'), profile.passphrase);
   }
 
+  @override
+  Future<void> deleteSecrets(String profileId) async {
+    await storage.delete(key: _key(profileId, 'password'));
+    await storage.delete(key: _key(profileId, 'privateKeyPem'));
+    await storage.delete(key: _key(profileId, 'passphrase'));
+  }
+
   Future<void> _writeOrDelete(String key, String? value) async {
     if (value == null || value.isEmpty) {
       await storage.delete(key: key);

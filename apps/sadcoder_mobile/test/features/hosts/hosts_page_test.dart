@@ -515,7 +515,7 @@ Host prod
     expect(store.profiles.last.name, 'dev');
     expect(store.profiles.last.authType, SshAuthType.privateKey);
     expect(store.profiles.last.privateKeyPem, isNull);
-    expect(find.text('dev.example.com:2200'), findsOneWidget);
+    expect(find.text('dev'), findsWidgets);
     await tester.scrollUntilVisible(
       find.text('2 SSH profiles imported.'),
       200,
@@ -785,8 +785,10 @@ secret-key-material
     await tester.pumpAndSettle();
 
     expect(find.text('Saved hosts'), findsOneWidget);
-    expect(find.text('srv.dev:22'), findsOneWidget);
-    expect(find.text('prod.dev:2200'), findsOneWidget);
+    expect(find.text('Dev Alice, Dev Bob'), findsOneWidget);
+    expect(find.text('Prod'), findsWidgets);
+    expect(find.text('srv.dev:22'), findsNothing);
+    expect(find.text('prod.dev:2200'), findsNothing);
     expect(
       find.byKey(const ValueKey('saved-host-profile-alice@srv.dev:22')),
       findsOneWidget,
@@ -809,11 +811,11 @@ secret-key-material
       findsNothing,
     );
 
-    await tester.tap(find.text('srv.dev:22'));
+    await tester.tap(find.text('Dev Alice, Dev Bob'));
     await tester.pumpAndSettle();
     expect(find.text('Dev Bob'), findsNothing);
 
-    await tester.tap(find.text('srv.dev:22'));
+    await tester.tap(find.text('Dev Alice, Dev Bob'));
     await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey('saved-host-profile-bob@srv.dev:22')),
@@ -835,6 +837,47 @@ secret-key-material
       'bob',
     );
     expect(find.byKey(const ValueKey('private-key-field')), findsOneWidget);
+  });
+
+  testWidgets('deletes a saved SSH profile after confirmation', (tester) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    const profiles = [
+      SshProfile(
+        id: 'alice@srv.dev:22',
+        name: 'Dev',
+        host: 'srv.dev',
+        username: 'alice',
+      ),
+      SshProfile(
+        id: 'root@prod.dev:22',
+        name: 'Prod',
+        host: 'prod.dev',
+        username: 'root',
+      ),
+    ];
+    final store = _FakeProfileStore(initialProfiles: profiles);
+
+    await _pumpHostsPage(tester, runner, profileStore: store);
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey('saved-host-delete-alice@srv.dev:22')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete SSH profile?'), findsOneWidget);
+    await tester.tap(find.text('Delete profile').last);
+    await tester.pumpAndSettle();
+
+    expect(store.profiles.map((profile) => profile.id), ['root@prod.dev:22']);
+    expect(
+      find.byKey(const ValueKey('saved-host-profile-alice@srv.dev:22')),
+      findsNothing,
+    );
+    expect(
+      find.text('SSH profile deleted.', skipOffstage: false),
+      findsOneWidget,
+    );
   });
 
   testWidgets('connects and disconnects a Codex app session', (tester) async {
@@ -1270,6 +1313,11 @@ class _FakeProfileStore implements SshProfileListStore {
     profiles
       ..removeWhere((existing) => existing.id == profile.id)
       ..insert(0, profile);
+  }
+
+  @override
+  Future<void> deleteProfile(String profileId) async {
+    profiles.removeWhere((profile) => profile.id == profileId);
   }
 }
 

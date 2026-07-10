@@ -89,6 +89,4 @@ abstract interface class SshConnectionProbeRunner {
 
 abstract interface class RemoteShellProbeRunner {
   Future<void> probeShell(SshProfile profile);
-
-  Future<String> readCodexVersion(SshProfile profile);
 }
