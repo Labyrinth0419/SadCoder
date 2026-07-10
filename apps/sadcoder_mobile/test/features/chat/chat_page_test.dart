@@ -119,6 +119,11 @@ void main() {
 
     expect(find.byKey(const ValueKey('slash-command-stop')), findsOneWidget);
     expect(find.text('/stop'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('slash-command-group-filesAndCommands')),
+      findsOneWidget,
+    );
+    expect(find.text('Files and commands'), findsOneWidget);
     expect(find.textContaining('aliases: /clean'), findsOneWidget);
   });
 
@@ -137,6 +142,7 @@ void main() {
 
     expect(find.byKey(const ValueKey('slash-command-stop')), findsOneWidget);
     expect(find.text('/stop'), findsOneWidget);
+    expect(find.text('文件/命令'), findsOneWidget);
     expect(find.textContaining('停止所有后台终端'), findsOneWidget);
     expect(find.textContaining('别名：/clean'), findsOneWidget);
 
@@ -158,6 +164,8 @@ void main() {
       'rename',
     );
     await tester.pumpAndSettle();
+    expect(find.text('Session'), findsOneWidget);
+    expect(find.textContaining('Args: <name>'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('slash-command-rename')));
     await tester.pumpAndSettle();
 

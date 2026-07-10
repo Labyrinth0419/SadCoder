@@ -82,5 +82,20 @@ void main() {
     expect(zh.slashCommandMappingLabel('agentFallback'), 'agent 兜底');
     expect(zh.slashCommandPhaseLabel('secondStage'), '第二阶段');
     expect(zh.slashCommandRiskLevelLabel('high'), '高');
+    expect(zh.slashCommandGroupLabel('filesAndCommands'), '文件/命令');
+    expect(zh.slashCommandArgs('<名称>'), '参数：<名称>');
+    expect(zh.slashCommandArgumentHint('rename'), '<名称>');
+    expect(en.slashCommandArgumentHint('rename'), '<name>');
+
+    final inlineArgCommands = builtInSlashCommands.where(
+      (command) => command.supportsInlineArgs,
+    );
+    for (final command in inlineArgCommands) {
+      expect(
+        en.slashCommandArgumentHint(command.command),
+        isNotEmpty,
+        reason: '/${command.command} should expose an argument hint',
+      );
+    }
   });
 }

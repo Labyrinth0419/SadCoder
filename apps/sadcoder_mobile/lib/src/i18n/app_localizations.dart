@@ -177,6 +177,17 @@ class AppLocalizations {
       _text('slashCommandPhase.$phase');
   String slashCommandRiskLevelLabel(String riskLevel) =>
       _text('slashCommandRiskLevel.$riskLevel');
+  String slashCommandGroupLabel(String group) =>
+      _text('slashCommandGroup.$group');
+  String slashCommandArgumentHint(String command) {
+    final languageCode = _supportedLanguageCode(locale);
+    return _slashCommandArgumentHints[languageCode]?[command] ??
+        _slashCommandArgumentHints['en']?[command] ??
+        '';
+  }
+
+  String slashCommandArgs(String hint) =>
+      _text('slashCommandArgs').replaceAll('{hint}', hint);
   String get slashCommandNotSentAsPrompt =>
       _text('slashCommandNotSentAsPrompt');
   String get slashCommandUnavailableDuringTask =>
@@ -899,6 +910,13 @@ const _values = <String, Map<String, String>>{
     'slashCommandRiskLevel.low': 'low',
     'slashCommandRiskLevel.medium': 'medium',
     'slashCommandRiskLevel.high': 'high',
+    'slashCommandGroup.common': 'Common',
+    'slashCommandGroup.session': 'Session',
+    'slashCommandGroup.configuration': 'Configuration',
+    'slashCommandGroup.filesAndCommands': 'Files and commands',
+    'slashCommandGroup.mcpAndExtensions': 'MCP and extensions',
+    'slashCommandGroup.debug': 'Debug',
+    'slashCommandArgs': 'Args: {hint}',
     'slashCommandNotSentAsPrompt': 'Not sent as a prompt',
     'slashCommandUnavailableDuringTask': 'Unavailable while a turn is active',
     'slashCommandUnavailableInSideConversation':
@@ -1465,6 +1483,13 @@ const _values = <String, Map<String, String>>{
     'slashCommandRiskLevel.low': '低',
     'slashCommandRiskLevel.medium': '中',
     'slashCommandRiskLevel.high': '高',
+    'slashCommandGroup.common': '常用',
+    'slashCommandGroup.session': '会话',
+    'slashCommandGroup.configuration': '配置',
+    'slashCommandGroup.filesAndCommands': '文件/命令',
+    'slashCommandGroup.mcpAndExtensions': 'MCP/插件',
+    'slashCommandGroup.debug': '调试',
+    'slashCommandArgs': '参数：{hint}',
     'slashCommandNotSentAsPrompt': '不会作为普通提示词发送',
     'slashCommandUnavailableDuringTask': '当前回合运行中不可用',
     'slashCommandUnavailableInSideConversation': '侧聊中不可用',
@@ -1932,6 +1957,45 @@ const _slashCommandDescriptions = <String, Map<String, String>>{
     'subagents': '切换活动 agent thread',
     'debug-m-drop': '不要使用',
     'debug-m-update': '不要使用',
+  },
+};
+
+const _slashCommandArgumentHints = <String, Map<String, String>>{
+  'en': {
+    'ide': '<query>',
+    'keymap': '<enter|ctrl-enter>',
+    'sandbox-add-read-dir': '<absolute_path>',
+    'review': '[detached] [commit]',
+    'rename': '<name>',
+    'resume': '<thread_id>',
+    'rewind': '<turn_id>',
+    'plan': '[prompt]',
+    'goal': '<show|set|status|budget|clear>',
+    'side': '[prompt]',
+    'btw': '[prompt]',
+    'raw': '<on|off>',
+    'usage': '[refresh]',
+    'pets': '<show|hide>',
+    'mcp': '<verbose|reload|login server>',
+    'plugins': '<install|uninstall> <id>',
+  },
+  'zh': {
+    'ide': '<查询>',
+    'keymap': '<enter|ctrl-enter>',
+    'sandbox-add-read-dir': '<绝对路径>',
+    'review': '[detached] [commit]',
+    'rename': '<名称>',
+    'resume': '<会话 ID>',
+    'rewind': '<回合 ID>',
+    'plan': '[提示词]',
+    'goal': '<show|set|status|budget|clear>',
+    'side': '[提示词]',
+    'btw': '[提示词]',
+    'raw': '<on|off>',
+    'usage': '[refresh]',
+    'pets': '<show|hide>',
+    'mcp': '<verbose|reload|login server>',
+    'plugins': '<install|uninstall> <id>',
   },
 };
 

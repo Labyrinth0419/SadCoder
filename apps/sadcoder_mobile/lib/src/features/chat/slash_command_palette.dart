@@ -54,6 +54,7 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
     final l10n = context.l10n;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final commands = _filteredCommands(l10n);
+    final rows = _groupedRows(commands);
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
@@ -91,13 +92,19 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
               constraints: const BoxConstraints(maxHeight: 420),
               child: ListView.builder(
                 shrinkWrap: true,
-                itemCount: commands.length,
-                itemBuilder: (context, index) => _SlashCommandTile(
-                  command: commands[index],
-                  hasActiveTurn: widget.hasActiveTurn,
-                  isSideConversation: widget.isSideConversation,
-                  onSelected: widget.onSelected,
-                ),
+                itemCount: rows.length,
+                itemBuilder: (context, index) {
+                  return switch (rows[index]) {
+                    _SlashCommandGroupRow(:final group) =>
+                      _SlashCommandGroupHeader(group: group),
+                    _SlashCommandTileRow(:final command) => _SlashCommandTile(
+                      command: command,
+                      hasActiveTurn: widget.hasActiveTurn,
+                      isSideConversation: widget.isSideConversation,
+                      onSelected: widget.onSelected,
+                    ),
+                  };
+                },
               ),
             ),
           ],
@@ -122,10 +129,73 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
       command.command,
       command.description,
     );
+    final argumentHint = l10n.slashCommandArgumentHint(command.command);
     return command.command.contains(query) ||
         command.aliases.any((alias) => alias.contains(query)) ||
         command.description.toLowerCase().contains(query) ||
-        localizedDescription.toLowerCase().contains(query);
+        localizedDescription.toLowerCase().contains(query) ||
+        argumentHint.toLowerCase().contains(query);
+  }
+
+  List<_SlashCommandPaletteRow> _groupedRows(List<SlashCommandSpec> commands) {
+    final rows = <_SlashCommandPaletteRow>[];
+    for (final group in _SlashCommandGroup.values) {
+      final groupCommands = commands
+          .where((command) => _groupFor(command) == group)
+          .toList(growable: false);
+      if (groupCommands.isEmpty) {
+        continue;
+      }
+      rows.add(_SlashCommandGroupRow(group));
+      rows.addAll(groupCommands.map(_SlashCommandTileRow.new));
+    }
+    return rows;
+  }
+}
+
+sealed class _SlashCommandPaletteRow {
+  const _SlashCommandPaletteRow();
+}
+
+class _SlashCommandGroupRow extends _SlashCommandPaletteRow {
+  const _SlashCommandGroupRow(this.group);
+
+  final _SlashCommandGroup group;
+}
+
+class _SlashCommandTileRow extends _SlashCommandPaletteRow {
+  const _SlashCommandTileRow(this.command);
+
+  final SlashCommandSpec command;
+}
+
+enum _SlashCommandGroup {
+  common,
+  session,
+  configuration,
+  filesAndCommands,
+  mcpAndExtensions,
+  debug,
+}
+
+class _SlashCommandGroupHeader extends StatelessWidget {
+  const _SlashCommandGroupHeader({required this.group});
+
+  final _SlashCommandGroup group;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      key: ValueKey('slash-command-group-${group.name}'),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+      child: Text(
+        context.l10n.slashCommandGroupLabel(group.name),
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
   }
 }
 
@@ -187,6 +257,10 @@ class _SlashCommandTile extends StatelessWidget {
     final details = <String>[
       l10n.slashCommandDescription(command.command, command.description),
     ];
+    final argumentHint = l10n.slashCommandArgumentHint(command.command);
+    if (argumentHint.isNotEmpty) {
+      details.add(l10n.slashCommandArgs(argumentHint));
+    }
     if (command.aliases.isNotEmpty) {
       details.add(
         l10n.slashCommandAliases(
@@ -219,6 +293,68 @@ class _SlashCommandTile extends StatelessWidget {
       SlashCommandMappingType.debug => Icons.bug_report_outlined,
     };
   }
+}
+
+_SlashCommandGroup _groupFor(SlashCommandSpec command) {
+  return switch (command.command) {
+    'model' ||
+    'permissions' ||
+    'status' ||
+    'usage' ||
+    'copy' ||
+    'raw' => _SlashCommandGroup.common,
+    'new' ||
+    'resume' ||
+    'rename' ||
+    'archive' ||
+    'delete' ||
+    'fork' ||
+    'duplicate' ||
+    'rewind' ||
+    'app' ||
+    'compact' ||
+    'plan' ||
+    'goal' ||
+    'agent' ||
+    'side' ||
+    'btw' ||
+    'logout' ||
+    'quit' ||
+    'exit' ||
+    'clear' ||
+    'subagents' => _SlashCommandGroup.session,
+    'keymap' ||
+    'vim' ||
+    'setup-default-sandbox' ||
+    'sandbox-add-read-dir' ||
+    'experimental' ||
+    'memories' ||
+    'title' ||
+    'statusline' ||
+    'theme' ||
+    'personality' => _SlashCommandGroup.configuration,
+    'ide' ||
+    'approve' ||
+    'review' ||
+    'init' ||
+    'diff' ||
+    'mention' ||
+    'ps' ||
+    'stop' => _SlashCommandGroup.filesAndCommands,
+    'skills' ||
+    'import' ||
+    'hooks' ||
+    'mcp' ||
+    'apps' ||
+    'plugins' => _SlashCommandGroup.mcpAndExtensions,
+    'debug-config' ||
+    'feedback' ||
+    'rollout' ||
+    'test-approval' ||
+    'debug-m-drop' ||
+    'debug-m-update' => _SlashCommandGroup.debug,
+    _ => _SlashCommandGroup.common,
+  };
 }
 
 class _SmallBadge extends StatelessWidget {
