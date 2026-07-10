@@ -273,6 +273,20 @@ void main() {
     expect(requests.last.params, {'threadId': 'thr_1', 'turnId': 'turn_1'});
   });
 
+  test('runThreadShellCommand calls thread/shellCommand', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
+
+    final client = CodexAppServerClient(transport);
+    await client.runThreadShellCommand(threadId: 'thr_1', command: 'echo hi');
+
+    expect(requests.single.method, 'thread/shellCommand');
+    expect(requests.single.params, {'threadId': 'thr_1', 'command': 'echo hi'});
+  });
+
   test('reloadMcpServers uses app-server method name', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {

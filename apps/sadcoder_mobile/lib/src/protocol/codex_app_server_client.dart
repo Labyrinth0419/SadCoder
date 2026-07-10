@@ -118,6 +118,16 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> runThreadShellCommand({
+    required String threadId,
+    required String command,
+  }) {
+    return _request('thread/shellCommand', {
+      'threadId': threadId,
+      'command': command,
+    });
+  }
+
   Future<Map<String, Object?>> execCommand({
     required List<String> command,
     String? cwd,

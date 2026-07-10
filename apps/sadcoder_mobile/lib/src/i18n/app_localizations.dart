@@ -201,6 +201,7 @@ class AppLocalizations {
   String get interruptingTurn => _text('interruptingTurn');
   String get turnInterrupted => _text('turnInterrupted');
   String get turnFailed => _text('turnFailed');
+  String get shellCommandFailed => _text('shellCommandFailed');
   String get timeline => _text('timeline');
   String get noTimelineEvents => _text('noTimelineEvents');
   String get timelineItem => _text('timelineItem');
@@ -1048,6 +1049,7 @@ const _values = <String, Map<String, String>>{
     'interruptingTurn': 'Interrupting turn',
     'turnInterrupted': 'Turn interrupted',
     'turnFailed': 'Turn failed',
+    'shellCommandFailed': 'Shell command failed',
     'timeline': 'Timeline',
     'noTimelineEvents': 'No events yet',
     'timelineItem': 'Item',
@@ -1717,6 +1719,7 @@ const _values = <String, Map<String, String>>{
     'interruptingTurn': '正在中断回合',
     'turnInterrupted': '回合已中断',
     'turnFailed': '回合失败',
+    'shellCommandFailed': 'Shell 命令执行失败',
     'timeline': '事件流',
     'noTimelineEvents': '暂无事件',
     'timelineItem': '条目',

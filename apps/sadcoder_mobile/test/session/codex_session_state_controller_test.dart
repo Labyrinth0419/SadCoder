@@ -50,6 +50,7 @@ import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_item_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
+import 'package:sadcoder_mobile/src/threads/codex_thread_shell_command_runner.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 import 'package:sadcoder_mobile/src/threads/thread_turn_list_reader.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
@@ -958,6 +959,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       appListReader: const _FakeAppListReader(),
       slashCommandManifestReader: const _FakeSlashCommandManifestReader(),
       threadMutationRunner: const _FakeThreadMutationRunner(),
+      threadShellCommandRunner: CodexThreadShellCommandRunner(session.client),
       threadBackgroundTerminalRunner:
           const _FakeThreadBackgroundTerminalRunner(),
       threadGoalRunner: const _FakeThreadGoalRunner(),

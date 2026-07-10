@@ -58,6 +58,7 @@ import 'package:sadcoder_mobile/src/threads/thread_item_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
+import 'package:sadcoder_mobile/src/threads/thread_shell_command_runner.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 import 'package:sadcoder_mobile/src/threads/thread_turn_list_reader.dart';
 import 'package:sadcoder_mobile/src/turns/turn_controller.dart';
@@ -6373,6 +6374,68 @@ void main() {
     expect(find.text('Local'), findsOneWidget);
     expect(find.text('Review patch'), findsOneWidget);
   });
+
+  testWidgets('bang input runs a shell command on the active thread', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final shellRunner = _RecordingThreadShellCommandRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+      threadShellCommandRunner: shellRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    turnController.trackStartedTurn(
+      threadId: 'thr_active',
+      turn: TurnSummary.fromJson({
+        'id': 'turn_active',
+        'status': 'inProgress',
+        'items': <Object?>[],
+        'itemsView': 'notLoaded',
+      }),
+    );
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '!echo hi',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(shellRunner.commands, [
+      (threadId: 'thr_active', command: 'echo hi'),
+    ]);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(find.byKey(const ValueKey('chat-composer-field')), findsOneWidget);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('chat-composer-field')))
+          .controller
+          ?.text,
+      isEmpty,
+    );
+  });
 }
 
 Future<void> _pumpChatPage(
@@ -6623,6 +6686,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     required this.threadListReader,
     this.turnRunner = const _ConstantTurnRunner(),
     this.threadMutationRunner = const _NoopThreadMutationRunner(),
+    this.threadShellCommandRunner,
     this.threadBackgroundTerminalRunner =
         const _FakeThreadBackgroundTerminalRunner(),
     this.threadGoalRunner = const _FakeThreadGoalRunner(),
@@ -6644,6 +6708,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final ThreadListReader threadListReader;
   final TurnRunner turnRunner;
   final ThreadMutationRunner threadMutationRunner;
+  final ThreadShellCommandRunner? threadShellCommandRunner;
   final ThreadBackgroundTerminalRunner threadBackgroundTerminalRunner;
   final ThreadGoalRunner threadGoalRunner;
   final ThreadReviewRunner threadReviewRunner;
@@ -6665,6 +6730,33 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     SshProfile profile, {
     ApprovalStateController? approvalController,
   }) async {
+    final shellRunner = threadShellCommandRunner;
+    if (shellRunner != null) {
+      return _FakeThreadShellCommandConnection(
+        profile: profile,
+        threadListReader: threadListReader,
+        turnRunner: turnRunner,
+        threadMutationRunner: threadMutationRunner,
+        threadShellCommandRunner: shellRunner,
+        threadBackgroundTerminalRunner: threadBackgroundTerminalRunner,
+        threadGoalRunner: threadGoalRunner,
+        threadReviewRunner: threadReviewRunner,
+        skillListReader: skillListReader,
+        pluginListReader: pluginListReader,
+        pluginDetailReader: pluginDetailReader,
+        pluginMutationRunner: pluginMutationRunner,
+        hookListReader: hookListReader,
+        appListReader: appListReader,
+        accountLogoutRunner: accountLogoutRunner,
+        feedbackUploadRunner: feedbackUploadRunner,
+        gitDiffReader: gitDiffReader,
+        fileSearchReader: fileSearchReader,
+        workspaceDirectoryReader: const _FakeWorkspaceDirectoryReader(),
+        workspaceFileReader: const _FakeWorkspaceFileReader(),
+        mcpServerConfigRunner: mcpServerConfigRunner,
+        mcpServerOAuthRunner: mcpServerOAuthRunner,
+      );
+    }
     return _FakeSessionConnection(
       profile: profile,
       threadListReader: threadListReader,
@@ -6853,6 +6945,49 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   Future<void> close({bool notifyApprovalController = true}) async {}
+}
+
+class _FakeThreadShellCommandConnection extends _FakeSessionConnection
+    implements ThreadShellCommandConnectionHandle {
+  _FakeThreadShellCommandConnection({
+    required super.profile,
+    required super.threadListReader,
+    required super.turnRunner,
+    required super.threadMutationRunner,
+    required this.threadShellCommandRunner,
+    required super.threadBackgroundTerminalRunner,
+    required super.threadGoalRunner,
+    required super.threadReviewRunner,
+    required super.skillListReader,
+    required super.pluginListReader,
+    required super.pluginDetailReader,
+    required super.pluginMutationRunner,
+    required super.hookListReader,
+    required super.appListReader,
+    required super.accountLogoutRunner,
+    required super.feedbackUploadRunner,
+    required super.gitDiffReader,
+    required super.fileSearchReader,
+    required super.workspaceDirectoryReader,
+    required super.workspaceFileReader,
+    required super.mcpServerConfigRunner,
+    required super.mcpServerOAuthRunner,
+  });
+
+  @override
+  final ThreadShellCommandRunner threadShellCommandRunner;
+}
+
+class _RecordingThreadShellCommandRunner implements ThreadShellCommandRunner {
+  final commands = <({String threadId, String command})>[];
+
+  @override
+  Future<void> runShellCommand({
+    required String threadId,
+    required String command,
+  }) async {
+    commands.add((threadId: threadId, command: command));
+  }
 }
 
 class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {

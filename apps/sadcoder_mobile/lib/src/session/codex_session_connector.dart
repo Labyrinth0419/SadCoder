@@ -53,6 +53,7 @@ import '../skills/skill_list_reader.dart';
 import '../ssh/ssh_profile.dart';
 import '../ssh/ssh_proxy_connector.dart';
 import '../threads/codex_thread_mutation_runner.dart';
+import '../threads/codex_thread_shell_command_runner.dart';
 import '../threads/codex_thread_detail_reader.dart';
 import '../threads/codex_thread_item_list_reader.dart';
 import '../threads/codex_thread_list_reader.dart';
@@ -61,6 +62,7 @@ import '../threads/thread_detail_reader.dart';
 import '../threads/thread_item_list_reader.dart';
 import '../threads/thread_list_reader.dart';
 import '../threads/thread_mutation_runner.dart';
+import '../threads/thread_shell_command_runner.dart';
 import '../threads/thread_turn_list_reader.dart';
 import '../turns/codex_turn_runner.dart';
 import '../turns/turn_runner.dart';
@@ -142,6 +144,10 @@ abstract interface class CodexSessionConnectionHandle {
   Future<Map<String, Object?>> restartBackend();
 
   Future<void> close({bool notifyApprovalController = true});
+}
+
+abstract interface class ThreadShellCommandConnectionHandle {
+  ThreadShellCommandRunner get threadShellCommandRunner;
 }
 
 abstract interface class CodexSessionConnectionStarter {
@@ -227,6 +233,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
           session.client,
         ),
         threadMutationRunner: CodexThreadMutationRunner(session.client),
+        threadShellCommandRunner: CodexThreadShellCommandRunner(session.client),
         threadBackgroundTerminalRunner: CodexThreadBackgroundTerminalRunner(
           session.client,
         ),
@@ -274,7 +281,10 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
   }
 }
 
-class CodexSessionConnection implements CodexSessionConnectionHandle {
+class CodexSessionConnection
+    implements
+        CodexSessionConnectionHandle,
+        ThreadShellCommandConnectionHandle {
   CodexSessionConnection({
     required this.profile,
     required this.session,
@@ -304,6 +314,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.appListReader,
     required this.slashCommandManifestReader,
     required this.threadMutationRunner,
+    required this.threadShellCommandRunner,
     required this.threadBackgroundTerminalRunner,
     required this.threadGoalRunner,
     required this.threadReviewRunner,
@@ -372,6 +383,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final SlashCommandManifestReader slashCommandManifestReader;
   @override
   final ThreadMutationRunner threadMutationRunner;
+  @override
+  final ThreadShellCommandRunner threadShellCommandRunner;
   @override
   final ThreadBackgroundTerminalRunner threadBackgroundTerminalRunner;
   @override

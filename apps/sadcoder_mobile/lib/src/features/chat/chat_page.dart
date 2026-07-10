@@ -433,6 +433,10 @@ class _ChatPageState extends State<ChatPage> {
     )) {
       return;
     }
+    if (_isShellCommandInput(text)) {
+      await _sendShellCommand(text);
+      return;
+    }
     if (parsed.kind != SlashCommandParseKind.notSlash && !sendSlashAsText) {
       await _dispatchSlashCommand(parsed);
       return;
@@ -450,6 +454,30 @@ class _ChatPageState extends State<ChatPage> {
       _slashTextPrompt = null;
       _composerController.clear();
       _handleComposerChanged('');
+    }
+  }
+
+  Future<void> _sendShellCommand(String text) async {
+    final command = _shellCommandFromInput(text);
+    final runner = widget.sessionController?.threadShellCommandRunner;
+    final threadId = _nonEmptyText(widget.turnController?.activeThreadId);
+    if (command == null || runner == null || threadId == null) {
+      return;
+    }
+
+    try {
+      await runner.runShellCommand(threadId: threadId, command: command);
+      _composerMentions.clear();
+      _slashTextPrompt = null;
+      _composerController.clear();
+      _handleComposerChanged('');
+    } on Object catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${context.l10n.shellCommandFailed}: $error')),
+      );
     }
   }
 
@@ -2151,6 +2179,14 @@ class _ChatPageState extends State<ChatPage> {
     if (text.trim().isEmpty) {
       return false;
     }
+    if (_isShellCommandInput(text)) {
+      return _shellCommandFromInput(text) != null &&
+          isConnected &&
+          widget.sessionController?.threadShellCommandRunner != null &&
+          turnController != null &&
+          !turnController.isBusy &&
+          _nonEmptyText(turnController.activeThreadId) != null;
+    }
     final parsed = widget.registry.parseComposerText(text);
     final canSubmitPrompt =
         isConnected && turnController != null && turnController.canSubmit;
@@ -2168,6 +2204,15 @@ class _ChatPageState extends State<ChatPage> {
     return _slashTextPrompt == text &&
         parsed.kind != SlashCommandParseKind.notSlash &&
         parsed.kind != SlashCommandParseKind.empty;
+  }
+
+  bool _isShellCommandInput(String text) => text.startsWith('!');
+
+  String? _shellCommandFromInput(String text) {
+    if (!_isShellCommandInput(text)) {
+      return null;
+    }
+    return _nonEmptyText(text.substring(1));
   }
 
   void _handleSessionChanged() {

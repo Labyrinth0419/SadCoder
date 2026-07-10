@@ -35,6 +35,7 @@ import '../threads/thread_detail_reader.dart';
 import '../threads/thread_item_list_reader.dart';
 import '../threads/thread_list_reader.dart';
 import '../threads/thread_mutation_runner.dart';
+import '../threads/thread_shell_command_runner.dart';
 import '../threads/thread_turn_list_reader.dart';
 import '../turns/turn_runner.dart';
 import '../usage/account_usage_snapshot_reader.dart';
@@ -169,6 +170,16 @@ class CodexSessionStateController extends ChangeNotifier {
 
   ThreadMutationRunner? get threadMutationRunner =>
       _connection?.threadMutationRunner;
+
+  ThreadShellCommandRunner? get threadShellCommandRunner {
+    final connection = _connection;
+    if (connection == null ||
+        connection is! ThreadShellCommandConnectionHandle) {
+      return null;
+    }
+    return (connection as ThreadShellCommandConnectionHandle)
+        .threadShellCommandRunner;
+  }
 
   ThreadBackgroundTerminalRunner? get threadBackgroundTerminalRunner =>
       _connection?.threadBackgroundTerminalRunner;
