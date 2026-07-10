@@ -590,7 +590,7 @@
     {
       "command": "quit",
       "aliases": [],
-      "description": "exit Codex",
+      "description": "disconnect the mobile session/proxy connection",
       "supportsInlineArgs": false,
       "availableDuringTask": true,
       "availableInSideConversation": false,
@@ -603,7 +603,7 @@
     {
       "command": "exit",
       "aliases": [],
-      "description": "exit Codex",
+      "description": "disconnect the mobile session/proxy connection",
       "supportsInlineArgs": false,
       "availableDuringTask": true,
       "availableInSideConversation": false,

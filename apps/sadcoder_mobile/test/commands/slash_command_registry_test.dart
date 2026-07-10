@@ -113,6 +113,19 @@ void main() {
     expect(registry.find('/subagents')?.command, 'subagents');
   });
 
+  test('quit commands describe mobile disconnection only', () {
+    for (final slash in ['/quit', '/exit']) {
+      final command = registry.find(slash);
+
+      expect(command?.description, contains('mobile session/proxy'));
+      expect(command?.description.toLowerCase(), isNot(contains('codex')));
+      expect(
+        command?.mappingTarget,
+        'close mobile session/proxy connection only',
+      );
+    }
+  });
+
   test('inline args match current Codex TUI contract', () {
     final inlineArgs = builtInSlashCommands
         .where((command) => command.supportsInlineArgs)

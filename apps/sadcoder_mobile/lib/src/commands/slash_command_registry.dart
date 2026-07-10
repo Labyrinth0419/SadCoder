@@ -607,14 +607,14 @@ const builtInSlashCommands = <SlashCommandSpec>[
   ),
   SlashCommandSpec(
     command: 'quit',
-    description: 'exit Codex',
+    description: 'disconnect the mobile session/proxy connection',
     mappingType: SlashCommandMappingType.uiOnly,
     mappingTarget: 'close mobile session/proxy connection only',
     phase: SlashCommandPhase.mvp,
   ),
   SlashCommandSpec(
     command: 'exit',
-    description: 'exit Codex',
+    description: 'disconnect the mobile session/proxy connection',
     mappingType: SlashCommandMappingType.uiOnly,
     mappingTarget: 'close mobile session/proxy connection only',
     phase: SlashCommandPhase.mvp,
