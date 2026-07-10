@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/features/approvals/approvals_page.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/security/approval_risk.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 
 void main() {
@@ -188,6 +189,45 @@ void main() {
     expect(find.text('Confirm approval'), findsNothing);
     expect(decisions, [
       (requestId: 'cmd-1', decision: CodexApprovalDecision.decline),
+    ]);
+  });
+
+  testWidgets('confirms large file change approvals before callback', (
+    tester,
+  ) async {
+    final decisions = <({Object requestId, CodexApprovalDecision decision})>[];
+    final largeDiff = List.filled(
+      largeApprovalDiffLinesThreshold + 1,
+      '+line',
+    ).join('\n');
+
+    await _pumpApprovalsPage(
+      tester,
+      [
+        PendingApproval(
+          requestId: 'file-1',
+          method: 'item/fileChange/requestApproval',
+          kind: PendingApprovalKind.fileChange,
+          rawParams: {'diff': largeDiff},
+          title: 'File change approval',
+        ),
+      ],
+      onCommandOrFileDecision: (approval, decision) {
+        decisions.add((requestId: approval.requestId, decision: decision));
+      },
+    );
+
+    await tester.tap(find.text('Approve session'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Confirm approval'), findsOneWidget);
+    expect(decisions, isEmpty);
+
+    await tester.tap(find.text('Approve anyway'));
+    await tester.pumpAndSettle();
+
+    expect(decisions, [
+      (requestId: 'file-1', decision: CodexApprovalDecision.acceptForSession),
     ]);
   });
 
