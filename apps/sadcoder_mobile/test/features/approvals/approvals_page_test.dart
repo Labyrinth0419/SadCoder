@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/features/approvals/approvals_page.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 
 void main() {
   testWidgets('shows empty approval state', (tester) async {
@@ -11,6 +12,22 @@ void main() {
 
     expect(find.text('No pending approvals'), findsOneWidget);
     expect(find.text('Approvals'), findsOneWidget);
+  });
+
+  testWidgets('shows active host for pending approvals', (tester) async {
+    await _pumpApprovalsPage(
+      tester,
+      const [],
+      activeProfile: const SshProfile(
+        id: 'alice@srv.dev:22',
+        name: 'Dev',
+        host: 'srv.dev',
+        username: 'alice',
+      ),
+    );
+
+    expect(find.byKey(const ValueKey('approvals-active-host')), findsOneWidget);
+    expect(find.text('Active connection: alice@srv.dev:22'), findsOneWidget);
   });
 
   testWidgets('renders command and MCP pending approvals', (tester) async {
@@ -259,6 +276,7 @@ Future<void> _pumpApprovalsPage(
   CommandOrFileApprovalCallback? onCommandOrFileDecision,
   PermissionsApprovalCallback? onPermissionsResponse,
   McpElicitationApprovalCallback? onMcpElicitationResponse,
+  SshProfile? activeProfile,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -273,6 +291,7 @@ Future<void> _pumpApprovalsPage(
       home: Scaffold(
         body: ApprovalsPage(
           approvals: approvals,
+          activeProfile: activeProfile,
           onCommandOrFileDecision: onCommandOrFileDecision,
           onPermissionsResponse: onPermissionsResponse,
           onMcpElicitationResponse: onMcpElicitationResponse,

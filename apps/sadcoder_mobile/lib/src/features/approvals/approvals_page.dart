@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../approvals/pending_approval.dart';
 import '../../i18n/app_localizations.dart';
 import '../../security/approval_risk.dart';
+import '../../ssh/ssh_profile.dart';
 
 typedef CommandOrFileApprovalCallback =
     FutureOr<void> Function(
@@ -30,12 +31,14 @@ class ApprovalsPage extends StatelessWidget {
     this.onCommandOrFileDecision,
     this.onPermissionsResponse,
     this.onMcpElicitationResponse,
+    this.activeProfile,
   });
 
   final List<PendingApproval> approvals;
   final CommandOrFileApprovalCallback? onCommandOrFileDecision;
   final PermissionsApprovalCallback? onPermissionsResponse;
   final McpElicitationApprovalCallback? onMcpElicitationResponse;
+  final SshProfile? activeProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +47,10 @@ class ApprovalsPage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         Text(l10n.approvals, style: Theme.of(context).textTheme.headlineMedium),
+        if (activeProfile != null) ...[
+          const SizedBox(height: 8),
+          _ActiveApprovalHostBanner(profile: activeProfile!),
+        ],
         const SizedBox(height: 12),
         if (approvals.isEmpty)
           Card(
@@ -62,6 +69,46 @@ class ApprovalsPage extends StatelessWidget {
               onMcpElicitationResponse: onMcpElicitationResponse,
             ),
       ],
+    );
+  }
+}
+
+class _ActiveApprovalHostBanner extends StatelessWidget {
+  const _ActiveApprovalHostBanner({required this.profile});
+
+  final SshProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      key: const ValueKey('approvals-active-host'),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Row(
+          children: [
+            Icon(
+              Icons.dns_outlined,
+              size: 18,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '${context.l10n.activeConnection}: ${profile.endpoint}',
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

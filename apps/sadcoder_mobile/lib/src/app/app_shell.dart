@@ -354,6 +354,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       ),
       3 => ApprovalsPage(
         approvals: _approvalController.approvals,
+        activeProfile: _sessionController.profile,
         onCommandOrFileDecision: _approvalController.canRespond
             ? _approvalController.sendCommandOrFileDecision
             : null,
