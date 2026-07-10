@@ -43,13 +43,23 @@ void main() {
         name: 'Dev',
         host: 'srv.dev',
         username: 'alice',
+        authType: SshAuthType.privateKey,
         password: 'secret',
+        privateKeyPem: 'private-key',
+        passphrase: 'passphrase',
+        defaultCwd: '/repo',
       ),
     );
 
-    expect(metadataStore.savedProfile?.password, 'secret');
+    expect(metadataStore.savedProfile?.password, isNull);
+    expect(metadataStore.savedProfile?.privateKeyPem, isNull);
+    expect(metadataStore.savedProfile?.passphrase, isNull);
+    expect(metadataStore.savedProfile?.authType, SshAuthType.privateKey);
+    expect(metadataStore.savedProfile?.defaultCwd, '/repo');
     expect(credentialStore.savedProfileIds, ['manual']);
     expect(credentialStore.savedSecrets.single.password, 'secret');
+    expect(credentialStore.savedSecrets.single.privateKeyPem, 'private-key');
+    expect(credentialStore.savedSecrets.single.passphrase, 'passphrase');
   });
 
   test('loads and saves profile lists with secure secrets', () async {
@@ -101,6 +111,7 @@ void main() {
       'root@prod.dev:2200',
     ]);
     expect(metadataStore.savedProfile?.id, 'bob@srv.dev:22');
+    expect(metadataStore.savedProfile?.password, isNull);
     expect(credentialStore.savedProfileIds.last, 'bob@srv.dev:22');
     expect(credentialStore.savedSecrets.last.password, 'bob-secret');
 
@@ -180,7 +191,13 @@ class _FakeCredentialStore implements SshCredentialStore {
   @override
   Future<void> saveSecrets(String profileId, SshProfile profile) async {
     savedProfileIds.add(profileId);
-    savedSecrets.add(SshProfileSecrets(password: profile.password));
+    savedSecrets.add(
+      SshProfileSecrets(
+        password: profile.password,
+        privateKeyPem: profile.privateKeyPem,
+        passphrase: profile.passphrase,
+      ),
+    );
   }
 
   @override

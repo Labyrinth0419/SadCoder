@@ -22,7 +22,7 @@ class SecureSshProfileStore implements SshProfileListStore {
 
   @override
   Future<void> saveLastProfile(SshProfile profile) async {
-    await metadataStore.saveLastProfile(profile);
+    await metadataStore.saveLastProfile(_metadataOnly(profile));
     await credentialStore.saveSecrets(profile.id, profile);
   }
 
@@ -42,10 +42,11 @@ class SecureSshProfileStore implements SshProfileListStore {
   @override
   Future<void> saveProfile(SshProfile profile) async {
     final metadata = metadataStore;
+    final metadataProfile = _metadataOnly(profile);
     if (metadata is SshProfileListStore) {
-      await metadata.saveProfile(profile);
+      await metadata.saveProfile(metadataProfile);
     } else {
-      await metadata.saveLastProfile(profile);
+      await metadata.saveLastProfile(metadataProfile);
     }
     await credentialStore.saveSecrets(profile.id, profile);
   }
@@ -70,4 +71,17 @@ class SecureSshProfileStore implements SshProfileListStore {
       passphrase: secrets.passphrase,
     );
   }
+}
+
+SshProfile _metadataOnly(SshProfile profile) {
+  return SshProfile(
+    id: profile.id,
+    name: profile.name,
+    host: profile.host,
+    port: profile.port,
+    username: profile.username,
+    authType: profile.authType,
+    agentCommand: profile.agentCommand,
+    defaultCwd: profile.defaultCwd,
+  );
 }
