@@ -49,4 +49,58 @@ void main() {
     });
     expect(await SharedPreferencesSshProfileStore().loadLastProfile(), isNull);
   });
+
+  test('saves and loads multiple profiles without secrets', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SharedPreferencesSshProfileStore();
+
+    await store.saveProfile(
+      const SshProfile(
+        id: 'alice@srv.dev:22',
+        name: 'Dev',
+        host: 'srv.dev',
+        username: 'alice',
+        password: 'secret',
+      ),
+    );
+    await store.saveProfile(
+      const SshProfile(
+        id: 'root@prod.dev:2200',
+        name: 'Prod',
+        host: 'prod.dev',
+        port: 2200,
+        username: 'root',
+        authType: SshAuthType.privateKey,
+        privateKeyPem: 'private-key',
+      ),
+    );
+
+    final profiles = await store.loadProfiles();
+    final lastProfile = await store.loadLastProfile();
+
+    expect(profiles.map((profile) => profile.id), [
+      'root@prod.dev:2200',
+      'alice@srv.dev:22',
+    ]);
+    expect(profiles.first.privateKeyPem, isNull);
+    expect(profiles.last.password, isNull);
+    expect(lastProfile?.id, 'root@prod.dev:2200');
+  });
+
+  test('loadProfiles falls back to the legacy last profile key', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = SharedPreferencesSshProfileStore();
+    await store.saveLastProfile(
+      const SshProfile(
+        id: 'manual',
+        name: 'Dev',
+        host: 'srv.dev',
+        username: 'alice',
+      ),
+    );
+
+    final profiles = await store.loadProfiles();
+
+    expect(profiles.single.id, 'manual');
+  });
 }

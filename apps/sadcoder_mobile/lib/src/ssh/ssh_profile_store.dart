@@ -5,3 +5,9 @@ abstract interface class SshProfileStore {
 
   Future<void> saveLastProfile(SshProfile profile);
 }
+
+abstract interface class SshProfileListStore implements SshProfileStore {
+  Future<List<SshProfile>> loadProfiles();
+
+  Future<void> saveProfile(SshProfile profile);
+}

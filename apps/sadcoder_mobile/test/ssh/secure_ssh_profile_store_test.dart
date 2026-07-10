@@ -51,6 +51,59 @@ void main() {
     expect(credentialStore.savedProfileIds, ['manual']);
     expect(credentialStore.savedSecrets.single.password, 'secret');
   });
+
+  test('loads and saves profile lists with secure secrets', () async {
+    final metadataStore = _FakeProfileListStore(
+      initialProfiles: const [
+        SshProfile(
+          id: 'alice@srv.dev:22',
+          name: 'Dev',
+          host: 'srv.dev',
+          username: 'alice',
+        ),
+        SshProfile(
+          id: 'root@prod.dev:2200',
+          name: 'Prod',
+          host: 'prod.dev',
+          port: 2200,
+          username: 'root',
+        ),
+      ],
+    );
+    final credentialStore = _FakeCredentialStore(
+      secretsByProfileId: const {
+        'alice@srv.dev:22': SshProfileSecrets(password: 'alice-secret'),
+        'root@prod.dev:2200': SshProfileSecrets(password: 'root-secret'),
+      },
+    );
+    final store = SecureSshProfileStore(
+      metadataStore: metadataStore,
+      credentialStore: credentialStore,
+    );
+
+    final profiles = await store.loadProfiles();
+    await store.saveProfile(
+      const SshProfile(
+        id: 'bob@srv.dev:22',
+        name: 'Bob',
+        host: 'srv.dev',
+        username: 'bob',
+        password: 'bob-secret',
+      ),
+    );
+
+    expect(profiles.map((profile) => profile.password), [
+      'alice-secret',
+      'root-secret',
+    ]);
+    expect(credentialStore.loadedProfileIds, [
+      'alice@srv.dev:22',
+      'root@prod.dev:2200',
+    ]);
+    expect(metadataStore.savedProfile?.id, 'bob@srv.dev:22');
+    expect(credentialStore.savedProfileIds.last, 'bob@srv.dev:22');
+    expect(credentialStore.savedSecrets.last.password, 'bob-secret');
+  });
 }
 
 class _FakeProfileStore implements SshProfileStore {
@@ -68,10 +121,39 @@ class _FakeProfileStore implements SshProfileStore {
   }
 }
 
+class _FakeProfileListStore implements SshProfileListStore {
+  _FakeProfileListStore({required this.initialProfiles});
+
+  final List<SshProfile> initialProfiles;
+  SshProfile? savedProfile;
+
+  @override
+  Future<SshProfile?> loadLastProfile() async {
+    return initialProfiles.isEmpty ? null : initialProfiles.first;
+  }
+
+  @override
+  Future<void> saveLastProfile(SshProfile profile) async {
+    savedProfile = profile;
+  }
+
+  @override
+  Future<List<SshProfile>> loadProfiles() async => initialProfiles;
+
+  @override
+  Future<void> saveProfile(SshProfile profile) async {
+    savedProfile = profile;
+  }
+}
+
 class _FakeCredentialStore implements SshCredentialStore {
-  _FakeCredentialStore({this.initialSecrets = const SshProfileSecrets()});
+  _FakeCredentialStore({
+    this.initialSecrets = const SshProfileSecrets(),
+    this.secretsByProfileId = const {},
+  });
 
   final SshProfileSecrets initialSecrets;
+  final Map<String, SshProfileSecrets> secretsByProfileId;
   final loadedProfileIds = <String>[];
   final savedProfileIds = <String>[];
   final savedSecrets = <SshProfileSecrets>[];
@@ -79,7 +161,7 @@ class _FakeCredentialStore implements SshCredentialStore {
   @override
   Future<SshProfileSecrets> loadSecrets(String profileId) async {
     loadedProfileIds.add(profileId);
-    return initialSecrets;
+    return secretsByProfileId[profileId] ?? initialSecrets;
   }
 
   @override

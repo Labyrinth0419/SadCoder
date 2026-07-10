@@ -327,7 +327,7 @@ void main() {
     expect(store.savedProfile?.authType, SshAuthType.password);
     expect(store.savedProfile?.password, isEmpty);
     expect(store.savedProfile?.agentCommand, 'sadcoder-agent --verbose');
-    expect(find.text('Profile saved.'), findsOneWidget);
+    expect(find.text('Profile saved.', skipOffstage: false), findsOneWidget);
   });
 
   testWidgets('saves private key auth profile fields', (tester) async {
@@ -369,7 +369,7 @@ void main() {
     expect(store.savedProfile?.password, isNull);
     expect(store.savedProfile?.privateKeyPem, 'private-key');
     expect(store.savedProfile?.passphrase, 'passphrase');
-    expect(find.text('Profile saved.'), findsOneWidget);
+    expect(find.text('Profile saved.', skipOffstage: false), findsOneWidget);
   });
 
   testWidgets('loads saved host profile metadata into the form', (
@@ -472,6 +472,78 @@ void main() {
           ?.text,
       'passphrase',
     );
+  });
+
+  testWidgets('groups saved SSH profiles by collapsible host', (tester) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final store = _FakeProfileStore(
+      initialProfiles: const [
+        SshProfile(
+          id: 'alice@srv.dev:22',
+          name: 'Dev Alice',
+          host: 'srv.dev',
+          username: 'alice',
+        ),
+        SshProfile(
+          id: 'bob@srv.dev:22',
+          name: 'Dev Bob',
+          host: 'srv.dev',
+          username: 'bob',
+          authType: SshAuthType.privateKey,
+          privateKeyPem: 'bob-key',
+        ),
+        SshProfile(
+          id: 'root@prod.dev:2200',
+          name: 'Prod',
+          host: 'prod.dev',
+          port: 2200,
+          username: 'root',
+        ),
+      ],
+    );
+
+    await _pumpHostsPage(tester, runner, profileStore: store);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Saved hosts'), findsOneWidget);
+    expect(find.text('srv.dev:22'), findsOneWidget);
+    expect(find.text('prod.dev:2200'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('saved-host-profile-alice@srv.dev:22')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('saved-host-profile-bob@srv.dev:22')),
+      findsOneWidget,
+    );
+    expect(find.text('Dev Bob'), findsOneWidget);
+
+    await tester.tap(find.text('srv.dev:22'));
+    await tester.pumpAndSettle();
+    expect(find.text('Dev Bob'), findsNothing);
+
+    await tester.tap(find.text('srv.dev:22'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('saved-host-profile-bob@srv.dev:22')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const ValueKey('host-name-field')))
+          .controller
+          ?.text,
+      'Dev Bob',
+    );
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const ValueKey('username-field')))
+          .controller
+          ?.text,
+      'bob',
+    );
+    expect(find.byKey(const ValueKey('private-key-field')), findsOneWidget);
   });
 
   testWidgets('connects and disconnects a Codex app session', (tester) async {
@@ -802,18 +874,39 @@ class _MemoryKnownHostStore implements KnownHostStore {
   }
 }
 
-class _FakeProfileStore implements SshProfileStore {
-  _FakeProfileStore({this.initialProfile});
+class _FakeProfileStore implements SshProfileListStore {
+  _FakeProfileStore({this.initialProfile, List<SshProfile>? initialProfiles})
+    : profiles = [
+        if (initialProfiles != null) ...initialProfiles,
+        if (initialProfiles == null && initialProfile != null) initialProfile,
+      ];
 
   final SshProfile? initialProfile;
+  final List<SshProfile> profiles;
   SshProfile? savedProfile;
 
   @override
-  Future<SshProfile?> loadLastProfile() async => initialProfile;
+  Future<SshProfile?> loadLastProfile() async {
+    if (initialProfile != null) {
+      return initialProfile;
+    }
+    return profiles.isEmpty ? null : profiles.first;
+  }
 
   @override
   Future<void> saveLastProfile(SshProfile profile) async {
     savedProfile = profile;
+  }
+
+  @override
+  Future<List<SshProfile>> loadProfiles() async => List.unmodifiable(profiles);
+
+  @override
+  Future<void> saveProfile(SshProfile profile) async {
+    savedProfile = profile;
+    profiles
+      ..removeWhere((existing) => existing.id == profile.id)
+      ..insert(0, profile);
   }
 }
 

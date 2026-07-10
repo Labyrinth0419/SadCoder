@@ -40,6 +40,12 @@ class AppLocalizations {
   String get saveProfile => _text('saveProfile');
   String get savingProfile => _text('savingProfile');
   String get profileSaved => _text('profileSaved');
+  String get profileLoaded => _text('profileLoaded');
+  String get savedHosts => _text('savedHosts');
+  String get noSavedHosts => _text('noSavedHosts');
+  String get useSshProfile => _text('useSshProfile');
+  String savedHostProfileCount(int count) =>
+      _text('savedHostProfileCount').replaceAll('{count}', '$count');
   String get test => _text('test');
   String get testing => _text('testing');
   String get hostRequired => _text('hostRequired');
@@ -805,6 +811,11 @@ const _values = <String, Map<String, String>>{
     'saveProfile': 'Save profile',
     'savingProfile': 'Saving',
     'profileSaved': 'Profile saved.',
+    'profileLoaded': 'Profile loaded.',
+    'savedHosts': 'Saved hosts',
+    'noSavedHosts': 'No saved SSH profiles.',
+    'useSshProfile': 'Use profile',
+    'savedHostProfileCount': '{count} profiles',
     'test': 'Test',
     'testing': 'Testing',
     'hostRequired': 'Host is required',
@@ -1407,6 +1418,11 @@ const _values = <String, Map<String, String>>{
     'saveProfile': '保存配置',
     'savingProfile': '保存中',
     'profileSaved': '配置已保存。',
+    'profileLoaded': '配置已加载。',
+    'savedHosts': '已保存主机',
+    'noSavedHosts': '暂无已保存 SSH 配置。',
+    'useSshProfile': '使用配置',
+    'savedHostProfileCount': '{count} 个配置',
     'test': '测试',
     'testing': '测试中',
     'hostRequired': '请填写主机',

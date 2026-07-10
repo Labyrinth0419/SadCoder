@@ -57,6 +57,8 @@ class _HostsPageState extends State<HostsPage> {
   bool _testing = false;
   bool _savingProfile = false;
   M0ProbeReport? _report;
+  List<SshProfile> _profiles = const [];
+  final Set<String> _collapsedHosts = {};
   String? _error;
   String? _connectionActionError;
   String? _profileMessage;
@@ -118,6 +120,15 @@ class _HostsPageState extends State<HostsPage> {
       children: [
         Text(l10n.hosts, style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 12),
+        if (_profileStore != null) ...[
+          _SavedHostProfilesPanel(
+            profiles: _profiles,
+            collapsedHosts: _collapsedHosts,
+            onHostExpandedChanged: _setSavedHostExpanded,
+            onProfileSelected: _selectProfile,
+          ),
+          const SizedBox(height: 12),
+        ],
         _HostProfileForm(
           formKey: _formKey,
           nameController: _nameController,
@@ -196,14 +207,25 @@ class _HostsPageState extends State<HostsPage> {
   Future<void> _loadSavedProfile() async {
     final store = _profileStore;
     if (store == null) {
+      if (mounted) {
+        setState(() => _profiles = const []);
+      }
       return;
     }
     try {
+      final profiles = store is SshProfileListStore
+          ? await store.loadProfiles()
+          : const <SshProfile>[];
       final profile = await store.loadLastProfile();
-      if (!mounted || profile == null) {
+      if (!mounted) {
         return;
       }
-      setState(() => _applyProfile(profile));
+      setState(() {
+        _profiles = profiles;
+        if (profile != null) {
+          _applyProfile(profile);
+        }
+      });
     } on Object catch (error) {
       if (mounted) {
         setState(() => _profileError = error.toString());
@@ -232,7 +254,16 @@ class _HostsPageState extends State<HostsPage> {
     });
 
     try {
-      await store.saveLastProfile(_buildProfile());
+      final profile = _buildProfile();
+      if (store is SshProfileListStore) {
+        await store.saveProfile(profile);
+        final profiles = await store.loadProfiles();
+        if (mounted) {
+          setState(() => _profiles = profiles);
+        }
+      } else {
+        await store.saveLastProfile(profile);
+      }
       if (mounted) {
         setState(() => _profileMessage = context.l10n.profileSaved);
       }
@@ -285,12 +316,14 @@ class _HostsPageState extends State<HostsPage> {
   SshProfile _buildProfile() {
     final host = _hostController.text.trim();
     final name = _nameController.text.trim();
+    final username = _usernameController.text.trim();
+    final port = int.tryParse(_portController.text.trim()) ?? 22;
     return SshProfile(
-      id: 'manual',
+      id: _profileId(host: host, port: port, username: username),
       name: name.isEmpty ? host : name,
       host: host,
-      port: int.tryParse(_portController.text.trim()) ?? 22,
-      username: _usernameController.text.trim(),
+      port: port,
+      username: username,
       authType: _authType,
       password: _authType == SshAuthType.password
           ? _passwordController.text
@@ -315,6 +348,24 @@ class _HostsPageState extends State<HostsPage> {
     _privateKeyController.text = profile.privateKeyPem ?? '';
     _passphraseController.text = profile.passphrase ?? '';
     _agentCommandController.text = profile.agentCommand;
+  }
+
+  void _selectProfile(SshProfile profile) {
+    setState(() {
+      _applyProfile(profile);
+      _profileError = null;
+      _profileMessage = context.l10n.profileLoaded;
+    });
+  }
+
+  void _setSavedHostExpanded(String hostKey, bool expanded) {
+    setState(() {
+      if (expanded) {
+        _collapsedHosts.remove(hostKey);
+      } else {
+        _collapsedHosts.add(hostKey);
+      }
+    });
   }
 
   String? _profileValidationError(AppLocalizations l10n) {
@@ -377,6 +428,120 @@ class _HostsPageState extends State<HostsPage> {
       ),
     );
     return confirmed == true;
+  }
+}
+
+String _profileId({
+  required String host,
+  required int port,
+  required String username,
+}) {
+  final normalizedHost = host.trim().toLowerCase();
+  final normalizedUsername = username.trim().toLowerCase();
+  if (normalizedHost.isEmpty || normalizedUsername.isEmpty) {
+    return 'manual';
+  }
+  return '$normalizedUsername@$normalizedHost:$port';
+}
+
+Map<String, List<SshProfile>> _groupProfilesByHost(List<SshProfile> profiles) {
+  final grouped = <String, List<SshProfile>>{};
+  for (final profile in profiles) {
+    final hostKey = '${profile.host}:${profile.port}';
+    grouped.putIfAbsent(hostKey, () => []).add(profile);
+  }
+  final sortedEntries = grouped.entries.toList()
+    ..sort((left, right) => left.key.compareTo(right.key));
+  return {
+    for (final entry in sortedEntries)
+      entry.key: List.unmodifiable(
+        entry.value.toList()..sort(
+          (left, right) => _profileTitle(left).compareTo(_profileTitle(right)),
+        ),
+      ),
+  };
+}
+
+String _profileTitle(SshProfile profile) {
+  final name = profile.name.trim();
+  if (name.isNotEmpty) {
+    return name;
+  }
+  return profile.endpoint;
+}
+
+String _authLabel(AppLocalizations l10n, SshAuthType authType) {
+  return switch (authType) {
+    SshAuthType.password => l10n.authPassword,
+    SshAuthType.privateKey => l10n.authPrivateKey,
+  };
+}
+
+IconData _authIcon(SshAuthType authType) {
+  return switch (authType) {
+    SshAuthType.password => Icons.password,
+    SshAuthType.privateKey => Icons.vpn_key_outlined,
+  };
+}
+
+class _SavedHostProfilesPanel extends StatelessWidget {
+  const _SavedHostProfilesPanel({
+    required this.profiles,
+    required this.collapsedHosts,
+    required this.onHostExpandedChanged,
+    required this.onProfileSelected,
+  });
+
+  final List<SshProfile> profiles;
+  final Set<String> collapsedHosts;
+  final void Function(String hostKey, bool expanded) onHostExpandedChanged;
+  final ValueChanged<SshProfile> onProfileSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final groupedProfiles = _groupProfilesByHost(profiles);
+    return Card(
+      key: const ValueKey('saved-hosts-panel'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.storage_outlined),
+            title: Text(l10n.savedHosts),
+            subtitle: profiles.isEmpty ? Text(l10n.noSavedHosts) : null,
+          ),
+          if (groupedProfiles.isNotEmpty) const Divider(height: 1),
+          for (final entry in groupedProfiles.entries)
+            ExpansionTile(
+              key: ValueKey('saved-host-group-${entry.key}'),
+              initiallyExpanded: !collapsedHosts.contains(entry.key),
+              leading: const Icon(Icons.dns_outlined),
+              title: Text(entry.key),
+              subtitle: Text(l10n.savedHostProfileCount(entry.value.length)),
+              onExpansionChanged: (expanded) =>
+                  onHostExpandedChanged(entry.key, expanded),
+              children: [
+                for (final profile in entry.value)
+                  ListTile(
+                    key: ValueKey('saved-host-profile-${profile.id}'),
+                    leading: Icon(_authIcon(profile.authType)),
+                    title: Text(_profileTitle(profile)),
+                    subtitle: Text(
+                      '${profile.endpoint} | ${_authLabel(l10n, profile.authType)}',
+                    ),
+                    trailing: IconButton(
+                      tooltip: l10n.useSshProfile,
+                      onPressed: () => onProfileSelected(profile),
+                      icon: const Icon(Icons.drive_file_move_outline),
+                    ),
+                    onTap: () => onProfileSelected(profile),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
   }
 }
 
