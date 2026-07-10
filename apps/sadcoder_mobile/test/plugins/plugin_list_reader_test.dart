@@ -67,6 +67,57 @@ void main() {
     expect(plugin.interface?.capabilities, ['mcp', 'skills']);
   });
 
+  test('PluginListPage parses snake_case marketplace fields', () {
+    final page = PluginListPage.fromJson({
+      'marketplaces': [
+        {
+          'name': 'remote',
+          'interface': {'display_name': 'Remote marketplace'},
+          'plugins': [
+            {
+              'id': 'github',
+              'remote_plugin_id': 'remote-github',
+              'version': '2.0.0',
+              'local_version': '1.9.0',
+              'name': 'github',
+              'source': {'type': 'remote'},
+              'installed': false,
+              'enabled': true,
+              'install_policy': 'AVAILABLE',
+              'auth_policy': 'ALWAYS',
+              'interface': {
+                'display_name': 'GitHub',
+                'short_description': 'Review code',
+                'long_description': 'Review pull requests',
+                'developer_name': 'OpenAI',
+                'website_url': 'https://github.com',
+              },
+            },
+          ],
+        },
+      ],
+      'marketplace_load_errors': [
+        {'marketplace_path': '/bad.json', 'message': 'bad marketplace'},
+      ],
+      'featured_plugin_ids': ['github'],
+    });
+
+    expect(page.featuredPluginIds, ['github']);
+    expect(page.marketplaceLoadErrors.single.marketplacePath, '/bad.json');
+    expect(page.marketplaces.single.displayName, 'Remote marketplace');
+
+    final plugin = page.marketplaces.single.plugins.single;
+    expect(plugin.remotePluginId, 'remote-github');
+    expect(plugin.localVersion, '1.9.0');
+    expect(plugin.installPolicy, 'AVAILABLE');
+    expect(plugin.authPolicy, 'ALWAYS');
+    expect(plugin.displayName, 'GitHub');
+    expect(plugin.description, 'Review code');
+    expect(plugin.interface?.longDescription, 'Review pull requests');
+    expect(plugin.interface?.developerName, 'OpenAI');
+    expect(plugin.interface?.websiteUrl, 'https://github.com');
+  });
+
   test('CodexPluginListReader calls app-server plugin/list', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {

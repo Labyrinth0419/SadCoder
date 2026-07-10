@@ -29,10 +29,14 @@ class PluginListPage {
       marketplaces: _list(
         json['marketplaces'],
       ).map(PluginMarketplaceEntry.fromJson).nonNulls.toList(growable: false),
-      marketplaceLoadErrors: _list(
-        json['marketplaceLoadErrors'],
-      ).map(MarketplaceLoadError.fromJson).nonNulls.toList(growable: false),
-      featuredPluginIds: _stringList(json['featuredPluginIds']),
+      marketplaceLoadErrors: _listField(json, [
+        'marketplaceLoadErrors',
+        'marketplace_load_errors',
+      ]).map(MarketplaceLoadError.fromJson).nonNulls.toList(growable: false),
+      featuredPluginIds: _stringListField(json, [
+        'featuredPluginIds',
+        'featured_plugin_ids',
+      ]),
     );
   }
 
@@ -85,7 +89,7 @@ class MarketplaceInterfaceSummary {
       return null;
     }
     return MarketplaceInterfaceSummary(
-      displayName: _stringValue(map['displayName']),
+      displayName: _stringField(map, ['displayName', 'display_name']),
     );
   }
 
@@ -119,15 +123,16 @@ class PluginSummary {
     }
     return PluginSummary(
       id: id,
-      remotePluginId: _stringValue(map['remotePluginId']),
+      remotePluginId: _stringField(map, ['remotePluginId', 'remote_plugin_id']),
       version: _stringValue(map['version']),
-      localVersion: _stringValue(map['localVersion']),
+      localVersion: _stringField(map, ['localVersion', 'local_version']),
       name: name,
       source: PluginSourceSummary.fromJson(map['source']),
       installed: _boolValue(map['installed']) ?? false,
       enabled: _boolValue(map['enabled']) ?? false,
-      installPolicy: _stringValue(map['installPolicy']) ?? 'UNKNOWN',
-      authPolicy: _stringValue(map['authPolicy']) ?? 'UNKNOWN',
+      installPolicy:
+          _stringField(map, ['installPolicy', 'install_policy']) ?? 'UNKNOWN',
+      authPolicy: _stringField(map, ['authPolicy', 'auth_policy']) ?? 'UNKNOWN',
       availability: _stringValue(map['availability']) ?? 'AVAILABLE',
       interface: PluginInterfaceSummary.fromJson(map['interface']),
       keywords: _stringList(map['keywords']),
@@ -207,13 +212,19 @@ class PluginInterfaceSummary {
       return null;
     }
     return PluginInterfaceSummary(
-      displayName: _stringValue(map['displayName']),
-      shortDescription: _stringValue(map['shortDescription']),
-      longDescription: _stringValue(map['longDescription']),
-      developerName: _stringValue(map['developerName']),
+      displayName: _stringField(map, ['displayName', 'display_name']),
+      shortDescription: _stringField(map, [
+        'shortDescription',
+        'short_description',
+      ]),
+      longDescription: _stringField(map, [
+        'longDescription',
+        'long_description',
+      ]),
+      developerName: _stringField(map, ['developerName', 'developer_name']),
       category: _stringValue(map['category']),
       capabilities: _stringList(map['capabilities']),
-      websiteUrl: _stringValue(map['websiteUrl']),
+      websiteUrl: _stringField(map, ['websiteUrl', 'website_url']),
     );
   }
 
@@ -234,7 +245,7 @@ class MarketplaceLoadError {
 
   static MarketplaceLoadError? fromJson(Object? value) {
     final map = _objectMap(value);
-    final path = _stringValue(map['marketplacePath']);
+    final path = _stringField(map, ['marketplacePath', 'marketplace_path']);
     final message = _stringValue(map['message']);
     if (path == null || message == null) {
       return null;
@@ -266,6 +277,16 @@ String? _stringValue(Object? value) {
   return null;
 }
 
+String? _stringField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _stringValue(map[key]);
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
+}
+
 bool? _boolValue(Object? value) => value is bool ? value : null;
 
 List<String> _stringList(Object? value) {
@@ -278,4 +299,22 @@ List<String> _stringList(Object? value) {
         .map((value) => value.trim())
         .where((value) => value.isNotEmpty),
   );
+}
+
+List<String> _stringListField(Map<String, Object?> map, List<String> keys) {
+  return _stringList(_valueField(map, keys));
+}
+
+List<Object?> _listField(Map<String, Object?> map, List<String> keys) {
+  return _list(_valueField(map, keys));
+}
+
+Object? _valueField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = map[key];
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
 }
