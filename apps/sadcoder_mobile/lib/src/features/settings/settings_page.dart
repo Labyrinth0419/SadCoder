@@ -482,20 +482,76 @@ class _DiagnosticLogExportCard extends StatefulWidget {
 
 class _DiagnosticLogExportCardState extends State<_DiagnosticLogExportCard> {
   bool _copying = false;
+  bool _exporting = false;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Card(
-      child: ListTile(
-        leading: const Icon(Icons.article_outlined),
-        title: Text(l10n.diagnosticLogs),
-        subtitle: Text(l10n.diagnosticLogsBody),
-        trailing: FilledButton.icon(
-          key: const ValueKey('settings-copy-diagnostic-logs'),
-          onPressed: _copying ? null : _copyLogs,
-          icon: const Icon(Icons.copy),
-          label: Text(l10n.copyDiagnosticLogs),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.article_outlined),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.diagnosticLogs,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(l10n.diagnosticLogsBody),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.end,
+              children: [
+                FilledButton.icon(
+                  key: const ValueKey('settings-copy-diagnostic-logs'),
+                  onPressed: _copying ? null : _copyLogs,
+                  icon: _copying
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.copy),
+                  label: Text(
+                    _copying
+                        ? l10n.copyingDiagnosticLogs
+                        : l10n.copyDiagnosticLogs,
+                  ),
+                ),
+                OutlinedButton.icon(
+                  key: const ValueKey('settings-export-diagnostic-logs'),
+                  onPressed: _exporting ? null : _exportLogs,
+                  icon: _exporting
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_alt_outlined),
+                  label: Text(
+                    _exporting
+                        ? l10n.exportingDiagnosticLogs
+                        : l10n.exportDiagnosticLogs,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -510,22 +566,9 @@ class _DiagnosticLogExportCardState extends State<_DiagnosticLogExportCard> {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.diagnosticLogsConfirmTitle),
-        content: Text(l10n.diagnosticLogsConfirmBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.approvalCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.copyDiagnosticLogs),
-          ),
-        ],
-      ),
+    final confirmed = await _confirmDiagnosticLogExport(
+      title: l10n.diagnosticLogsConfirmTitle,
+      actionLabel: l10n.copyDiagnosticLogs,
     );
     if (confirmed != true || !mounted) {
       return;
@@ -548,6 +591,71 @@ class _DiagnosticLogExportCardState extends State<_DiagnosticLogExportCard> {
         setState(() => _copying = false);
       }
     }
+  }
+
+  Future<void> _exportLogs() async {
+    final l10n = context.l10n;
+    if (widget.controller.entryCount == 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.diagnosticLogsEmpty)));
+      return;
+    }
+
+    final confirmed = await _confirmDiagnosticLogExport(
+      title: l10n.diagnosticLogsExportConfirmTitle,
+      actionLabel: l10n.exportDiagnosticLogs,
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() => _exporting = true);
+    try {
+      final result = await widget.controller.exportLogs(
+        dialogTitle: l10n.exportDiagnosticLogs,
+      );
+      if (!mounted || !result.exported) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.diagnosticLogsExported(result.entryCount))),
+      );
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${l10n.diagnosticLogsExportFailed}: $error')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _exporting = false);
+      }
+    }
+  }
+
+  Future<bool?> _confirmDiagnosticLogExport({
+    required String title,
+    required String actionLabel,
+  }) {
+    final l10n = context.l10n;
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(l10n.diagnosticLogsConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(actionLabel),
+          ),
+        ],
+      ),
+    );
   }
 }
 

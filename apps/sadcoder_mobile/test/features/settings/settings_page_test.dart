@@ -443,6 +443,72 @@ void main() {
     expect(find.text('Copied 1 diagnostic log entries.'), findsOneWidget);
   });
 
+  testWidgets('confirms before exporting diagnostic logs', (tester) async {
+    final overrideController = CodexConfigOverrideController();
+    final saved = <({String fileName, String text, String dialogTitle})>[];
+    final exportController = DiagnosticLogExportController(
+      entriesProvider: () => [
+        JsonRpcDiagnosticLogEntry(
+          direction: JsonRpcDiagnosticLogDirection.outgoing,
+          capturedAt: DateTime.utc(2026, 1, 2, 3),
+          redactedJson: const {
+            'jsonrpc': '2.0',
+            'method': 'turn/start',
+            'params': {'apiKey': '[REDACTED]', 'cwd': '/repo'},
+          },
+        ),
+      ],
+      fileSaver:
+          ({required fileName, required text, required dialogTitle}) async {
+            saved.add((
+              fileName: fileName,
+              text: text,
+              dialogTitle: dialogTitle,
+            ));
+            return '/tmp/$fileName';
+          },
+      clock: () => DateTime.utc(2026, 7, 10, 11, 12, 13),
+    );
+    addTearDown(overrideController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      diagnosticLogExportController: exportController,
+    );
+    await _openSettingsSection(tester, 'diagnostics');
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-export-diagnostic-logs')),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-export-diagnostic-logs')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Export diagnostic logs?'), findsOneWidget);
+    expect(
+      find.textContaining('exported logs may still include paths'),
+      findsOneWidget,
+    );
+    expect(saved, isEmpty);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Export logs').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      saved.single.fileName,
+      'sadcoder-diagnostic-logs-20260710-111213.jsonl',
+    );
+    expect(saved.single.dialogTitle, 'Export logs');
+    expect(saved.single.text, contains('"direction":"outgoing"'));
+    expect(saved.single.text, contains('"apiKey":"[REDACTED]"'));
+    expect(find.text('Exported 1 diagnostic log entries.'), findsOneWidget);
+  });
+
   testWidgets('reports empty diagnostic logs without opening confirmation', (
     tester,
   ) async {

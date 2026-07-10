@@ -421,11 +421,20 @@ class AppLocalizations {
   String get diagnosticLogs => _text('diagnosticLogs');
   String get diagnosticLogsBody => _text('diagnosticLogsBody');
   String get copyDiagnosticLogs => _text('copyDiagnosticLogs');
+  String get copyingDiagnosticLogs => _text('copyingDiagnosticLogs');
+  String get exportDiagnosticLogs => _text('exportDiagnosticLogs');
+  String get exportingDiagnosticLogs => _text('exportingDiagnosticLogs');
   String get diagnosticLogsEmpty => _text('diagnosticLogsEmpty');
   String get diagnosticLogsConfirmTitle => _text('diagnosticLogsConfirmTitle');
+  String get diagnosticLogsExportConfirmTitle =>
+      _text('diagnosticLogsExportConfirmTitle');
   String get diagnosticLogsConfirmBody => _text('diagnosticLogsConfirmBody');
   String diagnosticLogsCopied(int count) =>
       _text('diagnosticLogsCopied').replaceAll('{count}', formatNumber(count));
+  String diagnosticLogsExported(int count) => _text(
+    'diagnosticLogsExported',
+  ).replaceAll('{count}', formatNumber(count));
+  String get diagnosticLogsExportFailed => _text('diagnosticLogsExportFailed');
   String get applyTheme => _text('applyTheme');
   String get titleCommandTitle => _text('titleCommandTitle');
   String get titleDisplayThread => _text('titleDisplayThread');
@@ -1196,11 +1205,17 @@ const _values = <String, Map<String, String>>{
     'diagnosticLogsBody':
         'Redacted JSON-RPC messages from the current connection.',
     'copyDiagnosticLogs': 'Copy logs',
+    'copyingDiagnosticLogs': 'Copying logs',
+    'exportDiagnosticLogs': 'Export logs',
+    'exportingDiagnosticLogs': 'Exporting logs',
     'diagnosticLogsEmpty': 'No diagnostic logs captured yet.',
     'diagnosticLogsConfirmTitle': 'Copy diagnostic logs?',
+    'diagnosticLogsExportConfirmTitle': 'Export diagnostic logs?',
     'diagnosticLogsConfirmBody':
         'SadCoder redacts captured JSON-RPC logs, but exported logs may still include paths, commands, project names, and prompt text.',
     'diagnosticLogsCopied': 'Copied {count} diagnostic log entries.',
+    'diagnosticLogsExported': 'Exported {count} diagnostic log entries.',
+    'diagnosticLogsExportFailed': 'Diagnostic log export failed',
     'applyTheme': 'Apply theme',
     'titleCommandTitle': 'Title display',
     'titleDisplayThread': 'Current thread title',
@@ -1812,11 +1827,17 @@ const _values = <String, Map<String, String>>{
     'diagnosticLogs': '诊断日志',
     'diagnosticLogsBody': '当前连接中已脱敏的 JSON-RPC 消息。',
     'copyDiagnosticLogs': '复制日志',
+    'copyingDiagnosticLogs': '正在复制日志',
+    'exportDiagnosticLogs': '导出日志',
+    'exportingDiagnosticLogs': '正在导出日志',
     'diagnosticLogsEmpty': '暂无已捕获的诊断日志。',
     'diagnosticLogsConfirmTitle': '复制诊断日志？',
+    'diagnosticLogsExportConfirmTitle': '导出诊断日志？',
     'diagnosticLogsConfirmBody':
         'SadCoder 会脱敏已捕获的 JSON-RPC 日志，但导出的日志仍可能包含路径、命令、项目名和提示词文本。',
     'diagnosticLogsCopied': '已复制 {count} 条诊断日志。',
+    'diagnosticLogsExported': '已导出 {count} 条诊断日志。',
+    'diagnosticLogsExportFailed': '诊断日志导出失败',
     'applyTheme': '应用主题',
     'titleCommandTitle': '标题显示',
     'titleDisplayThread': '当前会话标题',
