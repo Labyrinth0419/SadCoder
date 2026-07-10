@@ -26,6 +26,13 @@ class AppLocalizations {
   String get sessions => _text('sessions');
   String get approvals => _text('approvals');
   String get settings => _text('settings');
+  String get settingsSectionPermissions => _text('settingsSectionPermissions');
+  String get settingsSectionAccount => _text('settingsSectionAccount');
+  String get settingsSectionModels => _text('settingsSectionModels');
+  String get settingsSectionAppearance => _text('settingsSectionAppearance');
+  String get settingsSectionSsh => _text('settingsSectionSsh');
+  String get settingsSectionDiagnostics => _text('settingsSectionDiagnostics');
+  String get settingsSectionUnavailable => _text('settingsSectionUnavailable');
   String get sshProfile => _text('sshProfile');
   String get name => _text('name');
   String get host => _text('host');
@@ -802,6 +809,13 @@ const _values = <String, Map<String, String>>{
     'sessions': 'Sessions',
     'approvals': 'Approvals',
     'settings': 'Settings',
+    'settingsSectionPermissions': 'Permissions',
+    'settingsSectionAccount': 'Account',
+    'settingsSectionModels': 'Models',
+    'settingsSectionAppearance': 'Appearance',
+    'settingsSectionSsh': 'SSH',
+    'settingsSectionDiagnostics': 'Diagnostics',
+    'settingsSectionUnavailable': 'This settings group is not available yet.',
     'sshProfile': 'SSH profile',
     'name': 'Name',
     'host': 'Host',
@@ -1418,6 +1432,13 @@ const _values = <String, Map<String, String>>{
     'sessions': '会话',
     'approvals': '审批',
     'settings': '设置',
+    'settingsSectionPermissions': '权限',
+    'settingsSectionAccount': '账户',
+    'settingsSectionModels': '模型',
+    'settingsSectionAppearance': '外观',
+    'settingsSectionSsh': 'SSH',
+    'settingsSectionDiagnostics': '诊断',
+    'settingsSectionUnavailable': '此设置分组暂不可用。',
     'sshProfile': 'SSH 配置',
     'name': '名称',
     'host': '主机',

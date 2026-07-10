@@ -17,6 +17,53 @@ import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc_diagnostic_log.dart';
 
 void main() {
+  testWidgets('uses first-level settings sections with one detail group open', (
+    tester,
+  ) async {
+    final controller = CodexConfigOverrideController();
+    final appearanceController = AppAppearanceController();
+    addTearDown(controller.dispose);
+    addTearDown(appearanceController.dispose);
+
+    await _pumpSettings(
+      tester,
+      controller,
+      appearanceController: appearanceController,
+    );
+
+    expect(
+      find.byKey(const ValueKey('settings-section-permissions')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('settings-section-account')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('settings-section-models')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('settings-section-appearance')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('settings-section-ssh')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('settings-section-diagnostics')),
+      findsOneWidget,
+    );
+    expect(find.text('Server defaults'), findsOneWidget);
+    expect(find.byKey(const ValueKey('settings-theme-selector')), findsNothing);
+
+    await _openSettingsSection(tester, 'appearance');
+
+    expect(find.text('Server defaults'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('settings-theme-selector')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('applies and clears app default config overrides', (
     tester,
   ) async {
@@ -159,8 +206,9 @@ void main() {
       overrideController,
       accountSnapshotController: accountController,
     );
+    await _openSettingsSection(tester, 'account');
 
-    expect(find.text('Account'), findsOneWidget);
+    expect(find.text('Account'), findsWidgets);
     expect(
       find.text('Connect to a host, then refresh account.'),
       findsOneWidget,
@@ -202,6 +250,7 @@ void main() {
       overrideController,
       modelListController: modelController,
     );
+    await _openSettingsSection(tester, 'models');
 
     expect(find.text('Model list'), findsOneWidget);
     expect(
@@ -231,6 +280,7 @@ void main() {
       overrideController,
       appearanceController: appearanceController,
     );
+    await _openSettingsSection(tester, 'appearance');
 
     expect(appearanceController.theme, AppThemePreference.light);
     expect(
@@ -259,12 +309,13 @@ void main() {
       overrideController,
       appearanceController: appearanceController,
     );
+    await _openSettingsSection(tester, 'appearance');
 
     expect(appearanceController.colorPalette, AppColorPalette.sadcoder);
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('settings-color-palette-candy')),
       160,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: find.byType(Scrollable).last,
     );
     await tester.pumpAndSettle();
     await tester.tap(
@@ -288,12 +339,13 @@ void main() {
       overrideController,
       appearanceController: appearanceController,
     );
+    await _openSettingsSection(tester, 'appearance');
 
     expect(appearanceController.showUnavailableSlashCommands, false);
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('settings-show-unavailable-slash-commands')),
       160,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: find.byType(Scrollable).last,
     );
     await tester.pumpAndSettle();
     await tester.tap(
@@ -317,12 +369,13 @@ void main() {
       overrideController,
       backgroundConnectionPreferences: preferences,
     );
+    await _openSettingsSection(tester, 'ssh');
 
     expect(preferences.keepConnectionDuringActiveTurn, true);
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('settings-background-active-turn-keepalive')),
       160,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: find.byType(Scrollable).last,
     );
     await tester.pumpAndSettle();
     expect(
@@ -362,11 +415,12 @@ void main() {
       overrideController,
       diagnosticLogExportController: exportController,
     );
+    await _openSettingsSection(tester, 'diagnostics');
 
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('settings-copy-diagnostic-logs')),
       160,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: find.byType(Scrollable).last,
     );
     await tester.pumpAndSettle();
     await tester.tap(
@@ -404,11 +458,12 @@ void main() {
       overrideController,
       diagnosticLogExportController: exportController,
     );
+    await _openSettingsSection(tester, 'diagnostics');
 
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('settings-copy-diagnostic-logs')),
       160,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: find.byType(Scrollable).last,
     );
     await tester.pumpAndSettle();
     await tester.tap(
@@ -453,6 +508,14 @@ Future<void> _pumpSettings(
       ),
     ),
   );
+}
+
+Future<void> _openSettingsSection(WidgetTester tester, String section) async {
+  final sectionFinder = find.byKey(ValueKey('settings-section-$section'));
+  await tester.ensureVisible(sectionFinder);
+  await tester.pumpAndSettle();
+  await tester.tap(sectionFinder);
+  await tester.pumpAndSettle();
 }
 
 class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {

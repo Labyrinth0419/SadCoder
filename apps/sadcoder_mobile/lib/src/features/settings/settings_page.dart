@@ -13,7 +13,7 @@ import '../../models/model_list_controller.dart';
 import '../../security/permission_risk.dart';
 import '../appearance/app_color_palette_picker.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({
     super.key,
     this.appearanceController,
@@ -34,13 +34,80 @@ class SettingsPage extends StatelessWidget {
   final DiagnosticLogExportController? diagnosticLogExportController;
 
   @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  _SettingsSection _selectedSection = _SettingsSection.permissions;
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Text(l10n.settings, style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 12),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useWideLayout = constraints.maxWidth >= 720;
+        if (useWideLayout) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 240,
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Text(
+                      l10n.settings,
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    _SettingsSectionMenu(
+                      selectedSection: _selectedSection,
+                      onSelected: _selectSection,
+                    ),
+                  ],
+                ),
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: _sectionContent(context),
+                ),
+              ),
+            ],
+          );
+        }
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              l10n.settings,
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 12),
+            _SettingsSectionMenu(
+              selectedSection: _selectedSection,
+              onSelected: _selectSection,
+            ),
+            const SizedBox(height: 12),
+            ..._sectionContent(context),
+          ],
+        );
+      },
+    );
+  }
+
+  void _selectSection(_SettingsSection section) {
+    if (_selectedSection == section) {
+      return;
+    }
+    setState(() => _selectedSection = section);
+  }
+
+  List<Widget> _sectionContent(BuildContext context) {
+    final l10n = context.l10n;
+    return switch (_selectedSection) {
+      _SettingsSection.permissions => [
         Card(
           child: ListTile(
             leading: const Icon(Icons.tune),
@@ -48,15 +115,37 @@ class SettingsPage extends StatelessWidget {
             subtitle: Text(l10n.serverDefaultsBody),
           ),
         ),
-        if (configSnapshotController != null)
-          _ServerConfigSnapshotCard(controller: configSnapshotController!),
-        if (configOverrideController != null)
-          _AppDefaultOverridesCard(controller: configOverrideController!),
-        if (accountSnapshotController != null)
-          _AccountStatusSettingsCard(controller: accountSnapshotController!),
-        if (modelListController != null)
-          _ModelListSettingsCard(controller: modelListController!),
-        if (appearanceController == null)
+        if (widget.configSnapshotController != null)
+          _ServerConfigSnapshotCard(
+            controller: widget.configSnapshotController!,
+          ),
+        if (widget.configOverrideController != null)
+          _AppDefaultOverridesCard(
+            controller: widget.configOverrideController!,
+          ),
+      ],
+      _SettingsSection.account => [
+        if (widget.accountSnapshotController == null)
+          _SettingsUnavailableCard(
+            icon: Icons.account_circle_outlined,
+            title: l10n.settingsSectionAccount,
+          )
+        else
+          _AccountStatusSettingsCard(
+            controller: widget.accountSnapshotController!,
+          ),
+      ],
+      _SettingsSection.models => [
+        if (widget.modelListController == null)
+          _SettingsUnavailableCard(
+            icon: Icons.memory_outlined,
+            title: l10n.settingsSectionModels,
+          )
+        else
+          _ModelListSettingsCard(controller: widget.modelListController!),
+      ],
+      _SettingsSection.appearance => [
+        if (widget.appearanceController == null)
           Card(
             child: ListTile(
               leading: const Icon(Icons.dark_mode_outlined),
@@ -65,14 +154,112 @@ class SettingsPage extends StatelessWidget {
             ),
           )
         else
-          _AppearanceSettingsCard(controller: appearanceController!),
-        if (backgroundConnectionPreferences != null)
-          _BackgroundConnectionSettingsCard(
-            preferences: backgroundConnectionPreferences!,
-          ),
-        if (diagnosticLogExportController != null)
-          _DiagnosticLogExportCard(controller: diagnosticLogExportController!),
+          _AppearanceSettingsCard(controller: widget.appearanceController!),
       ],
+      _SettingsSection.ssh => [
+        if (widget.backgroundConnectionPreferences == null)
+          _SettingsUnavailableCard(
+            icon: Icons.settings_ethernet_outlined,
+            title: l10n.settingsSectionSsh,
+          )
+        else
+          _BackgroundConnectionSettingsCard(
+            preferences: widget.backgroundConnectionPreferences!,
+          ),
+      ],
+      _SettingsSection.diagnostics => [
+        if (widget.diagnosticLogExportController == null)
+          _SettingsUnavailableCard(
+            icon: Icons.article_outlined,
+            title: l10n.settingsSectionDiagnostics,
+          )
+        else
+          _DiagnosticLogExportCard(
+            controller: widget.diagnosticLogExportController!,
+          ),
+      ],
+    };
+  }
+}
+
+enum _SettingsSection {
+  permissions,
+  account,
+  models,
+  appearance,
+  ssh,
+  diagnostics,
+}
+
+class _SettingsSectionMenu extends StatelessWidget {
+  const _SettingsSectionMenu({
+    required this.selectedSection,
+    required this.onSelected,
+  });
+
+  final _SettingsSection selectedSection;
+  final ValueChanged<_SettingsSection> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final section in _SettingsSection.values)
+          ChoiceChip(
+            key: ValueKey('settings-section-${section.name}'),
+            avatar: Icon(_iconFor(section), size: 18),
+            label: Text(_labelFor(context, section)),
+            selected: selectedSection == section,
+            onSelected: (selected) {
+              if (selected) {
+                onSelected(section);
+              }
+            },
+          ),
+      ],
+    );
+  }
+
+  String _labelFor(BuildContext context, _SettingsSection section) {
+    final l10n = context.l10n;
+    return switch (section) {
+      _SettingsSection.permissions => l10n.settingsSectionPermissions,
+      _SettingsSection.account => l10n.settingsSectionAccount,
+      _SettingsSection.models => l10n.settingsSectionModels,
+      _SettingsSection.appearance => l10n.settingsSectionAppearance,
+      _SettingsSection.ssh => l10n.settingsSectionSsh,
+      _SettingsSection.diagnostics => l10n.settingsSectionDiagnostics,
+    };
+  }
+
+  IconData _iconFor(_SettingsSection section) {
+    return switch (section) {
+      _SettingsSection.permissions => Icons.admin_panel_settings_outlined,
+      _SettingsSection.account => Icons.account_circle_outlined,
+      _SettingsSection.models => Icons.memory_outlined,
+      _SettingsSection.appearance => Icons.palette_outlined,
+      _SettingsSection.ssh => Icons.settings_ethernet_outlined,
+      _SettingsSection.diagnostics => Icons.article_outlined,
+    };
+  }
+}
+
+class _SettingsUnavailableCard extends StatelessWidget {
+  const _SettingsUnavailableCard({required this.icon, required this.title});
+
+  final IconData icon;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(title),
+        subtitle: Text(context.l10n.settingsSectionUnavailable),
+      ),
     );
   }
 }
@@ -785,15 +972,16 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                OverflowBar(
+                  alignment: MainAxisAlignment.end,
+                  spacing: 8,
+                  overflowSpacing: 8,
                   children: [
                     TextButton.icon(
                       onPressed: _clear,
                       icon: const Icon(Icons.restore),
                       label: Text(l10n.clearOverrides),
                     ),
-                    const SizedBox(width: 8),
                     FilledButton.icon(
                       onPressed: _apply,
                       icon: const Icon(Icons.check),
