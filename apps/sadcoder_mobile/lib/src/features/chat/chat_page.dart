@@ -4299,7 +4299,10 @@ class _SlashCommandPreview extends StatelessWidget {
       SlashCommandParseKind.known => _PreviewCard(
         icon: Icons.terminal,
         title: result.command!.slash,
-        subtitle: result.command!.description,
+        subtitle: l10n.slashCommandDescription(
+          result.command!.command,
+          result.command!.description,
+        ),
       ),
     };
   }

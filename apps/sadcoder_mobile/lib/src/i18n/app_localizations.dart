@@ -164,6 +164,19 @@ class AppLocalizations {
   String get typeCommandName => _text('typeCommandName');
   String slashCommandUnknown(String slash) =>
       _text('slashCommandUnknown').replaceAll('{slash}', slash);
+  String slashCommandDescription(String command, String fallback) {
+    final languageCode = _supportedLanguageCode(locale);
+    return _slashCommandDescriptions[languageCode]?[command] ?? fallback;
+  }
+
+  String slashCommandAliases(String aliases) =>
+      _text('slashCommandAliases').replaceAll('{aliases}', aliases);
+  String slashCommandMappingLabel(String mappingType) =>
+      _text('slashCommandMapping.$mappingType');
+  String slashCommandPhaseLabel(String phase) =>
+      _text('slashCommandPhase.$phase');
+  String slashCommandRiskLevelLabel(String riskLevel) =>
+      _text('slashCommandRiskLevel.$riskLevel');
   String get slashCommandNotSentAsPrompt =>
       _text('slashCommandNotSentAsPrompt');
   String get slashCommandUnavailableDuringTask =>
@@ -871,6 +884,21 @@ const _values = <String, Map<String, String>>{
     'slashCommands': 'Slash commands',
     'typeCommandName': 'Type a command name',
     'slashCommandUnknown': 'Unknown command: {slash}',
+    'slashCommandAliases': 'aliases: {aliases}',
+    'slashCommandMapping.appServer': 'app-server',
+    'slashCommandMapping.uiOnly': 'UI',
+    'slashCommandMapping.agentFallback': 'agent fallback',
+    'slashCommandMapping.topology': 'topology',
+    'slashCommandMapping.notApplicable': 'not applicable',
+    'slashCommandMapping.debug': 'debug',
+    'slashCommandPhase.mvp': 'MVP',
+    'slashCommandPhase.secondStage': 'second stage',
+    'slashCommandPhase.secondStageExperimental': 'experimental',
+    'slashCommandPhase.thirdStage': 'third stage',
+    'slashCommandPhase.advancedDebug': 'debug',
+    'slashCommandRiskLevel.low': 'low',
+    'slashCommandRiskLevel.medium': 'medium',
+    'slashCommandRiskLevel.high': 'high',
     'slashCommandNotSentAsPrompt': 'Not sent as a prompt',
     'slashCommandUnavailableDuringTask': 'Unavailable while a turn is active',
     'slashCommandUnavailableInSideConversation':
@@ -1422,6 +1450,21 @@ const _values = <String, Map<String, String>>{
     'slashCommands': '斜杠命令',
     'typeCommandName': '输入命令名称',
     'slashCommandUnknown': '未知命令：{slash}',
+    'slashCommandAliases': '别名：{aliases}',
+    'slashCommandMapping.appServer': 'app-server',
+    'slashCommandMapping.uiOnly': '界面',
+    'slashCommandMapping.agentFallback': 'agent 兜底',
+    'slashCommandMapping.topology': '拓扑',
+    'slashCommandMapping.notApplicable': '不适用',
+    'slashCommandMapping.debug': '调试',
+    'slashCommandPhase.mvp': 'MVP',
+    'slashCommandPhase.secondStage': '第二阶段',
+    'slashCommandPhase.secondStageExperimental': '实验',
+    'slashCommandPhase.thirdStage': '第三阶段',
+    'slashCommandPhase.advancedDebug': '调试',
+    'slashCommandRiskLevel.low': '低',
+    'slashCommandRiskLevel.medium': '中',
+    'slashCommandRiskLevel.high': '高',
     'slashCommandNotSentAsPrompt': '不会作为普通提示词发送',
     'slashCommandUnavailableDuringTask': '当前回合运行中不可用',
     'slashCommandUnavailableInSideConversation': '侧聊中不可用',
@@ -1827,6 +1870,68 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesDirectoryLoadFailed': '目录加载失败。',
     'workspaceFilesRetry': '重试',
     'workspaceFilesLoadedBytes': '已加载 {loaded} / {total}',
+  },
+};
+
+const _slashCommandDescriptions = <String, Map<String, String>>{
+  'zh': {
+    'model': '选择模型和推理强度',
+    'ide': '附加当前选择、打开文件等移动端上下文',
+    'permissions': '选择 Codex 被允许执行的操作',
+    'keymap': '调整移动端快捷键',
+    'vim': '切换输入框 Vim 模式',
+    'setup-default-sandbox': '设置提升权限的 agent 沙箱',
+    'sandbox-add-read-dir': '允许沙箱读取目录：/sandbox-add-read-dir <absolute_path>',
+    'experimental': '切换实验功能',
+    'approve': '批准最近一次自动审查拒绝后的重试',
+    'memories': '配置记忆使用和生成',
+    'skills': '使用技能改进 Codex 执行特定任务',
+    'import': '从 Claude Code 导入设置、项目和最近聊天',
+    'hooks': '查看和管理生命周期 hooks',
+    'review': '审查当前改动并找出问题',
+    'rename': '重命名当前会话',
+    'new': '在对话中开始新聊天',
+    'archive': '归档此会话并退出',
+    'delete': '永久删除此会话并退出',
+    'resume': '恢复已保存的聊天',
+    'fork': '派生当前聊天',
+    'duplicate': '复制当前聊天',
+    'rewind': '从某个回合检查点派生当前聊天',
+    'app': '在 Codex Desktop 中继续此会话',
+    'init': '创建包含 Codex 指令的 AGENTS.md 文件',
+    'compact': '汇总对话以避免触及上下文上限',
+    'plan': '切换到 Plan 模式',
+    'goal': '设置或查看长任务目标',
+    'agent': '切换活动 agent thread',
+    'side': '在 ephemeral fork 中开始侧聊',
+    'btw': '在 ephemeral fork 中开始侧聊',
+    'copy': '以 Markdown 复制最后一条回复',
+    'raw': '切换原始滚动记录模式，便于复制',
+    'diff': '显示 git diff（包含未跟踪文件）',
+    'mention': '提及文件',
+    'status': '显示当前会话配置和 token 使用情况',
+    'usage': '查看账号用量或使用重置额度',
+    'debug-config': '显示配置层和需求来源用于调试',
+    'title': '配置终端标题显示项',
+    'statusline': '配置状态栏显示项',
+    'theme': '选择语法高亮主题',
+    'pets': '选择或隐藏终端 pet',
+    'mcp': '列出 MCP 工具；可用 /mcp verbose、reload 或 login <server>',
+    'apps': '管理 apps',
+    'plugins': '浏览插件；可用 install/uninstall <id>',
+    'logout': '退出服务器 Codex 账户',
+    'quit': '关闭当前 App 会话/代理连接',
+    'exit': '关闭当前 App 会话/代理连接',
+    'feedback': '发送日志给维护者',
+    'rollout': '打印 rollout 文件路径',
+    'ps': '列出后台终端',
+    'stop': '停止所有后台终端',
+    'clear': '清空终端并开始新聊天',
+    'personality': '选择 Codex 沟通风格',
+    'test-approval': '测试审批请求',
+    'subagents': '切换活动 agent thread',
+    'debug-m-drop': '不要使用',
+    'debug-m-update': '不要使用',
   },
 };
 

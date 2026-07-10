@@ -122,6 +122,30 @@ void main() {
     expect(find.textContaining('aliases: /clean'), findsOneWidget);
   });
 
+  testWidgets('slash command palette searches localized descriptions', (
+    tester,
+  ) async {
+    await _pumpChatPage(tester, locale: const Locale('zh', 'CN'));
+
+    await tester.tap(find.byKey(const ValueKey('chat-slash-command-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('slash-command-search-field')),
+      '后台',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('slash-command-stop')), findsOneWidget);
+    expect(find.text('/stop'), findsOneWidget);
+    expect(find.textContaining('停止所有后台终端'), findsOneWidget);
+    expect(find.textContaining('别名：/clean'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('slash-command-stop')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('停止所有后台终端'), findsOneWidget);
+  });
+
   testWidgets('selecting a slash command fills the composer only', (
     tester,
   ) async {
@@ -5827,9 +5851,11 @@ Future<void> _pumpChatPage(
   McpServerStatusController? mcpServerStatusController,
   ModelListController? modelListController,
   PermissionProfileListController? permissionProfileListController,
+  Locale? locale,
 }) {
   return tester.pumpWidget(
     MaterialApp(
+      locale: locale,
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,

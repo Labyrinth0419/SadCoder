@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/commands/slash_command_registry.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 
 void main() {
@@ -58,5 +59,28 @@ void main() {
     expect(zh.timelineDurationMilliseconds(1200), '1,200 毫秒');
     expect(zh.rateLimitResetsAt(1730947200), contains('2024'));
     expect(zh.rateLimitResetsAt(1730947200), isNot(contains('1730947200')));
+  });
+
+  test('localizes slash command descriptions and command metadata labels', () {
+    const en = AppLocalizations(Locale('en', 'US'));
+    const zh = AppLocalizations(Locale('zh', 'CN'));
+
+    for (final command in builtInSlashCommands) {
+      expect(
+        en.slashCommandDescription(command.command, command.description),
+        command.description,
+      );
+      expect(
+        zh.slashCommandDescription(command.command, command.description),
+        isNot(command.description),
+        reason: '/${command.command} should have a Chinese description',
+      );
+    }
+
+    expect(zh.slashCommandDescription('stop', 'fallback'), '停止所有后台终端');
+    expect(zh.slashCommandAliases('/clean'), '别名：/clean');
+    expect(zh.slashCommandMappingLabel('agentFallback'), 'agent 兜底');
+    expect(zh.slashCommandPhaseLabel('secondStage'), '第二阶段');
+    expect(zh.slashCommandRiskLevelLabel('high'), '高');
   });
 }

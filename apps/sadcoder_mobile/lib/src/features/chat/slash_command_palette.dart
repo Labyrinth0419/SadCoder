@@ -53,7 +53,7 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    final commands = _filteredCommands();
+    final commands = _filteredCommands(l10n);
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
@@ -106,21 +106,26 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
     );
   }
 
-  List<SlashCommandSpec> _filteredCommands() {
+  List<SlashCommandSpec> _filteredCommands(AppLocalizations l10n) {
     final normalized = _filter.trim().toLowerCase().replaceFirst('/', '');
     if (normalized.isEmpty) {
       return widget.registry.commands;
     }
     return [
       for (final command in widget.registry.commands)
-        if (_matches(command, normalized)) command,
+        if (_matches(command, normalized, l10n)) command,
     ];
   }
 
-  bool _matches(SlashCommandSpec command, String query) {
+  bool _matches(SlashCommandSpec command, String query, AppLocalizations l10n) {
+    final localizedDescription = l10n.slashCommandDescription(
+      command.command,
+      command.description,
+    );
     return command.command.contains(query) ||
         command.aliases.any((alias) => alias.contains(query)) ||
-        command.description.toLowerCase().contains(query);
+        command.description.toLowerCase().contains(query) ||
+        localizedDescription.toLowerCase().contains(query);
   }
 }
 
@@ -159,8 +164,10 @@ class _SlashCommandTile extends StatelessWidget {
       trailing: Wrap(
         spacing: 6,
         children: [
-          _SmallBadge(label: command.mappingType.name),
-          _SmallBadge(label: command.phase.name),
+          _SmallBadge(
+            label: l10n.slashCommandMappingLabel(command.mappingType.name),
+          ),
+          _SmallBadge(label: l10n.slashCommandPhaseLabel(command.phase.name)),
         ],
       ),
       onTap: disabled
@@ -177,10 +184,14 @@ class _SlashCommandTile extends StatelessWidget {
     required bool unavailableDuringTask,
     required bool unavailableInSide,
   }) {
-    final details = <String>[command.description];
+    final details = <String>[
+      l10n.slashCommandDescription(command.command, command.description),
+    ];
     if (command.aliases.isNotEmpty) {
       details.add(
-        'aliases: ${command.aliases.map((alias) => '/$alias').join(', ')}',
+        l10n.slashCommandAliases(
+          command.aliases.map((alias) => '/$alias').join(', '),
+        ),
       );
     }
     if (unavailableDuringTask) {
@@ -190,7 +201,10 @@ class _SlashCommandTile extends StatelessWidget {
       details.add(l10n.slashCommandUnavailableInSideConversation);
     }
     if (command.riskLevel != SlashCommandRiskLevel.low) {
-      details.add('${l10n.slashCommandRisk}: ${command.riskLevel.name}');
+      details.add(
+        '${l10n.slashCommandRisk}: '
+        '${l10n.slashCommandRiskLevelLabel(command.riskLevel.name)}',
+      );
     }
     return details.join('\n');
   }
