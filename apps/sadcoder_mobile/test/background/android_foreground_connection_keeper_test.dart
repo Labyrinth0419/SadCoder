@@ -25,6 +25,7 @@ void main() {
     );
     final retention = await keeper.retain(
       const BackgroundConnectionContext(
+        profileId: 'local',
         endpoint: 'tester@example.com:22',
         threadId: 'thr_1',
         turnId: 'turn_1',
@@ -35,6 +36,7 @@ void main() {
 
     expect(calls.map((call) => call.method), ['retain', 'release']);
     expect(calls.first.arguments, {
+      'profileId': 'local',
       'endpoint': 'tester@example.com:22',
       'threadId': 'thr_1',
       'turnId': 'turn_1',

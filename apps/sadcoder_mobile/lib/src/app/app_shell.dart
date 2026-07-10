@@ -7,6 +7,7 @@ import '../agent/agent_remote_service.dart';
 import '../appearance/app_appearance_controller.dart';
 import '../approvals/approval_state_controller.dart';
 import '../background/background_connection_policy.dart';
+import '../background/background_notification_router.dart';
 import '../commands/slash_command_manifest_reader.dart';
 import '../config/codex_config_override_controller.dart';
 import '../config/codex_config_snapshot_controller.dart';
@@ -34,6 +35,7 @@ import '../threads/thread_detail_controller.dart';
 import '../threads/thread_list_controller.dart';
 import '../turns/turn_controller.dart';
 import '../usage/account_usage_snapshot_controller.dart';
+import 'app_background_notification_coordinator.dart';
 import 'app_host_session_ui_state.dart';
 
 const _defaultSessionConnector = CodexSessionConnector(
@@ -74,6 +76,7 @@ class AppShell extends StatefulWidget {
     this.hostSessionManager,
     this.backgroundConnectionPreferences,
     this.backgroundConnectionKeeper,
+    this.backgroundNotificationRouter,
     this.profileStore,
     this.slashCommandManifestReader,
   });
@@ -84,6 +87,7 @@ class AppShell extends StatefulWidget {
   final HostSessionManager? hostSessionManager;
   final BackgroundConnectionPreferences? backgroundConnectionPreferences;
   final BackgroundConnectionKeeper? backgroundConnectionKeeper;
+  final BackgroundNotificationRouter? backgroundNotificationRouter;
   final SshProfileStore? profileStore;
   final SlashCommandManifestReader? slashCommandManifestReader;
 
@@ -108,6 +112,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late DiagnosticLogExportController _diagnosticLogExportController;
   HostSessionManager? _hostSessionManager;
   AppLifecycleConnectionCoordinator? _lifecycleConnectionCoordinator;
+  AppBackgroundNotificationCoordinator? _backgroundNotificationCoordinator;
   late bool _ownsHostSessionManager;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
@@ -141,6 +146,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       hostSessionManager: widget.hostSessionManager,
       backgroundConnectionPreferences: widget.backgroundConnectionPreferences,
     );
+    _startBackgroundNotificationCoordinator(
+      widget.backgroundNotificationRouter,
+    );
   }
 
   @override
@@ -163,11 +171,20 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         backgroundConnectionPreferences: widget.backgroundConnectionPreferences,
       );
     }
+    if (oldWidget.backgroundNotificationRouter !=
+        widget.backgroundNotificationRouter) {
+      unawaited(
+        _replaceBackgroundNotificationRouter(
+          widget.backgroundNotificationRouter,
+        ),
+      );
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_backgroundNotificationCoordinator?.dispose());
     _disposeOwnedControllers();
     super.dispose();
   }
@@ -339,6 +356,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           const NoopBackgroundConnectionKeeper(),
       isConnected: () => _sessionController.isConnected,
       hasActiveTurn: () => _turnController.activeTurnId != null,
+      profileIdProvider: () {
+        final profile = _sessionController.profile;
+        return profile == null ? null : hostSessionProfileId(profile);
+      },
       endpointProvider: () => _sessionController.profile?.endpoint,
       activeThreadIdProvider: () => _turnController.activeThreadId,
       activeTurnIdProvider: () => _turnController.activeTurnId,
@@ -427,6 +448,43 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (entry != null && identical(entry.sessionController, controller)) {
       _activateHostSession(entry);
     }
+  }
+
+  Future<void> _replaceBackgroundNotificationRouter(
+    BackgroundNotificationRouter? router,
+  ) async {
+    await _backgroundNotificationCoordinator?.dispose();
+    if (!mounted) {
+      return;
+    }
+    _startBackgroundNotificationCoordinator(router);
+  }
+
+  void _startBackgroundNotificationCoordinator(
+    BackgroundNotificationRouter? router,
+  ) {
+    final coordinator = AppBackgroundNotificationCoordinator(
+      router: router ?? const NoopBackgroundNotificationRouter(),
+      hostSessionManagerProvider: () => _hostSessionManager,
+      sessionControllerProvider: () => _sessionController,
+      approvalControllerProvider: () => _approvalController,
+      threadDetailControllerProvider: () => _threadDetailController,
+      profileStoreProvider: () => widget.profileStore,
+      connectProfile: _connectProfile,
+      navigate: (destination) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _index = switch (destination) {
+            AppBackgroundNotificationDestination.chat => 1,
+            AppBackgroundNotificationDestination.approvals => 3,
+          };
+        });
+      },
+    );
+    _backgroundNotificationCoordinator = coordinator;
+    unawaited(coordinator.start());
   }
 
   List<HostSessionSummary> _hostSessions() {

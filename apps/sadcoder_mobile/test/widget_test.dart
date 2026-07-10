@@ -10,6 +10,7 @@ import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/apps/app_list_reader.dart';
 import 'package:sadcoder_mobile/src/app/sadcoder_app.dart';
+import 'package:sadcoder_mobile/src/background/background_notification_router.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal_runner.dart';
 import 'package:sadcoder_mobile/src/commands/slash_command_manifest_reader.dart';
@@ -225,6 +226,121 @@ void main() {
 
     expect(find.text('Local history preserved'), findsOneWidget);
     expect(find.text('Remote history preserved'), findsNothing);
+  });
+
+  testWidgets(
+    'background notification restores its host and opens its thread',
+    (tester) async {
+      const remoteProfile = SshProfile(
+        id: 'remote',
+        name: 'Remote Linux',
+        host: 'remote.example.com',
+        username: 'dev',
+      );
+      final starter = _ProfileStaticSessionStarter({
+        remoteProfile.id: _StaticSessionData(
+          threads: [_thread('remote_thread', 'Remote task')],
+          detail: _threadDetail(
+            id: 'remote_thread',
+            preview: 'Remote task',
+            message: 'Opened from notification',
+          ),
+        ),
+      });
+      final manager = HostSessionManager(
+        controllerFactory: (approvalController) => CodexSessionStateController(
+          connector: starter,
+          approvalController: approvalController,
+        ),
+      );
+      final router = _FakeBackgroundNotificationRouter();
+      addTearDown(manager.dispose);
+
+      await tester.pumpWidget(
+        SadCoderApp(
+          hostSessionManager: manager,
+          profileStore: const _FakeProfileStore([remoteProfile]),
+          backgroundNotificationRouter: router,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await router.emit(
+        const BackgroundNotificationRoute(
+          profileId: 'remote',
+          endpoint: 'dev@remote.example.com:22',
+          threadId: 'remote_thread',
+          turnId: 'turn_remote_thread',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(starter.connectedProfiles, [remoteProfile]);
+      expect(manager.activeProfileId, remoteProfile.id);
+      expect(find.byKey(const ValueKey('chat-composer-field')), findsOneWidget);
+      await _scrollToTimeline(tester);
+      expect(find.text('Opened from notification'), findsOneWidget);
+    },
+  );
+
+  testWidgets('background notification opens matching pending approval', (
+    tester,
+  ) async {
+    final starter = _RecordingStaticSessionStarter(
+      threads: [_thread('thr_approval', 'Approval task')],
+      detail: _threadDetail(
+        id: 'thr_approval',
+        preview: 'Approval task',
+        message: 'Waiting for approval',
+      ),
+    );
+    final manager = HostSessionManager(
+      controllerFactory: (approvalController) => CodexSessionStateController(
+        connector: starter,
+        approvalController: approvalController,
+      ),
+    );
+    final router = _FakeBackgroundNotificationRouter();
+    addTearDown(manager.dispose);
+
+    await tester.pumpWidget(
+      SadCoderApp(
+        hostSessionManager: manager,
+        profileStore: const _FakeProfileStore([_profile]),
+        backgroundNotificationRouter: router,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await manager.connect(_profile);
+    await tester.pumpAndSettle();
+    manager.activeApprovalController!.upsert(
+      const PendingApproval(
+        requestId: 'approval_1',
+        method: 'item/commandExecution/requestApproval',
+        kind: PendingApprovalKind.commandExecution,
+        rawParams: {},
+        title: 'Needs approval',
+        threadId: 'thr_approval',
+        turnId: 'turn_approval',
+        command: 'cargo test',
+      ),
+    );
+    await tester.pump();
+
+    await router.emit(
+      const BackgroundNotificationRoute(
+        profileId: 'local',
+        threadId: 'thr_approval',
+        turnId: 'turn_approval',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      3,
+    );
+    expect(find.text('Needs approval'), findsOneWidget);
   });
 
   testWidgets('renders Chinese localization', (tester) async {
@@ -778,6 +894,25 @@ class _FakeProfileStore implements SshProfileListStore {
 
   @override
   Future<void> deleteProfile(String profileId) async {}
+}
+
+class _FakeBackgroundNotificationRouter
+    implements BackgroundNotificationRouter {
+  BackgroundNotificationRouteHandler? _handler;
+
+  @override
+  Future<void> attach(BackgroundNotificationRouteHandler handler) async {
+    _handler = handler;
+  }
+
+  @override
+  Future<void> detach() async {
+    _handler = null;
+  }
+
+  Future<void> emit(BackgroundNotificationRoute route) {
+    return Future<void>.sync(() => _handler?.call(route));
+  }
 }
 
 class _RecordingStaticSessionStarter implements CodexSessionConnectionStarter {

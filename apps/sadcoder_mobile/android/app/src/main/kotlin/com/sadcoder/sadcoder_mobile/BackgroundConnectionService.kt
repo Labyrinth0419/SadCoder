@@ -22,6 +22,7 @@ class BackgroundConnectionService : Service() {
 
         createNotificationChannel()
         val notification = buildNotification(
+            profileId = intent.getStringExtra(EXTRA_PROFILE_ID),
             endpoint = intent.getStringExtra(EXTRA_ENDPOINT),
             threadId = intent.getStringExtra(EXTRA_THREAD_ID),
             turnId = intent.getStringExtra(EXTRA_TURN_ID),
@@ -60,13 +61,21 @@ class BackgroundConnectionService : Service() {
     }
 
     private fun buildNotification(
+        profileId: String?,
         endpoint: String?,
         threadId: String?,
         turnId: String?,
     ): Notification {
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
             ?: Intent(this, MainActivity::class.java)
-        launchIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        launchIntent.apply {
+            action = ACTION_OPEN_ACTIVE_TASK
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra(EXTRA_PROFILE_ID, profileId)
+            putExtra(EXTRA_ENDPOINT, endpoint)
+            putExtra(EXTRA_THREAD_ID, threadId)
+            putExtra(EXTRA_TURN_ID, turnId)
+        }
         val pendingIntentFlags = PendingIntent.FLAG_UPDATE_CURRENT or
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 PendingIntent.FLAG_IMMUTABLE
@@ -108,20 +117,25 @@ class BackgroundConnectionService : Service() {
     companion object {
         private const val ACTION_RETAIN =
             "com.sadcoder.sadcoder_mobile.background_connection.RETAIN"
+        private const val ACTION_OPEN_ACTIVE_TASK =
+            "com.sadcoder.sadcoder_mobile.background_connection.OPEN_ACTIVE_TASK"
         private const val CHANNEL_ID = "sadcoder_active_task"
         private const val NOTIFICATION_ID = 1001
+        private const val EXTRA_PROFILE_ID = "profileId"
         private const val EXTRA_ENDPOINT = "endpoint"
         private const val EXTRA_THREAD_ID = "threadId"
         private const val EXTRA_TURN_ID = "turnId"
 
         fun retainIntent(
             context: Context,
+            profileId: String?,
             endpoint: String?,
             threadId: String?,
             turnId: String?,
         ): Intent {
             return Intent(context, BackgroundConnectionService::class.java).apply {
                 action = ACTION_RETAIN
+                putExtra(EXTRA_PROFILE_ID, profileId)
                 putExtra(EXTRA_ENDPOINT, endpoint)
                 putExtra(EXTRA_THREAD_ID, threadId)
                 putExtra(EXTRA_TURN_ID, turnId)
@@ -130,6 +144,18 @@ class BackgroundConnectionService : Service() {
 
         fun releaseIntent(context: Context): Intent {
             return Intent(context, BackgroundConnectionService::class.java)
+        }
+
+        fun notificationRoute(intent: Intent?): Map<String, String?>? {
+            if (intent?.action != ACTION_OPEN_ACTIVE_TASK) {
+                return null
+            }
+            return mapOf(
+                EXTRA_PROFILE_ID to intent.getStringExtra(EXTRA_PROFILE_ID),
+                EXTRA_ENDPOINT to intent.getStringExtra(EXTRA_ENDPOINT),
+                EXTRA_THREAD_ID to intent.getStringExtra(EXTRA_THREAD_ID),
+                EXTRA_TURN_ID to intent.getStringExtra(EXTRA_TURN_ID),
+            )
         }
     }
 }

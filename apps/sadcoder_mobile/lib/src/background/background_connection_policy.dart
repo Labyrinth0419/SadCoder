@@ -21,11 +21,13 @@ class BackgroundConnectionPreferences extends ChangeNotifier {
 
 class BackgroundConnectionContext {
   const BackgroundConnectionContext({
+    this.profileId,
     this.endpoint,
     this.threadId,
     this.turnId,
   });
 
+  final String? profileId;
   final String? endpoint;
   final String? threadId;
   final String? turnId;
@@ -80,6 +82,7 @@ class AppLifecycleConnectionCoordinator {
     required BackgroundConnectionPreferences preferences,
     required BackgroundBoolProvider isConnected,
     required BackgroundBoolProvider hasActiveTurn,
+    required BackgroundStringProvider profileIdProvider,
     required BackgroundStringProvider endpointProvider,
     required BackgroundStringProvider activeThreadIdProvider,
     required BackgroundStringProvider activeTurnIdProvider,
@@ -90,6 +93,7 @@ class AppLifecycleConnectionCoordinator {
        _preferences = preferences,
        _isConnected = isConnected,
        _hasActiveTurn = hasActiveTurn,
+       _profileIdProvider = profileIdProvider,
        _endpointProvider = endpointProvider,
        _activeThreadIdProvider = activeThreadIdProvider,
        _activeTurnIdProvider = activeTurnIdProvider,
@@ -101,6 +105,7 @@ class AppLifecycleConnectionCoordinator {
   final BackgroundConnectionPreferences _preferences;
   final BackgroundBoolProvider _isConnected;
   final BackgroundBoolProvider _hasActiveTurn;
+  final BackgroundStringProvider _profileIdProvider;
   final BackgroundStringProvider _endpointProvider;
   final BackgroundStringProvider _activeThreadIdProvider;
   final BackgroundStringProvider _activeTurnIdProvider;
@@ -168,6 +173,7 @@ class AppLifecycleConnectionCoordinator {
       try {
         _retention = await _keeper.retain(
           BackgroundConnectionContext(
+            profileId: _profileIdProvider(),
             endpoint: _endpointProvider(),
             threadId: _activeThreadIdProvider(),
             turnId: _activeTurnIdProvider(),

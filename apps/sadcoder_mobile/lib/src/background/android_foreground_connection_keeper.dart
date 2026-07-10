@@ -1,15 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'android_background_channel.dart';
 import 'background_connection_policy.dart';
-
-const MethodChannel androidForegroundConnectionChannel = MethodChannel(
-  'com.sadcoder.sadcoder_mobile/background_connection',
-);
 
 class AndroidForegroundConnectionKeeper implements BackgroundConnectionKeeper {
   const AndroidForegroundConnectionKeeper({
-    MethodChannel channel = androidForegroundConnectionChannel,
+    MethodChannel channel = androidBackgroundConnectionChannel,
     TargetPlatform? platform,
   }) : _channel = channel,
        _platform = platform;
@@ -30,6 +27,7 @@ class AndroidForegroundConnectionKeeper implements BackgroundConnectionKeeper {
     }
 
     await _channel.invokeMethod<void>('retain', {
+      'profileId': context.profileId,
       'endpoint': context.endpoint,
       'threadId': context.threadId,
       'turnId': context.turnId,

@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import '../appearance/app_appearance_controller.dart';
 import '../approvals/approval_state_controller.dart';
 import '../background/background_connection_policy.dart';
+import '../background/background_notification_router.dart';
 import '../commands/slash_command_manifest_reader.dart';
 import '../i18n/app_localizations.dart';
 import '../session/codex_session_state_controller.dart';
@@ -22,6 +23,7 @@ class SadCoderApp extends StatefulWidget {
     this.hostSessionManager,
     this.backgroundConnectionPreferences,
     this.backgroundConnectionKeeper,
+    this.backgroundNotificationRouter,
     this.profileStore,
     this.slashCommandManifestReader,
   });
@@ -33,6 +35,7 @@ class SadCoderApp extends StatefulWidget {
   final HostSessionManager? hostSessionManager;
   final BackgroundConnectionPreferences? backgroundConnectionPreferences;
   final BackgroundConnectionKeeper? backgroundConnectionKeeper;
+  final BackgroundNotificationRouter? backgroundNotificationRouter;
   final SshProfileStore? profileStore;
   final SlashCommandManifestReader? slashCommandManifestReader;
 
@@ -103,6 +106,7 @@ class _SadCoderAppState extends State<SadCoderApp> {
             backgroundConnectionPreferences:
                 widget.backgroundConnectionPreferences,
             backgroundConnectionKeeper: widget.backgroundConnectionKeeper,
+            backgroundNotificationRouter: widget.backgroundNotificationRouter,
             profileStore: widget.profileStore,
             slashCommandManifestReader: widget.slashCommandManifestReader,
           ),

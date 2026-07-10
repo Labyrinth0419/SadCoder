@@ -22,6 +22,7 @@ void main() {
 
     expect(fixture.disconnects, 0);
     expect(fixture.connected.value, true);
+    expect(fixture.recordingKeeper.retainContexts.single.profileId, 'local');
     expect(fixture.recordingKeeper.retainContexts.single.turnId, 'turn_1');
 
     await fixture.coordinator.handleLifecycleState(AppLifecycleState.resumed);
@@ -100,6 +101,7 @@ class _Fixture {
       keeper: this.keeper,
       isConnected: () => connected.value,
       hasActiveTurn: () => turnId.value != null,
+      profileIdProvider: () => 'local',
       endpointProvider: () => 'tester@localhost:22',
       activeThreadIdProvider: () => turnId.value == null ? null : 'thr_1',
       activeTurnIdProvider: () => turnId.value,
