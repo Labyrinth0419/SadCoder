@@ -13,7 +13,6 @@ use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
 use crate::app_server_socket::AppServerSocket;
-use crate::codex_command::CodexCommandSource;
 use crate::codex_command::ResolvedCodexCommand;
 
 const SERVICE_INFO_FILE_NAME: &str = "agent-service.json";
@@ -110,14 +109,8 @@ pub(crate) fn start_service_process(
     }
 
     let current_exe = std::env::current_exe().context("failed to resolve sadcoder-agent path")?;
-    let mut command = Command::new(current_exe);
-    if !matches!(codex.source, CodexCommandSource::Config) {
-        command.arg("--codex-program").arg(&codex.program);
-    }
+    let mut command = service_process_command(&current_exe, codex, state_path);
     command
-        .arg("--state-path")
-        .arg(state_path)
-        .arg("service")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
@@ -134,6 +127,27 @@ pub(crate) fn start_service_process(
             SERVICE_START_TIMEOUT.as_secs()
         )
     }
+}
+
+fn service_process_command(
+    current_exe: &Path,
+    codex: &ResolvedCodexCommand,
+    state_path: &Path,
+) -> Command {
+    let mut command = Command::new(current_exe);
+    command
+        .arg("--state-path")
+        .arg(state_path)
+        .arg("service")
+        .arg("--resolved-codex-program")
+        .arg(&codex.program);
+    for arg in &codex.args {
+        command.arg("--resolved-codex-arg").arg(arg);
+    }
+    for path in &codex.path_prepend {
+        command.arg("--resolved-codex-path-prepend").arg(path);
+    }
+    command
 }
 
 pub(crate) fn restart_service_process(
@@ -303,6 +317,45 @@ mod tests {
         let paths = resolve_service_paths(&base.join("agent-state.json"));
 
         assert!(!service_is_ready(&paths));
+    }
+
+    #[test]
+    fn service_process_receives_the_resolved_codex_command_snapshot() {
+        let codex = ResolvedCodexCommand {
+            program: PathBuf::from("node-bin").join("codex"),
+            args: vec!["--wrapper-flag".into(), "value with spaces".into()],
+            path_prepend: vec![
+                PathBuf::from("node-bin"),
+                PathBuf::from("extra-runtime-bin"),
+            ],
+            source: crate::codex_command::CodexCommandSource::Config,
+        };
+        let state_path = PathBuf::from("state").join("agent-state.json");
+
+        let command = service_process_command(Path::new("sadcoder-agent"), &codex, &state_path);
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_os_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            args,
+            vec![
+                "--state-path".into(),
+                state_path.into_os_string(),
+                "service".into(),
+                "--resolved-codex-program".into(),
+                codex.program.into_os_string(),
+                "--resolved-codex-arg".into(),
+                "--wrapper-flag".into(),
+                "--resolved-codex-arg".into(),
+                "value with spaces".into(),
+                "--resolved-codex-path-prepend".into(),
+                PathBuf::from("node-bin").into_os_string(),
+                "--resolved-codex-path-prepend".into(),
+                PathBuf::from("extra-runtime-bin").into_os_string(),
+            ]
+        );
     }
 
     #[test]

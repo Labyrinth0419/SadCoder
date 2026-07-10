@@ -15,6 +15,7 @@ use sadcoder_protocol::SlashCommandManifest;
 use serde::Serialize;
 use serde_json::Value;
 use serde_json::json;
+use std::ffi::OsString;
 use std::io;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -139,7 +140,19 @@ enum AgentCommand {
     },
     /// Run the long-lived SadCoder service that owns the app-server process.
     #[command(hide = true)]
-    Service,
+    Service {
+        #[arg(long = "resolved-codex-program", value_name = "PATH", hide = true)]
+        resolved_codex_program: Option<PathBuf>,
+        #[arg(
+            long = "resolved-codex-arg",
+            value_name = "ARG",
+            allow_hyphen_values = true,
+            hide = true
+        )]
+        resolved_codex_args: Vec<OsString>,
+        #[arg(long = "resolved-codex-path-prepend", value_name = "PATH", hide = true)]
+        resolved_codex_path_prepend: Vec<PathBuf>,
+    },
     /// Proxy this process' stdin/stdout to the selected app-server backend.
     Proxy,
 }
@@ -171,8 +184,20 @@ fn main() -> anyhow::Result<()> {
             path_prepend,
             json,
         } => configure_codex(codex, path_prepend, json),
-        AgentCommand::Service => {
-            let codex = resolve_codex_command(cli_codex_program)?;
+        AgentCommand::Service {
+            resolved_codex_program,
+            resolved_codex_args,
+            resolved_codex_path_prepend,
+        } => {
+            let codex = match resolved_codex_program {
+                Some(program) => ResolvedCodexCommand {
+                    program,
+                    args: resolved_codex_args,
+                    path_prepend: resolved_codex_path_prepend,
+                    source: CodexCommandSource::ServiceSnapshot,
+                },
+                None => resolve_codex_command(cli_codex_program)?,
+            };
             run_service(&codex, &resolve_state_path(cli.state_path.as_deref()))
         }
         AgentCommand::Proxy => {
@@ -1130,6 +1155,55 @@ mod tests {
                 .expect_err("daemon should not be selected")
                 .contains("disabled")
         );
+    }
+
+    #[test]
+    fn hidden_service_command_parses_resolved_codex_snapshot() {
+        let cli = Cli::try_parse_from([
+            "sadcoder-agent",
+            "--state-path",
+            "state/agent-state.json",
+            "service",
+            "--resolved-codex-program",
+            "node-bin/codex",
+            "--resolved-codex-arg",
+            "--wrapper-flag",
+            "--resolved-codex-arg",
+            "value with spaces",
+            "--resolved-codex-path-prepend",
+            "node-bin",
+            "--resolved-codex-path-prepend",
+            "extra-runtime-bin",
+        ])
+        .expect("parse service snapshot");
+
+        match cli.command {
+            AgentCommand::Service {
+                resolved_codex_program,
+                resolved_codex_args,
+                resolved_codex_path_prepend,
+            } => {
+                assert_eq!(
+                    resolved_codex_program,
+                    Some(PathBuf::from("node-bin/codex"))
+                );
+                assert_eq!(
+                    resolved_codex_args,
+                    vec![
+                        OsString::from("--wrapper-flag"),
+                        OsString::from("value with spaces"),
+                    ]
+                );
+                assert_eq!(
+                    resolved_codex_path_prepend,
+                    vec![
+                        PathBuf::from("node-bin"),
+                        PathBuf::from("extra-runtime-bin"),
+                    ]
+                );
+            }
+            command => panic!("expected service command, got {command:?}"),
+        }
     }
 
     #[test]

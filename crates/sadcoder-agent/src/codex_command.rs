@@ -24,6 +24,7 @@ pub(crate) enum CodexCommandSource {
     Config,
     Path,
     AutoDiscovered,
+    ServiceSnapshot,
 }
 
 impl ResolvedCodexCommand {
@@ -115,6 +116,7 @@ impl CodexCommandSource {
             CodexCommandSource::Config => "config",
             CodexCommandSource::Path => "path",
             CodexCommandSource::AutoDiscovered => "auto-discovered",
+            CodexCommandSource::ServiceSnapshot => "service-snapshot",
         }
     }
 }
@@ -367,7 +369,10 @@ fn dedupe_paths(paths: &mut Vec<PathBuf>) {
 fn is_configured_filesystem_program(codex: &ResolvedCodexCommand) -> bool {
     matches!(
         codex.source,
-        CodexCommandSource::Cli | CodexCommandSource::Env | CodexCommandSource::Config
+        CodexCommandSource::Cli
+            | CodexCommandSource::Env
+            | CodexCommandSource::Config
+            | CodexCommandSource::ServiceSnapshot
     ) && has_path_separator(&codex.program)
 }
 
