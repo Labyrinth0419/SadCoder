@@ -564,13 +564,13 @@
     {
       "command": "plugins",
       "aliases": [],
-      "description": "browse plugins",
-      "supportsInlineArgs": false,
+      "description": "browse plugins; use install/uninstall <id>",
+      "supportsInlineArgs": true,
       "availableDuringTask": true,
       "availableInSideConversation": false,
       "platformVisibility": "all",
       "mappingType": "appServer",
-      "mappingTarget": "plugin/* + marketplace/*",
+      "mappingTarget": "plugin/list + plugin/install + plugin/uninstall",
       "phase": "secondStage",
       "riskLevel": "low"
     },

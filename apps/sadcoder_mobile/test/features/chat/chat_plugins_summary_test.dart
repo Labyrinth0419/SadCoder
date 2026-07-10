@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_plugins_summary.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
+import 'package:sadcoder_mobile/src/plugins/plugin_mutation_runner.dart';
 
 void main() {
   const l10n = AppLocalizations(Locale('en'));
@@ -57,5 +58,22 @@ void main() {
     );
 
     expect(summary, 'Plugins\nNo plugins available.');
+  });
+
+  test('buildPluginMutationSummary renders operation and server message', () {
+    final summary = buildPluginMutationSummary(
+      l10n: l10n,
+      result: const PluginMutationResult(
+        operation: PluginMutationOperation.uninstall,
+        pluginId: 'linear',
+        message: 'removed from workspace',
+        raw: <String, Object?>{},
+      ),
+    );
+
+    expect(
+      summary,
+      'Uninstall requested for plugin linear.\nremoved from workspace',
+    );
   });
 }

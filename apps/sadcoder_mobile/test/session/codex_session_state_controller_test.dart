@@ -31,6 +31,7 @@ import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
+import 'package:sadcoder_mobile/src/plugins/plugin_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_session.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
@@ -87,6 +88,7 @@ void main() {
     expect(controller.permissionProfileListReader, isNotNull);
     expect(controller.skillListReader, isNotNull);
     expect(controller.pluginListReader, isNotNull);
+    expect(controller.pluginMutationRunner, isNotNull);
     expect(controller.hookListReader, isNotNull);
     expect(controller.appListReader, isNotNull);
     expect(controller.turnRunner, isNotNull);
@@ -589,6 +591,7 @@ void main() {
     expect(controller.permissionProfileListReader, isNull);
     expect(controller.skillListReader, isNull);
     expect(controller.pluginListReader, isNull);
+    expect(controller.pluginMutationRunner, isNull);
     expect(controller.hookListReader, isNull);
     expect(controller.appListReader, isNull);
     expect(controller.turnRunner, isNull);
@@ -732,6 +735,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       permissionProfileListReader: const _FakePermissionProfileListReader(),
       skillListReader: const _FakeSkillListReader(),
       pluginListReader: const _FakePluginListReader(),
+      pluginMutationRunner: const _FakePluginMutationRunner(),
       hookListReader: const _FakeHookListReader(),
       appListReader: const _FakeAppListReader(),
       threadMutationRunner: const _FakeThreadMutationRunner(),
@@ -962,6 +966,34 @@ class _FakePluginListReader implements PluginListReader {
     List<PluginMarketplaceKind> marketplaceKinds = const [],
   }) async {
     return const PluginListPage(marketplaces: []);
+  }
+}
+
+class _FakePluginMutationRunner implements PluginMutationRunner {
+  const _FakePluginMutationRunner();
+
+  @override
+  Future<PluginMutationResult> installPlugin({
+    required String pluginId,
+    List<String> cwds = const [],
+  }) async {
+    return PluginMutationResult(
+      operation: PluginMutationOperation.install,
+      pluginId: pluginId,
+      raw: const <String, Object?>{},
+    );
+  }
+
+  @override
+  Future<PluginMutationResult> uninstallPlugin({
+    required String pluginId,
+    List<String> cwds = const [],
+  }) async {
+    return PluginMutationResult(
+      operation: PluginMutationOperation.uninstall,
+      pluginId: pluginId,
+      raw: const <String, Object?>{},
+    );
   }
 }
 

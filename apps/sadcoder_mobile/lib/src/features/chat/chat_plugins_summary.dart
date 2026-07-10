@@ -1,5 +1,6 @@
 import '../../i18n/app_localizations.dart';
 import '../../plugins/plugin_list_reader.dart';
+import '../../plugins/plugin_mutation_runner.dart';
 
 String buildPluginsSummary({
   required AppLocalizations l10n,
@@ -49,6 +50,25 @@ String buildPluginsSummary({
   }
 
   return lines.join('\n');
+}
+
+String buildPluginMutationSummary({
+  required AppLocalizations l10n,
+  required PluginMutationResult result,
+}) {
+  final title = switch (result.operation) {
+    PluginMutationOperation.install => l10n.pluginInstallRequested(
+      result.pluginId,
+    ),
+    PluginMutationOperation.uninstall => l10n.pluginUninstallRequested(
+      result.pluginId,
+    ),
+  };
+  final message = result.message;
+  if (message == null) {
+    return title;
+  }
+  return '$title\n$message';
 }
 
 String _pluginLine(AppLocalizations l10n, PluginSummary plugin) {

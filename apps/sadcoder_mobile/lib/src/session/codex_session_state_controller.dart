@@ -24,6 +24,7 @@ import '../mcp/mcp_server_status_reader.dart';
 import '../models/model_list_reader.dart';
 import '../permissions/permission_profile_list_reader.dart';
 import '../plugins/plugin_list_reader.dart';
+import '../plugins/plugin_mutation_runner.dart';
 import '../protocol/json_rpc_diagnostic_log.dart';
 import '../reviews/thread_review_runner.dart';
 import '../skills/skill_list_reader.dart';
@@ -145,6 +146,9 @@ class CodexSessionStateController extends ChangeNotifier {
   SkillListReader? get skillListReader => _connection?.skillListReader;
 
   PluginListReader? get pluginListReader => _connection?.pluginListReader;
+
+  PluginMutationRunner? get pluginMutationRunner =>
+      _connection?.pluginMutationRunner;
 
   HookListReader? get hookListReader => _connection?.hookListReader;
 

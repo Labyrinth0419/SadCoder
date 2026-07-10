@@ -590,9 +590,10 @@ const builtInSlashCommands = <SlashCommandSpec>[
   ),
   SlashCommandSpec(
     command: 'plugins',
-    description: 'browse plugins',
+    description: 'browse plugins; use install/uninstall <id>',
+    supportsInlineArgs: true,
     mappingType: SlashCommandMappingType.appServer,
-    mappingTarget: 'plugin/* + marketplace/*',
+    mappingTarget: 'plugin/list + plugin/install + plugin/uninstall',
     phase: SlashCommandPhase.secondStage,
   ),
   SlashCommandSpec(

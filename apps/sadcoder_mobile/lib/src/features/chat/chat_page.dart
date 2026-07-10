@@ -559,18 +559,50 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<String?> _buildPluginsSummary(String arguments) async {
-    if (arguments.trim().isNotEmpty) {
+    final parts = arguments
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+    final command = parts.isEmpty ? '' : parts.first.toLowerCase();
+    final install = parts.length == 2 && command == 'install';
+    final uninstall =
+        parts.length == 2 && (command == 'uninstall' || command == 'remove');
+    if (parts.isNotEmpty && !install && !uninstall) {
       return null;
     }
 
     final l10n = context.l10n;
     final reader = widget.sessionController?.pluginListReader;
+    final cwds = _currentWorkspaceCwds();
+    if (install || uninstall) {
+      final runner = widget.sessionController?.pluginMutationRunner;
+      if (runner == null) {
+        return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
+      }
+      try {
+        final result = install
+            ? await runner.installPlugin(pluginId: parts[1], cwds: cwds)
+            : await runner.uninstallPlugin(pluginId: parts[1], cwds: cwds);
+        final lines = <String>[
+          buildPluginMutationSummary(l10n: l10n, result: result),
+        ];
+        if (reader != null) {
+          final page = await reader.listPlugins(cwds: cwds);
+          lines.add(buildPluginsSummary(l10n: l10n, page: page));
+        }
+        return lines.join('\n');
+      } on Object catch (error) {
+        return '${l10n.pluginsTitle}\n${l10n.pluginMutationFailed}: $error';
+      }
+    }
+
     if (reader == null) {
       return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
     }
 
     try {
-      final page = await reader.listPlugins(cwds: _currentWorkspaceCwds());
+      final page = await reader.listPlugins(cwds: cwds);
       return buildPluginsSummary(l10n: l10n, page: page);
     } on Object catch (error) {
       return '${l10n.pluginsTitle}\n${l10n.pluginsLoadFailed}: $error';

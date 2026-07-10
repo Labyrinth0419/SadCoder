@@ -254,6 +254,33 @@ void main() {
     expect(requests.single.params, {'serverName': 'github'});
   });
 
+  test('plugin mutation methods use app-server method names', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
+
+    final client = CodexAppServerClient(transport);
+    await client.installPlugin(pluginId: ' linear ', cwds: [' /repo ', ' ']);
+    await client.uninstallPlugin(pluginId: ' linear ', cwds: [' /repo ', ' ']);
+
+    expect(requests.map((request) => request.method), [
+      'plugin/install',
+      'plugin/uninstall',
+    ]);
+    expect(requests.map((request) => request.params), [
+      {
+        'pluginId': 'linear',
+        'cwds': ['/repo'],
+      },
+      {
+        'pluginId': 'linear',
+        'cwds': ['/repo'],
+      },
+    ]);
+  });
+
   test(
     'startTurn omits unset overrides and sends explicit overrides',
     () async {

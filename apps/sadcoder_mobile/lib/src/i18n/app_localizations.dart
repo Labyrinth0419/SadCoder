@@ -496,6 +496,7 @@ class AppLocalizations {
   String get pluginsTitle => _text('pluginsTitle');
   String get pluginsUnavailable => _text('pluginsUnavailable');
   String get pluginsLoadFailed => _text('pluginsLoadFailed');
+  String get pluginMutationFailed => _text('pluginMutationFailed');
   String get pluginsEmpty => _text('pluginsEmpty');
   String get pluginMarketplace => _text('pluginMarketplace');
   String get pluginMarketplacePath => _text('pluginMarketplacePath');
@@ -509,6 +510,10 @@ class AppLocalizations {
   String get pluginEnabled => _text('pluginEnabled');
   String get pluginDisabled => _text('pluginDisabled');
   String get pluginAvailability => _text('pluginAvailability');
+  String pluginInstallRequested(String plugin) =>
+      _text('pluginInstallRequested').replaceAll('{plugin}', plugin);
+  String pluginUninstallRequested(String plugin) =>
+      _text('pluginUninstallRequested').replaceAll('{plugin}', plugin);
   String get hooksTitle => _text('hooksTitle');
   String get hooksUnavailable => _text('hooksUnavailable');
   String get hooksLoadFailed => _text('hooksLoadFailed');
@@ -1155,6 +1160,7 @@ const _values = <String, Map<String, String>>{
     'pluginsTitle': 'Plugins',
     'pluginsUnavailable': 'Connect to a host, then run /plugins.',
     'pluginsLoadFailed': 'Failed to load plugins',
+    'pluginMutationFailed': 'Failed to update plugin',
     'pluginsEmpty': 'No plugins available.',
     'pluginMarketplace': 'Marketplace',
     'pluginMarketplacePath': 'Marketplace path',
@@ -1168,6 +1174,8 @@ const _values = <String, Map<String, String>>{
     'pluginEnabled': 'enabled',
     'pluginDisabled': 'disabled',
     'pluginAvailability': 'availability',
+    'pluginInstallRequested': 'Install requested for plugin {plugin}.',
+    'pluginUninstallRequested': 'Uninstall requested for plugin {plugin}.',
     'hooksTitle': 'Hooks',
     'hooksUnavailable': 'Connect to a host, then run /hooks.',
     'hooksLoadFailed': 'Failed to load hooks',
@@ -1678,6 +1686,7 @@ const _values = <String, Map<String, String>>{
     'pluginsTitle': '插件',
     'pluginsUnavailable': '连接主机后运行 /plugins。',
     'pluginsLoadFailed': '插件加载失败',
+    'pluginMutationFailed': '插件更新失败',
     'pluginsEmpty': '暂无可用插件。',
     'pluginMarketplace': '市场',
     'pluginMarketplacePath': '市场路径',
@@ -1691,6 +1700,8 @@ const _values = <String, Map<String, String>>{
     'pluginEnabled': '已启用',
     'pluginDisabled': '已禁用',
     'pluginAvailability': '可用性',
+    'pluginInstallRequested': '已请求安装插件 {plugin}。',
+    'pluginUninstallRequested': '已请求卸载插件 {plugin}。',
     'hooksTitle': 'Hooks',
     'hooksUnavailable': '连接主机后运行 /hooks。',
     'hooksLoadFailed': 'Hooks 加载失败',

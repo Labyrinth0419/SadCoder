@@ -23,6 +23,8 @@ void main() {
     await connection.permissionProfileListReader.listPermissionProfiles();
     await connection.skillListReader.listSkills();
     await connection.pluginListReader.listPlugins();
+    await connection.pluginMutationRunner.installPlugin(pluginId: 'linear');
+    await connection.pluginMutationRunner.uninstallPlugin(pluginId: 'linear');
     await connection.hookListReader.listHooks();
     await connection.appListReader.listApps();
     await connection.mcpServerOAuthRunner.startOAuthLogin(serverName: 'github');
@@ -51,6 +53,8 @@ void main() {
       'permissionProfile/list',
       'skills/list',
       'plugin/list',
+      'plugin/install',
+      'plugin/uninstall',
       'hooks/list',
       'app/list',
       'mcpServer/oauth/login',
@@ -267,6 +271,8 @@ class _LineServerProxyConnector implements AgentProxyConnector {
     'permissionProfile/list' => {'data': <Object?>[]},
     'skills/list' => {'data': <Object?>[]},
     'plugin/list' => {'marketplaces': <Object?>[]},
+    'plugin/install' => {'pluginId': 'linear'},
+    'plugin/uninstall' => {'pluginId': 'linear'},
     'hooks/list' => {'data': <Object?>[]},
     'app/list' => {'data': <Object?>[]},
     'mcpServer/oauth/login' => {'serverName': 'github'},

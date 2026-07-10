@@ -134,6 +134,7 @@ void main() {
       'usage',
       'pets',
       'mcp',
+      'plugins',
     ]);
   });
 

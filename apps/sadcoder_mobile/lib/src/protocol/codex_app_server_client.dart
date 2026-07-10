@@ -308,6 +308,34 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> installPlugin({
+    required String pluginId,
+    List<String> cwds = const [],
+  }) {
+    final normalizedCwds = [
+      for (final cwd in cwds)
+        if (cwd.trim().isNotEmpty) cwd.trim(),
+    ];
+    return _request('plugin/install', {
+      'pluginId': pluginId.trim(),
+      if (normalizedCwds.isNotEmpty) 'cwds': normalizedCwds,
+    });
+  }
+
+  Future<Map<String, Object?>> uninstallPlugin({
+    required String pluginId,
+    List<String> cwds = const [],
+  }) {
+    final normalizedCwds = [
+      for (final cwd in cwds)
+        if (cwd.trim().isNotEmpty) cwd.trim(),
+    ];
+    return _request('plugin/uninstall', {
+      'pluginId': pluginId.trim(),
+      if (normalizedCwds.isNotEmpty) 'cwds': normalizedCwds,
+    });
+  }
+
   Future<Map<String, Object?>> listHooks({List<String> cwds = const []}) {
     final normalizedCwds = [
       for (final cwd in cwds)

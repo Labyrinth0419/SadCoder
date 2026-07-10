@@ -31,6 +31,7 @@ import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
+import 'package:sadcoder_mobile/src/plugins/plugin_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc_diagnostic_log.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
@@ -514,6 +515,10 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
   PluginListReader get pluginListReader => const _StaticPluginListReader();
 
   @override
+  PluginMutationRunner get pluginMutationRunner =>
+      const _NoopPluginMutationRunner();
+
+  @override
   HookListReader get hookListReader => const _StaticHookListReader();
 
   @override
@@ -816,6 +821,34 @@ class _StaticPluginListReader implements PluginListReader {
     List<PluginMarketplaceKind> marketplaceKinds = const [],
   }) async {
     return const PluginListPage(marketplaces: []);
+  }
+}
+
+class _NoopPluginMutationRunner implements PluginMutationRunner {
+  const _NoopPluginMutationRunner();
+
+  @override
+  Future<PluginMutationResult> installPlugin({
+    required String pluginId,
+    List<String> cwds = const [],
+  }) async {
+    return PluginMutationResult(
+      operation: PluginMutationOperation.install,
+      pluginId: pluginId,
+      raw: const <String, Object?>{},
+    );
+  }
+
+  @override
+  Future<PluginMutationResult> uninstallPlugin({
+    required String pluginId,
+    List<String> cwds = const [],
+  }) async {
+    return PluginMutationResult(
+      operation: PluginMutationOperation.uninstall,
+      pluginId: pluginId,
+      raw: const <String, Object?>{},
+    );
   }
 }
 
