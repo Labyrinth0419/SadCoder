@@ -201,6 +201,19 @@ void main() {
     );
     expect(find.text('Files and commands'), findsOneWidget);
     expect(find.textContaining('aliases: /clean'), findsOneWidget);
+
+    final mappingBadge = find.byKey(
+      const ValueKey('slash-command-stop-mapping-label'),
+    );
+    final phaseBadge = find.byKey(
+      const ValueKey('slash-command-stop-phase-label'),
+    );
+    expect(mappingBadge, findsOneWidget);
+    expect(phaseBadge, findsOneWidget);
+    final mappingOffset = tester.getTopLeft(mappingBadge);
+    final phaseOffset = tester.getTopLeft(phaseBadge);
+    expect(phaseOffset.dy, greaterThan(mappingOffset.dy));
+    expect(phaseOffset.dx, moreOrLessEquals(mappingOffset.dx, epsilon: 0.1));
   });
 
   testWidgets('slash command palette hides unavailable platform commands', (

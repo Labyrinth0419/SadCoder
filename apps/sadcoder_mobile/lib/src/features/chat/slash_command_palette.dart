@@ -367,16 +367,22 @@ class _SlashCommandTile extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(subtitle, style: theme.textTheme.bodySmall),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _SmallBadge(
+                            key: ValueKey(
+                              'slash-command-${command.command}-mapping-label',
+                            ),
                             label: l10n.slashCommandMappingLabel(
                               command.mappingType.name,
                             ),
                           ),
+                          const SizedBox(height: 4),
                           _SmallBadge(
+                            key: ValueKey(
+                              'slash-command-${command.command}-phase-label',
+                            ),
                             label: l10n.slashCommandPhaseLabel(
                               command.phase.name,
                             ),
@@ -503,7 +509,7 @@ _SlashCommandGroup _groupFor(SlashCommandSpec command) {
 }
 
 class _SmallBadge extends StatelessWidget {
-  const _SmallBadge({required this.label});
+  const _SmallBadge({super.key, required this.label});
 
   final String label;
 
