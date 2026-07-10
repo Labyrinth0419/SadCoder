@@ -2652,7 +2652,7 @@ void main() {
     expect(goalRunner.getGoalThreadIds, ['thr_selected']);
     expect(goalRunner.setGoalCalls, isEmpty);
     expect(find.textContaining('Objective: Reduce latency'), findsOneWidget);
-    expect(find.textContaining('Token budget: 5000'), findsOneWidget);
+    expect(find.textContaining('Token budget: 5,000 tokens'), findsOneWidget);
   });
 
   testWidgets('/goal sets the selected thread objective', (tester) async {
@@ -2747,7 +2747,7 @@ void main() {
       tokenBudget: 7500,
     ));
     expect(find.textContaining('Objective: Finish benchmark'), findsOneWidget);
-    expect(find.textContaining('Token budget: 7500'), findsOneWidget);
+    expect(find.textContaining('Token budget: 7,500 tokens'), findsOneWidget);
   });
 
   testWidgets('/goal status updates the selected thread goal status', (

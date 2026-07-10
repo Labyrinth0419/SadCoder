@@ -60,7 +60,7 @@ void main() {
     expect(summary, contains('status message: Checking shell command'));
     expect(summary, contains('source path: /repo/.codex/hooks.json'));
     expect(summary, contains('plugin: guardrails'));
-    expect(summary, contains('timeout: 30s'));
+    expect(summary, contains('timeout: 30 sec'));
     expect(summary, contains('deprecated hook shape'));
     expect(summary, contains('/repo/.codex/bad-hooks.json: invalid hook'));
   });

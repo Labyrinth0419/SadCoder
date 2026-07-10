@@ -13,11 +13,15 @@ String buildThreadGoalSummary({
 
   lines.add('${l10n.threadGoalObjective}: ${goal.objective}');
   lines.add('${l10n.timelineStatus}: ${goal.status}');
-  lines.add('${l10n.threadGoalTokensUsed}: ${goal.tokensUsed}');
+  lines.add('${l10n.threadGoalTokensUsed}: ${l10n.tokenCount(goal.tokensUsed)}');
   if (goal.tokenBudget != null) {
-    lines.add('${l10n.threadGoalTokenBudget}: ${goal.tokenBudget}');
+    lines.add(
+      '${l10n.threadGoalTokenBudget}: ${l10n.tokenCount(goal.tokenBudget!)}',
+    );
   }
-  lines.add('${l10n.threadGoalTimeUsed}: ${goal.timeUsedSeconds}s');
+  lines.add(
+    '${l10n.threadGoalTimeUsed}: ${l10n.secondCount(goal.timeUsedSeconds)}',
+  );
   return lines.join('\n');
 }
 

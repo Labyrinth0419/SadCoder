@@ -38,7 +38,9 @@ String buildHooksSummary({
           lines.add('  ${l10n.hookPlugin}: ${hook.pluginId}');
         }
         if (hook.timeoutSec > 0) {
-          lines.add('  ${l10n.hookTimeout}: ${hook.timeoutSec}s');
+          lines.add(
+            '  ${l10n.hookTimeout}: ${l10n.secondCount(hook.timeoutSec)}',
+          );
         }
       }
     }
