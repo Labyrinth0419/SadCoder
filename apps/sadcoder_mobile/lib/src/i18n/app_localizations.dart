@@ -456,10 +456,22 @@ class AppLocalizations {
   String get serverConfigLoadFailed => _text('serverConfigLoadFailed');
   String get serverValueUnset => _text('serverValueUnset');
   String get accountStatus => _text('accountStatus');
+  String get refreshAccountStatus => _text('refreshAccountStatus');
+  String get accountStatusUnavailable => _text('accountStatusUnavailable');
   String get accountLoadFailed => _text('accountLoadFailed');
   String get accountNotSignedIn => _text('accountNotSignedIn');
+  String get accountSignedIn => _text('accountSignedIn');
+  String get accountCredentialSource => _text('accountCredentialSource');
   String get openaiAuthRequired => _text('openaiAuthRequired');
   String get openaiAuthNotRequired => _text('openaiAuthNotRequired');
+  String get refreshModelList => _text('refreshModelList');
+  String get modelListUnavailable => _text('modelListUnavailable');
+  String get modelListLoadFailed => _text('modelListLoadFailed');
+  String get modelListEmpty => _text('modelListEmpty');
+  String availableModels(int count) =>
+      _text('availableModels').replaceAll('{count}', formatNumber(count));
+  String modelListMore(int count) =>
+      _text('modelListMore').replaceAll('{count}', formatNumber(count));
   String get accountUsageStatus => _text('accountUsageStatus');
   String get accountUsageUnavailable => _text('accountUsageUnavailable');
   String get accountUsageLoadFailed => _text('accountUsageLoadFailed');
@@ -1169,10 +1181,20 @@ const _values = <String, Map<String, String>>{
     'serverConfigLoadFailed': 'Failed to load server config',
     'serverValueUnset': 'not set',
     'accountStatus': 'Account',
+    'refreshAccountStatus': 'Refresh account',
+    'accountStatusUnavailable': 'Connect to a host, then refresh account.',
     'accountLoadFailed': 'Failed to load account',
     'accountNotSignedIn': 'not signed in',
+    'accountSignedIn': 'Signed in',
+    'accountCredentialSource': 'Credential source',
     'openaiAuthRequired': 'OpenAI auth required',
     'openaiAuthNotRequired': 'OpenAI auth not required',
+    'refreshModelList': 'Refresh model list',
+    'modelListUnavailable': 'Connect to a host, then refresh model list.',
+    'modelListLoadFailed': 'Failed to load model list',
+    'modelListEmpty': 'No models reported by the server.',
+    'availableModels': 'Available models: {count}',
+    'modelListMore': '{count} more models available.',
     'accountUsageStatus': 'Usage',
     'accountUsageUnavailable': 'Connect to a host, then run /usage.',
     'accountUsageLoadFailed': 'Failed to load usage',
@@ -1728,10 +1750,20 @@ const _values = <String, Map<String, String>>{
     'serverConfigLoadFailed': '服务器配置加载失败',
     'serverValueUnset': '未设置',
     'accountStatus': '账户',
+    'refreshAccountStatus': '刷新账户',
+    'accountStatusUnavailable': '连接主机后刷新账户状态。',
     'accountLoadFailed': '账户加载失败',
     'accountNotSignedIn': '未登录',
+    'accountSignedIn': '已登录',
+    'accountCredentialSource': '凭据来源',
     'openaiAuthRequired': '需要 OpenAI 认证',
     'openaiAuthNotRequired': '不需要 OpenAI 认证',
+    'refreshModelList': '刷新模型列表',
+    'modelListUnavailable': '连接主机后刷新模型列表。',
+    'modelListLoadFailed': '模型列表加载失败',
+    'modelListEmpty': '服务器没有返回可用模型。',
+    'availableModels': '可用模型：{count}',
+    'modelListMore': '还有 {count} 个模型可用。',
     'accountUsageStatus': '使用量',
     'accountUsageUnavailable': '连接主机后运行 /usage。',
     'accountUsageLoadFailed': '使用量加载失败',

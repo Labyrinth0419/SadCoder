@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../accounts/account_snapshot_controller.dart';
 import '../../appearance/app_appearance_controller.dart';
 import '../../background/background_connection_policy.dart';
 import '../../config/codex_config_override_controller.dart';
@@ -8,6 +9,7 @@ import '../../config/codex_config_snapshot.dart';
 import '../../config/codex_config_snapshot_controller.dart';
 import '../../diagnostics/diagnostic_log_export_controller.dart';
 import '../../i18n/app_localizations.dart';
+import '../../models/model_list_controller.dart';
 import '../../security/permission_risk.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -16,6 +18,8 @@ class SettingsPage extends StatelessWidget {
     this.appearanceController,
     this.configOverrideController,
     this.configSnapshotController,
+    this.accountSnapshotController,
+    this.modelListController,
     this.backgroundConnectionPreferences,
     this.diagnosticLogExportController,
   });
@@ -23,6 +27,8 @@ class SettingsPage extends StatelessWidget {
   final AppAppearanceController? appearanceController;
   final CodexConfigOverrideController? configOverrideController;
   final CodexConfigSnapshotController? configSnapshotController;
+  final AccountSnapshotController? accountSnapshotController;
+  final ModelListController? modelListController;
   final BackgroundConnectionPreferences? backgroundConnectionPreferences;
   final DiagnosticLogExportController? diagnosticLogExportController;
 
@@ -45,6 +51,10 @@ class SettingsPage extends StatelessWidget {
           _ServerConfigSnapshotCard(controller: configSnapshotController!),
         if (configOverrideController != null)
           _AppDefaultOverridesCard(controller: configOverrideController!),
+        if (accountSnapshotController != null)
+          _AccountStatusSettingsCard(controller: accountSnapshotController!),
+        if (modelListController != null)
+          _ModelListSettingsCard(controller: modelListController!),
         if (appearanceController == null)
           Card(
             child: ListTile(
@@ -61,6 +71,212 @@ class SettingsPage extends StatelessWidget {
           ),
         if (diagnosticLogExportController != null)
           _DiagnosticLogExportCard(controller: diagnosticLogExportController!),
+      ],
+    );
+  }
+}
+
+class _AccountStatusSettingsCard extends StatelessWidget {
+  const _AccountStatusSettingsCard({required this.controller});
+
+  final AccountSnapshotController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) =>
+          _AccountStatusSettingsContent(controller: controller),
+    );
+  }
+}
+
+class _AccountStatusSettingsContent extends StatelessWidget {
+  const _AccountStatusSettingsContent({required this.controller});
+
+  final AccountSnapshotController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.account_circle_outlined),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.accountStatus,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                IconButton(
+                  key: const ValueKey('settings-account-refresh'),
+                  onPressed: controller.status == AccountSnapshotStatus.loading
+                      ? null
+                      : () => controller.refresh(),
+                  icon: const Icon(Icons.refresh),
+                  tooltip: l10n.refreshAccountStatus,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            switch (controller.status) {
+              AccountSnapshotStatus.idle => Text(l10n.accountStatusUnavailable),
+              AccountSnapshotStatus.loading => const LinearProgressIndicator(),
+              AccountSnapshotStatus.failed => Text(
+                controller.error?.toString() ?? l10n.accountLoadFailed,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              AccountSnapshotStatus.loaded when controller.snapshot == null =>
+                Text(l10n.accountStatusUnavailable),
+              AccountSnapshotStatus.loaded => _LoadedAccountStatus(
+                controller: controller,
+              ),
+            },
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadedAccountStatus extends StatelessWidget {
+  const _LoadedAccountStatus({required this.controller});
+
+  final AccountSnapshotController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final snapshot = controller.snapshot!;
+    final account = snapshot.account;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (account == null)
+          Text(l10n.accountNotSignedIn)
+        else ...[
+          _SettingsValueLine(label: l10n.accountSignedIn, value: account.label),
+          if (account.credentialSource != null)
+            _SettingsValueLine(
+              label: l10n.accountCredentialSource,
+              value: account.credentialSource!,
+            ),
+        ],
+        const SizedBox(height: 4),
+        Text(
+          snapshot.requiresOpenaiAuth
+              ? l10n.openaiAuthRequired
+              : l10n.openaiAuthNotRequired,
+        ),
+      ],
+    );
+  }
+}
+
+class _ModelListSettingsCard extends StatelessWidget {
+  const _ModelListSettingsCard({required this.controller});
+
+  final ModelListController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) =>
+          _ModelListSettingsContent(controller: controller),
+    );
+  }
+}
+
+class _ModelListSettingsContent extends StatelessWidget {
+  const _ModelListSettingsContent({required this.controller});
+
+  final ModelListController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.memory_outlined),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.modelList,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                IconButton(
+                  key: const ValueKey('settings-model-list-refresh'),
+                  onPressed: controller.status == ModelListStatus.loading
+                      ? null
+                      : () => controller.refresh(),
+                  icon: const Icon(Icons.refresh),
+                  tooltip: l10n.refreshModelList,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            switch (controller.status) {
+              ModelListStatus.idle => Text(l10n.modelListUnavailable),
+              ModelListStatus.loading => const LinearProgressIndicator(),
+              ModelListStatus.failed => Text(
+                controller.error?.toString() ?? l10n.modelListLoadFailed,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              ModelListStatus.loaded when controller.models.isEmpty => Text(
+                l10n.modelListEmpty,
+              ),
+              ModelListStatus.loaded => _LoadedModelList(
+                controller: controller,
+              ),
+            },
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadedModelList extends StatelessWidget {
+  const _LoadedModelList({required this.controller});
+
+  final ModelListController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final models = controller.models;
+    final visibleModels = models.take(5).toList(growable: false);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(l10n.availableModels(models.length)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final model in visibleModels) Chip(label: Text(model.label)),
+          ],
+        ),
+        if (models.length > visibleModels.length) ...[
+          const SizedBox(height: 8),
+          Text(l10n.modelListMore(models.length - visibleModels.length)),
+        ],
       ],
     );
   }
@@ -616,5 +832,20 @@ class _SourceLine extends StatelessWidget {
       CodexConfigOverrideSource.session => l10n.sourceSessionOverride,
       CodexConfigOverrideSource.turn => l10n.sourceTurnOverride,
     };
+  }
+}
+
+class _SettingsValueLine extends StatelessWidget {
+  const _SettingsValueLine({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Text('$label: $value'),
+    );
   }
 }

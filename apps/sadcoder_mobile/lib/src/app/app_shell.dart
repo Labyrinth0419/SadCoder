@@ -333,6 +333,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         appearanceController: widget.appearanceController,
         configOverrideController: _configOverrideController,
         configSnapshotController: _configSnapshotController,
+        accountSnapshotController: _accountSnapshotController,
+        modelListController: _modelListController,
         backgroundConnectionPreferences: _backgroundConnectionPreferences,
         diagnosticLogExportController: _diagnosticLogExportController,
       ),

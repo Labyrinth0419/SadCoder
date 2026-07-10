@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/accounts/account_snapshot_controller.dart';
+import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/appearance/app_appearance_controller.dart';
 import 'package:sadcoder_mobile/src/background/background_connection_policy.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
@@ -10,6 +12,8 @@ import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/diagnostics/diagnostic_log_export_controller.dart';
 import 'package:sadcoder_mobile/src/features/settings/settings_page.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/models/model_list_controller.dart';
+import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc_diagnostic_log.dart';
 
 void main() {
@@ -130,6 +134,88 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('refreshes and renders account status read-only', (tester) async {
+    final overrideController = CodexConfigOverrideController();
+    final accountReader = _RecordingAccountSnapshotReader(
+      snapshot: const AccountSnapshot(
+        account: AccountSummary(
+          type: 'chatgpt',
+          email: 'user@example.com',
+          planType: 'pro',
+        ),
+        requiresOpenaiAuth: true,
+      ),
+    );
+    final accountController = AccountSnapshotController(
+      readerProvider: () => accountReader,
+    );
+    addTearDown(accountController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      accountSnapshotController: accountController,
+    );
+
+    expect(find.text('Account'), findsOneWidget);
+    expect(
+      find.text('Connect to a host, then refresh account.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('settings-account-refresh')));
+    await tester.pumpAndSettle();
+
+    expect(accountReader.refreshTokenValues, [false]);
+    expect(
+      find.text('Signed in: ChatGPT / user@example.com / pro'),
+      findsOneWidget,
+    );
+    expect(find.text('OpenAI auth required'), findsOneWidget);
+  });
+
+  testWidgets('refreshes and renders model list read-only', (tester) async {
+    final overrideController = CodexConfigOverrideController();
+    final modelReader = _RecordingModelListReader(
+      page: const ModelListPage(
+        models: [
+          CodexModelSummary(
+            id: 'gpt-5-codex',
+            name: 'GPT-5 Codex',
+            provider: 'openai',
+          ),
+          CodexModelSummary(id: 'gpt-5'),
+        ],
+      ),
+    );
+    final modelController = ModelListController(
+      readerProvider: () => modelReader,
+    );
+    addTearDown(modelController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      modelListController: modelController,
+    );
+
+    expect(find.text('Model list'), findsOneWidget);
+    expect(
+      find.text('Connect to a host, then refresh model list.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('settings-model-list-refresh')));
+    await tester.pumpAndSettle();
+
+    expect(modelReader.calls, 1);
+    expect(find.text('Available models: 2'), findsOneWidget);
+    expect(find.text('GPT-5 Codex (openai)'), findsOneWidget);
+    expect(find.text('gpt-5'), findsOneWidget);
   });
 
   testWidgets('updates app theme preference from settings', (tester) async {
@@ -313,6 +399,8 @@ Future<void> _pumpSettings(
   CodexConfigOverrideController controller, {
   AppAppearanceController? appearanceController,
   CodexConfigSnapshotController? configSnapshotController,
+  AccountSnapshotController? accountSnapshotController,
+  ModelListController? modelListController,
   BackgroundConnectionPreferences? backgroundConnectionPreferences,
   DiagnosticLogExportController? diagnosticLogExportController,
 }) {
@@ -330,6 +418,8 @@ Future<void> _pumpSettings(
           appearanceController: appearanceController,
           configOverrideController: controller,
           configSnapshotController: configSnapshotController,
+          accountSnapshotController: accountSnapshotController,
+          modelListController: modelListController,
           backgroundConnectionPreferences: backgroundConnectionPreferences,
           diagnosticLogExportController: diagnosticLogExportController,
         ),
@@ -374,3 +464,29 @@ const _defaultConfig = {
   'default_permissions': ':workspace',
   'sandbox_mode': {'type': 'workspace-write'},
 };
+
+class _RecordingAccountSnapshotReader implements AccountSnapshotReader {
+  _RecordingAccountSnapshotReader({required this.snapshot});
+
+  final AccountSnapshot snapshot;
+  final List<bool> refreshTokenValues = [];
+
+  @override
+  Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
+    refreshTokenValues.add(refreshToken);
+    return snapshot;
+  }
+}
+
+class _RecordingModelListReader implements ModelListReader {
+  _RecordingModelListReader({required this.page});
+
+  final ModelListPage page;
+  int calls = 0;
+
+  @override
+  Future<ModelListPage> listModels() async {
+    calls++;
+    return page;
+  }
+}
