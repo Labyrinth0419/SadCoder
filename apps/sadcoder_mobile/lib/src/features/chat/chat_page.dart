@@ -36,6 +36,7 @@ import '../../turns/turn_controller.dart';
 import '../../turns/turn_text_element.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import '../appearance/app_color_palette_picker.dart';
+import '../diffs/diff_text_block.dart';
 import '../files/file_search_sheet.dart';
 import 'chat_apps_summary.dart';
 import 'chat_background_terminal_summary.dart';
@@ -4637,7 +4638,10 @@ class _TimelineBodyBlock extends StatelessWidget {
       return _TerminalOutputBlock(text: body);
     }
     if (item.itemType == 'fileChange') {
-      return _DiffTextBlock(text: body);
+      return DiffTextBlock(
+        key: const ValueKey('timeline-diff-output'),
+        text: body,
+      );
     }
     return Text(body);
   }
@@ -4679,96 +4683,10 @@ class _TimelineDiffBlock extends StatelessWidget {
     final label = change.path.isEmpty
         ? change.kind
         : '${change.kind} ${change.path}';
-    return _DiffTextBlock(
+    return DiffTextBlock(
+      key: ValueKey('timeline-diff-output-$label'),
       text: change.diff,
       label: label,
-      blockKey: ValueKey('timeline-diff-output-$label'),
-    );
-  }
-}
-
-class _DiffTextBlock extends StatelessWidget {
-  const _DiffTextBlock({
-    required this.text,
-    this.label,
-    this.blockKey = const ValueKey('timeline-diff-output'),
-  });
-
-  final String text;
-  final String? label;
-  final Key blockKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = SadCoderThemeColors.of(context);
-    return Container(
-      key: blockKey,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (label != null && label!.trim().isNotEmpty)
-            Container(
-              color: colors.diffHeaderBackground,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Text(
-                label!,
-                style: TextStyle(
-                  color: colors.diffHeaderForeground,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          for (final line in text.trimRight().split('\n'))
-            _DiffLine(line: line),
-        ],
-      ),
-    );
-  }
-}
-
-class _DiffLine extends StatelessWidget {
-  const _DiffLine({required this.line});
-
-  final String line;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = SadCoderThemeColors.of(context);
-    final isAdded = line.startsWith('+') && !line.startsWith('+++');
-    final isRemoved = line.startsWith('-') && !line.startsWith('---');
-    final isHeader =
-        line.startsWith('diff ') ||
-        line.startsWith('index ') ||
-        line.startsWith('@@') ||
-        line.startsWith('---') ||
-        line.startsWith('+++');
-    return Container(
-      color: isAdded
-          ? colors.diffAddedBackground
-          : isRemoved
-          ? colors.diffRemovedBackground
-          : isHeader
-          ? colors.diffHeaderBackground
-          : colors.codeBackground,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-      child: SelectableText(
-        line,
-        style: TextStyle(
-          color: isAdded
-              ? colors.diffAddedForeground
-              : isRemoved
-              ? colors.diffRemovedForeground
-              : isHeader
-              ? colors.diffHeaderForeground
-              : colors.codeForeground,
-          fontFamily: 'monospace',
-        ),
-      ),
     );
   }
 }
