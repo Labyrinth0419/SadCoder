@@ -25,9 +25,10 @@ void main() {
     final statuses = <ThreadListStatus>[];
     controller.addListener(() => statuses.add(controller.status));
 
-    await controller.refresh(limit: 5);
+    await controller.refresh(limit: 5, archived: true);
 
     expect(reader.limits, [5]);
+    expect(reader.archivedFilters, [true]);
     expect(controller.status, ThreadListStatus.loaded);
     expect(controller.threads.single.id, 'thr_1');
     expect(statuses, [ThreadListStatus.loading, ThreadListStatus.loaded]);
@@ -81,17 +82,22 @@ class _FakeThreadListReader implements ThreadListReader {
 
   final ThreadListPage page;
   final limits = <int>[];
+  final archivedFilters = <bool>[];
 
   @override
-  Future<ThreadListPage> listThreads({int limit = 20}) async {
+  Future<ThreadListPage> listThreads({
+    int limit = 20,
+    bool archived = false,
+  }) async {
     limits.add(limit);
+    archivedFilters.add(archived);
     return page;
   }
 }
 
 class _FailingThreadListReader implements ThreadListReader {
   @override
-  Future<ThreadListPage> listThreads({int limit = 20}) {
+  Future<ThreadListPage> listThreads({int limit = 20, bool archived = false}) {
     throw StateError('thread list failed');
   }
 }

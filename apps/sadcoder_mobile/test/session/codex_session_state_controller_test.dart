@@ -1094,7 +1094,10 @@ class _FakeThreadListReader implements ThreadListReader {
   const _FakeThreadListReader();
 
   @override
-  Future<ThreadListPage> listThreads({int limit = 20}) async {
+  Future<ThreadListPage> listThreads({
+    int limit = 20,
+    bool archived = false,
+  }) async {
     return const ThreadListPage(threads: []);
   }
 }
@@ -1106,7 +1109,10 @@ class _RecordingThreadListReader implements ThreadListReader {
   final limits = <int>[];
 
   @override
-  Future<ThreadListPage> listThreads({int limit = 20}) async {
+  Future<ThreadListPage> listThreads({
+    int limit = 20,
+    bool archived = false,
+  }) async {
     limits.add(limit);
     final failure = this.failure;
     if (failure != null) {
@@ -1264,6 +1270,19 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
 
   @override
   Future<void> archiveThread({required String threadId}) async {}
+
+  @override
+  Future<ThreadSummary> unarchiveThread({required String threadId}) async {
+    return ThreadSummary.fromJson({
+      'id': threadId,
+      'sessionId': 'sess_1',
+      'preview': 'Unarchived thread',
+      'ephemeral': false,
+      'status': 'idle',
+      'cwd': '/repo',
+      'updatedAt': 1,
+    });
+  }
 
   @override
   Future<void> deleteThread({required String threadId}) async {}

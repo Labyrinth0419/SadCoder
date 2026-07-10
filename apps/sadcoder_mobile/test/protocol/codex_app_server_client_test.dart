@@ -88,6 +88,7 @@ void main() {
     );
     await client.setThreadName(threadId: 'thr_1', name: 'Renamed thread');
     await client.archiveThread(threadId: 'thr_1');
+    await client.unarchiveThread(threadId: 'thr_1');
     await client.deleteThread(threadId: 'thr_1');
     await client.logoutAccount();
     await client.uploadFeedback(
@@ -137,6 +138,7 @@ void main() {
       'review/start',
       'thread/name/set',
       'thread/archive',
+      'thread/unarchive',
       'thread/delete',
       'account/logout',
       'feedback/upload',
@@ -211,27 +213,28 @@ void main() {
     });
     expect(requests[23].params, {'threadId': 'thr_1'});
     expect(requests[24].params, {'threadId': 'thr_1'});
-    expect(requests[25].params, isNull);
-    expect(requests[26].params, {
+    expect(requests[25].params, {'threadId': 'thr_1'});
+    expect(requests[26].params, isNull);
+    expect(requests[27].params, {
       'classification': 'bug',
       'reason': 'broken',
       'threadId': 'thr_1',
       'includeLogs': true,
       'tags': {'turn_id': 'turn_1'},
     });
-    expect(requests[27].params, {
+    expect(requests[28].params, {
       'command': ['git', 'diff'],
       'cwd': '/repo',
       'env': {'GIT_CONFIG_COUNT': '0'},
       'timeoutMs': 30000,
       'outputBytesCap': 1024,
     });
-    expect(requests[28].params, {
+    expect(requests[29].params, {
       'query': 'main',
       'roots': ['/repo'],
       'cancellation_token': 'token-1',
     });
-    expect(requests[29].params, {
+    expect(requests[30].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},
@@ -252,6 +255,27 @@ void main() {
 
     expect(requests.single.method, 'config/mcpServer/reload');
     expect(requests.single.params, isNull);
+  });
+
+  test('listThreads can request archived threads', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
+
+    final client = CodexAppServerClient(transport);
+    await client.listThreads(limit: 5);
+    await client.listThreads(limit: 10, archived: true);
+
+    expect(requests.map((request) => request.method), [
+      'thread/list',
+      'thread/list',
+    ]);
+    expect(requests.map((request) => request.params), [
+      {'limit': 5},
+      {'limit': 10, 'archived': true},
+    ]);
   });
 
   test('startMcpServerOAuthLogin uses app-server method name', () async {

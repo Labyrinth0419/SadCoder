@@ -279,8 +279,14 @@ class CodexAppServerClient {
     return _request('account/usage/read');
   }
 
-  Future<Map<String, Object?>> listThreads({int limit = 20}) {
-    return _request('thread/list', {'limit': limit});
+  Future<Map<String, Object?>> listThreads({
+    int limit = 20,
+    bool archived = false,
+  }) {
+    return _request('thread/list', {
+      'limit': limit,
+      if (archived) 'archived': true,
+    });
   }
 
   Future<Map<String, Object?>> readConfig({
@@ -520,6 +526,10 @@ class CodexAppServerClient {
 
   Future<Map<String, Object?>> archiveThread({required String threadId}) {
     return _request('thread/archive', {'threadId': threadId});
+  }
+
+  Future<Map<String, Object?>> unarchiveThread({required String threadId}) {
+    return _request('thread/unarchive', {'threadId': threadId});
   }
 
   Future<Map<String, Object?>> deleteThread({required String threadId}) {

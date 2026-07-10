@@ -88,6 +88,12 @@ class CodexThreadMutationRunner implements ThreadMutationRunner {
   }
 
   @override
+  Future<ThreadSummary> unarchiveThread({required String threadId}) async {
+    final response = await _client.unarchiveThread(threadId: threadId);
+    return ThreadSummary.fromThreadResponse(response);
+  }
+
+  @override
   Future<void> deleteThread({required String threadId}) async {
     await _client.deleteThread(threadId: threadId);
   }

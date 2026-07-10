@@ -74,6 +74,7 @@ class ChatTimelineController extends ChangeNotifier {
         _appendDelta(event, fallbackType: 'plan');
       case CodexEventKind.threadStarted ||
           CodexEventKind.threadArchived ||
+          CodexEventKind.threadUnarchived ||
           CodexEventKind.threadDeleted ||
           CodexEventKind.threadNameUpdated ||
           CodexEventKind.unknown:

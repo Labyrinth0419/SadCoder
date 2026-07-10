@@ -98,7 +98,10 @@ class _RecordingThreadListReader implements ThreadListReader {
   final limits = <int>[];
 
   @override
-  Future<ThreadListPage> listThreads({int limit = 20}) async {
+  Future<ThreadListPage> listThreads({
+    int limit = 20,
+    bool archived = false,
+  }) async {
     limits.add(limit);
     return ThreadListPage(threads: [_thread('thr_selected')]);
   }

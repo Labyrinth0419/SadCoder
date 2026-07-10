@@ -3,6 +3,7 @@ import '../threads/thread_summary.dart';
 enum CodexEventKind {
   threadStarted,
   threadArchived,
+  threadUnarchived,
   threadDeleted,
   threadNameUpdated,
   turnStarted,
@@ -43,6 +44,12 @@ class CodexEvent {
       'thread/started' => _threadStarted(method, notification, params),
       'thread/archived' => _threadLifecycleEvent(
         CodexEventKind.threadArchived,
+        method,
+        notification,
+        params,
+      ),
+      'thread/unarchived' => _threadLifecycleEvent(
+        CodexEventKind.threadUnarchived,
         method,
         notification,
         params,

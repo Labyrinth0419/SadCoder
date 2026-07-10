@@ -115,6 +115,33 @@ void main() {
     expect(requests.single.params, {'threadId': 'thr_1'});
   });
 
+  test('unarchiveThread returns the restored thread', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {
+        'thread': {
+          'id': 'thr_unarchived',
+          'sessionId': 'sess_1',
+          'preview': 'Restored work',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 3,
+          'turns': <Object?>[],
+        },
+      };
+    });
+    final runner = CodexThreadMutationRunner(CodexAppServerClient(transport));
+
+    final thread = await runner.unarchiveThread(threadId: 'thr_archived');
+
+    expect(thread.id, 'thr_unarchived');
+    expect(thread.title, 'Restored work');
+    expect(requests.single.method, 'thread/unarchive');
+    expect(requests.single.params, {'threadId': 'thr_archived'});
+  });
+
   test(
     'startSideConversation forks an ephemeral thread and injects boundary',
     () async {

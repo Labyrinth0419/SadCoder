@@ -21,7 +21,7 @@ class ThreadListController extends ChangeNotifier {
   List<ThreadSummary> get threads => _threads;
   Object? get error => _error;
 
-  Future<void> refresh({int limit = 20}) async {
+  Future<void> refresh({int limit = 20, bool archived = false}) async {
     final reader = _readerProvider();
     if (reader == null) {
       _generation++;
@@ -32,7 +32,7 @@ class ThreadListController extends ChangeNotifier {
     final generation = ++_generation;
     _setState(status: ThreadListStatus.loading, error: null);
     try {
-      final page = await reader.listThreads(limit: limit);
+      final page = await reader.listThreads(limit: limit, archived: archived);
       if (generation != _generation) {
         return;
       }

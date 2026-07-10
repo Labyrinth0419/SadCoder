@@ -22,5 +22,7 @@ abstract interface class ThreadMutationRunner {
 
   Future<void> archiveThread({required String threadId});
 
+  Future<ThreadSummary> unarchiveThread({required String threadId});
+
   Future<void> deleteThread({required String threadId});
 }

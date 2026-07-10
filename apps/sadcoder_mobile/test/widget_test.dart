@@ -1287,7 +1287,10 @@ class _StaticThreadListReader implements ThreadListReader {
   final List<ThreadSummary> threads;
 
   @override
-  Future<ThreadListPage> listThreads({int limit = 20}) async {
+  Future<ThreadListPage> listThreads({
+    int limit = 20,
+    bool archived = false,
+  }) async {
     return ThreadListPage(threads: threads);
   }
 }
@@ -1415,6 +1418,19 @@ class _NoopThreadMutationRunner implements ThreadMutationRunner {
 
   @override
   Future<void> archiveThread({required String threadId}) async {}
+
+  @override
+  Future<ThreadSummary> unarchiveThread({required String threadId}) async {
+    return ThreadSummary.fromJson({
+      'id': threadId,
+      'sessionId': 'sess_1',
+      'preview': 'Unarchived thread',
+      'ephemeral': false,
+      'status': 'idle',
+      'cwd': '/repo',
+      'updatedAt': 1,
+    });
+  }
 
   @override
   Future<void> deleteThread({required String threadId}) async {}

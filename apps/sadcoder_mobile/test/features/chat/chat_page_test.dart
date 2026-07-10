@@ -6427,7 +6427,10 @@ class _FakeThreadListReader implements ThreadListReader {
   final ThreadListPage page;
 
   @override
-  Future<ThreadListPage> listThreads({int limit = 20}) async => page;
+  Future<ThreadListPage> listThreads({
+    int limit = 20,
+    bool archived = false,
+  }) async => page;
 }
 
 class _CountingThreadListReader implements ThreadListReader {
@@ -6437,7 +6440,10 @@ class _CountingThreadListReader implements ThreadListReader {
   int calls = 0;
 
   @override
-  Future<ThreadListPage> listThreads({int limit = 20}) async {
+  Future<ThreadListPage> listThreads({
+    int limit = 20,
+    bool archived = false,
+  }) async {
     calls++;
     return page;
   }
@@ -7552,6 +7558,7 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
   final compactedThreads = <String>[];
   final renamedThreads = <({String threadId, String name})>[];
   final archivedThreads = <String>[];
+  final unarchivedThreads = <String>[];
   final deletedThreads = <String>[];
 
   @override
@@ -7610,6 +7617,12 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
   }
 
   @override
+  Future<ThreadSummary> unarchiveThread({required String threadId}) async {
+    unarchivedThreads.add(threadId);
+    return _thread(threadId);
+  }
+
+  @override
   Future<void> deleteThread({required String threadId}) async {
     deletedThreads.add(threadId);
   }
@@ -7653,6 +7666,10 @@ class _NoopThreadMutationRunner implements ThreadMutationRunner {
 
   @override
   Future<void> archiveThread({required String threadId}) async {}
+
+  @override
+  Future<ThreadSummary> unarchiveThread({required String threadId}) async =>
+      _thread(threadId);
 
   @override
   Future<void> deleteThread({required String threadId}) async {}

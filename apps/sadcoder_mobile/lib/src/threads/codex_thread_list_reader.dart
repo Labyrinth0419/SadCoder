@@ -8,8 +8,11 @@ class CodexThreadListReader implements ThreadListReader {
   final CodexAppServerClient _client;
 
   @override
-  Future<ThreadListPage> listThreads({int limit = 20}) async {
-    final result = await _client.listThreads(limit: limit);
+  Future<ThreadListPage> listThreads({
+    int limit = 20,
+    bool archived = false,
+  }) async {
+    final result = await _client.listThreads(limit: limit, archived: archived);
     return ThreadListPage.fromJson(result);
   }
 }

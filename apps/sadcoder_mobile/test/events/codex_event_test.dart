@@ -37,6 +37,10 @@ void main() {
       'method': 'thread/archived',
       'params': {'threadId': 'thr_1'},
     });
+    final threadUnarchived = CodexEvent.fromNotification({
+      'method': 'thread/unarchived',
+      'params': {'threadId': 'thr_1'},
+    });
     final threadDeleted = CodexEvent.fromNotification({
       'method': 'thread/deleted',
       'params': {'threadId': 'thr_2'},
@@ -50,6 +54,8 @@ void main() {
     expect(threadNameUpdated.threadName, 'Renamed');
     expect(threadArchived.kind, CodexEventKind.threadArchived);
     expect(threadArchived.threadId, 'thr_1');
+    expect(threadUnarchived.kind, CodexEventKind.threadUnarchived);
+    expect(threadUnarchived.threadId, 'thr_1');
     expect(threadDeleted.kind, CodexEventKind.threadDeleted);
     expect(threadDeleted.threadId, 'thr_2');
     expect(turnCompleted.kind, CodexEventKind.turnCompleted);
