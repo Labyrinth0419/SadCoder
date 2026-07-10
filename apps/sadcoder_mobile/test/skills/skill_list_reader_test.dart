@@ -53,6 +53,39 @@ void main() {
     expect(skill.interface?.brandColor, '#0F766E');
   });
 
+  test('SkillListPage parses snake_case interface fields', () {
+    final page = SkillListPage.fromJson({
+      'data': [
+        {
+          'cwd': '/repo',
+          'skills': [
+            {
+              'name': 'release-notes',
+              'description': 'Write release notes',
+              'short_description': 'Draft releases',
+              'interface': {
+                'display_name': 'Release Notes',
+                'short_description': 'Summarize changes',
+                'brand_color': '#2563EB',
+                'default_prompt': 'Draft release notes',
+              },
+              'path': '/repo/.codex/skills/release-notes/SKILL.md',
+              'scope': 'repo',
+              'enabled': true,
+            },
+          ],
+        },
+      ],
+    });
+
+    final skill = page.entries.single.skills.single;
+    expect(skill.shortDescription, 'Draft releases');
+    expect(skill.displayName, 'Release Notes');
+    expect(skill.summary, 'Summarize changes');
+    expect(skill.interface?.brandColor, '#2563EB');
+    expect(skill.interface?.defaultPrompt, 'Draft release notes');
+  });
+
   test('CodexSkillListReader calls app-server skills/list', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {

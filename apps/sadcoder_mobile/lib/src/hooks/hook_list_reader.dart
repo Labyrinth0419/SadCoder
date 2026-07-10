@@ -79,20 +79,22 @@ class HookSummary {
     }
     return HookSummary(
       key: key,
-      eventName: _stringValue(map['eventName']) ?? 'unknown',
-      handlerType: _stringValue(map['handlerType']) ?? 'unknown',
+      eventName: _stringField(map, ['eventName', 'event_name']) ?? 'unknown',
+      handlerType:
+          _stringField(map, ['handlerType', 'handler_type']) ?? 'unknown',
       matcher: _stringValue(map['matcher']),
       command: _stringValue(map['command']),
-      timeoutSec: _intValue(map['timeoutSec']) ?? 0,
-      statusMessage: _stringValue(map['statusMessage']),
-      sourcePath: _stringValue(map['sourcePath']) ?? '',
+      timeoutSec: _intField(map, ['timeoutSec', 'timeout_sec']) ?? 0,
+      statusMessage: _stringField(map, ['statusMessage', 'status_message']),
+      sourcePath: _stringField(map, ['sourcePath', 'source_path']) ?? '',
       source: _stringValue(map['source']) ?? 'unknown',
-      pluginId: _stringValue(map['pluginId']),
-      displayOrder: _intValue(map['displayOrder']) ?? 0,
+      pluginId: _stringField(map, ['pluginId', 'plugin_id']),
+      displayOrder: _intField(map, ['displayOrder', 'display_order']) ?? 0,
       enabled: _boolValue(map['enabled']) ?? true,
-      isManaged: _boolValue(map['isManaged']) ?? false,
-      currentHash: _stringValue(map['currentHash']) ?? '',
-      trustStatus: _stringValue(map['trustStatus']) ?? 'unknown',
+      isManaged: _boolField(map, ['isManaged', 'is_managed']) ?? false,
+      currentHash: _stringField(map, ['currentHash', 'current_hash']) ?? '',
+      trustStatus:
+          _stringField(map, ['trustStatus', 'trust_status']) ?? 'unknown',
       raw: map,
     );
   }
@@ -152,7 +154,27 @@ String? _stringValue(Object? value) {
   return null;
 }
 
+String? _stringField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _stringValue(map[key]);
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
+}
+
 bool? _boolValue(Object? value) => value is bool ? value : null;
+
+bool? _boolField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _boolValue(map[key]);
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
+}
 
 int? _intValue(Object? value) {
   if (value is int) {
@@ -160,6 +182,16 @@ int? _intValue(Object? value) {
   }
   if (value is num) {
     return value.toInt();
+  }
+  return null;
+}
+
+int? _intField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _intValue(map[key]);
+    if (value != null) {
+      return value;
+    }
   }
   return null;
 }

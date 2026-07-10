@@ -69,7 +69,10 @@ class SkillSummary {
     return SkillSummary(
       name: name,
       description: _stringValue(map['description']) ?? '',
-      shortDescription: _stringValue(map['shortDescription']),
+      shortDescription: _stringField(map, [
+        'shortDescription',
+        'short_description',
+      ]),
       interface: SkillInterfaceSummary.fromJson(map['interface']),
       path: _stringValue(map['path']) ?? '',
       scope: _stringValue(map['scope']) ?? 'unknown',
@@ -116,10 +119,13 @@ class SkillInterfaceSummary {
       return null;
     }
     return SkillInterfaceSummary(
-      displayName: _stringValue(map['displayName']),
-      shortDescription: _stringValue(map['shortDescription']),
-      brandColor: _stringValue(map['brandColor']),
-      defaultPrompt: _stringValue(map['defaultPrompt']),
+      displayName: _stringField(map, ['displayName', 'display_name']),
+      shortDescription: _stringField(map, [
+        'shortDescription',
+        'short_description',
+      ]),
+      brandColor: _stringField(map, ['brandColor', 'brand_color']),
+      defaultPrompt: _stringField(map, ['defaultPrompt', 'default_prompt']),
     );
   }
 
@@ -172,6 +178,16 @@ Map<String, Object?> _objectMap(Object? value) {
 String? _stringValue(Object? value) {
   if (value is String && value.trim().isNotEmpty) {
     return value.trim();
+  }
+  return null;
+}
+
+String? _stringField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _stringValue(map[key]);
+    if (value != null) {
+      return value;
+    }
   }
   return null;
 }

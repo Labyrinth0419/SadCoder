@@ -64,6 +64,47 @@ void main() {
     expect(hook.trustStatus, 'modified');
   });
 
+  test('HookListPage parses snake_case hook fields', () {
+    final page = HookListPage.fromJson({
+      'data': [
+        {
+          'cwd': '/repo',
+          'hooks': [
+            {
+              'key': 'post-tool-use-shell',
+              'event_name': 'postToolUse',
+              'handler_type': 'command',
+              'matcher': 'shell',
+              'command': 'scripts/report.sh',
+              'timeout_sec': 45,
+              'status_message': 'Reporting shell command',
+              'source_path': '/repo/.codex/hooks.json',
+              'source': 'project',
+              'plugin_id': 'audit',
+              'display_order': 5,
+              'enabled': true,
+              'is_managed': false,
+              'current_hash': 'def456',
+              'trust_status': 'trusted',
+            },
+          ],
+        },
+      ],
+    });
+
+    final hook = page.entries.single.hooks.single;
+    expect(hook.eventName, 'postToolUse');
+    expect(hook.handlerType, 'command');
+    expect(hook.timeoutSec, 45);
+    expect(hook.statusMessage, 'Reporting shell command');
+    expect(hook.sourcePath, '/repo/.codex/hooks.json');
+    expect(hook.pluginId, 'audit');
+    expect(hook.displayOrder, 5);
+    expect(hook.isManaged, false);
+    expect(hook.currentHash, 'def456');
+    expect(hook.trustStatus, 'trusted');
+  });
+
   test('CodexHookListReader calls app-server hooks/list', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {
