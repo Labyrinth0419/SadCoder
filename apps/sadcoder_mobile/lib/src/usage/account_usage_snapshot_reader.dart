@@ -17,15 +17,23 @@ class AccountUsageSnapshot {
   }) {
     return AccountUsageSnapshot(
       summary: AccountTokenUsageSummary.fromJson(usageJson['summary']),
-      dailyUsageBuckets: _dailyBuckets(usageJson['dailyUsageBuckets']),
+      dailyUsageBuckets: _dailyBuckets(
+        _valueField(usageJson, ['dailyUsageBuckets', 'daily_usage_buckets']),
+      ),
       rateLimits: AccountRateLimitsSnapshot.fromJson(
-        rateLimitsJson['rateLimits'],
+        _valueField(rateLimitsJson, ['rateLimits', 'rate_limits']),
       ),
       rateLimitsByLimitId: _rateLimitsByLimitId(
-        rateLimitsJson['rateLimitsByLimitId'],
+        _valueField(rateLimitsJson, [
+          'rateLimitsByLimitId',
+          'rate_limits_by_limit_id',
+        ]),
       ),
       rateLimitResetCredits: AccountRateLimitResetCreditsSummary.fromJson(
-        rateLimitsJson['rateLimitResetCredits'],
+        _valueField(rateLimitsJson, [
+          'rateLimitResetCredits',
+          'rate_limit_reset_credits',
+        ]),
       ),
     );
   }
@@ -52,11 +60,20 @@ class AccountTokenUsageSummary {
       return const AccountTokenUsageSummary();
     }
     return AccountTokenUsageSummary(
-      lifetimeTokens: _intValue(map['lifetimeTokens']),
-      peakDailyTokens: _intValue(map['peakDailyTokens']),
-      longestRunningTurnSec: _intValue(map['longestRunningTurnSec']),
-      currentStreakDays: _intValue(map['currentStreakDays']),
-      longestStreakDays: _intValue(map['longestStreakDays']),
+      lifetimeTokens: _intField(map, ['lifetimeTokens', 'lifetime_tokens']),
+      peakDailyTokens: _intField(map, ['peakDailyTokens', 'peak_daily_tokens']),
+      longestRunningTurnSec: _intField(map, [
+        'longestRunningTurnSec',
+        'longest_running_turn_sec',
+      ]),
+      currentStreakDays: _intField(map, [
+        'currentStreakDays',
+        'current_streak_days',
+      ]),
+      longestStreakDays: _intField(map, [
+        'longestStreakDays',
+        'longest_streak_days',
+      ]),
     );
   }
 
@@ -82,7 +99,7 @@ class AccountTokenUsageDailyBucket {
 
   static AccountTokenUsageDailyBucket? fromJson(Object? value) {
     final map = _objectMap(value);
-    final startDate = _stringValue(map['startDate']);
+    final startDate = _stringField(map, ['startDate', 'start_date']);
     final tokens = _intValue(map['tokens']);
     if (startDate == null || tokens == null) {
       return null;
@@ -112,16 +129,19 @@ class AccountRateLimitsSnapshot {
       return null;
     }
     final snapshot = AccountRateLimitsSnapshot(
-      limitId: _stringValue(map['limitId']),
-      limitName: _stringValue(map['limitName']),
+      limitId: _stringField(map, ['limitId', 'limit_id']),
+      limitName: _stringField(map, ['limitName', 'limit_name']),
       primary: AccountRateLimitWindow.fromJson(map['primary']),
       secondary: AccountRateLimitWindow.fromJson(map['secondary']),
       credits: AccountCreditsSnapshot.fromJson(map['credits']),
       individualLimit: AccountSpendControlLimitSnapshot.fromJson(
-        map['individualLimit'],
+        _valueField(map, ['individualLimit', 'individual_limit']),
       ),
-      planType: _stringValue(map['planType']),
-      rateLimitReachedType: _stringValue(map['rateLimitReachedType']),
+      planType: _stringField(map, ['planType', 'plan_type']),
+      rateLimitReachedType: _stringField(map, [
+        'rateLimitReachedType',
+        'rate_limit_reached_type',
+      ]),
     );
     return snapshot.hasData ? snapshot : null;
   }
@@ -159,9 +179,12 @@ class AccountRateLimitWindow {
       return null;
     }
     final window = AccountRateLimitWindow(
-      usedPercent: _intValue(map['usedPercent']),
-      windowDurationMins: _intValue(map['windowDurationMins']),
-      resetsAt: _intValue(map['resetsAt']),
+      usedPercent: _intField(map, ['usedPercent', 'used_percent']),
+      windowDurationMins: _intField(map, [
+        'windowDurationMins',
+        'window_duration_mins',
+      ]),
+      resetsAt: _intField(map, ['resetsAt', 'resets_at']),
     );
     return window.hasData ? window : null;
   }
@@ -187,8 +210,8 @@ class AccountCreditsSnapshot {
       return null;
     }
     return AccountCreditsSnapshot(
-      hasCredits: map['hasCredits'] == true,
-      unlimited: map['unlimited'] == true,
+      hasCredits: _boolField(map, ['hasCredits', 'has_credits']) ?? false,
+      unlimited: _boolValue(map['unlimited']) ?? false,
       balance: _stringValue(map['balance']),
     );
   }
@@ -214,8 +237,11 @@ class AccountSpendControlLimitSnapshot {
     final snapshot = AccountSpendControlLimitSnapshot(
       limit: _stringValue(map['limit']),
       used: _stringValue(map['used']),
-      remainingPercent: _intValue(map['remainingPercent']),
-      resetsAt: _intValue(map['resetsAt']),
+      remainingPercent: _intField(map, [
+        'remainingPercent',
+        'remaining_percent',
+      ]),
+      resetsAt: _intField(map, ['resetsAt', 'resets_at']),
     );
     return snapshot.hasData ? snapshot : null;
   }
@@ -244,7 +270,8 @@ class AccountRateLimitResetCreditsSummary {
       return null;
     }
     return AccountRateLimitResetCreditsSummary(
-      availableCount: _intValue(map['availableCount']) ?? 0,
+      availableCount:
+          _intField(map, ['availableCount', 'available_count']) ?? 0,
       credits: _resetCredits(map['credits']),
     );
   }
@@ -272,10 +299,10 @@ class AccountRateLimitResetCredit {
     }
     return AccountRateLimitResetCredit(
       id: id,
-      resetType: _stringValue(map['resetType']) ?? 'unknown',
+      resetType: _stringField(map, ['resetType', 'reset_type']) ?? 'unknown',
       status: _stringValue(map['status']) ?? 'unknown',
-      grantedAt: _intValue(map['grantedAt']),
-      expiresAt: _intValue(map['expiresAt']),
+      grantedAt: _intField(map, ['grantedAt', 'granted_at']),
+      expiresAt: _intField(map, ['expiresAt', 'expires_at']),
       title: _stringValue(map['title']),
       description: _stringValue(map['description']),
     );
@@ -341,6 +368,16 @@ String? _stringValue(Object? value) {
   return null;
 }
 
+String? _stringField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _stringValue(map[key]);
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
+}
+
 int? _intValue(Object? value) {
   if (value is int) {
     return value;
@@ -350,6 +387,38 @@ int? _intValue(Object? value) {
   }
   if (value is String) {
     return int.tryParse(value.trim());
+  }
+  return null;
+}
+
+int? _intField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _intValue(map[key]);
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
+}
+
+bool? _boolValue(Object? value) => value is bool ? value : null;
+
+bool? _boolField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = _boolValue(map[key]);
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
+}
+
+Object? _valueField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = map[key];
+    if (value != null) {
+      return value;
+    }
   }
   return null;
 }

@@ -83,6 +83,96 @@ void main() {
   });
 
   test(
+    'AccountUsageSnapshot parses snake_case usage and rate-limit payloads',
+    () {
+      final snapshot = AccountUsageSnapshot.fromJson(
+        usageJson: {
+          'summary': {
+            'lifetime_tokens': 4321,
+            'peak_daily_tokens': 1200,
+            'longest_running_turn_sec': 240,
+            'current_streak_days': 5,
+            'longest_streak_days': 6,
+          },
+          'daily_usage_buckets': [
+            {'start_date': '2026-07-10', 'tokens': 444},
+          ],
+        },
+        rateLimitsJson: {
+          'rate_limits': {
+            'limit_id': 'codex',
+            'limit_name': 'Codex Pro',
+            'primary': {
+              'used_percent': 55,
+              'window_duration_mins': 30,
+              'resets_at': 1784246400,
+            },
+            'credits': {
+              'has_credits': true,
+              'unlimited': false,
+              'balance': r'$8',
+            },
+            'individual_limit': {
+              'limit': r'$25',
+              'used': r'$10',
+              'remaining_percent': 60,
+              'resets_at': 1784332800,
+            },
+            'plan_type': 'team',
+            'rate_limit_reached_type': 'primary_limit_reached',
+          },
+          'rate_limits_by_limit_id': {
+            'codex': {
+              'limit_id': 'codex',
+              'primary': {'used_percent': 70},
+            },
+          },
+          'rate_limit_reset_credits': {
+            'available_count': 1,
+            'credits': [
+              {
+                'id': 'RateLimitResetCredit_2',
+                'reset_type': 'codexRateLimits',
+                'status': 'available',
+                'granted_at': 1781654400,
+                'expires_at': 1784246400,
+                'title': 'Team reset',
+                'description': 'Ready',
+              },
+            ],
+          },
+        },
+      );
+
+      expect(snapshot.summary.lifetimeTokens, 4321);
+      expect(snapshot.summary.peakDailyTokens, 1200);
+      expect(snapshot.summary.longestRunningTurnSec, 240);
+      expect(snapshot.summary.currentStreakDays, 5);
+      expect(snapshot.summary.longestStreakDays, 6);
+      expect(snapshot.dailyUsageBuckets.single.startDate, '2026-07-10');
+      expect(snapshot.rateLimits?.limitName, 'Codex Pro');
+      expect(snapshot.rateLimits?.primary?.usedPercent, 55);
+      expect(snapshot.rateLimits?.primary?.windowDurationMins, 30);
+      expect(snapshot.rateLimits?.primary?.resetsAt, 1784246400);
+      expect(snapshot.rateLimits?.credits?.hasCredits, true);
+      expect(snapshot.rateLimits?.credits?.balance, r'$8');
+      expect(snapshot.rateLimits?.individualLimit?.remainingPercent, 60);
+      expect(snapshot.rateLimits?.planType, 'team');
+      expect(
+        snapshot.rateLimits?.rateLimitReachedType,
+        'primary_limit_reached',
+      );
+      expect(snapshot.rateLimitsByLimitId['codex']?.primary?.usedPercent, 70);
+      expect(snapshot.rateLimitResetCredits?.availableCount, 1);
+      final credit = snapshot.rateLimitResetCredits?.credits?.single;
+      expect(credit?.id, 'RateLimitResetCredit_2');
+      expect(credit?.resetType, 'codexRateLimits');
+      expect(credit?.grantedAt, 1781654400);
+      expect(credit?.expiresAt, 1784246400);
+    },
+  );
+
+  test(
     'CodexAccountUsageSnapshotReader calls usage and rate-limit reads',
     () async {
       final methods = <String>[];
