@@ -70,6 +70,10 @@ class AppLocalizations {
   String get generatedPublicKey => _text('generatedPublicKey');
   String get copyPublicKey => _text('copyPublicKey');
   String get publicKeyCopied => _text('publicKeyCopied');
+  String get exportPublicKey => _text('exportPublicKey');
+  String get exportingPublicKey => _text('exportingPublicKey');
+  String get publicKeyExported => _text('publicKeyExported');
+  String get publicKeyExportFailed => _text('publicKeyExportFailed');
   String get sshKeyGeneratedAndSaved => _text('sshKeyGeneratedAndSaved');
   String get sshKeyGenerationNeedsProfile =>
       _text('sshKeyGenerationNeedsProfile');
@@ -873,6 +877,10 @@ const _values = <String, Map<String, String>>{
     'generatedPublicKey': 'Generated public key',
     'copyPublicKey': 'Copy public key',
     'publicKeyCopied': 'Public key copied.',
+    'exportPublicKey': 'Export public key',
+    'exportingPublicKey': 'Exporting public key',
+    'publicKeyExported': 'Public key exported.',
+    'publicKeyExportFailed': 'Public key export failed',
     'sshKeyGeneratedAndSaved': 'SSH key generated and profile saved securely.',
     'sshKeyGenerationNeedsProfile':
         'SSH key generated. Complete host and username, then save the profile to store it securely.',
@@ -1515,6 +1523,10 @@ const _values = <String, Map<String, String>>{
     'generatedPublicKey': '生成的公钥',
     'copyPublicKey': '复制公钥',
     'publicKeyCopied': '公钥已复制。',
+    'exportPublicKey': '导出公钥',
+    'exportingPublicKey': '正在导出公钥',
+    'publicKeyExported': '公钥已导出。',
+    'publicKeyExportFailed': '公钥导出失败',
     'sshKeyGeneratedAndSaved': 'SSH 密钥已生成，配置已安全保存。',
     'sshKeyGenerationNeedsProfile': 'SSH 密钥已生成。补全主机和用户名后保存配置，即可安全持久化。',
     'sshKeyGenerationFailed': 'SSH 密钥生成失败',

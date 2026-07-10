@@ -16,6 +16,7 @@ import '../../ssh/ssh_import_file_source.dart';
 import '../../ssh/ssh_key_generator.dart';
 import '../../ssh/ssh_profile.dart';
 import '../../ssh/ssh_profile_store.dart';
+import '../../ssh/ssh_public_key_exporter.dart';
 
 const M0ProbeRunner _defaultProbeRunner = M0ProbeCoordinator(
   sshProbeRunner: DartSshConnectionProbeRunner(),
@@ -37,6 +38,7 @@ class HostsPage extends StatefulWidget {
     this.knownHostVerifier,
     this.importFileSource = const FilePickerSshImportFileSource(),
     this.keyGenerator = const DartSshKeyGenerator(),
+    this.publicKeyExporter = const FilePickerSshPublicKeyExporter(),
   });
 
   final M0ProbeRunner? probeRunner;
@@ -45,6 +47,7 @@ class HostsPage extends StatefulWidget {
   final KnownHostVerifier? knownHostVerifier;
   final SshImportFileSource importFileSource;
   final SshKeyGenerator keyGenerator;
+  final SshPublicKeyExporter publicKeyExporter;
 
   @override
   State<HostsPage> createState() => _HostsPageState();
@@ -67,6 +70,7 @@ class _HostsPageState extends State<HostsPage> {
   bool _importingSshConfig = false;
   bool _importingPrivateKey = false;
   bool _generatingKey = false;
+  bool _exportingPublicKey = false;
   GeneratedSshKeyPair? _generatedKeyPair;
   M0ProbeReport? _report;
   List<SshProfile> _profiles = const [];
@@ -86,6 +90,8 @@ class _HostsPageState extends State<HostsPage> {
   SshImportFileSource get _importFileSource => widget.importFileSource;
 
   SshKeyGenerator get _keyGenerator => widget.keyGenerator;
+
+  SshPublicKeyExporter get _publicKeyExporter => widget.publicKeyExporter;
 
   @override
   void initState() {
@@ -149,6 +155,7 @@ class _HostsPageState extends State<HostsPage> {
           importingSshConfig: _importingSshConfig,
           importingPrivateKey: _importingPrivateKey,
           generatingKey: _generatingKey,
+          exportingPublicKey: _exportingPublicKey,
           generatedKeyPair: _generatedKeyPair,
           onImportSshConfig: _importSshConfig,
           onImportPrivateKey: _importPrivateKey,
@@ -156,6 +163,9 @@ class _HostsPageState extends State<HostsPage> {
           onCopyPublicKey: _generatedKeyPair == null
               ? null
               : _copyGeneratedPublicKey,
+          onExportPublicKey: _generatedKeyPair == null
+              ? null
+              : _exportGeneratedPublicKey,
         ),
         const SizedBox(height: 12),
         _HostProfileForm(
@@ -381,9 +391,39 @@ class _HostsPageState extends State<HostsPage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(context.l10n.publicKeyCopied)));
+    _showSnackBar(context.l10n.publicKeyCopied);
+  }
+
+  Future<void> _exportGeneratedPublicKey() async {
+    final generated = _generatedKeyPair;
+    if (generated == null || _exportingPublicKey) {
+      return;
+    }
+    final l10n = context.l10n;
+    setState(() {
+      _exportingPublicKey = true;
+      _profileError = null;
+    });
+
+    try {
+      final savedPath = await _publicKeyExporter.exportPublicKey(
+        publicKeyOpenSsh: generated.publicKeyOpenSsh,
+        fileName: _publicKeyFileName(generated),
+        dialogTitle: l10n.exportPublicKey,
+      );
+      if (!mounted || savedPath == null) {
+        return;
+      }
+      _showSnackBar(l10n.publicKeyExported);
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _profileError = '${l10n.publicKeyExportFailed}: $error');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _exportingPublicKey = false);
+      }
+    }
   }
 
   Future<void> _runProbe() async {
@@ -622,6 +662,26 @@ class _HostsPageState extends State<HostsPage> {
     return 'sadcoder-mobile';
   }
 
+  String _publicKeyFileName(GeneratedSshKeyPair generated) {
+    final algorithm = switch (generated.algorithm) {
+      SshKeyGenerationAlgorithm.ed25519 => 'ed25519',
+      SshKeyGenerationAlgorithm.rsa => 'rsa',
+    };
+    final parts = [
+      _safeFileNamePart(_usernameController.text),
+      _safeFileNamePart(_hostController.text),
+    ].where((part) => part.isNotEmpty).join('_');
+    final suffix = parts.isEmpty ? algorithm : '${parts}_$algorithm';
+    return 'sadcoder_$suffix.pub';
+  }
+
+  void _showSnackBar(String message) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<T> _runWithKnownHostConfirmation<T>({
     required Future<T> Function() action,
   }) async {
@@ -692,6 +752,10 @@ String _profileTitle(SshProfile profile) {
     return name;
   }
   return profile.endpoint;
+}
+
+String _safeFileNamePart(String value) {
+  return value.trim().replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '_');
 }
 
 String _authLabel(AppLocalizations l10n, SshAuthType authType) {
@@ -774,21 +838,25 @@ class _HostImportActionsPanel extends StatelessWidget {
     required this.importingSshConfig,
     required this.importingPrivateKey,
     required this.generatingKey,
+    required this.exportingPublicKey,
     required this.generatedKeyPair,
     required this.onImportSshConfig,
     required this.onImportPrivateKey,
     required this.onGenerateKey,
     required this.onCopyPublicKey,
+    required this.onExportPublicKey,
   });
 
   final bool importingSshConfig;
   final bool importingPrivateKey;
   final bool generatingKey;
+  final bool exportingPublicKey;
   final GeneratedSshKeyPair? generatedKeyPair;
   final VoidCallback onImportSshConfig;
   final VoidCallback onImportPrivateKey;
   final ValueChanged<SshKeyGenerationAlgorithm> onGenerateKey;
   final VoidCallback? onCopyPublicKey;
+  final VoidCallback? onExportPublicKey;
 
   @override
   Widget build(BuildContext context) {
@@ -862,6 +930,22 @@ class _HostImportActionsPanel extends StatelessWidget {
                   onPressed: onCopyPublicKey,
                   icon: const Icon(Icons.copy_all_outlined),
                   label: Text(l10n.copyPublicKey),
+                ),
+                OutlinedButton.icon(
+                  key: const ValueKey('host-export-public-key-button'),
+                  onPressed: exportingPublicKey ? null : onExportPublicKey,
+                  icon: exportingPublicKey
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_alt_outlined),
+                  label: Text(
+                    exportingPublicKey
+                        ? l10n.exportingPublicKey
+                        : l10n.exportPublicKey,
+                  ),
                 ),
               ],
             ),

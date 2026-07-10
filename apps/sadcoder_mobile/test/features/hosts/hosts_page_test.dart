@@ -50,6 +50,7 @@ import 'package:sadcoder_mobile/src/ssh/ssh_import_file_source.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_key_generator.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile_store.dart';
+import 'package:sadcoder_mobile/src/ssh/ssh_public_key_exporter.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
@@ -603,6 +604,7 @@ secret-key-material
     final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
     final store = _FakeProfileStore();
     final keyGenerator = _FakeKeyGenerator();
+    final publicKeyExporter = _FakePublicKeyExporter('/tmp/key.pub');
     Object? clipboardText;
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -621,6 +623,7 @@ secret-key-material
       runner,
       profileStore: store,
       keyGenerator: keyGenerator,
+      publicKeyExporter: publicKeyExporter,
     );
 
     await tester.enterText(
@@ -662,6 +665,19 @@ secret-key-material
 
     expect(clipboardText, 'ssh-ed25519 fake-ed25519 alice@srv.dev');
     expect(find.text('Public key copied.'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('host-export-public-key-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(publicKeyExporter.publicKeys.single, clipboardText);
+    expect(
+      publicKeyExporter.fileNames.single,
+      'sadcoder_alice_srv.dev_ed25519.pub',
+    );
+    expect(publicKeyExporter.dialogTitles.single, 'Export public key');
+    expect(find.text('Public key exported.'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text(
@@ -980,6 +996,7 @@ Future<void> _pumpHostsPage(
   KnownHostVerifier? knownHostVerifier,
   SshImportFileSource importFileSource = const _FakeImportFileSource(null),
   SshKeyGenerator? keyGenerator,
+  SshPublicKeyExporter? publicKeyExporter,
 }) {
   tester.view.physicalSize = const Size(800, 900);
   tester.view.devicePixelRatio = 1;
@@ -1002,6 +1019,7 @@ Future<void> _pumpHostsPage(
           knownHostVerifier: knownHostVerifier,
           importFileSource: importFileSource,
           keyGenerator: keyGenerator ?? const DartSshKeyGenerator(),
+          publicKeyExporter: publicKeyExporter ?? _FakePublicKeyExporter(null),
         ),
       ),
     ),
@@ -1167,6 +1185,27 @@ class _FakeKeyGenerator implements SshKeyGenerator {
       privateKeyPem: 'generated-$suffix-private-$comment',
       publicKeyOpenSsh: '$publicKeyType fake-$suffix $comment',
     );
+  }
+}
+
+class _FakePublicKeyExporter implements SshPublicKeyExporter {
+  _FakePublicKeyExporter(this.resultPath);
+
+  final String? resultPath;
+  final publicKeys = <String>[];
+  final fileNames = <String>[];
+  final dialogTitles = <String>[];
+
+  @override
+  Future<String?> exportPublicKey({
+    required String publicKeyOpenSsh,
+    required String fileName,
+    required String dialogTitle,
+  }) async {
+    publicKeys.add(publicKeyOpenSsh);
+    fileNames.add(fileName);
+    dialogTitles.add(dialogTitle);
+    return resultPath;
   }
 }
 
