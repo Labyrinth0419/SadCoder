@@ -38,12 +38,21 @@ void main() {
           'hidden': false,
           'isDefault': true,
           'upgrade': 'gpt-5.6-sol',
+          'availabilityNux': {'message': 'GPT-5.6 Sol is available.'},
           'upgradeInfo': {
             'model': 'gpt-5.6-sol',
             'upgradeCopy': 'Use GPT-5.6 Sol for frontier coding.',
             'modelLink': 'https://example.test/models/gpt-5.6-sol',
             'migrationMarkdown': 'Move from {current_model} to {target_model}.',
           },
+          'supportedReasoningEfforts': [
+            {'reasoningEffort': 'medium', 'description': 'Balanced'},
+            {'reasoning_effort': 'high', 'description': 'Deeper reasoning'},
+          ],
+          'defaultReasoningEffort': 'medium',
+          'inputModalities': ['text', 'image', '', 42],
+          'supportsPersonality': true,
+          'additionalSpeedTiers': ['fast'],
           'serviceTiers': [
             {
               'id': 'default',
@@ -82,6 +91,22 @@ void main() {
       page.models[0].upgrade?.migrationMarkdown,
       'Move from {current_model} to {target_model}.',
     );
+    expect(
+      page.models[0].availabilityNux?.message,
+      'GPT-5.6 Sol is available.',
+    );
+    expect(
+      page.models[0].supportedReasoningEfforts.map((effort) => effort.id),
+      ['medium', 'high'],
+    );
+    expect(
+      page.models[0].supportedReasoningEfforts.last.description,
+      'Deeper reasoning',
+    );
+    expect(page.models[0].defaultReasoningEffort, 'medium');
+    expect(page.models[0].inputModalities, ['text', 'image']);
+    expect(page.models[0].supportsPersonality, isTrue);
+    expect(page.models[0].additionalSpeedTiers, ['fast']);
     expect(page.models[0].serviceTiers.map((tier) => tier.id), [
       'default',
       'priority',
@@ -95,6 +120,28 @@ void main() {
     expect(page.models[1].label, 'GPT-5.6 Terra');
     expect(page.models[2].id, 'gpt-5.6-luna');
   });
+
+  test(
+    'ModelListPage maps deprecated speed tiers when service tiers are absent',
+    () {
+      final page = ModelListPage.fromJson({
+        'data': [
+          {
+            'model': 'gpt-5.6-fast',
+            'displayName': 'GPT-5.6 Fast',
+            'additional_speed_tiers': ['priority', '', 'flex'],
+          },
+        ],
+      });
+
+      expect(page.models.single.additionalSpeedTiers, ['priority', 'flex']);
+      expect(page.models.single.serviceTiers.map((tier) => tier.id), [
+        'priority',
+        'flex',
+      ]);
+      expect(page.models.single.serviceTiers.first.name, 'priority');
+    },
+  );
 
   test('ModelListPage treats missing model arrays as empty', () {
     expect(ModelListPage.fromJson({}).models, isEmpty);
