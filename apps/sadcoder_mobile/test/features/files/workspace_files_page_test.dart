@@ -196,6 +196,77 @@ void main() {
     expect(find.text('README.md'), findsNothing);
   });
 
+  testWidgets('pages directory rows', (tester) async {
+    final calls = <_DirectoryListCall>[];
+    final entriesByPath = <String, List<WorkspaceDirectoryEntry>>{
+      '': [
+        _entry(path: '.env', name: '.env'),
+        ...List.generate(
+          101,
+          (index) => _entry(
+            path: 'file${index.toString().padLeft(3, '0')}.txt',
+            name: 'file${index.toString().padLeft(3, '0')}.txt',
+          ),
+        ),
+      ],
+    };
+    final directoryReader = _FakeWorkspaceDirectoryReader(entriesByPath, calls);
+
+    await _pumpFilesPage(
+      tester,
+      directoryReader: directoryReader,
+      fileReader: const _FakeWorkspaceFileReader(),
+    );
+
+    expect(find.text('.env'), findsNothing);
+    expect(find.text('file000.txt'), findsWidgets);
+    expect(find.text('file100.txt'), findsNothing);
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('workspace-files-load-more-')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('workspace-files-load-more-')));
+    await tester.pumpAndSettle();
+    expect(find.text('file100.txt'), findsWidgets);
+
+    expect(calls.map((call) => call.cursor), contains('100'));
+  });
+
+  testWidgets('reloads hidden files on refresh', (tester) async {
+    final calls = <_DirectoryListCall>[];
+    final entriesByPath = <String, List<WorkspaceDirectoryEntry>>{
+      '': [
+        _entry(path: '.env', name: '.env'),
+        _entry(path: 'visible.txt', name: 'visible.txt'),
+      ],
+    };
+    final directoryReader = _FakeWorkspaceDirectoryReader(entriesByPath, calls);
+
+    await _pumpFilesPage(
+      tester,
+      directoryReader: directoryReader,
+      fileReader: const _FakeWorkspaceFileReader(),
+    );
+
+    expect(find.text('.env'), findsNothing);
+    expect(find.text('visible.txt'), findsWidgets);
+
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-hidden-toggle')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('.env'), findsWidgets);
+
+    entriesByPath[''] = [_entry(path: 'refreshed.txt', name: 'refreshed.txt')];
+    await tester.tap(find.byKey(const ValueKey('workspace-files-refresh')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('refreshed.txt'), findsWidgets);
+    expect(find.text('visible.txt'), findsNothing);
+    expect(calls.map((call) => call.includeHidden), containsAll([false, true]));
+  });
+
   testWidgets('copies workspace paths without opening files', (tester) async {
     final directoryReader = _FakeWorkspaceDirectoryReader({
       '': [_entry(path: 'README.md', name: 'README.md')],
@@ -479,9 +550,13 @@ WorkspaceFileReadChunk _chunk({
 }
 
 class _FakeWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
-  const _FakeWorkspaceDirectoryReader([this.entriesByPath = const {}]);
+  const _FakeWorkspaceDirectoryReader([
+    this.entriesByPath = const {},
+    this.calls,
+  ]);
 
   final Map<String, List<WorkspaceDirectoryEntry>> entriesByPath;
+  final List<_DirectoryListCall>? calls;
 
   @override
   Future<WorkspaceDirectoryPage> listDirectory({
@@ -491,6 +566,13 @@ class _FakeWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
     String? cursor,
     bool includeHidden = false,
   }) async {
+    calls?.add(
+      _DirectoryListCall(
+        path: path,
+        cursor: cursor,
+        includeHidden: includeHidden,
+      ),
+    );
     final entries = entriesByPath[path];
     if (entries == null) {
       throw const WorkspaceFileException(
@@ -498,8 +580,32 @@ class _FakeWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
         'Workspace path was not found.',
       );
     }
-    return WorkspaceDirectoryPage(root: root, path: path, entries: entries);
+    final visibleEntries = [
+      for (final entry in entries)
+        if (includeHidden || !entry.isHidden) entry,
+    ];
+    final pageLimit = limit <= 0 ? 100 : limit;
+    final start = int.tryParse(cursor ?? '') ?? 0;
+    final end = (start + pageLimit).clamp(start, visibleEntries.length);
+    return WorkspaceDirectoryPage(
+      root: root,
+      path: path,
+      entries: visibleEntries.sublist(start, end),
+      nextCursor: end < visibleEntries.length ? end.toString() : null,
+    );
   }
+}
+
+class _DirectoryListCall {
+  const _DirectoryListCall({
+    required this.path,
+    required this.cursor,
+    required this.includeHidden,
+  });
+
+  final String path;
+  final String? cursor;
+  final bool includeHidden;
 }
 
 class _FakeWorkspaceFileReader implements WorkspaceFileReader {
