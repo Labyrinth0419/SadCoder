@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import '../commands/slash_command_manifest_reader.dart';
+import '../commands/slash_command_registry_controller.dart';
 import '../config/codex_config_override_controller.dart';
 import '../features/chat/chat_timeline_controller.dart';
 import '../session/codex_session_state_controller.dart';
@@ -10,6 +14,7 @@ class AppHostSessionUiState {
   AppHostSessionUiState({
     required this.sessionController,
     required CodexConfigOverrideController configOverrideController,
+    SlashCommandManifestReader? slashCommandManifestReader,
   }) {
     threadListController = ThreadListController(
       readerProvider: () => sessionController.threadListReader,
@@ -27,6 +32,9 @@ class AppHostSessionUiState {
         turnController.finishTurn(threadId: threadId, turn: turn);
       },
     );
+    slashCommandRegistryController = SlashCommandRegistryController(
+      readerProvider: () => slashCommandManifestReader,
+    );
     _sessionRecoveryCoordinator = AppSessionRecoveryCoordinator(
       threadListController: threadListController,
       threadDetailController: threadDetailController,
@@ -42,6 +50,7 @@ class AppHostSessionUiState {
   late final ThreadDetailController threadDetailController;
   late final TurnController turnController;
   late final ChatTimelineController timelineController;
+  late final SlashCommandRegistryController slashCommandRegistryController;
   late final AppSessionRecoveryCoordinator _sessionRecoveryCoordinator;
 
   void attachEvents() {
@@ -54,12 +63,21 @@ class AppHostSessionUiState {
 
   void handleSessionStatus(CodexSessionStatus status) {
     _sessionRecoveryCoordinator.handleSessionStatus(status);
+    if (status == CodexSessionStatus.connected) {
+      final profile = sessionController.profile;
+      if (profile != null) {
+        unawaited(slashCommandRegistryController.refresh(profile));
+      }
+      return;
+    }
+    slashCommandRegistryController.reset();
   }
 
   void dispose() {
     detachEvents();
     threadDetailController.removeListener(_handleThreadDetailChanged);
     timelineController.dispose();
+    slashCommandRegistryController.dispose();
     turnController.dispose();
     threadDetailController.dispose();
     threadListController.dispose();

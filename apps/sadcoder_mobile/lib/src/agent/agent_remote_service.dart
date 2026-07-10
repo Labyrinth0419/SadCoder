@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../commands/slash_command_manifest_reader.dart';
 import '../commands/slash_command_registry.dart';
 import '../ssh/remote_command_runner.dart';
 import '../ssh/ssh_profile.dart';
@@ -16,7 +17,11 @@ abstract interface class AgentStartRunner {
 }
 
 class AgentRemoteService
-    implements AgentStatusReader, AgentStartRunner, AgentSnapshotReader {
+    implements
+        AgentStatusReader,
+        AgentStartRunner,
+        AgentSnapshotReader,
+        SlashCommandManifestReader {
   const AgentRemoteService(this._runner);
 
   final RemoteCommandRunner _runner;
@@ -63,6 +68,7 @@ class AgentRemoteService
     return AgentStatus.fromJson(decoded);
   }
 
+  @override
   Future<SlashCommandManifest> readSlashCommands(SshProfile profile) async {
     final result = await _runner.run(
       profile,

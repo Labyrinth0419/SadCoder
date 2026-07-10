@@ -12,6 +12,8 @@ import 'package:sadcoder_mobile/src/apps/app_list_reader.dart';
 import 'package:sadcoder_mobile/src/app/sadcoder_app.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal_runner.dart';
+import 'package:sadcoder_mobile/src/commands/slash_command_manifest_reader.dart';
+import 'package:sadcoder_mobile/src/commands/slash_command_registry.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
@@ -125,6 +127,42 @@ void main() {
       find.byKey(const ValueKey('chat-host-status-remote')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('chat page uses remote slash command manifest after connect', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final sessionController = CodexSessionStateController(
+      connector: const _StaticSessionStarter(
+        threads: [],
+        detail: ThreadDetail(thread: _emptyThread),
+      ),
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+
+    await tester.pumpWidget(
+      SadCoderApp(
+        approvalController: approvalController,
+        sessionController: sessionController,
+        slashCommandManifestReader: const _StaticSlashCommandManifestReader(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Chat').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/remote-only now',
+    );
+    await tester.pump();
+
+    expect(find.text('/remote-only'), findsOneWidget);
+    expect(find.text('remote command from agent manifest'), findsOneWidget);
   });
 
   testWidgets('chat host selector restores per-host thread timeline state', (
@@ -683,6 +721,28 @@ class _NeverConnectsSessionStarter implements CodexSessionConnectionStarter {
     ApprovalStateController? approvalController,
   }) {
     throw StateError('not used by this widget test');
+  }
+}
+
+class _StaticSlashCommandManifestReader implements SlashCommandManifestReader {
+  const _StaticSlashCommandManifestReader();
+
+  @override
+  Future<SlashCommandManifest> readSlashCommands(SshProfile profile) async {
+    return const SlashCommandManifest(
+      schemaVersion: 1,
+      source: 'test-agent',
+      commands: [
+        SlashCommandSpec(
+          command: 'remote-only',
+          description: 'remote command from agent manifest',
+          supportsInlineArgs: true,
+          mappingType: SlashCommandMappingType.appServer,
+          mappingTarget: 'test',
+          phase: SlashCommandPhase.mvp,
+        ),
+      ],
+    );
   }
 }
 

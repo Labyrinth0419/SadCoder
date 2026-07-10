@@ -7,6 +7,7 @@ import '../agent/agent_remote_service.dart';
 import '../appearance/app_appearance_controller.dart';
 import '../approvals/approval_state_controller.dart';
 import '../background/background_connection_policy.dart';
+import '../commands/slash_command_manifest_reader.dart';
 import '../config/codex_config_override_controller.dart';
 import '../config/codex_config_snapshot_controller.dart';
 import '../diagnostics/diagnostic_log_export_controller.dart';
@@ -65,6 +66,7 @@ class AppShell extends StatefulWidget {
     this.backgroundConnectionPreferences,
     this.backgroundConnectionKeeper,
     this.profileStore,
+    this.slashCommandManifestReader,
   });
 
   final AppAppearanceController? appearanceController;
@@ -74,6 +76,7 @@ class AppShell extends StatefulWidget {
   final BackgroundConnectionPreferences? backgroundConnectionPreferences;
   final BackgroundConnectionKeeper? backgroundConnectionKeeper;
   final SshProfileStore? profileStore;
+  final SlashCommandManifestReader? slashCommandManifestReader;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -108,6 +111,16 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   TurnController get _turnController => _activeUiState.turnController;
   ChatTimelineController get _timelineController =>
       _activeUiState.timelineController;
+  SlashCommandManifestReader? get _resolvedSlashCommandManifestReader {
+    final injectedReader = widget.slashCommandManifestReader;
+    if (injectedReader != null) {
+      return injectedReader;
+    }
+    if (widget.sessionController != null || widget.hostSessionManager != null) {
+      return null;
+    }
+    return _defaultAgentRemoteService;
+  }
 
   @override
   void initState() {
@@ -130,7 +143,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         oldWidget.backgroundConnectionPreferences !=
             widget.backgroundConnectionPreferences ||
         oldWidget.backgroundConnectionKeeper !=
-            widget.backgroundConnectionKeeper) {
+            widget.backgroundConnectionKeeper ||
+        oldWidget.slashCommandManifestReader !=
+            widget.slashCommandManifestReader) {
       _disposeOwnedControllers();
       _setControllers(
         approvalController: widget.approvalController,
@@ -237,6 +252,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _activeUiState = AppHostSessionUiState(
       sessionController: _sessionController,
       configOverrideController: _configOverrideController,
+      slashCommandManifestReader: _resolvedSlashCommandManifestReader,
     );
     _configSnapshotController = CodexConfigSnapshotController(
       readerProvider: () => _sessionController.configSnapshotReader,
@@ -329,23 +345,27 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         hostSessions: _hostSessions(),
         profileConnector: _connectProfile,
       ),
-      1 => ChatPage(
-        sessionController: _sessionController,
-        threadListController: _threadListController,
-        threadDetailController: _threadDetailController,
-        turnController: _turnController,
-        timelineController: _timelineController,
-        appearanceController: widget.appearanceController,
-        configOverrideController: _configOverrideController,
-        configSnapshotController: _configSnapshotController,
-        accountSnapshotController: _accountSnapshotController,
-        accountUsageSnapshotController: _accountUsageSnapshotController,
-        mcpServerStatusController: _mcpServerStatusController,
-        modelListController: _modelListController,
-        permissionProfileListController: _permissionProfileListController,
-        profileStore: widget.profileStore,
-        hostSessions: _hostSessions(),
-        profileConnector: _connectProfile,
+      1 => AnimatedBuilder(
+        animation: _activeUiState.slashCommandRegistryController,
+        builder: (context, _) => ChatPage(
+          sessionController: _sessionController,
+          threadListController: _threadListController,
+          threadDetailController: _threadDetailController,
+          turnController: _turnController,
+          timelineController: _timelineController,
+          appearanceController: widget.appearanceController,
+          configOverrideController: _configOverrideController,
+          configSnapshotController: _configSnapshotController,
+          accountSnapshotController: _accountSnapshotController,
+          accountUsageSnapshotController: _accountUsageSnapshotController,
+          mcpServerStatusController: _mcpServerStatusController,
+          modelListController: _modelListController,
+          permissionProfileListController: _permissionProfileListController,
+          registry: _activeUiState.slashCommandRegistryController.registry,
+          profileStore: widget.profileStore,
+          hostSessions: _hostSessions(),
+          profileConnector: _connectProfile,
+        ),
       ),
       2 => WorkspaceFilesPage(
         sessionController: _sessionController,
@@ -461,6 +481,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       () => AppHostSessionUiState(
         sessionController: entry.sessionController,
         configOverrideController: _configOverrideController,
+        slashCommandManifestReader: _resolvedSlashCommandManifestReader,
       ),
     );
   }
