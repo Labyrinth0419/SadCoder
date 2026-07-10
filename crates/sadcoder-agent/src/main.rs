@@ -1202,6 +1202,30 @@ mod tests {
     }
 
     #[test]
+    fn daemon_backend_mode_reports_stdio_fallback_status() {
+        let base = std::env::temp_dir().join(format!(
+            "sadcoder-agent-daemon-fallback-status-test-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        let service_paths = resolve_service_paths(&base.join("agent-state.json"));
+
+        let status = collect_backend_status(None, BackendMode::Daemon, &service_paths);
+
+        assert_eq!(status.kind, BackendKind::CodexAppServerStdio);
+        assert_eq!(status.state, BackendState::Ready);
+        assert!(
+            status
+                .detail
+                .as_deref()
+                .is_some_and(|detail| detail.contains("stdio"))
+        );
+    }
+
+    #[test]
     fn local_proxy_handles_agent_hello_without_forwarding() {
         let context = test_proxy_context(std::env::temp_dir().join(format!(
             "sadcoder-agent-rpc-hello-{}.json",
