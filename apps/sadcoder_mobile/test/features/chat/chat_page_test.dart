@@ -6673,6 +6673,11 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   Future<void> get done => _doneCompleter.future;
 
   @override
+  Future<Map<String, Object?>> restartBackend() async {
+    return {'reconnectRequired': true};
+  }
+
+  @override
   Future<void> close({bool notifyApprovalController = true}) async {}
 }
 

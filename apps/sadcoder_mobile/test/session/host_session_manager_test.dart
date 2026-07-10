@@ -156,6 +156,11 @@ class _FakeConnectionHandle extends Fake
   Future<void> get done => _done.future;
 
   @override
+  Future<Map<String, Object?>> restartBackend() async {
+    return {'reconnectRequired': true};
+  }
+
+  @override
   Future<void> close({bool notifyApprovalController = true}) async {
     closeCount++;
     if (!_done.isCompleted) {

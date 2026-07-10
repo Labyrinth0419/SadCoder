@@ -215,6 +215,41 @@ void main() {
     },
   );
 
+  test('restart backend reconnects the active profile', () async {
+    final approvalController = ApprovalStateController(
+      initialApprovals: const [
+        PendingApproval(
+          requestId: 'approval-1',
+          method: commandExecutionApprovalMethod,
+          kind: PendingApprovalKind.commandExecution,
+          rawParams: {},
+        ),
+      ],
+    );
+    final connector = _FakeSessionStarter();
+    final controller = CodexSessionStateController(
+      connector: connector,
+      approvalController: approvalController,
+    );
+    addTearDown(controller.dispose);
+    addTearDown(approvalController.dispose);
+    final statuses = <CodexSessionStatus>[];
+    controller.addListener(() => statuses.add(controller.status));
+
+    await controller.connect(_profile);
+    await controller.restartBackend();
+
+    expect(connector.connectedProfiles, [_profile, _profile]);
+    expect(connector.connections.first.restartBackendCount, 1);
+    expect(connector.closeCount, 1);
+    expect(controller.status, CodexSessionStatus.connected);
+    expect(controller.profile, _profile);
+    expect(approvalController.approvals.single.requestId, 'approval-1');
+    expect(approvalController.canRespond, true);
+    expect(statuses, contains(CodexSessionStatus.reconnecting));
+    expect(statuses, isNot(contains(CodexSessionStatus.disconnecting)));
+  });
+
   test('failed connect records failure and keeps approvals', () async {
     final approvalController = ApprovalStateController(
       initialApprovals: const [
@@ -712,7 +747,13 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     final record = _FakeConnectionRecord();
     connections.add(record);
     final session = CodexAppSession(
-      MemoryJsonRpcTransport((_) async => {}),
+      MemoryJsonRpcTransport((request) async {
+        if (request.method == 'agent/restartBackend') {
+          record.restartBackendCount++;
+          return {'reconnectRequired': true};
+        }
+        return {};
+      }),
       approvalController: approvalController,
     );
     return CodexSessionConnection(
@@ -1349,6 +1390,7 @@ class _PendingAgentSnapshotReader implements AgentSnapshotReader {
 class _FakeConnectionRecord {
   final _doneCompleter = Completer<void>();
   bool closed = false;
+  int restartBackendCount = 0;
 
   Future<void> get done => _doneCompleter.future;
 

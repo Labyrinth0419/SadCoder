@@ -250,6 +250,86 @@ class CodexSessionStateController extends ChangeNotifier {
     }
   }
 
+  Future<void> restartBackend() async {
+    final connection = _connection;
+    final profile = _profile;
+    if (_status != CodexSessionStatus.connected ||
+        connection == null ||
+        profile == null) {
+      throw StateError(
+        'A connected session is required to restart the backend',
+      );
+    }
+
+    final generation = ++_generation;
+    _reconnectAttempt = 0;
+    _nextReconnectDelay = null;
+    _stopHeartbeat();
+    _setState(status: CodexSessionStatus.reconnecting, profile: profile);
+
+    try {
+      await connection.restartBackend();
+    } on Object catch (error) {
+      if (!_isCurrentGeneration(generation) || _connection != connection) {
+        return;
+      }
+      _watchConnectionDone(connection, generation);
+      _startHeartbeat(connection, generation);
+      _setState(
+        status: CodexSessionStatus.connected,
+        profile: profile,
+        error: error,
+      );
+      rethrow;
+    }
+
+    if (!_isCurrentGeneration(generation) || _connection != connection) {
+      return;
+    }
+
+    _connection = null;
+    _detachConnectionEvents();
+    try {
+      await connection.close();
+    } on Object {
+      // The restarted backend invalidates the old proxy regardless of whether
+      // local transport cleanup reports an error.
+    }
+    if (!_isCurrentGeneration(generation)) {
+      return;
+    }
+
+    try {
+      final replacement = await _connector.connect(
+        profile,
+        approvalController: approvalController,
+      );
+      if (!_isCurrentGeneration(generation)) {
+        await replacement.close(notifyApprovalController: false);
+        return;
+      }
+      _activateConnection(replacement, profile, generation);
+      if (!_isCurrentGeneration(generation) || _connection != replacement) {
+        return;
+      }
+      _reconnectAttempt = 0;
+      _nextReconnectDelay = null;
+      _setState(status: CodexSessionStatus.connected, profile: profile);
+    } on Object catch (error) {
+      if (!_isCurrentGeneration(generation)) {
+        return;
+      }
+      _connection = null;
+      _detachConnectionEvents();
+      _setState(
+        status: CodexSessionStatus.failed,
+        profile: profile,
+        error: error,
+      );
+      rethrow;
+    }
+  }
+
   @override
   void dispose() {
     _disposed = true;

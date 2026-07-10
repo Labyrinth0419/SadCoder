@@ -75,6 +75,7 @@ class _HostsPageState extends State<HostsPage> {
   SshAuthType _authType = SshAuthType.password;
   bool _testing = false;
   bool _savingProfile = false;
+  bool _restartingBackend = false;
   bool _importingSshConfig = false;
   bool _importingPrivateKey = false;
   bool _generatingKey = false;
@@ -197,6 +198,7 @@ class _HostsPageState extends State<HostsPage> {
           agentCommandController: _agentCommandController,
           testing: _testing,
           savingProfile: _savingProfile,
+          restartingBackend: _restartingBackend,
           onTest: _runProbe,
           onSaveProfile: _profileStore == null ? null : _saveProfile,
           sessionStatus: sessionController?.status,
@@ -205,6 +207,7 @@ class _HostsPageState extends State<HostsPage> {
               ? null
               : _connect,
           onDisconnect: sessionController == null ? null : _disconnect,
+          onRestartBackend: sessionController == null ? null : _restartBackend,
         ),
         if (_profileMessage != null || _profileError != null) ...[
           const SizedBox(height: 8),
@@ -574,6 +577,29 @@ class _HostsPageState extends State<HostsPage> {
     } on Object catch (error) {
       if (mounted) {
         setState(() => _connectionActionError = error.toString());
+      }
+    }
+  }
+
+  Future<void> _restartBackend() async {
+    final sessionController = widget.sessionController;
+    if (sessionController == null || _restartingBackend) {
+      return;
+    }
+
+    setState(() {
+      _restartingBackend = true;
+      _connectionActionError = null;
+    });
+    try {
+      await sessionController.restartBackend();
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _connectionActionError = error.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _restartingBackend = false);
       }
     }
   }
@@ -1195,11 +1221,13 @@ class _HostProfileForm extends StatelessWidget {
     required this.agentCommandController,
     required this.testing,
     required this.savingProfile,
+    required this.restartingBackend,
     required this.onTest,
     required this.onSaveProfile,
     required this.sessionStatus,
     required this.onConnect,
     required this.onDisconnect,
+    required this.onRestartBackend,
   });
 
   final GlobalKey<FormState> formKey;
@@ -1215,11 +1243,13 @@ class _HostProfileForm extends StatelessWidget {
   final TextEditingController agentCommandController;
   final bool testing;
   final bool savingProfile;
+  final bool restartingBackend;
   final VoidCallback onTest;
   final VoidCallback? onSaveProfile;
   final CodexSessionStatus? sessionStatus;
   final VoidCallback? onConnect;
   final VoidCallback? onDisconnect;
+  final VoidCallback? onRestartBackend;
 
   @override
   Widget build(BuildContext context) {
@@ -1390,6 +1420,29 @@ class _HostProfileForm extends StatelessWidget {
                           : const Icon(Icons.play_arrow),
                       label: Text(testing ? l10n.testing : l10n.test),
                     ),
+                    if (onConnect != null && onDisconnect != null)
+                      if (onRestartBackend != null &&
+                          (sessionStatus == CodexSessionStatus.connected ||
+                              restartingBackend))
+                        OutlinedButton.icon(
+                          key: const ValueKey('session-restart-backend-button'),
+                          onPressed: restartingBackend
+                              ? null
+                              : onRestartBackend,
+                          icon: restartingBackend
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.restart_alt),
+                          label: Text(
+                            restartingBackend
+                                ? l10n.restartingBackend
+                                : l10n.restartBackend,
+                          ),
+                        ),
                     if (onConnect != null && onDisconnect != null)
                       _SessionActionButton(
                         status: sessionStatus ?? CodexSessionStatus.idle,

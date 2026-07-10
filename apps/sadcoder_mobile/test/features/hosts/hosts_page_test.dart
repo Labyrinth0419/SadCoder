@@ -949,6 +949,71 @@ secret-key-material
     expect(find.text('No active connection'), findsOneWidget);
   });
 
+  testWidgets('restarts backend and reconnects a Codex app session', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final approvalController = ApprovalStateController();
+    final starter = _FakeSessionStarter();
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await _pumpHostsPage(tester, runner, sessionController: sessionController);
+
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('password-field')),
+      'secret',
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('session-connect-button')),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('session-connect-button')));
+    await _pumpUntil(
+      tester,
+      () => sessionController.status == CodexSessionStatus.connected,
+      describe: () => 'status=${sessionController.status}',
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('session-restart-backend-button')),
+    );
+    expect(
+      find.byKey(const ValueKey('session-restart-backend-button')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('session-restart-backend-button')),
+    );
+    await _pumpUntil(
+      tester,
+      () =>
+          sessionController.status == CodexSessionStatus.connected &&
+          starter.connectedProfiles.length == 2,
+      describe: () =>
+          'status=${sessionController.status}, '
+          'connectCount=${starter.connectedProfiles.length}',
+    );
+
+    expect(starter.connectedProfiles.map((profile) => profile.host), [
+      'srv.dev',
+      'srv.dev',
+    ]);
+    expect(starter.connections.first.restartBackendCount, 1);
+    expect(starter.closeCount, 1);
+    expect(find.text('Active connection: alice@srv.dev:22'), findsOneWidget);
+  });
+
   testWidgets('shows connection failure from the session controller', (
     tester,
   ) async {
@@ -1352,6 +1417,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   _FakeSessionConnection({required this.profile, required this.onClose});
 
   final _doneCompleter = Completer<void>();
+  int restartBackendCount = 0;
 
   @override
   final SshProfile profile;
@@ -1462,6 +1528,12 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   Future<void> get done => _doneCompleter.future;
+
+  @override
+  Future<Map<String, Object?>> restartBackend() async {
+    restartBackendCount++;
+    return {'reconnectRequired': true};
+  }
 
   void completeDone() {
     if (!_doneCompleter.isCompleted) {
