@@ -6,6 +6,7 @@ import '../approvals/approval_state_controller.dart';
 import '../background/background_connection_policy.dart';
 import '../i18n/app_localizations.dart';
 import '../session/codex_session_state_controller.dart';
+import '../session/host_session_manager.dart';
 import '../ssh/ssh_profile_store.dart';
 import '../theme/sadcoder_theme.dart';
 import 'app_shell.dart';
@@ -17,6 +18,7 @@ class SadCoderApp extends StatefulWidget {
     this.appearanceController,
     this.approvalController,
     this.sessionController,
+    this.hostSessionManager,
     this.backgroundConnectionPreferences,
     this.backgroundConnectionKeeper,
     this.profileStore,
@@ -26,6 +28,7 @@ class SadCoderApp extends StatefulWidget {
   final AppAppearanceController? appearanceController;
   final ApprovalStateController? approvalController;
   final CodexSessionStateController? sessionController;
+  final HostSessionManager? hostSessionManager;
   final BackgroundConnectionPreferences? backgroundConnectionPreferences;
   final BackgroundConnectionKeeper? backgroundConnectionKeeper;
   final SshProfileStore? profileStore;
@@ -93,6 +96,7 @@ class _SadCoderAppState extends State<SadCoderApp> {
             appearanceController: _appearanceController,
             approvalController: widget.approvalController,
             sessionController: widget.sessionController,
+            hostSessionManager: widget.hostSessionManager,
             backgroundConnectionPreferences:
                 widget.backgroundConnectionPreferences,
             backgroundConnectionKeeper: widget.backgroundConnectionKeeper,

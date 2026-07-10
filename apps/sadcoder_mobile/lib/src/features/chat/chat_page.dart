@@ -55,6 +55,8 @@ import 'session_override_controls.dart';
 import 'slash_command_palette.dart';
 import 'turn_override_controls.dart';
 
+typedef ChatProfileConnector = Future<void> Function(SshProfile profile);
+
 class ChatPage extends StatefulWidget {
   const ChatPage({
     super.key,
@@ -73,6 +75,7 @@ class ChatPage extends StatefulWidget {
     this.modelListController,
     this.permissionProfileListController,
     this.profileStore,
+    this.profileConnector,
     this.slashCommandDispatcher,
   });
 
@@ -91,6 +94,7 @@ class ChatPage extends StatefulWidget {
   final ModelListController? modelListController;
   final PermissionProfileListController? permissionProfileListController;
   final SshProfileStore? profileStore;
+  final ChatProfileConnector? profileConnector;
   final SlashCommandActionDispatcher? slashCommandDispatcher;
 
   @override
@@ -191,7 +195,8 @@ class _ChatPageState extends State<ChatPage> {
             status: sessionController?.status ?? CodexSessionStatus.idle,
             connectionLabel: _connectionLabel(l10n, sessionController?.status),
             profileLoadError: _profileLoadError,
-            onProfileSelected: sessionController == null
+            onProfileSelected:
+                sessionController == null && widget.profileConnector == null
                 ? null
                 : _selectHeaderProfile,
           ),
@@ -518,17 +523,22 @@ class _ChatPageState extends State<ChatPage> {
       _profileLoadError = null;
     });
 
+    final connector = widget.profileConnector;
     final sessionController = widget.sessionController;
-    if (sessionController == null) {
+    if (connector == null && sessionController == null) {
       return;
     }
-    if (sessionController.status == CodexSessionStatus.connected &&
-        sessionController.profile?.id == profile.id) {
+    if (sessionController?.status == CodexSessionStatus.connected &&
+        sessionController?.profile?.id == profile.id) {
       return;
     }
 
     try {
-      await sessionController.connect(profile);
+      if (connector != null) {
+        await connector(profile);
+      } else {
+        await sessionController!.connect(profile);
+      }
     } on Object catch (error) {
       if (!mounted) {
         return;

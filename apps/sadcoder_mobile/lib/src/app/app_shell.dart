@@ -22,9 +22,11 @@ import '../models/model_list_controller.dart';
 import '../permissions/permission_profile_list_controller.dart';
 import '../session/codex_session_connector.dart';
 import '../session/codex_session_state_controller.dart';
+import '../session/host_session_manager.dart';
 import '../session/session_heartbeat.dart';
 import '../ssh/dart_ssh_proxy_connector.dart';
 import '../ssh/dart_ssh_remote_command_runner.dart';
+import '../ssh/ssh_profile.dart';
 import '../ssh/ssh_profile_store.dart';
 import '../threads/thread_detail_controller.dart';
 import '../threads/thread_list_controller.dart';
@@ -41,12 +43,24 @@ const _defaultAgentRemoteService = AgentRemoteService(
   DartSshRemoteCommandRunner(),
 );
 
+CodexSessionStateController _createDefaultSessionController(
+  ApprovalStateController approvalController,
+) {
+  return CodexSessionStateController(
+    connector: _defaultSessionConnector,
+    approvalController: approvalController,
+    snapshotReader: _defaultAgentRemoteService,
+    heartbeatRunner: const ThreadListSessionHeartbeatRunner(),
+  );
+}
+
 class AppShell extends StatefulWidget {
   const AppShell({
     super.key,
     this.appearanceController,
     this.approvalController,
     this.sessionController,
+    this.hostSessionManager,
     this.backgroundConnectionPreferences,
     this.backgroundConnectionKeeper,
     this.profileStore,
@@ -55,6 +69,7 @@ class AppShell extends StatefulWidget {
   final AppAppearanceController? appearanceController;
   final ApprovalStateController? approvalController;
   final CodexSessionStateController? sessionController;
+  final HostSessionManager? hostSessionManager;
   final BackgroundConnectionPreferences? backgroundConnectionPreferences;
   final BackgroundConnectionKeeper? backgroundConnectionKeeper;
   final SshProfileStore? profileStore;
@@ -81,7 +96,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late BackgroundConnectionPreferences _backgroundConnectionPreferences;
   late AppSessionRecoveryCoordinator _sessionRecoveryCoordinator;
   late DiagnosticLogExportController _diagnosticLogExportController;
+  HostSessionManager? _hostSessionManager;
   AppLifecycleConnectionCoordinator? _lifecycleConnectionCoordinator;
+  late bool _ownsHostSessionManager;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
   late bool _ownsBackgroundConnectionPreferences;
@@ -93,6 +110,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _setControllers(
       approvalController: widget.approvalController,
       sessionController: widget.sessionController,
+      hostSessionManager: widget.hostSessionManager,
       backgroundConnectionPreferences: widget.backgroundConnectionPreferences,
     );
   }
@@ -102,6 +120,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.approvalController != widget.approvalController ||
         oldWidget.sessionController != widget.sessionController ||
+        oldWidget.hostSessionManager != widget.hostSessionManager ||
         oldWidget.backgroundConnectionPreferences !=
             widget.backgroundConnectionPreferences ||
         oldWidget.backgroundConnectionKeeper !=
@@ -110,6 +129,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       _setControllers(
         approvalController: widget.approvalController,
         sessionController: widget.sessionController,
+        hostSessionManager: widget.hostSessionManager,
         backgroundConnectionPreferences: widget.backgroundConnectionPreferences,
       );
     }
@@ -174,6 +194,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void _setControllers({
     required ApprovalStateController? approvalController,
     required CodexSessionStateController? sessionController,
+    required HostSessionManager? hostSessionManager,
     required BackgroundConnectionPreferences? backgroundConnectionPreferences,
   }) {
     if (approvalController != null &&
@@ -191,12 +212,17 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _ownsSessionController = sessionController == null;
     _sessionController =
         sessionController ??
-        CodexSessionStateController(
-          connector: _defaultSessionConnector,
-          approvalController: _approvalController,
-          snapshotReader: _defaultAgentRemoteService,
-          heartbeatRunner: const ThreadListSessionHeartbeatRunner(),
-        );
+        _createDefaultSessionController(_approvalController);
+    _ownsHostSessionManager =
+        sessionController == null && hostSessionManager == null;
+    _hostSessionManager = sessionController == null
+        ? hostSessionManager ??
+              HostSessionManager(
+                controllerFactory: (approvalController) =>
+                    _createDefaultSessionController(approvalController),
+              )
+        : null;
+    _hostSessionManager?.addListener(_handleHostSessionManagerChanged);
     _ownsBackgroundConnectionPreferences =
         backgroundConnectionPreferences == null;
     _backgroundConnectionPreferences =
@@ -244,30 +270,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _diagnosticLogExportController = DiagnosticLogExportController(
       entriesProvider: () => _sessionController.diagnosticLogs,
     );
-    _lifecycleConnectionCoordinator = AppLifecycleConnectionCoordinator(
-      sessionListenable: _sessionController,
-      turnListenable: _turnController,
-      preferences: _backgroundConnectionPreferences,
-      keeper:
-          widget.backgroundConnectionKeeper ??
-          const NoopBackgroundConnectionKeeper(),
-      isConnected: () => _sessionController.isConnected,
-      hasActiveTurn: () => _turnController.activeTurnId != null,
-      endpointProvider: () => _sessionController.profile?.endpoint,
-      activeThreadIdProvider: () => _turnController.activeThreadId,
-      activeTurnIdProvider: () => _turnController.activeTurnId,
-      disconnect: _sessionController.disconnect,
-    )..start();
     _threadDetailController.addListener(_handleThreadDetailChanged);
-    _sessionController.addListener(_handleSessionChanged);
-    _timelineController.attach(_sessionController.events);
-    _sessionRecoveryCoordinator.handleSessionStatus(_sessionController.status);
+    _attachActiveSessionBindings();
   }
 
   void _disposeOwnedControllers() {
-    unawaited(_lifecycleConnectionCoordinator?.dispose());
-    _lifecycleConnectionCoordinator = null;
-    _sessionController.removeListener(_handleSessionChanged);
+    _hostSessionManager?.removeListener(_handleHostSessionManagerChanged);
+    _detachActiveSessionBindings();
     _threadDetailController.removeListener(_handleThreadDetailChanged);
     _timelineController.dispose();
     _configOverrideController.dispose();
@@ -283,6 +292,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (_ownsSessionController) {
       _sessionController.dispose();
     }
+    if (_ownsHostSessionManager) {
+      _hostSessionManager?.dispose();
+    }
     if (_ownsBackgroundConnectionPreferences) {
       _backgroundConnectionPreferences.dispose();
     }
@@ -291,11 +303,43 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     }
   }
 
+  void _attachActiveSessionBindings() {
+    _sessionController.addListener(_handleSessionChanged);
+    _timelineController.attach(_sessionController.events);
+    _startLifecycleConnectionCoordinator();
+    _sessionRecoveryCoordinator.handleSessionStatus(_sessionController.status);
+  }
+
+  void _detachActiveSessionBindings() {
+    unawaited(_lifecycleConnectionCoordinator?.dispose());
+    _lifecycleConnectionCoordinator = null;
+    _sessionController.removeListener(_handleSessionChanged);
+    _timelineController.attach(null);
+  }
+
+  void _startLifecycleConnectionCoordinator() {
+    _lifecycleConnectionCoordinator = AppLifecycleConnectionCoordinator(
+      sessionListenable: _sessionController,
+      turnListenable: _turnController,
+      preferences: _backgroundConnectionPreferences,
+      keeper:
+          widget.backgroundConnectionKeeper ??
+          const NoopBackgroundConnectionKeeper(),
+      isConnected: () => _sessionController.isConnected,
+      hasActiveTurn: () => _turnController.activeTurnId != null,
+      endpointProvider: () => _sessionController.profile?.endpoint,
+      activeThreadIdProvider: () => _turnController.activeThreadId,
+      activeTurnIdProvider: () => _turnController.activeTurnId,
+      disconnect: _sessionController.disconnect,
+    )..start();
+  }
+
   Widget _pageForIndex(int index) {
     return switch (index) {
       0 => HostsPage(
         sessionController: _sessionController,
         profileStore: widget.profileStore,
+        profileConnector: _connectProfile,
       ),
       1 => ChatPage(
         sessionController: _sessionController,
@@ -312,6 +356,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         modelListController: _modelListController,
         permissionProfileListController: _permissionProfileListController,
         profileStore: widget.profileStore,
+        profileConnector: _connectProfile,
       ),
       2 => WorkspaceFilesPage(
         sessionController: _sessionController,
@@ -342,8 +387,63 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       _ => HostsPage(
         sessionController: _sessionController,
         profileStore: widget.profileStore,
+        profileConnector: _connectProfile,
       ),
     };
+  }
+
+  Future<void> _connectProfile(SshProfile profile) async {
+    final manager = _hostSessionManager;
+    if (manager == null) {
+      await _sessionController.connect(profile);
+      return;
+    }
+
+    final controller = await manager.connectOrSelect(profile);
+    final entry = manager.activeSession;
+    if (entry != null && identical(entry.sessionController, controller)) {
+      _activateHostSession(entry);
+    }
+  }
+
+  void _handleHostSessionManagerChanged() {
+    final entry = _hostSessionManager?.activeSession;
+    if (entry == null) {
+      return;
+    }
+    _activateHostSession(entry);
+  }
+
+  void _activateHostSession(HostSessionEntry entry) {
+    if (identical(_sessionController, entry.sessionController) &&
+        identical(_approvalController, entry.approvalController)) {
+      return;
+    }
+
+    final previousSessionController = _sessionController;
+    final previousApprovalController = _approvalController;
+    final disposePreviousSessionController = _ownsSessionController;
+    final disposePreviousApprovalController = _ownsApprovalController;
+
+    _detachActiveSessionBindings();
+    _sessionController = entry.sessionController;
+    _approvalController = entry.approvalController;
+    _ownsSessionController = false;
+    _ownsApprovalController = false;
+    _threadDetailController.clear();
+    _turnController.clearLocalConversation();
+    _timelineController.clear();
+    _attachActiveSessionBindings();
+
+    if (disposePreviousSessionController) {
+      previousSessionController.dispose();
+    }
+    if (disposePreviousApprovalController) {
+      previousApprovalController.dispose();
+    }
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _handleSessionChanged() {

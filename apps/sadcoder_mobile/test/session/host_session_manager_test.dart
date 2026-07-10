@@ -49,6 +49,25 @@ void main() {
     expect(starter.connectedProfiles, [_profileA, _profileB]);
   });
 
+  test('connectOrSelect reuses a connected host session', () async {
+    final starter = _RecordingSessionStarter();
+    final manager = _manager(starter);
+    addTearDown(manager.dispose);
+
+    await manager.connect(_profileA);
+    await manager.connect(_profileB);
+
+    final controller = await manager.connectOrSelect(_profileA);
+
+    expect(
+      controller,
+      same(manager.sessionFor(_profileA.id)!.sessionController),
+    );
+    expect(manager.activeProfileId, _profileA.id);
+    expect(starter.connectedProfiles, [_profileA, _profileB]);
+    expect(starter.connections.first.closeCount, 0);
+  });
+
   test('disconnects one host session without affecting another', () async {
     final starter = _RecordingSessionStarter();
     final manager = _manager(starter);

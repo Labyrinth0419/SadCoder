@@ -18,6 +18,8 @@ import '../../ssh/ssh_profile.dart';
 import '../../ssh/ssh_profile_store.dart';
 import '../../ssh/ssh_public_key_exporter.dart';
 
+typedef HostProfileConnector = Future<void> Function(SshProfile profile);
+
 const M0ProbeRunner _defaultProbeRunner = M0ProbeCoordinator(
   sshProbeRunner: DartSshConnectionProbeRunner(),
   shellProbeRunner: RemoteCommandShellProbeRunner(DartSshRemoteCommandRunner()),
@@ -39,6 +41,7 @@ class HostsPage extends StatefulWidget {
     this.importFileSource = const FilePickerSshImportFileSource(),
     this.keyGenerator = const DartSshKeyGenerator(),
     this.publicKeyExporter = const FilePickerSshPublicKeyExporter(),
+    this.profileConnector,
   });
 
   final M0ProbeRunner? probeRunner;
@@ -48,6 +51,7 @@ class HostsPage extends StatefulWidget {
   final SshImportFileSource importFileSource;
   final SshKeyGenerator keyGenerator;
   final SshPublicKeyExporter publicKeyExporter;
+  final HostProfileConnector? profileConnector;
 
   @override
   State<HostsPage> createState() => _HostsPageState();
@@ -190,7 +194,10 @@ class _HostsPageState extends State<HostsPage> {
           onTest: _runProbe,
           onSaveProfile: _profileStore == null ? null : _saveProfile,
           sessionStatus: sessionController?.status,
-          onConnect: sessionController == null ? null : _connect,
+          onConnect:
+              sessionController == null && widget.profileConnector == null
+              ? null
+              : _connect,
           onDisconnect: sessionController == null ? null : _disconnect,
         ),
         if (_profileMessage != null || _profileError != null) ...[
@@ -525,7 +532,8 @@ class _HostsPageState extends State<HostsPage> {
 
   Future<void> _connect() async {
     final sessionController = widget.sessionController;
-    if (sessionController == null ||
+    final connector = widget.profileConnector;
+    if ((sessionController == null && connector == null) ||
         !(_formKey.currentState?.validate() ?? false)) {
       return;
     }
@@ -533,7 +541,13 @@ class _HostsPageState extends State<HostsPage> {
     setState(() => _connectionActionError = null);
     try {
       await _runWithKnownHostConfirmation(
-        action: () => sessionController.connect(_buildProfile()),
+        action: () {
+          final profile = _buildProfile();
+          if (connector != null) {
+            return connector(profile);
+          }
+          return sessionController!.connect(profile);
+        },
       );
     } on Object catch (error) {
       if (mounted) {

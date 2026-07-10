@@ -38,8 +38,10 @@ import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
+import 'package:sadcoder_mobile/src/session/host_session_manager.dart';
 import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
+import 'package:sadcoder_mobile/src/ssh/ssh_profile_store.dart';
 import 'package:sadcoder_mobile/src/theme/sadcoder_theme.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
@@ -59,6 +61,56 @@ void main() {
     expect(find.text('Approvals'), findsWidgets);
     expect(find.text('Settings'), findsWidgets);
     expect(find.text('SSH profile'), findsOneWidget);
+  });
+
+  testWidgets('chat host selector keeps existing host sessions connected', (
+    tester,
+  ) async {
+    const remoteProfile = SshProfile(
+      id: 'remote',
+      name: 'Remote Linux',
+      host: 'remote.example.com',
+      username: 'dev',
+    );
+    final starter = _RecordingStaticSessionStarter(
+      threads: const [],
+      detail: ThreadDetail(thread: _emptyThread),
+    );
+    final manager = HostSessionManager(
+      controllerFactory: (approvalController) => CodexSessionStateController(
+        connector: starter,
+        approvalController: approvalController,
+      ),
+    );
+    addTearDown(manager.dispose);
+
+    await tester.pumpWidget(
+      SadCoderApp(
+        hostSessionManager: manager,
+        profileStore: const _FakeProfileStore([_profile, remoteProfile]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Chat').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('chat-host-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('chat-host-option-local')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('chat-host-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('chat-host-option-remote')));
+    await tester.pumpAndSettle();
+
+    expect(starter.connectedProfiles, [_profile, remoteProfile]);
+    expect(starter.connections.first.closeCount, 0);
+    expect(
+      manager.sessionFor(_profile.id)!.status,
+      CodexSessionStatus.connected,
+    );
+    expect(manager.activeProfileId, remoteProfile.id);
+    expect(find.text('Remote Linux'), findsOneWidget);
   });
 
   testWidgets('renders Chinese localization', (tester) async {
@@ -470,6 +522,16 @@ const _profile = SshProfile(
   username: 'tester',
 );
 
+const _emptyThread = ThreadSummary(
+  id: 'thr_empty',
+  sessionId: 'sess_empty',
+  preview: 'Empty thread',
+  ephemeral: false,
+  status: 'idle',
+  cwd: '/repo',
+  updatedAtSeconds: 1,
+);
+
 class _NeverConnectsSessionStarter implements CodexSessionConnectionStarter {
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -477,6 +539,54 @@ class _NeverConnectsSessionStarter implements CodexSessionConnectionStarter {
     ApprovalStateController? approvalController,
   }) {
     throw StateError('not used by this widget test');
+  }
+}
+
+class _FakeProfileStore implements SshProfileListStore {
+  const _FakeProfileStore(this.profiles);
+
+  final List<SshProfile> profiles;
+
+  @override
+  Future<SshProfile?> loadLastProfile() async {
+    return profiles.isEmpty ? null : profiles.first;
+  }
+
+  @override
+  Future<List<SshProfile>> loadProfiles() async {
+    return List.unmodifiable(profiles);
+  }
+
+  @override
+  Future<void> saveLastProfile(SshProfile profile) async {}
+
+  @override
+  Future<void> saveProfile(SshProfile profile) async {}
+}
+
+class _RecordingStaticSessionStarter implements CodexSessionConnectionStarter {
+  _RecordingStaticSessionStarter({required this.threads, required this.detail});
+
+  final List<ThreadSummary> threads;
+  final ThreadDetail detail;
+  final connectedProfiles = <SshProfile>[];
+  final connections = <_StaticSessionConnection>[];
+
+  @override
+  Future<CodexSessionConnectionHandle> connect(
+    SshProfile profile, {
+    ApprovalStateController? approvalController,
+  }) async {
+    connectedProfiles.add(profile);
+    final connection = _StaticSessionConnection(
+      profile: profile,
+      threads: threads,
+      detail: detail,
+      workspaceDirectoryReader: const _NoopWorkspaceDirectoryReader(),
+      workspaceFileReader: const _NoopWorkspaceFileReader(),
+    );
+    connections.add(connection);
+    return connection;
   }
 }
 
@@ -520,6 +630,7 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
        _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
+  int closeCount = 0;
 
   @override
   final SshProfile profile;
@@ -628,7 +739,12 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
   Future<void> get done => _doneCompleter.future;
 
   @override
-  Future<void> close({bool notifyApprovalController = true}) async {}
+  Future<void> close({bool notifyApprovalController = true}) async {
+    closeCount++;
+    if (!_doneCompleter.isCompleted) {
+      _doneCompleter.complete();
+    }
+  }
 }
 
 class _StaticConfigSnapshotReader implements CodexConfigSnapshotReader {

@@ -80,6 +80,20 @@ class HostSessionManager extends ChangeNotifier {
     return entry.sessionController;
   }
 
+  Future<CodexSessionStateController> connectOrSelect(SshProfile profile) {
+    _debugAssertNotDisposed();
+    final profileId = hostSessionProfileId(profile);
+    final existing = _sessions[profileId];
+    if (existing != null &&
+        existing.status != CodexSessionStatus.idle &&
+        existing.status != CodexSessionStatus.failed) {
+      existing.updateProfile(profile);
+      select(profileId);
+      return Future.value(existing.sessionController);
+    }
+    return connect(profile);
+  }
+
   bool select(String profileId) {
     _debugAssertNotDisposed();
     final normalized = profileId.trim();
