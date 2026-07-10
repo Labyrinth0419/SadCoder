@@ -23,8 +23,12 @@ class _PreviewPanel extends StatelessWidget {
           _PreviewStatus.idle => _PreviewEmpty(
             text: l10n.workspaceFilesPreviewEmpty,
           ),
-          _PreviewStatus.loading => _PreviewLoading(path: preview.path),
+          _PreviewStatus.loading => _PreviewLoading(
+            root: preview.root,
+            path: preview.path,
+          ),
           _PreviewStatus.failed => _PreviewError(
+            root: preview.root,
             path: preview.path,
             stat: preview.stat,
             text: errorText ?? l10n.workspaceFilesReadFailed,
@@ -61,12 +65,18 @@ class _PreviewEmpty extends StatelessWidget {
 }
 
 class _PreviewLoading extends StatelessWidget {
-  const _PreviewLoading({required this.path});
+  const _PreviewLoading({required this.root, required this.path});
 
+  final String? root;
   final String? path;
 
   @override
   Widget build(BuildContext context) {
+    final displayPath = _workspaceDisplayPath(
+      root: root,
+      path: path,
+      fallback: context.l10n.workspaceFilesLoading,
+    );
     return Row(
       children: [
         const SizedBox.square(
@@ -74,15 +84,21 @@ class _PreviewLoading extends StatelessWidget {
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
         const SizedBox(width: 12),
-        Expanded(child: Text(path ?? context.l10n.workspaceFilesLoading)),
+        Expanded(child: Text(displayPath)),
       ],
     );
   }
 }
 
 class _PreviewError extends StatelessWidget {
-  const _PreviewError({required this.path, required this.text, this.stat});
+  const _PreviewError({
+    required this.root,
+    required this.path,
+    required this.text,
+    this.stat,
+  });
 
+  final String? root;
   final String? path;
   final String text;
   final WorkspaceFileStat? stat;
@@ -91,6 +107,11 @@ class _PreviewError extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final stat = this.stat;
+    final displayPath = _workspaceDisplayPath(
+      root: root,
+      path: path,
+      fallback: l10n.workspaceFilesOpenFailed,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -98,7 +119,7 @@ class _PreviewError extends StatelessWidget {
           children: [
             const Icon(Icons.error_outline),
             const SizedBox(width: 12),
-            Expanded(child: Text(path ?? l10n.workspaceFilesOpenFailed)),
+            Expanded(child: Text(displayPath)),
           ],
         ),
         if (stat != null) ...[
@@ -157,7 +178,7 @@ class _PreviewContent extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    preview.path ?? '',
+                    _previewDisplayPath(preview),
                     style: Theme.of(context).textTheme.titleMedium,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -228,6 +249,29 @@ class _PreviewContent extends StatelessWidget {
         ],
       ],
     );
+  }
+}
+
+String _previewDisplayPath(_FilePreviewState preview) {
+  return _workspaceDisplayPath(
+    root: preview.root,
+    path: preview.path,
+    fallback: '',
+  );
+}
+
+String _workspaceDisplayPath({
+  required String? root,
+  required String? path,
+  required String fallback,
+}) {
+  if (root == null || path == null) {
+    return path ?? fallback;
+  }
+  try {
+    return WorkspacePath.fromRoot(root, path).absolutePath;
+  } on Object {
+    return path;
   }
 }
 

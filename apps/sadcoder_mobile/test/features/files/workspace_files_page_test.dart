@@ -455,10 +455,80 @@ void main() {
     await tester.tap(find.byTooltip('Copy path'));
     await tester.pumpAndSettle();
 
-    expect(clipboardText, 'README.md');
+    expect(clipboardText, '/repo/README.md');
     expect(find.text('Path copied.'), findsOneWidget);
     expect(fileReader.statCalls, isEmpty);
     expect(fileReader.readCalls, isEmpty);
+  });
+
+  testWidgets('shows absolute paths while reading relative workspace paths', (
+    tester,
+  ) async {
+    final directoryReader = _FakeWorkspaceDirectoryReader({
+      '': [_entry(path: 'lib/main.dart', name: 'main.dart')],
+    });
+    final fileReader = _RecordingWorkspaceFileReader(
+      delegate: _FakeWorkspaceFileReader(
+        stats: {
+          'lib/main.dart': _stat(path: 'lib/main.dart', language: 'dart'),
+        },
+        chunks: {
+          'lib/main.dart': [
+            _chunk(path: 'lib/main.dart', content: 'void main() {}'),
+          ],
+        },
+      ),
+    );
+
+    await _pumpFilesPage(
+      tester,
+      directoryReader: directoryReader,
+      fileReader: fileReader,
+    );
+
+    expect(find.textContaining('/repo/lib/main.dart'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-entry-lib/main.dart')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('/repo/lib/main.dart'), findsWidgets);
+    expect(fileReader.statCalls.single.root, '/repo');
+    expect(fileReader.readCalls.single.root, '/repo');
+    expect(fileReader.statCalls.single.path, 'lib/main.dart');
+    expect(fileReader.readCalls.single.path, 'lib/main.dart');
+  });
+
+  testWidgets('uses host separators for copied Windows workspace paths', (
+    tester,
+  ) async {
+    final directoryReader = _FakeWorkspaceDirectoryReader({
+      '': [_entry(path: 'lib/main.dart', name: 'main.dart')],
+    });
+    Object? clipboardText;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        clipboardText = (call.arguments as Map)['text'];
+      }
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    await _pumpFilesPage(
+      tester,
+      root: r'C:\repo',
+      directoryReader: directoryReader,
+      fileReader: const _FakeWorkspaceFileReader(),
+    );
+
+    await tester.tap(find.byTooltip('Copy path'));
+    await tester.pumpAndSettle();
+
+    expect(clipboardText, r'C:\repo\lib\main.dart');
   });
 
   testWidgets('shows binary file preview state', (tester) async {
@@ -905,15 +975,23 @@ class _FileSearchCall {
 }
 
 class _RecordingWorkspaceFileReader implements WorkspaceFileReader {
-  final List<String> statCalls = [];
-  final List<String> readCalls = [];
+  _RecordingWorkspaceFileReader({WorkspaceFileReader? delegate})
+    : _delegate = delegate;
+
+  final WorkspaceFileReader? _delegate;
+  final List<_FileStatCall> statCalls = [];
+  final List<_FileReadCall> readCalls = [];
 
   @override
   Future<WorkspaceFileStat> statFile({
     required String root,
     required String path,
   }) async {
-    statCalls.add(path);
+    statCalls.add(_FileStatCall(root: root, path: path));
+    final delegate = _delegate;
+    if (delegate != null) {
+      return delegate.statFile(root: root, path: path);
+    }
     throw const WorkspaceFileException(
       WorkspaceFileFailureCode.readFailed,
       'Unexpected stat.',
@@ -928,12 +1006,53 @@ class _RecordingWorkspaceFileReader implements WorkspaceFileReader {
     int limitBytes = 64 * 1024,
     String encoding = 'utf-8',
   }) async {
-    readCalls.add(path);
+    readCalls.add(
+      _FileReadCall(
+        root: root,
+        path: path,
+        offset: offset,
+        limitBytes: limitBytes,
+        encoding: encoding,
+      ),
+    );
+    final delegate = _delegate;
+    if (delegate != null) {
+      return delegate.readFile(
+        root: root,
+        path: path,
+        offset: offset,
+        limitBytes: limitBytes,
+        encoding: encoding,
+      );
+    }
     throw const WorkspaceFileException(
       WorkspaceFileFailureCode.readFailed,
       'Unexpected read.',
     );
   }
+}
+
+class _FileStatCall {
+  const _FileStatCall({required this.root, required this.path});
+
+  final String root;
+  final String path;
+}
+
+class _FileReadCall {
+  const _FileReadCall({
+    required this.root,
+    required this.path,
+    required this.offset,
+    required this.limitBytes,
+    required this.encoding,
+  });
+
+  final String root;
+  final String path;
+  final int offset;
+  final int limitBytes;
+  final String encoding;
 }
 
 class _FakeThreadDetailReader implements ThreadDetailReader {

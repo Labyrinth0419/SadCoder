@@ -141,7 +141,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
           const SizedBox(height: 12),
           _DirectoryPanel(
             root: root,
-            rows: _directoryRows(l10n, path: '', depth: 0),
+            rows: _directoryRows(l10n, root: root, path: '', depth: 0),
           ),
           const SizedBox(height: 12),
           _PreviewPanel(
@@ -552,6 +552,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
 
   List<Widget> _directoryRows(
     AppLocalizations l10n, {
+    required String root,
     required String path,
     required int depth,
   }) {
@@ -592,21 +593,25 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
       final isDirectory =
           entry.kind == WorkspaceFileKind.directory && !entry.isSymlink;
       final expanded = _expandedDirectories.contains(entry.path);
+      final displayPath = WorkspacePath.fromRoot(root, entry.path).absolutePath;
       rows.add(
         _WorkspaceEntryRow(
           key: ValueKey('workspace-files-entry-${entry.path}'),
           entry: entry,
+          displayPath: displayPath,
           depth: depth,
           expanded: expanded,
           selected: entry.path == _preview.path,
           onTap: isDirectory
               ? () => _toggleDirectory(entry.path)
               : () => _openFile(entry),
-          onCopy: () => _copyPath(entry.path),
+          onCopy: () => _copyPath(displayPath),
         ),
       );
       if (isDirectory && expanded) {
-        rows.addAll(_directoryRows(l10n, path: entry.path, depth: depth + 1));
+        rows.addAll(
+          _directoryRows(l10n, root: root, path: entry.path, depth: depth + 1),
+        );
       }
     }
     if (state.nextCursor != null) {
@@ -779,6 +784,7 @@ class _WorkspaceEntryRow extends StatelessWidget {
   const _WorkspaceEntryRow({
     super.key,
     required this.entry,
+    required this.displayPath,
     required this.depth,
     required this.expanded,
     required this.selected,
@@ -787,6 +793,7 @@ class _WorkspaceEntryRow extends StatelessWidget {
   });
 
   final WorkspaceDirectoryEntry entry;
+  final String displayPath;
   final int depth;
   final bool expanded;
   final bool selected;
@@ -799,7 +806,7 @@ class _WorkspaceEntryRow extends StatelessWidget {
     final isDirectory =
         entry.kind == WorkspaceFileKind.directory && !entry.isSymlink;
     final details = [
-      entry.path,
+      displayPath,
       if (!isDirectory && entry.sizeBytes != null)
         l10n.workspaceFilesFileSize(entry.sizeBytes!),
       if (entry.modifiedAt != null)
