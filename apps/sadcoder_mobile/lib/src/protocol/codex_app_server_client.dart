@@ -64,6 +64,10 @@ class CodexAppServerClient {
     return _request('mcpServerStatus/list', params);
   }
 
+  Future<Map<String, Object?>> reloadMcpServers() {
+    return _request('config/mcpServer/reload');
+  }
+
   Future<Map<String, Object?>> readAccount({bool refreshToken = false}) {
     return _request('account/read', {'refreshToken': refreshToken});
   }

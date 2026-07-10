@@ -26,7 +26,9 @@ import '../goals/codex_thread_goal_runner.dart';
 import '../goals/thread_goal_runner.dart';
 import '../hooks/codex_hook_list_reader.dart';
 import '../hooks/hook_list_reader.dart';
+import '../mcp/codex_mcp_server_config_runner.dart';
 import '../mcp/codex_mcp_server_status_reader.dart';
+import '../mcp/mcp_server_config_runner.dart';
 import '../mcp/mcp_server_status_reader.dart';
 import '../models/codex_model_list_reader.dart';
 import '../models/model_list_reader.dart';
@@ -78,6 +80,8 @@ abstract interface class CodexSessionConnectionHandle {
   WorkspaceDirectoryReader get workspaceDirectoryReader;
 
   WorkspaceFileReader get workspaceFileReader;
+
+  McpServerConfigRunner get mcpServerConfigRunner;
 
   McpServerStatusReader get mcpServerStatusReader;
 
@@ -175,6 +179,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         gitDiffReader: CodexGitDiffReader(
           CodexWorkspaceCommandRunner(session.client),
         ),
+        mcpServerConfigRunner: CodexMcpServerConfigRunner(session.client),
         mcpServerStatusReader: CodexMcpServerStatusReader(session.client),
         modelListReader: CodexModelListReader(session.client),
         permissionProfileListReader: CodexPermissionProfileListReader(
@@ -247,6 +252,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.workspaceDirectoryReader,
     required this.workspaceFileReader,
     required this.gitDiffReader,
+    required this.mcpServerConfigRunner,
     required this.mcpServerStatusReader,
     required this.modelListReader,
     required this.permissionProfileListReader,
@@ -293,6 +299,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final WorkspaceFileReader workspaceFileReader;
   @override
   final GitDiffReader gitDiffReader;
+  @override
+  final McpServerConfigRunner mcpServerConfigRunner;
   @override
   final McpServerStatusReader mcpServerStatusReader;
   @override

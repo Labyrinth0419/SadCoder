@@ -538,13 +538,13 @@
     {
       "command": "mcp",
       "aliases": [],
-      "description": "list configured MCP tools; use /mcp verbose for details",
+      "description": "list configured MCP tools; use /mcp verbose or /mcp reload",
       "supportsInlineArgs": true,
       "availableDuringTask": true,
       "availableInSideConversation": false,
       "platformVisibility": "all",
       "mappingType": "appServer",
-      "mappingTarget": "mcpServerStatus/list + verbose detail",
+      "mappingTarget": "mcpServerStatus/list + config/mcpServer/reload",
       "phase": "secondStage",
       "riskLevel": "low"
     },

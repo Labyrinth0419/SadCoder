@@ -226,6 +226,20 @@ void main() {
     expect(requests.last.params, {'threadId': 'thr_1', 'turnId': 'turn_1'});
   });
 
+  test('reloadMcpServers uses app-server method name', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
+
+    final client = CodexAppServerClient(transport);
+    await client.reloadMcpServers();
+
+    expect(requests.single.method, 'config/mcpServer/reload');
+    expect(requests.single.params, isNull);
+  });
+
   test(
     'startTurn omits unset overrides and sends explicit overrides',
     () async {

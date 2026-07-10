@@ -27,6 +27,7 @@ import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_server_config_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
@@ -888,6 +889,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
       const _FakeWorkspaceFileReader();
 
   @override
+  McpServerConfigRunner get mcpServerConfigRunner =>
+      const _FakeMcpServerConfigRunner();
+
+  @override
   McpServerStatusReader get mcpServerStatusReader =>
       const _FakeMcpServerStatusReader();
 
@@ -1086,6 +1091,13 @@ class _FakeAccountUsageSnapshotReader implements AccountUsageSnapshotReader {
       rateLimitResetCredits: null,
     );
   }
+}
+
+class _FakeMcpServerConfigRunner implements McpServerConfigRunner {
+  const _FakeMcpServerConfigRunner();
+
+  @override
+  Future<void> reloadMcpServers() async {}
 }
 
 class _FakeMcpServerStatusReader implements McpServerStatusReader {

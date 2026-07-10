@@ -25,6 +25,7 @@ import 'package:sadcoder_mobile/src/files/workspace_file_reader.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_server_config_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
@@ -487,6 +488,10 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
   final WorkspaceFileReader workspaceFileReader;
 
   @override
+  McpServerConfigRunner get mcpServerConfigRunner =>
+      const _NoopMcpServerConfigRunner();
+
+  @override
   McpServerStatusReader get mcpServerStatusReader =>
       const _StaticMcpServerStatusReader();
 
@@ -655,6 +660,13 @@ class _NoopWorkspaceFileReader implements WorkspaceFileReader {
       content: '',
     );
   }
+}
+
+class _NoopMcpServerConfigRunner implements McpServerConfigRunner {
+  const _NoopMcpServerConfigRunner();
+
+  @override
+  Future<void> reloadMcpServers() async {}
 }
 
 class _MapWorkspaceDirectoryReader implements WorkspaceDirectoryReader {

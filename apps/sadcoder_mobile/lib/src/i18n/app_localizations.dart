@@ -466,6 +466,7 @@ class AppLocalizations {
   String get backgroundTerminalCpu => _text('backgroundTerminalCpu');
   String get backgroundTerminalRss => _text('backgroundTerminalRss');
   String get mcpServersStatus => _text('mcpServersStatus');
+  String get mcpServersReloaded => _text('mcpServersReloaded');
   String get mcpServersUnavailable => _text('mcpServersUnavailable');
   String get mcpServersLoadFailed => _text('mcpServersLoadFailed');
   String get mcpServersEmpty => _text('mcpServersEmpty');
@@ -1121,6 +1122,7 @@ const _values = <String, Map<String, String>>{
     'backgroundTerminalCpu': 'CPU',
     'backgroundTerminalRss': 'memory',
     'mcpServersStatus': 'MCP servers',
+    'mcpServersReloaded': 'Reloaded MCP server configuration.',
     'mcpServersUnavailable': 'Connect to a host, then run /mcp.',
     'mcpServersLoadFailed': 'Failed to load MCP servers',
     'mcpServersEmpty': 'No MCP servers configured.',
@@ -1640,6 +1642,7 @@ const _values = <String, Map<String, String>>{
     'backgroundTerminalCpu': 'CPU',
     'backgroundTerminalRss': '内存',
     'mcpServersStatus': 'MCP 服务器',
+    'mcpServersReloaded': '已重新加载 MCP 服务器配置。',
     'mcpServersUnavailable': '连接主机后运行 /mcp。',
     'mcpServersLoadFailed': 'MCP 服务器加载失败',
     'mcpServersEmpty': '未配置 MCP 服务器。',

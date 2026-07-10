@@ -483,11 +483,19 @@ class _ChatPageState extends State<ChatPage> {
   Future<String?> _buildMcpSummary(String arguments) async {
     final normalized = arguments.trim().toLowerCase();
     final verbose = normalized == 'verbose';
-    if (normalized.isNotEmpty && !verbose) {
+    final reload = normalized == 'reload' || normalized == 'refresh';
+    if (normalized.isNotEmpty && !verbose && !reload) {
       return null;
     }
 
     final l10n = context.l10n;
+    if (reload) {
+      final runner = widget.sessionController?.mcpServerConfigRunner;
+      if (runner == null) {
+        return null;
+      }
+      await runner.reloadMcpServers();
+    }
     final controller = widget.mcpServerStatusController;
     if (controller != null) {
       await controller.refresh(
@@ -498,11 +506,15 @@ class _ChatPageState extends State<ChatPage> {
             : McpServerStatusDetail.toolsAndAuthOnly,
       );
     }
-    return buildMcpServerStatusSummary(
+    final summary = buildMcpServerStatusSummary(
       l10n: l10n,
       controller: controller,
       verbose: verbose,
     );
+    if (reload) {
+      return [l10n.mcpServersReloaded, summary].join('\n');
+    }
+    return summary;
   }
 
   Future<String?> _buildSkillsSummary(String arguments) async {

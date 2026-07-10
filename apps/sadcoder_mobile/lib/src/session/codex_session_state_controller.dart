@@ -18,6 +18,7 @@ import '../files/workspace_directory_reader.dart';
 import '../files/workspace_file_reader.dart';
 import '../goals/thread_goal_runner.dart';
 import '../hooks/hook_list_reader.dart';
+import '../mcp/mcp_server_config_runner.dart';
 import '../mcp/mcp_server_status_reader.dart';
 import '../models/model_list_reader.dart';
 import '../permissions/permission_profile_list_reader.dart';
@@ -125,6 +126,9 @@ class CodexSessionStateController extends ChangeNotifier {
 
   WorkspaceFileReader? get workspaceFileReader =>
       _connection?.workspaceFileReader;
+
+  McpServerConfigRunner? get mcpServerConfigRunner =>
+      _connection?.mcpServerConfigRunner;
 
   McpServerStatusReader? get mcpServerStatusReader =>
       _connection?.mcpServerStatusReader;

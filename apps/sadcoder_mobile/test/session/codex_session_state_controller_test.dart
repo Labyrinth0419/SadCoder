@@ -25,6 +25,7 @@ import 'package:sadcoder_mobile/src/files/workspace_file_reader.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_server_config_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
@@ -79,6 +80,7 @@ void main() {
     expect(controller.fileSearchReader, isNotNull);
     expect(controller.workspaceDirectoryReader, isNotNull);
     expect(controller.workspaceFileReader, isNotNull);
+    expect(controller.mcpServerConfigRunner, isNotNull);
     expect(controller.modelListReader, isNotNull);
     expect(controller.permissionProfileListReader, isNotNull);
     expect(controller.skillListReader, isNotNull);
@@ -721,6 +723,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       workspaceDirectoryReader: const _FakeWorkspaceDirectoryReader(),
       workspaceFileReader: const _FakeWorkspaceFileReader(),
       gitDiffReader: const _FakeGitDiffReader(),
+      mcpServerConfigRunner: const _FakeMcpServerConfigRunner(),
       mcpServerStatusReader: const _FakeMcpServerStatusReader(),
       modelListReader: const _FakeModelListReader(),
       permissionProfileListReader: const _FakePermissionProfileListReader(),
@@ -863,6 +866,13 @@ class _FakeWorkspaceFileReader implements WorkspaceFileReader {
       content: '',
     );
   }
+}
+
+class _FakeMcpServerConfigRunner implements McpServerConfigRunner {
+  const _FakeMcpServerConfigRunner();
+
+  @override
+  Future<void> reloadMcpServers() async {}
 }
 
 class _FakeAccountUsageSnapshotReader implements AccountUsageSnapshotReader {

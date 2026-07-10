@@ -30,6 +30,7 @@ import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_server_config_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_controller.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_controller.dart';
@@ -3267,6 +3268,67 @@ void main() {
     expect(find.textContaining('templates: Repository file'), findsOneWidget);
   });
 
+  testWidgets('/mcp reload refreshes MCP server configuration', (tester) async {
+    final configRunner = _RecordingMcpServerConfigRunner();
+    final mcpReader = _RecordingMcpServerStatusReader(
+      page: McpServerStatusPage.fromJson({
+        'data': [
+          {
+            'name': 'filesystem',
+            'authStatus': 'unsupported',
+            'tools': {
+              'read_file': {'name': 'read_file'},
+            },
+          },
+        ],
+      }),
+    );
+    final mcpController = McpServerStatusController(
+      readerProvider: () => mcpReader,
+    );
+    final turnRunner = _FakeTurnRunner();
+    final sessionController = CodexSessionStateController(
+      connector: _FakeSessionStarter(
+        threadListReader: const _FakeThreadListReader(
+          page: ThreadListPage(threads: []),
+        ),
+        turnRunner: turnRunner,
+        mcpServerConfigRunner: configRunner,
+      ),
+      approvalController: ApprovalStateController(),
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(sessionController.approvalController.dispose);
+    addTearDown(mcpController.dispose);
+    await sessionController.connect(_profile);
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      mcpServerStatusController: mcpController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/mcp reload',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(configRunner.reloadCalls, 1);
+    expect(mcpReader.details, [McpServerStatusDetail.toolsAndAuthOnly]);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(
+      find.textContaining('Reloaded MCP server configuration.'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('filesystem: auth: unsupported, tools: 1'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('/mcp unsupported arguments do not refresh or send a prompt', (
     tester,
   ) async {
@@ -5781,6 +5843,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.feedbackUploadRunner = const _FakeFeedbackUploadRunner(),
     this.gitDiffReader = const _FakeGitDiffReader(),
     this.fileSearchReader = const _FakeFileSearchReader(),
+    this.mcpServerConfigRunner = const _FakeMcpServerConfigRunner(),
   });
 
   final ThreadListReader threadListReader;
@@ -5797,6 +5860,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final FeedbackUploadRunner feedbackUploadRunner;
   final GitDiffReader gitDiffReader;
   final FileSearchReader fileSearchReader;
+  final McpServerConfigRunner mcpServerConfigRunner;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -5821,6 +5885,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       fileSearchReader: fileSearchReader,
       workspaceDirectoryReader: const _FakeWorkspaceDirectoryReader(),
       workspaceFileReader: const _FakeWorkspaceFileReader(),
+      mcpServerConfigRunner: mcpServerConfigRunner,
     );
   }
 }
@@ -5844,6 +5909,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.fileSearchReader,
     required this.workspaceDirectoryReader,
     required this.workspaceFileReader,
+    required this.mcpServerConfigRunner,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -5898,6 +5964,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final WorkspaceFileReader workspaceFileReader;
+
+  @override
+  final McpServerConfigRunner mcpServerConfigRunner;
 
   @override
   ModelListReader get modelListReader => const _FakeModelListReader();
@@ -6323,6 +6392,22 @@ TurnSummary _reviewTurn(String turnId) {
       },
     ],
   });
+}
+
+class _FakeMcpServerConfigRunner implements McpServerConfigRunner {
+  const _FakeMcpServerConfigRunner();
+
+  @override
+  Future<void> reloadMcpServers() async {}
+}
+
+class _RecordingMcpServerConfigRunner implements McpServerConfigRunner {
+  int reloadCalls = 0;
+
+  @override
+  Future<void> reloadMcpServers() async {
+    reloadCalls++;
+  }
 }
 
 class _RecordingMcpServerStatusReader implements McpServerStatusReader {
