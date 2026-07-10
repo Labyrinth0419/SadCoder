@@ -89,6 +89,19 @@ class SshProfile {
   };
 }
 
+String sshProfileId({
+  required String host,
+  required int port,
+  required String username,
+}) {
+  final normalizedHost = host.trim().toLowerCase();
+  final normalizedUsername = username.trim().toLowerCase();
+  if (normalizedHost.isEmpty || normalizedUsername.isEmpty) {
+    return 'manual';
+  }
+  return '$normalizedUsername@$normalizedHost:$port';
+}
+
 String? _stringValue(Object? value) {
   if (value is String && value.trim().isNotEmpty) {
     return value;

@@ -9,7 +9,9 @@ import '../../session/codex_session_state_controller.dart';
 import '../../ssh/dart_ssh_proxy_connector.dart';
 import '../../ssh/dart_ssh_remote_command_runner.dart';
 import '../../ssh/known_host_verifier.dart';
+import '../../ssh/open_ssh_config_parser.dart';
 import '../../ssh/shared_preferences_known_host_store.dart';
+import '../../ssh/ssh_import_file_source.dart';
 import '../../ssh/ssh_profile.dart';
 import '../../ssh/ssh_profile_store.dart';
 
@@ -31,12 +33,14 @@ class HostsPage extends StatefulWidget {
     this.sessionController,
     this.profileStore,
     this.knownHostVerifier,
+    this.importFileSource = const FilePickerSshImportFileSource(),
   });
 
   final M0ProbeRunner? probeRunner;
   final CodexSessionStateController? sessionController;
   final SshProfileStore? profileStore;
   final KnownHostVerifier? knownHostVerifier;
+  final SshImportFileSource importFileSource;
 
   @override
   State<HostsPage> createState() => _HostsPageState();
@@ -56,6 +60,8 @@ class _HostsPageState extends State<HostsPage> {
   SshAuthType _authType = SshAuthType.password;
   bool _testing = false;
   bool _savingProfile = false;
+  bool _importingSshConfig = false;
+  bool _importingPrivateKey = false;
   M0ProbeReport? _report;
   List<SshProfile> _profiles = const [];
   final Set<String> _collapsedHosts = {};
@@ -70,6 +76,8 @@ class _HostsPageState extends State<HostsPage> {
 
   KnownHostVerifier get _knownHostVerifier =>
       widget.knownHostVerifier ?? _defaultKnownHostVerifier;
+
+  SshImportFileSource get _importFileSource => widget.importFileSource;
 
   @override
   void initState() {
@@ -129,6 +137,13 @@ class _HostsPageState extends State<HostsPage> {
           ),
           const SizedBox(height: 12),
         ],
+        _HostImportActionsPanel(
+          importingSshConfig: _importingSshConfig,
+          importingPrivateKey: _importingPrivateKey,
+          onImportSshConfig: _importSshConfig,
+          onImportPrivateKey: _importPrivateKey,
+        ),
+        const SizedBox(height: 12),
         _HostProfileForm(
           formKey: _formKey,
           nameController: _nameController,
@@ -171,6 +186,126 @@ class _HostsPageState extends State<HostsPage> {
         _ProbeResultPanel(testing: _testing, report: _report, error: _error),
       ],
     );
+  }
+
+  Future<void> _importSshConfig() async {
+    if (_importingSshConfig) {
+      return;
+    }
+    final l10n = context.l10n;
+    setState(() {
+      _importingSshConfig = true;
+      _profileMessage = null;
+      _profileError = null;
+    });
+
+    try {
+      final text = await _importFileSource.pickTextFile(
+        allowedExtensions: const ['config', 'ssh', 'txt'],
+        dialogTitle: l10n.importSshConfig,
+      );
+      if (text == null) {
+        return;
+      }
+      final importedProfiles = const OpenSshConfigParser().parseProfiles(text);
+      if (importedProfiles.isEmpty) {
+        throw const FormatException('No importable SSH Host entries found.');
+      }
+
+      final store = _profileStore;
+      if (store is SshProfileListStore) {
+        for (final profile in importedProfiles) {
+          await store.saveProfile(profile);
+        }
+        final profiles = await store.loadProfiles();
+        if (mounted) {
+          setState(() => _profiles = profiles);
+        }
+      } else if (store != null) {
+        await store.saveLastProfile(importedProfiles.first);
+      }
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _applyProfile(importedProfiles.first);
+        _profileMessage = l10n.sshConfigImported(importedProfiles.length);
+        _profileError = null;
+      });
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _profileError = '${l10n.sshConfigImportFailed}: $error');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _importingSshConfig = false);
+      }
+    }
+  }
+
+  Future<void> _importPrivateKey() async {
+    if (_importingPrivateKey) {
+      return;
+    }
+    final l10n = context.l10n;
+    setState(() {
+      _importingPrivateKey = true;
+      _profileMessage = null;
+      _profileError = null;
+    });
+
+    try {
+      final text = await _importFileSource.pickTextFile(
+        allowedExtensions: const ['pem', 'key', 'txt'],
+        dialogTitle: l10n.importPrivateKeyFile,
+      );
+      if (text == null) {
+        return;
+      }
+      final privateKeyPem = parseSshPrivateKeyPem(text);
+      _authType = SshAuthType.privateKey;
+      _privateKeyController.text = privateKeyPem;
+
+      final store = _profileStore;
+      final validationError = _profileValidationError(l10n);
+      if (store != null && validationError == null) {
+        final profile = _buildProfile();
+        if (store is SshProfileListStore) {
+          await store.saveProfile(profile);
+          final profiles = await store.loadProfiles();
+          if (mounted) {
+            setState(() => _profiles = profiles);
+          }
+        } else {
+          await store.saveLastProfile(profile);
+        }
+        if (mounted) {
+          setState(() {
+            _profileMessage = l10n.privateKeyImportedAndSaved;
+            _profileError = null;
+          });
+        }
+        return;
+      }
+
+      if (mounted) {
+        setState(() {
+          _profileMessage = l10n.privateKeyImportNeedsProfile;
+          _profileError = null;
+        });
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        setState(
+          () => _profileError = '${l10n.privateKeyImportFailed}: $error',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _importingPrivateKey = false);
+      }
+    }
   }
 
   Future<void> _runProbe() async {
@@ -319,7 +454,7 @@ class _HostsPageState extends State<HostsPage> {
     final username = _usernameController.text.trim();
     final port = int.tryParse(_portController.text.trim()) ?? 22;
     return SshProfile(
-      id: _profileId(host: host, port: port, username: username),
+      id: sshProfileId(host: host, port: port, username: username),
       name: name.isEmpty ? host : name,
       host: host,
       port: port,
@@ -431,19 +566,6 @@ class _HostsPageState extends State<HostsPage> {
   }
 }
 
-String _profileId({
-  required String host,
-  required int port,
-  required String username,
-}) {
-  final normalizedHost = host.trim().toLowerCase();
-  final normalizedUsername = username.trim().toLowerCase();
-  if (normalizedHost.isEmpty || normalizedUsername.isEmpty) {
-    return 'manual';
-  }
-  return '$normalizedUsername@$normalizedHost:$port';
-}
-
 Map<String, List<SshProfile>> _groupProfilesByHost(List<SshProfile> profiles) {
   final grouped = <String, List<SshProfile>>{};
   for (final profile in profiles) {
@@ -540,6 +662,69 @@ class _SavedHostProfilesPanel extends StatelessWidget {
               ],
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _HostImportActionsPanel extends StatelessWidget {
+  const _HostImportActionsPanel({
+    required this.importingSshConfig,
+    required this.importingPrivateKey,
+    required this.onImportSshConfig,
+    required this.onImportPrivateKey,
+  });
+
+  final bool importingSshConfig;
+  final bool importingPrivateKey;
+  final VoidCallback onImportSshConfig;
+  final VoidCallback onImportPrivateKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: OverflowBar(
+          alignment: MainAxisAlignment.start,
+          spacing: 8,
+          overflowSpacing: 8,
+          children: [
+            OutlinedButton.icon(
+              key: const ValueKey('host-import-ssh-config-button'),
+              onPressed: importingSshConfig ? null : onImportSshConfig,
+              icon: importingSshConfig
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.rule_folder_outlined),
+              label: Text(
+                importingSshConfig
+                    ? l10n.importingSshConfig
+                    : l10n.importSshConfig,
+              ),
+            ),
+            OutlinedButton.icon(
+              key: const ValueKey('host-import-private-key-button'),
+              onPressed: importingPrivateKey ? null : onImportPrivateKey,
+              icon: importingPrivateKey
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.upload_file_outlined),
+              label: Text(
+                importingPrivateKey
+                    ? l10n.importingPrivateKey
+                    : l10n.importPrivateKeyFile,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

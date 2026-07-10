@@ -53,6 +53,17 @@ class AppLocalizations {
   String get useSshProfile => _text('useSshProfile');
   String savedHostProfileCount(int count) =>
       _text('savedHostProfileCount').replaceAll('{count}', '$count');
+  String get importSshConfig => _text('importSshConfig');
+  String get importingSshConfig => _text('importingSshConfig');
+  String sshConfigImported(int count) =>
+      _text('sshConfigImported').replaceAll('{count}', formatNumber(count));
+  String get sshConfigImportFailed => _text('sshConfigImportFailed');
+  String get importPrivateKeyFile => _text('importPrivateKeyFile');
+  String get importingPrivateKey => _text('importingPrivateKey');
+  String get privateKeyImportedAndSaved => _text('privateKeyImportedAndSaved');
+  String get privateKeyImportNeedsProfile =>
+      _text('privateKeyImportNeedsProfile');
+  String get privateKeyImportFailed => _text('privateKeyImportFailed');
   String get test => _text('test');
   String get testing => _text('testing');
   String get hostRequired => _text('hostRequired');
@@ -835,6 +846,17 @@ const _values = <String, Map<String, String>>{
     'noSavedHosts': 'No saved SSH profiles.',
     'useSshProfile': 'Use profile',
     'savedHostProfileCount': '{count} profiles',
+    'importSshConfig': 'Import SSH config',
+    'importingSshConfig': 'Importing config',
+    'sshConfigImported': '{count} SSH profiles imported.',
+    'sshConfigImportFailed': 'SSH config import failed',
+    'importPrivateKeyFile': 'Import private key',
+    'importingPrivateKey': 'Importing private key',
+    'privateKeyImportedAndSaved':
+        'Private key imported and profile saved securely.',
+    'privateKeyImportNeedsProfile':
+        'Private key imported. Complete host and username, then save the profile to store it securely.',
+    'privateKeyImportFailed': 'Private key import failed',
     'test': 'Test',
     'testing': 'Testing',
     'hostRequired': 'Host is required',
@@ -1458,6 +1480,15 @@ const _values = <String, Map<String, String>>{
     'noSavedHosts': '暂无已保存 SSH 配置。',
     'useSshProfile': '使用配置',
     'savedHostProfileCount': '{count} 个配置',
+    'importSshConfig': '导入 SSH config',
+    'importingSshConfig': '正在导入 config',
+    'sshConfigImported': '已导入 {count} 个 SSH 配置。',
+    'sshConfigImportFailed': 'SSH config 导入失败',
+    'importPrivateKeyFile': '导入私钥',
+    'importingPrivateKey': '正在导入私钥',
+    'privateKeyImportedAndSaved': '私钥已导入，配置已安全保存。',
+    'privateKeyImportNeedsProfile': '私钥已导入。补全主机和用户名后保存配置，即可安全持久化。',
+    'privateKeyImportFailed': '私钥导入失败',
     'test': '测试',
     'testing': '测试中',
     'hostRequired': '请填写主机',

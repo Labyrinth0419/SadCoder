@@ -45,6 +45,7 @@ import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart'
 import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
 import 'package:sadcoder_mobile/src/ssh/known_host.dart';
 import 'package:sadcoder_mobile/src/ssh/known_host_verifier.dart';
+import 'package:sadcoder_mobile/src/ssh/ssh_import_file_source.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile_store.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
@@ -474,6 +475,117 @@ void main() {
     );
   });
 
+  testWidgets('imports OpenSSH config profiles from a selected file', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final store = _FakeProfileStore();
+    const config = '''
+Host *
+  User default-user
+
+Host dev
+  HostName dev.example.com
+  User alice
+  Port 2200
+  IdentityFile ~/.ssh/id_ed25519
+
+Host prod
+  HostName prod.example.com
+''';
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      profileStore: store,
+      importFileSource: const _FakeImportFileSource(config),
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('host-import-ssh-config-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(store.profiles, hasLength(2));
+    expect(store.profiles.first.name, 'prod');
+    expect(store.profiles.last.name, 'dev');
+    expect(store.profiles.last.authType, SshAuthType.privateKey);
+    expect(store.profiles.last.privateKeyPem, isNull);
+    expect(find.text('dev.example.com:2200'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('2 SSH profiles imported.'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('2 SSH profiles imported.', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const ValueKey('host-field')))
+          .controller
+          ?.text,
+      'dev.example.com',
+    );
+    expect(find.byKey(const ValueKey('private-key-field')), findsOneWidget);
+  });
+
+  testWidgets('imports a private key file and saves the current profile', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final store = _FakeProfileStore();
+    const privateKey = '''
+-----BEGIN OPENSSH PRIVATE KEY-----
+secret-key-material
+-----END OPENSSH PRIVATE KEY-----
+''';
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      profileStore: store,
+      importFileSource: const _FakeImportFileSource(privateKey),
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('host-name-field')),
+      'Dev',
+    );
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('host-import-private-key-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(store.savedProfile?.authType, SshAuthType.privateKey);
+    expect(store.savedProfile?.privateKeyPem, contains('secret-key-material'));
+    expect(store.savedProfile?.id, 'alice@srv.dev:22');
+    expect(
+      find.text(
+        'Private key imported and profile saved securely.',
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('private-key-field')), findsOneWidget);
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const ValueKey('private-key-field')),
+          )
+          .controller
+          ?.text,
+      contains('OPENSSH PRIVATE KEY'),
+    );
+  });
+
   testWidgets('groups saved SSH profiles by collapsible host', (tester) async {
     final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
     final store = _FakeProfileStore(
@@ -729,6 +841,7 @@ Future<void> _pumpHostsPage(
   CodexSessionStateController? sessionController,
   SshProfileStore? profileStore,
   KnownHostVerifier? knownHostVerifier,
+  SshImportFileSource importFileSource = const _FakeImportFileSource(null),
 }) {
   tester.view.physicalSize = const Size(800, 900);
   tester.view.devicePixelRatio = 1;
@@ -748,6 +861,7 @@ Future<void> _pumpHostsPage(
         sessionController: sessionController,
         profileStore: profileStore,
         knownHostVerifier: knownHostVerifier,
+        importFileSource: importFileSource,
       ),
     ),
   );
@@ -871,6 +985,20 @@ class _MemoryKnownHostStore implements KnownHostStore {
   @override
   Future<void> saveKnownHost(KnownHostEntry entry) async {
     entries.add(entry);
+  }
+}
+
+class _FakeImportFileSource implements SshImportFileSource {
+  const _FakeImportFileSource(this.text);
+
+  final String? text;
+
+  @override
+  Future<String?> pickTextFile({
+    required List<String> allowedExtensions,
+    required String dialogTitle,
+  }) async {
+    return text;
   }
 }
 
