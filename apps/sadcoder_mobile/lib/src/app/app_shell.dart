@@ -342,6 +342,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         modelListController: _modelListController,
         permissionProfileListController: _permissionProfileListController,
         profileStore: widget.profileStore,
+        hostSessions: _chatHostSessions(),
         profileConnector: _connectProfile,
       ),
       2 => WorkspaceFilesPage(
@@ -390,6 +391,20 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (entry != null && identical(entry.sessionController, controller)) {
       _activateHostSession(entry);
     }
+  }
+
+  List<ChatHostSessionSummary> _chatHostSessions() {
+    final manager = _hostSessionManager;
+    if (manager == null) {
+      return const [];
+    }
+    return [
+      for (final session in manager.sessions)
+        ChatHostSessionSummary(
+          profile: session.profile,
+          status: session.status,
+        ),
+    ];
   }
 
   void _handleHostSessionManagerChanged() {

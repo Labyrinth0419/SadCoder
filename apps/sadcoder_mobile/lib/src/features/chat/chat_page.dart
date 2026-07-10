@@ -57,6 +57,13 @@ import 'turn_override_controls.dart';
 
 typedef ChatProfileConnector = Future<void> Function(SshProfile profile);
 
+class ChatHostSessionSummary {
+  const ChatHostSessionSummary({required this.profile, required this.status});
+
+  final SshProfile profile;
+  final CodexSessionStatus status;
+}
+
 class ChatPage extends StatefulWidget {
   const ChatPage({
     super.key,
@@ -75,6 +82,7 @@ class ChatPage extends StatefulWidget {
     this.modelListController,
     this.permissionProfileListController,
     this.profileStore,
+    this.hostSessions = const [],
     this.profileConnector,
     this.slashCommandDispatcher,
   });
@@ -94,6 +102,7 @@ class ChatPage extends StatefulWidget {
   final ModelListController? modelListController;
   final PermissionProfileListController? permissionProfileListController;
   final SshProfileStore? profileStore;
+  final List<ChatHostSessionSummary> hostSessions;
   final ChatProfileConnector? profileConnector;
   final SlashCommandActionDispatcher? slashCommandDispatcher;
 
@@ -192,6 +201,7 @@ class _ChatPageState extends State<ChatPage> {
             profiles: _headerProfiles(),
             selectedProfile: _selectedHeaderProfile(),
             connectedProfile: sessionController?.profile,
+            hostSessions: widget.hostSessions,
             status: sessionController?.status ?? CodexSessionStatus.idle,
             connectionLabel: _connectionLabel(l10n, sessionController?.status),
             profileLoadError: _profileLoadError,
@@ -492,7 +502,11 @@ class _ChatPageState extends State<ChatPage> {
 
   List<SshProfile> _headerProfiles() {
     final connectedProfile = widget.sessionController?.profile;
-    final profiles = <SshProfile>[..._savedProfiles, ?connectedProfile];
+    final profiles = <SshProfile>[
+      ..._savedProfiles,
+      for (final session in widget.hostSessions) session.profile,
+      ?connectedProfile,
+    ];
     final seen = <String>{};
     return List.unmodifiable(
       profiles.where((profile) => seen.add(profile.id)).toList(),
@@ -3626,6 +3640,7 @@ class _ChatConnectionControls extends StatelessWidget {
     required this.profiles,
     required this.selectedProfile,
     required this.connectedProfile,
+    required this.hostSessions,
     required this.status,
     required this.connectionLabel,
     required this.profileLoadError,
@@ -3635,6 +3650,7 @@ class _ChatConnectionControls extends StatelessWidget {
   final List<SshProfile> profiles;
   final SshProfile? selectedProfile;
   final SshProfile? connectedProfile;
+  final List<ChatHostSessionSummary> hostSessions;
   final CodexSessionStatus status;
   final String connectionLabel;
   final Object? profileLoadError;
@@ -3644,6 +3660,10 @@ class _ChatConnectionControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final activeProfile = connectedProfile ?? selectedProfile;
+    final hostStatusByProfileId = {
+      for (final session in hostSessions) session.profile.id: session.status,
+      if (connectedProfile != null) connectedProfile!.id: status,
+    };
     final canOpen =
         onProfileSelected != null &&
         status != CodexSessionStatus.connecting &&
@@ -3674,6 +3694,7 @@ class _ChatConnectionControls extends StatelessWidget {
             child: _HostMenuItem(
               profile: profile,
               selected: activeProfile?.id == profile.id,
+              status: hostStatusByProfileId[profile.id],
             ),
           ),
       ],
@@ -3763,14 +3784,21 @@ class _HostSelectorPill extends StatelessWidget {
 }
 
 class _HostMenuItem extends StatelessWidget {
-  const _HostMenuItem({required this.profile, required this.selected});
+  const _HostMenuItem({
+    required this.profile,
+    required this.selected,
+    this.status,
+  });
 
   final SshProfile profile;
   final bool selected;
+  final CodexSessionStatus? status;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final textTheme = Theme.of(context).textTheme;
+    final statusLabel = _chatHostStatusLabel(l10n, status);
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 220, maxWidth: 320),
       child: Row(
@@ -3796,10 +3824,58 @@ class _HostMenuItem extends StatelessWidget {
               ],
             ),
           ),
+          if (statusLabel != null) ...[
+            const SizedBox(width: 8),
+            _HostStatusChip(
+              key: ValueKey('chat-host-status-${profile.id}'),
+              label: statusLabel,
+              status: status!,
+            ),
+          ],
         ],
       ),
     );
   }
+}
+
+class _HostStatusChip extends StatelessWidget {
+  const _HostStatusChip({super.key, required this.label, required this.status});
+
+  final String label;
+  final CodexSessionStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final active =
+        status == CodexSessionStatus.connected ||
+        status == CodexSessionStatus.reconnecting;
+    return Chip(
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      label: Text(label),
+      labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: active ? colorScheme.onPrimaryContainer : colorScheme.onSurface,
+      ),
+      backgroundColor: active
+          ? colorScheme.primaryContainer
+          : colorScheme.surfaceContainerHighest,
+    );
+  }
+}
+
+String? _chatHostStatusLabel(
+  AppLocalizations l10n,
+  CodexSessionStatus? status,
+) {
+  return switch (status) {
+    CodexSessionStatus.connecting => l10n.connecting,
+    CodexSessionStatus.connected => l10n.connected,
+    CodexSessionStatus.reconnecting => l10n.reconnecting,
+    CodexSessionStatus.disconnecting => l10n.disconnecting,
+    CodexSessionStatus.failed => l10n.connectionFailed,
+    CodexSessionStatus.idle || null => null,
+  };
 }
 
 String _chatProfileTitle(SshProfile profile) {

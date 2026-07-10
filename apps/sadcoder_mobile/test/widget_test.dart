@@ -111,6 +111,18 @@ void main() {
     );
     expect(manager.activeProfileId, remoteProfile.id);
     expect(find.text('Remote Linux'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('chat-host-selector')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('chat-host-status-local')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('chat-host-status-remote')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('chat host selector restores per-host thread timeline state', (
