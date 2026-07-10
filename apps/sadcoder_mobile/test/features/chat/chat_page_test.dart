@@ -1105,6 +1105,7 @@ void main() {
             id: 'gpt-5-codex',
             name: 'GPT-5 Codex',
             provider: 'openai',
+            isDefault: true,
           ),
         ],
       ),
@@ -1158,7 +1159,7 @@ void main() {
     await _selectDropdownOption(
       tester,
       const ValueKey('chat-model-command-model-list'),
-      'GPT-5 Codex (openai)',
+      'GPT-5 Codex (openai) (default)',
     );
 
     expect(

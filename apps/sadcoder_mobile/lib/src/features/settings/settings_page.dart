@@ -9,6 +9,7 @@ import '../../config/codex_config_snapshot.dart';
 import '../../config/codex_config_snapshot_controller.dart';
 import '../../diagnostics/diagnostic_log_export_controller.dart';
 import '../../i18n/app_localizations.dart';
+import '../../models/model_labels.dart';
 import '../../models/model_list_controller.dart';
 import '../../security/permission_risk.dart';
 import '../appearance/app_color_palette_picker.dart';
@@ -530,7 +531,8 @@ class _LoadedModelList extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final model in visibleModels) Chip(label: Text(model.label)),
+            for (final model in visibleModels)
+              Chip(label: Text(codexModelDisplayLabel(context, model))),
           ],
         ),
         if (models.length > visibleModels.length) ...[

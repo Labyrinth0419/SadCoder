@@ -15,6 +15,7 @@ import '../../files/file_search_reader.dart';
 import '../../i18n/app_localizations.dart';
 import '../../mcp/mcp_server_status_controller.dart';
 import '../../mcp/mcp_server_status_reader.dart';
+import '../../models/model_labels.dart';
 import '../../models/model_list_controller.dart';
 import '../../permissions/permission_profile_list_controller.dart';
 import '../../permissions/permission_profile_list_reader.dart';
@@ -3478,7 +3479,10 @@ class _ModelListPicker extends StatelessWidget {
               isExpanded: true,
               items: [
                 for (final model in controller.models)
-                  DropdownMenuItem(value: model.id, child: Text(model.label)),
+                  DropdownMenuItem(
+                    value: model.id,
+                    child: Text(codexModelDisplayLabel(context, model)),
+                  ),
               ],
               onChanged: (value) {
                 if (value != null) {

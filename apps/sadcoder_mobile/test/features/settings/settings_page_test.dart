@@ -285,6 +285,7 @@ void main() {
             id: 'gpt-5-codex',
             name: 'GPT-5 Codex',
             provider: 'openai',
+            isDefault: true,
           ),
           CodexModelSummary(id: 'gpt-5'),
         ],
@@ -314,7 +315,7 @@ void main() {
 
     expect(modelReader.calls, 1);
     expect(find.text('Available models: 2'), findsOneWidget);
-    expect(find.text('GPT-5 Codex (openai)'), findsOneWidget);
+    expect(find.text('GPT-5 Codex (openai) (default)'), findsOneWidget);
     expect(find.text('gpt-5'), findsOneWidget);
   });
 

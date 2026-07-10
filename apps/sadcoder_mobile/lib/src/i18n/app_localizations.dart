@@ -102,6 +102,7 @@ class AppLocalizations {
   String get initialize => _text('initialize');
   String get accountRead => _text('accountRead');
   String get modelList => _text('modelList');
+  String get modelDefaultBadge => _text('modelDefaultBadge');
   String get configRead => _text('configRead');
   String get permissionProfileList => _text('permissionProfileList');
   String get threadList => _text('threadList');
@@ -1300,6 +1301,7 @@ const _values = <String, Map<String, String>>{
     'modelListEmpty': 'No models reported by the server.',
     'availableModels': 'Available models: {count}',
     'modelListMore': '{count} more models available.',
+    'modelDefaultBadge': 'default',
     'accountUsageStatus': 'Usage',
     'accountUsageUnavailable': 'Connect to a host, then run /usage.',
     'accountUsageLoadFailed': 'Failed to load usage',
@@ -1918,6 +1920,7 @@ const _values = <String, Map<String, String>>{
     'modelListEmpty': '服务器没有返回可用模型。',
     'availableModels': '可用模型：{count}',
     'modelListMore': '还有 {count} 个模型可用。',
+    'modelDefaultBadge': '默认',
     'accountUsageStatus': '使用量',
     'accountUsageUnavailable': '连接主机后运行 /usage。',
     'accountUsageLoadFailed': '使用量加载失败',
