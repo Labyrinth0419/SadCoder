@@ -20,6 +20,50 @@ class ThreadListPage {
   final String? backwardsCursor;
 }
 
+class ThreadTurnsPage {
+  const ThreadTurnsPage({
+    required this.turns,
+    this.nextCursor,
+    this.backwardsCursor,
+  });
+
+  factory ThreadTurnsPage.fromJson(Map<String, Object?> json) {
+    return ThreadTurnsPage(
+      turns: _listOfMaps(
+        json['data'],
+      ).map(TurnSummary.fromJson).toList(growable: false),
+      nextCursor: json['nextCursor'] as String?,
+      backwardsCursor: json['backwardsCursor'] as String?,
+    );
+  }
+
+  final List<TurnSummary> turns;
+  final String? nextCursor;
+  final String? backwardsCursor;
+}
+
+class ThreadItemsPage {
+  const ThreadItemsPage({
+    required this.items,
+    this.nextCursor,
+    this.backwardsCursor,
+  });
+
+  factory ThreadItemsPage.fromJson(Map<String, Object?> json) {
+    return ThreadItemsPage(
+      items: _listOfMaps(
+        json['data'],
+      ).map(ThreadItemSummary.fromJson).toList(growable: false),
+      nextCursor: json['nextCursor'] as String?,
+      backwardsCursor: json['backwardsCursor'] as String?,
+    );
+  }
+
+  final List<ThreadItemSummary> items;
+  final String? nextCursor;
+  final String? backwardsCursor;
+}
+
 class ThreadDetail {
   const ThreadDetail({required this.thread});
 

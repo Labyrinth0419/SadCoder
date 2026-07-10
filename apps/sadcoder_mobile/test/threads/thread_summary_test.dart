@@ -156,6 +156,62 @@ void main() {
     expect(detail.turns.last.errorMessage, 'failed turn');
   });
 
+  test('ThreadTurnsPage parses paginated thread turns response', () {
+    final page = ThreadTurnsPage.fromJson({
+      'data': [
+        {
+          'id': 'turn_1',
+          'status': 'completed',
+          'itemsView': 'summary',
+          'items': [
+            {
+              'id': 'item_1',
+              'type': 'userMessage',
+              'content': [
+                {'type': 'text', 'text': 'Backfill this turn'},
+              ],
+            },
+          ],
+          'startedAt': 10,
+          'completedAt': 12,
+          'durationMs': 2000,
+        },
+      ],
+      'nextCursor': 'older',
+      'backwardsCursor': 'newer',
+    });
+
+    expect(page.turns.single.id, 'turn_1');
+    expect(page.turns.single.itemsView, 'summary');
+    expect(page.turns.single.items.single.text, 'Backfill this turn');
+    expect(page.nextCursor, 'older');
+    expect(page.backwardsCursor, 'newer');
+  });
+
+  test('ThreadItemsPage parses paginated thread items response', () {
+    final page = ThreadItemsPage.fromJson({
+      'data': [
+        {
+          'id': 'item_command',
+          'type': 'commandExecution',
+          'command': 'cargo test',
+          'cwd': '/repo',
+          'status': 'completed',
+          'exitCode': 0,
+          'aggregatedOutput': 'ok',
+        },
+      ],
+      'nextCursor': 'next_item',
+      'backwardsCursor': 'previous_item',
+    });
+
+    expect(page.items.single.id, 'item_command');
+    expect(page.items.single.command, 'cargo test');
+    expect(page.items.single.output, 'ok');
+    expect(page.nextCursor, 'next_item');
+    expect(page.backwardsCursor, 'previous_item');
+  });
+
   test('ThreadItemSummary parses collab agent and subagent activity items', () {
     final collab = ThreadItemSummary.fromJson({
       'id': 'item_spawn',

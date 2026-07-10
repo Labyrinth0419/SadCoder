@@ -40,6 +40,16 @@ void main() {
       query: 'main',
       roots: ['/repo'],
     );
+    await connection.threadTurnListReader.listTurns(
+      threadId: 'thr_1',
+      limit: 5,
+      itemsView: 'summary',
+    );
+    await connection.threadItemListReader.listItems(
+      threadId: 'thr_1',
+      turnId: 'turn_1',
+      limit: 10,
+    );
     await connection.turnRunner.startThread();
     await connection.turnRunner.startTurn(threadId: 'thr_1', text: 'Fix bug');
     await connection.turnRunner.interruptTurn(
@@ -66,6 +76,8 @@ void main() {
       'feedback/upload',
       'command/exec',
       'fuzzyFileSearch',
+      'thread/turns/list',
+      'thread/items/list',
       'thread/start',
       'turn/start',
       'turn/interrupt',
@@ -309,6 +321,8 @@ class _LineServerProxyConnector implements AgentProxyConnector {
     'mcpServer/oauth/login' => {'serverName': 'github'},
     'account/read' => {'account': null, 'requiresOpenaiAuth': false},
     'command/exec' => {'exitCode': 128, 'stdout': '', 'stderr': ''},
+    'thread/turns/list' => {'data': <Object?>[]},
+    'thread/items/list' => {'data': <Object?>[]},
     'thread/start' => {
       'thread': {
         'id': 'thr_1',

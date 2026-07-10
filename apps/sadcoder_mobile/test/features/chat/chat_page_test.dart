@@ -52,10 +52,12 @@ import 'package:sadcoder_mobile/src/ssh/ssh_profile_store.dart';
 import 'package:sadcoder_mobile/src/theme/sadcoder_theme.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
+import 'package:sadcoder_mobile/src/threads/thread_item_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
+import 'package:sadcoder_mobile/src/threads/thread_turn_list_reader.dart';
 import 'package:sadcoder_mobile/src/turns/turn_controller.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
 import 'package:sadcoder_mobile/src/turns/turn_text_element.dart';
@@ -6561,6 +6563,36 @@ class _FakeThreadDetailReader implements ThreadDetailReader {
   }
 }
 
+class _NoopThreadTurnListReader implements ThreadTurnListReader {
+  const _NoopThreadTurnListReader();
+
+  @override
+  Future<ThreadTurnsPage> listTurns({
+    required String threadId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+    String? itemsView,
+  }) async {
+    return const ThreadTurnsPage(turns: []);
+  }
+}
+
+class _NoopThreadItemListReader implements ThreadItemListReader {
+  const _NoopThreadItemListReader();
+
+  @override
+  Future<ThreadItemsPage> listItems({
+    required String threadId,
+    String? turnId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+  }) async {
+    return const ThreadItemsPage(items: []);
+  }
+}
+
 class _FakeSessionStarter implements CodexSessionConnectionStarter {
   const _FakeSessionStarter({
     required this.threadListReader,
@@ -6666,6 +6698,14 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final ThreadListReader threadListReader;
+
+  @override
+  ThreadTurnListReader get threadTurnListReader =>
+      const _NoopThreadTurnListReader();
+
+  @override
+  ThreadItemListReader get threadItemListReader =>
+      const _NoopThreadItemListReader();
 
   @override
   final TurnRunner turnRunner;

@@ -52,10 +52,14 @@ import '../ssh/ssh_profile.dart';
 import '../ssh/ssh_proxy_connector.dart';
 import '../threads/codex_thread_mutation_runner.dart';
 import '../threads/codex_thread_detail_reader.dart';
+import '../threads/codex_thread_item_list_reader.dart';
 import '../threads/codex_thread_list_reader.dart';
+import '../threads/codex_thread_turn_list_reader.dart';
 import '../threads/thread_detail_reader.dart';
+import '../threads/thread_item_list_reader.dart';
 import '../threads/thread_list_reader.dart';
 import '../threads/thread_mutation_runner.dart';
+import '../threads/thread_turn_list_reader.dart';
 import '../turns/codex_turn_runner.dart';
 import '../turns/turn_runner.dart';
 import '../usage/account_usage_snapshot_reader.dart';
@@ -68,6 +72,10 @@ abstract interface class CodexSessionConnectionHandle {
   ThreadListReader get threadListReader;
 
   ThreadDetailReader get threadDetailReader;
+
+  ThreadTurnListReader get threadTurnListReader;
+
+  ThreadItemListReader get threadItemListReader;
 
   CodexConfigSnapshotReader get configSnapshotReader;
 
@@ -181,6 +189,8 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         proxyConnection: proxyConnection,
         threadListReader: CodexThreadListReader(session.client),
         threadDetailReader: CodexThreadDetailReader(session.client),
+        threadTurnListReader: CodexThreadTurnListReader(session.client),
+        threadItemListReader: CodexThreadItemListReader(session.client),
         configSnapshotReader: CodexConfigSnapshotRemoteReader(session.client),
         accountSnapshotReader: CodexAccountSnapshotReader(session.client),
         accountLogoutRunner: CodexAccountLogoutRunner(session.client),
@@ -261,6 +271,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.session,
     required this.threadListReader,
     required this.threadDetailReader,
+    required this.threadTurnListReader,
+    required this.threadItemListReader,
     required this.configSnapshotReader,
     required this.accountSnapshotReader,
     required this.accountLogoutRunner,
@@ -302,6 +314,10 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final ThreadListReader threadListReader;
   @override
   final ThreadDetailReader threadDetailReader;
+  @override
+  final ThreadTurnListReader threadTurnListReader;
+  @override
+  final ThreadItemListReader threadItemListReader;
   @override
   final CodexConfigSnapshotReader configSnapshotReader;
   @override

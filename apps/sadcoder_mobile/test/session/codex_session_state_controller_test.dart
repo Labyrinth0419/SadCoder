@@ -45,9 +45,11 @@ import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_proxy_connector.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
+import 'package:sadcoder_mobile/src/threads/thread_item_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
+import 'package:sadcoder_mobile/src/threads/thread_turn_list_reader.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
 import 'package:sadcoder_mobile/src/turns/turn_text_element.dart';
 import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_reader.dart';
@@ -75,6 +77,8 @@ void main() {
     expect(controller.profile, _profile);
     expect(controller.threadListReader, isNotNull);
     expect(controller.threadDetailReader, isNotNull);
+    expect(controller.threadTurnListReader, isNotNull);
+    expect(controller.threadItemListReader, isNotNull);
     expect(controller.configSnapshotReader, isNotNull);
     expect(controller.accountSnapshotReader, isNotNull);
     expect(controller.accountLogoutRunner, isNotNull);
@@ -763,6 +767,8 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
           ? threadListReaders[connectionIndex]
           : const _FakeThreadListReader(),
       threadDetailReader: const _FakeThreadDetailReader(),
+      threadTurnListReader: const _NoopThreadTurnListReader(),
+      threadItemListReader: const _NoopThreadItemListReader(),
       configSnapshotReader: const _FakeConfigSnapshotReader(),
       accountSnapshotReader: const _FakeAccountSnapshotReader(),
       accountLogoutRunner: const _FakeAccountLogoutRunner(),
@@ -1142,6 +1148,36 @@ class _FakeThreadDetailReader implements ThreadDetailReader {
         'turns': <Object?>[],
       }),
     );
+  }
+}
+
+class _NoopThreadTurnListReader implements ThreadTurnListReader {
+  const _NoopThreadTurnListReader();
+
+  @override
+  Future<ThreadTurnsPage> listTurns({
+    required String threadId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+    String? itemsView,
+  }) async {
+    return const ThreadTurnsPage(turns: []);
+  }
+}
+
+class _NoopThreadItemListReader implements ThreadItemListReader {
+  const _NoopThreadItemListReader();
+
+  @override
+  Future<ThreadItemsPage> listItems({
+    required String threadId,
+    String? turnId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+  }) async {
+    return const ThreadItemsPage(items: []);
   }
 }
 

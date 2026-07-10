@@ -53,9 +53,11 @@ import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile_store.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_public_key_exporter.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
+import 'package:sadcoder_mobile/src/threads/thread_item_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
+import 'package:sadcoder_mobile/src/threads/thread_turn_list_reader.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
 import 'package:sadcoder_mobile/src/turns/turn_text_element.dart';
 import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_reader.dart';
@@ -1429,6 +1431,14 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   ThreadDetailReader get threadDetailReader => const _FakeThreadDetailReader();
 
   @override
+  ThreadTurnListReader get threadTurnListReader =>
+      const _NoopThreadTurnListReader();
+
+  @override
+  ThreadItemListReader get threadItemListReader =>
+      const _NoopThreadItemListReader();
+
+  @override
   CodexConfigSnapshotReader get configSnapshotReader =>
       const _FakeConfigSnapshotReader();
 
@@ -1871,6 +1881,36 @@ class _FakeThreadDetailReader implements ThreadDetailReader {
         'turns': <Object?>[],
       }),
     );
+  }
+}
+
+class _NoopThreadTurnListReader implements ThreadTurnListReader {
+  const _NoopThreadTurnListReader();
+
+  @override
+  Future<ThreadTurnsPage> listTurns({
+    required String threadId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+    String? itemsView,
+  }) async {
+    return const ThreadTurnsPage(turns: []);
+  }
+}
+
+class _NoopThreadItemListReader implements ThreadItemListReader {
+  const _NoopThreadItemListReader();
+
+  @override
+  Future<ThreadItemsPage> listItems({
+    required String threadId,
+    String? turnId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+  }) async {
+    return const ThreadItemsPage(items: []);
   }
 }
 

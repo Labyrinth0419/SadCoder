@@ -309,6 +309,52 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> listThreadTurns({
+    required String threadId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+    String? itemsView,
+  }) {
+    final params = <String, Object?>{'threadId': threadId};
+    if (cursor != null && cursor.trim().isNotEmpty) {
+      params['cursor'] = cursor.trim();
+    }
+    if (limit != null) {
+      params['limit'] = limit;
+    }
+    if (sortDirection != null && sortDirection.trim().isNotEmpty) {
+      params['sortDirection'] = sortDirection.trim();
+    }
+    if (itemsView != null && itemsView.trim().isNotEmpty) {
+      params['itemsView'] = itemsView.trim();
+    }
+    return _request('thread/turns/list', params);
+  }
+
+  Future<Map<String, Object?>> listThreadItems({
+    required String threadId,
+    String? turnId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+  }) {
+    final params = <String, Object?>{'threadId': threadId};
+    if (turnId != null && turnId.trim().isNotEmpty) {
+      params['turnId'] = turnId.trim();
+    }
+    if (cursor != null && cursor.trim().isNotEmpty) {
+      params['cursor'] = cursor.trim();
+    }
+    if (limit != null) {
+      params['limit'] = limit;
+    }
+    if (sortDirection != null && sortDirection.trim().isNotEmpty) {
+      params['sortDirection'] = sortDirection.trim();
+    }
+    return _request('thread/items/list', params);
+  }
+
   Future<Map<String, Object?>> startThread() {
     return _request('thread/start', {});
   }

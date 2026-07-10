@@ -31,8 +31,10 @@ import '../reviews/thread_review_runner.dart';
 import '../skills/skill_list_reader.dart';
 import '../ssh/ssh_profile.dart';
 import '../threads/thread_detail_reader.dart';
+import '../threads/thread_item_list_reader.dart';
 import '../threads/thread_list_reader.dart';
 import '../threads/thread_mutation_runner.dart';
+import '../threads/thread_turn_list_reader.dart';
 import '../turns/turn_runner.dart';
 import '../usage/account_usage_snapshot_reader.dart';
 import 'codex_session_connector.dart';
@@ -104,6 +106,12 @@ class CodexSessionStateController extends ChangeNotifier {
   ThreadListReader? get threadListReader => _connection?.threadListReader;
 
   ThreadDetailReader? get threadDetailReader => _connection?.threadDetailReader;
+
+  ThreadTurnListReader? get threadTurnListReader =>
+      _connection?.threadTurnListReader;
+
+  ThreadItemListReader? get threadItemListReader =>
+      _connection?.threadItemListReader;
 
   CodexConfigSnapshotReader? get configSnapshotReader =>
       _connection?.configSnapshotReader;
