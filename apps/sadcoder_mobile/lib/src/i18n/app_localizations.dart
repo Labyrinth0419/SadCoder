@@ -1537,7 +1537,7 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesMarkdownRenderLimited':
         'Markdown rendering is available after the full file is loaded and remains under the render limit.',
     'workspaceFilesLargeFile':
-        'This file is loaded in chunks. Rendering is limited to loaded text.',
+        'This file is loaded in chunks. Load more to preview additional content.',
     'workspaceFilesBinary': 'Binary files cannot be previewed.',
     'workspaceFilesNotFound': 'Path was not found.',
     'workspaceFilesPermissionDenied': 'Permission denied while reading path.',
@@ -2180,7 +2180,7 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesRaw': '源码',
     'workspaceFilesRendered': '渲染',
     'workspaceFilesMarkdownRenderLimited': 'Markdown 仅在完整加载且低于渲染阈值时可用。',
-    'workspaceFilesLargeFile': '此文件按分段加载；渲染仅作用于已加载文本。',
+    'workspaceFilesLargeFile': '此文件按分段加载；可继续加载后续内容。',
     'workspaceFilesBinary': '二进制文件不可预览。',
     'workspaceFilesNotFound': '路径不存在。',
     'workspaceFilesPermissionDenied': '读取路径时权限不足。',
