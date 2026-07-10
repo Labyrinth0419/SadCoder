@@ -22,14 +22,21 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::ChildStdin;
 use std::process::ChildStdout;
-use std::process::Command;
 use std::process::Stdio;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
+mod codex_command;
 mod state_cache;
 
+use codex_command::CodexCommandConfig;
+use codex_command::CodexCommandSource;
+use codex_command::CodexProbeFailure;
+use codex_command::ResolvedCodexCommand;
+use codex_command::persist_codex_command;
+use codex_command::probe_codex_version;
+use codex_command::resolve_codex_command;
 use state_cache::AgentStateCache;
 use state_cache::resolve_state_path;
 
@@ -37,8 +44,11 @@ use state_cache::resolve_state_path;
 #[command(name = "sadcoder-agent")]
 #[command(about = "SadCoder server-side lifecycle and proxy agent")]
 struct Cli {
-    #[arg(long, env = "SADCODER_CODEX_PATH", default_value = "codex")]
-    codex_path: String,
+    #[arg(long = "codex-path", value_name = "PATH")]
+    codex_path: Option<PathBuf>,
+
+    #[arg(long = "codex-program", value_name = "PATH")]
+    codex_program: Option<PathBuf>,
 
     #[arg(long, env = "SADCODER_BACKEND", value_enum, default_value_t = BackendMode::Auto)]
     backend: BackendMode,
@@ -60,7 +70,6 @@ enum BackendMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SelectedBackend {
     Stdio,
-    Daemon,
 }
 
 #[derive(Debug, Subcommand)]
@@ -90,33 +99,59 @@ enum AgentCommand {
         #[arg(long)]
         json: bool,
     },
+    /// Diagnose the resolved Codex executable and runtime environment.
+    Doctor {
+        #[arg(long)]
+        json: bool,
+    },
+    /// Persist the Codex executable and runtime PATH configuration.
+    Configure {
+        #[arg(long = "codex", value_name = "PATH")]
+        codex: PathBuf,
+        #[arg(long = "path-prepend", value_name = "PATH")]
+        path_prepend: Vec<PathBuf>,
+        #[arg(long)]
+        json: bool,
+    },
     /// Proxy this process' stdin/stdout to the selected app-server backend.
     Proxy,
 }
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
+    let cli_codex_program = cli.codex_program.or(cli.codex_path);
     match cli.command {
-        AgentCommand::Status { json } => print_status(
-            &cli.codex_path,
-            cli.backend,
-            cli.state_path.as_deref(),
-            json,
-        ),
-        AgentCommand::Start { json } => print_start(
-            &cli.codex_path,
-            cli.backend,
-            cli.state_path.as_deref(),
-            json,
-        ),
-        AgentCommand::Probe { json } => print_probe(&cli.codex_path, json),
+        AgentCommand::Status { json } => {
+            let codex = resolve_codex_command(cli_codex_program)?;
+            print_status(&codex, cli.backend, cli.state_path.as_deref(), json)
+        }
+        AgentCommand::Start { json } => {
+            let codex = resolve_codex_command(cli_codex_program)?;
+            print_start(&codex, cli.backend, cli.state_path.as_deref(), json)
+        }
+        AgentCommand::Probe { json } => {
+            let codex = resolve_codex_command(cli_codex_program)?;
+            print_probe(&codex, json)
+        }
         AgentCommand::SlashCommands { json } => print_slash_commands(json),
         AgentCommand::Snapshot { json } => print_snapshot(cli.state_path.as_deref(), json),
-        AgentCommand::Proxy => proxy_app_server(
-            &cli.codex_path,
-            cli.backend,
-            resolve_state_path(cli.state_path.as_deref()),
-        ),
+        AgentCommand::Doctor { json } => {
+            let codex = resolve_codex_command(cli_codex_program)?;
+            print_doctor(&codex, json)
+        }
+        AgentCommand::Configure {
+            codex,
+            path_prepend,
+            json,
+        } => configure_codex(codex, path_prepend, json),
+        AgentCommand::Proxy => {
+            let codex = resolve_codex_command(cli_codex_program)?;
+            proxy_app_server(
+                &codex,
+                cli.backend,
+                resolve_state_path(cli.state_path.as_deref()),
+            )
+        }
     }
 }
 
@@ -124,13 +159,13 @@ const SLASH_COMMANDS_MANIFEST_JSON: &str =
     include_str!("../../../resources/slash_commands_manifest.json");
 
 fn print_status(
-    codex_path: &str,
+    codex: &ResolvedCodexCommand,
     backend_mode: BackendMode,
     state_path: Option<&Path>,
     json: bool,
 ) -> anyhow::Result<()> {
     let state_path = resolve_state_path(state_path);
-    let status = collect_status(codex_path, backend_mode, &state_path);
+    let status = collect_status(codex, backend_mode, &state_path);
     if json {
         println!("{}", serde_json::to_string_pretty(&status)?);
     } else {
@@ -158,17 +193,17 @@ fn print_status(
 }
 
 fn print_start(
-    codex_path: &str,
+    codex: &ResolvedCodexCommand,
     backend_mode: BackendMode,
     state_path: Option<&Path>,
     json: bool,
 ) -> anyhow::Result<()> {
-    start_backend(codex_path, backend_mode)?;
-    print_status(codex_path, backend_mode, state_path, json)
+    start_backend(codex, backend_mode)?;
+    print_status(codex, backend_mode, state_path, json)
 }
 
-fn print_probe(codex_path: &str, json_output: bool) -> anyhow::Result<()> {
-    let result = run_probe(codex_path)?;
+fn print_probe(codex: &ResolvedCodexCommand, json_output: bool) -> anyhow::Result<()> {
+    let result = run_probe(codex)?;
     if json_output {
         println!("{}", serde_json::to_string_pretty(&result)?);
     } else {
@@ -186,6 +221,117 @@ fn print_probe(codex_path: &str, json_output: bool) -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CodexCommandDiagnostic {
+    program: String,
+    args: Vec<String>,
+    path_prepend: Vec<String>,
+    source: &'static str,
+    available: bool,
+    version: Option<String>,
+    failure: Option<CodexCommandFailureDiagnostic>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CodexCommandFailureDiagnostic {
+    kind: &'static str,
+    detail: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DoctorResult {
+    codex: CodexCommandDiagnostic,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ConfigureResult {
+    config_path: String,
+    codex: CodexCommandDiagnostic,
+}
+
+fn print_doctor(codex: &ResolvedCodexCommand, json_output: bool) -> anyhow::Result<()> {
+    let result = DoctorResult {
+        codex: collect_codex_diagnostic(codex),
+    };
+
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&result)?);
+    } else {
+        print_codex_diagnostic(&result.codex);
+    }
+    Ok(())
+}
+
+fn configure_codex(
+    codex: PathBuf,
+    path_prepend: Vec<PathBuf>,
+    json_output: bool,
+) -> anyhow::Result<()> {
+    let config = CodexCommandConfig::from_program(codex, path_prepend);
+    let config_path = persist_codex_command(&config)?;
+    let resolved = ResolvedCodexCommand {
+        program: config.program,
+        args: config.args.into_iter().map(Into::into).collect(),
+        path_prepend: config.path_prepend,
+        source: CodexCommandSource::Config,
+    };
+    let result = ConfigureResult {
+        config_path: config_path.display().to_string(),
+        codex: collect_codex_diagnostic(&resolved),
+    };
+
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&result)?);
+    } else {
+        println!("saved Codex configuration: {}", result.config_path);
+        print_codex_diagnostic(&result.codex);
+    }
+    Ok(())
+}
+
+fn collect_codex_diagnostic(codex: &ResolvedCodexCommand) -> CodexCommandDiagnostic {
+    let probe = probe_codex_version(codex);
+    CodexCommandDiagnostic {
+        program: codex.display_program(),
+        args: codex
+            .args
+            .iter()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect(),
+        path_prepend: codex
+            .path_prepend
+            .iter()
+            .map(|path| path.display().to_string())
+            .collect(),
+        source: codex.source.as_str(),
+        available: probe.is_ok(),
+        version: probe.as_ref().ok().cloned(),
+        failure: probe.err().map(|failure| CodexCommandFailureDiagnostic {
+            kind: failure.kind.as_str(),
+            detail: failure.detail,
+        }),
+    }
+}
+
+fn print_codex_diagnostic(diagnostic: &CodexCommandDiagnostic) {
+    println!("codex program: {}", diagnostic.program);
+    println!("codex source: {}", diagnostic.source);
+    if diagnostic.path_prepend.is_empty() {
+        println!("path prepend: <empty>");
+    } else {
+        println!("path prepend: {}", diagnostic.path_prepend.join(", "));
+    }
+    match (&diagnostic.version, &diagnostic.failure) {
+        (Some(version), _) => println!("codex version: {version}"),
+        (_, Some(failure)) => println!("codex failure: {}: {}", failure.kind, failure.detail),
+        _ => println!("codex version: not available"),
+    }
 }
 
 fn print_slash_commands(json_output: bool) -> anyhow::Result<()> {
@@ -234,17 +380,22 @@ fn print_snapshot(state_path: Option<&Path>, json_output: bool) -> anyhow::Resul
     Ok(())
 }
 
-fn collect_status(codex_path: &str, backend_mode: BackendMode, state_path: &Path) -> AgentStatus {
-    let codex_version = probe_codex_version(codex_path);
-    let codex_available = codex_version.is_some();
-    let backend = collect_backend_status(codex_path, codex_available, backend_mode);
+fn collect_status(
+    codex: &ResolvedCodexCommand,
+    backend_mode: BackendMode,
+    state_path: &Path,
+) -> AgentStatus {
+    let codex_probe = probe_codex_version(codex);
+    let codex_version = codex_probe.as_ref().ok().cloned();
+    let codex_available = codex_probe.is_ok();
+    let backend = collect_backend_status(codex_probe.as_ref().err(), backend_mode);
     let reconnect_cache = collect_reconnect_cache_status(state_path);
 
     AgentStatus {
         agent_version: env!("CARGO_PKG_VERSION").to_string(),
         platform_os: std::env::consts::OS.to_string(),
         platform_arch: std::env::consts::ARCH.to_string(),
-        codex_path: codex_path.to_string(),
+        codex_path: codex.display_program(),
         codex_available,
         codex_version,
         backend,
@@ -275,41 +426,23 @@ fn collect_reconnect_cache_status(state_path: &Path) -> AgentReconnectCacheStatu
 }
 
 fn collect_backend_status(
-    codex_path: &str,
-    codex_available: bool,
+    codex_failure: Option<&CodexProbeFailure>,
     backend_mode: BackendMode,
 ) -> BackendStatus {
-    if !codex_available {
+    if let Some(failure) = codex_failure {
         return BackendStatus {
             kind: BackendKind::Unknown,
             state: BackendState::Unavailable,
-            detail: Some("codex executable was not found or did not run".into()),
+            detail: Some(failure.message()),
         };
     }
 
-    match select_backend(backend_mode, daemon_supported()) {
+    match select_backend(backend_mode) {
         Ok(SelectedBackend::Stdio) => BackendStatus {
             kind: BackendKind::CodexAppServerStdio,
             state: BackendState::Ready,
-            detail: Some("on-demand stdio fallback; SSH disconnect can end this backend".into()),
+            detail: Some("SadCoder stdio backend; official Codex daemon is not used".into()),
         },
-        Ok(SelectedBackend::Daemon) => {
-            if probe_daemon_version(codex_path).is_some() {
-                BackendStatus {
-                    kind: BackendKind::CodexAppServerDaemon,
-                    state: BackendState::Ready,
-                    detail: Some("official Codex app-server daemon is running".into()),
-                }
-            } else {
-                BackendStatus {
-                    kind: BackendKind::CodexAppServerDaemon,
-                    state: BackendState::NotStarted,
-                    detail: Some(
-                        "official daemon backend is preferred; run sadcoder-agent start".into(),
-                    ),
-                }
-            }
-        }
         Err(detail) => BackendStatus {
             kind: BackendKind::Unknown,
             state: BackendState::Unavailable,
@@ -318,35 +451,20 @@ fn collect_backend_status(
     }
 }
 
-fn select_backend(
-    backend_mode: BackendMode,
-    daemon_supported: bool,
-) -> Result<SelectedBackend, String> {
+fn select_backend(backend_mode: BackendMode) -> Result<SelectedBackend, String> {
     match backend_mode {
-        BackendMode::Stdio => Ok(SelectedBackend::Stdio),
-        BackendMode::Daemon if daemon_supported => Ok(SelectedBackend::Daemon),
-        BackendMode::Daemon => {
-            Err("Codex app-server daemon is not supported on this platform".into())
-        }
-        BackendMode::Auto if daemon_supported => Ok(SelectedBackend::Daemon),
         BackendMode::Auto => Ok(SelectedBackend::Stdio),
+        BackendMode::Stdio => Ok(SelectedBackend::Stdio),
+        BackendMode::Daemon => Err(
+            "official Codex app-server daemon backend is disabled in SadCoder; use auto or stdio"
+                .into(),
+        ),
     }
 }
 
-fn start_backend(codex_path: &str, backend_mode: BackendMode) -> anyhow::Result<()> {
-    match select_backend(backend_mode, daemon_supported()) {
+fn start_backend(_codex: &ResolvedCodexCommand, backend_mode: BackendMode) -> anyhow::Result<()> {
+    match select_backend(backend_mode) {
         Ok(SelectedBackend::Stdio) => Ok(()),
-        Ok(SelectedBackend::Daemon) => {
-            let status = Command::new(codex_path)
-                .args(["app-server", "daemon", "start"])
-                .status()
-                .context("failed to start Codex app-server daemon")?;
-            if status.success() {
-                Ok(())
-            } else {
-                anyhow::bail!("Codex app-server daemon start exited with status {status}")
-            }
-        }
         Err(detail) => anyhow::bail!(detail),
     }
 }
@@ -366,14 +484,20 @@ struct ProbeStep {
     detail: Option<String>,
 }
 
-fn run_probe(codex_path: &str) -> anyhow::Result<ProbeResult> {
-    let mut child = Command::new(codex_path)
+fn run_probe(codex: &ResolvedCodexCommand) -> anyhow::Result<ProbeResult> {
+    let mut command = codex.command()?;
+    let mut child = command
         .args(["app-server", "--listen", "stdio://"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
         .spawn()
-        .with_context(|| format!("failed to spawn `{codex_path} app-server --listen stdio://`"))?;
+        .with_context(|| {
+            format!(
+                "failed to spawn `{} app-server --listen stdio://`",
+                codex.display_program()
+            )
+        })?;
 
     let mut stdin = child.stdin.take().context("child stdin was not piped")?;
     let stdout = child.stdout.take().context("child stdout was not piped")?;
@@ -514,71 +638,31 @@ fn json_id_matches(id: &Value, expected_id: &RequestId) -> bool {
     }
 }
 
-fn probe_codex_version(codex_path: &str) -> Option<String> {
-    let output = Command::new(codex_path).arg("--version").output().ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    if !stdout.is_empty() {
-        Some(stdout)
-    } else if !stderr.is_empty() {
-        Some(stderr)
-    } else {
-        Some("codex version unknown".to_string())
-    }
-}
-
-fn probe_daemon_version(codex_path: &str) -> Option<Value> {
-    let output = Command::new(codex_path)
-        .args(["app-server", "daemon", "version"])
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    serde_json::from_slice(&output.stdout).ok()
-}
-
-fn daemon_supported() -> bool {
-    cfg!(unix)
-}
-
 fn proxy_app_server(
-    codex_path: &str,
+    codex: &ResolvedCodexCommand,
     backend_mode: BackendMode,
     state_path: PathBuf,
 ) -> anyhow::Result<()> {
-    match select_backend(backend_mode, daemon_supported()) {
-        Ok(SelectedBackend::Stdio) => proxy_stdio_app_server(codex_path, state_path),
-        Ok(SelectedBackend::Daemon) => proxy_daemon_app_server(codex_path),
+    match select_backend(backend_mode) {
+        Ok(SelectedBackend::Stdio) => proxy_stdio_app_server(codex, state_path),
         Err(detail) => anyhow::bail!(detail),
     }
 }
 
-fn proxy_daemon_app_server(codex_path: &str) -> anyhow::Result<()> {
-    start_backend(codex_path, BackendMode::Daemon)?;
-    let status = Command::new(codex_path)
-        .args(["app-server", "proxy"])
-        .status()
-        .context("failed to proxy to Codex app-server daemon")?;
-
-    if status.success() {
-        Ok(())
-    } else {
-        anyhow::bail!("Codex app-server proxy exited with status {status}")
-    }
-}
-
-fn proxy_stdio_app_server(codex_path: &str, state_path: PathBuf) -> anyhow::Result<()> {
-    let mut child = Command::new(codex_path)
+fn proxy_stdio_app_server(codex: &ResolvedCodexCommand, state_path: PathBuf) -> anyhow::Result<()> {
+    let mut command = codex.command()?;
+    let mut child = command
         .args(["app-server", "--listen", "stdio://"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
         .spawn()
-        .with_context(|| format!("failed to spawn `{codex_path} app-server --listen stdio://`"))?;
+        .with_context(|| {
+            format!(
+                "failed to spawn `{} app-server --listen stdio://`",
+                codex.display_program()
+            )
+        })?;
 
     let mut child_stdin = child.stdin.take().context("child stdin was not piped")?;
     let mut child_stdout = child.stdout.take().context("child stdout was not piped")?;
@@ -662,10 +746,20 @@ fn observe_and_save_cache(
 mod tests {
     use super::*;
 
+    fn missing_configured_codex() -> ResolvedCodexCommand {
+        ResolvedCodexCommand {
+            program: std::env::temp_dir().join("definitely-missing-sadcoder-codex-binary"),
+            args: Vec::new(),
+            path_prepend: Vec::new(),
+            source: CodexCommandSource::Config,
+        }
+    }
+
     #[test]
     fn unavailable_codex_reports_unavailable_backend() {
+        let codex = missing_configured_codex();
         let status = collect_status(
-            "definitely-missing-sadcoder-codex-binary",
+            &codex,
             BackendMode::Auto,
             Path::new("sadcoder-agent-test-state.json"),
         );
@@ -673,6 +767,13 @@ mod tests {
         assert!(!status.codex_available);
         assert_eq!(status.backend.kind, BackendKind::Unknown);
         assert_eq!(status.backend.state, BackendState::Unavailable);
+        assert!(
+            status
+                .backend
+                .detail
+                .as_deref()
+                .is_some_and(|detail| detail.contains("configured-path-missing"))
+        );
     }
 
     #[test]
@@ -703,11 +804,8 @@ mod tests {
             });
 
         cache.save(&path).expect("save cache");
-        let status = collect_status(
-            "definitely-missing-sadcoder-codex-binary",
-            BackendMode::Auto,
-            &path,
-        );
+        let codex = missing_configured_codex();
+        let status = collect_status(&codex, BackendMode::Auto, &path);
         let _ = std::fs::remove_file(&path);
 
         assert_eq!(
@@ -721,20 +819,20 @@ mod tests {
     }
 
     #[test]
-    fn backend_selection_prefers_daemon_only_when_supported() {
+    fn backend_selection_uses_stdio_by_default_and_rejects_daemon() {
         assert_eq!(
-            select_backend(BackendMode::Auto, true),
-            Ok(SelectedBackend::Daemon)
-        );
-        assert_eq!(
-            select_backend(BackendMode::Auto, false),
+            select_backend(BackendMode::Auto),
             Ok(SelectedBackend::Stdio)
         );
         assert_eq!(
-            select_backend(BackendMode::Stdio, true),
+            select_backend(BackendMode::Stdio),
             Ok(SelectedBackend::Stdio)
         );
-        assert!(select_backend(BackendMode::Daemon, false).is_err());
+        assert!(
+            select_backend(BackendMode::Daemon)
+                .expect_err("daemon should not be selected")
+                .contains("disabled")
+        );
     }
 
     #[test]

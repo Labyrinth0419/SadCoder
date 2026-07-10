@@ -46,11 +46,14 @@ the server side instead of tying task lifetime to the mobile process.
 
 Backend selection is controlled by `--backend` or `SADCODER_BACKEND`:
 
-- `auto` prefers the official Codex app-server daemon on Unix and falls back to
-  stdio where daemon lifecycle is unavailable.
-- `daemon` requires official `codex app-server daemon` support.
-- `stdio` forces the current fallback path and is useful for local debugging,
-  but SSH disconnect can end that app-server process.
+- `auto` uses the SadCoder-managed stdio path and does not call the official
+  Codex app-server daemon.
+- `stdio` forces the same stdio path and is useful for local debugging, but SSH
+  disconnect can end that app-server process until the SadCoder service backend
+  owns the long-lived app-server.
+- `daemon` is accepted for compatibility, but is disabled because npm/NVM Codex
+  CLIs can expose daemon commands that still require the official standalone
+  installer layout.
 
 `slash-commands --json` prints the shared slash command manifest from
 `resources/slash_commands_manifest.json`. The manifest tracks the current Codex
