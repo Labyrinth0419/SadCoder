@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../config/codex_config_override_controller.dart';
+import '../../files/file_search_reader.dart';
 import '../../files/workspace_directory_reader.dart';
 import '../../files/workspace_file_failure.dart';
 import '../../files/workspace_file_kind.dart';
@@ -12,6 +13,7 @@ import '../../i18n/app_localizations.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../theme/sadcoder_theme.dart';
 import '../../threads/thread_detail_controller.dart';
+import 'file_search_sheet.dart';
 
 part 'workspace_file_preview.dart';
 
@@ -28,6 +30,7 @@ class WorkspaceFilesPage extends StatefulWidget {
     this.configOverrideController,
     this.directoryReader,
     this.fileReader,
+    this.fileSearchReader,
     this.root,
   });
 
@@ -36,6 +39,7 @@ class WorkspaceFilesPage extends StatefulWidget {
   final CodexConfigOverrideController? configOverrideController;
   final WorkspaceDirectoryReader? directoryReader;
   final WorkspaceFileReader? fileReader;
+  final FileSearchReader? fileSearchReader;
   final String? root;
 
   @override
@@ -130,6 +134,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
             filterController: _filterController,
             includeHidden: _includeHidden,
             onIncludeHiddenChanged: _setIncludeHidden,
+            onSearch: _fileSearchReader == null ? null : _searchWorkspace,
             onRefresh: _refreshWorkspace,
           ),
           const SizedBox(height: 12),
@@ -169,6 +174,9 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
 
   WorkspaceFileReader? get _fileReader =>
       widget.fileReader ?? widget.sessionController?.workspaceFileReader;
+
+  FileSearchReader? get _fileSearchReader =>
+      widget.fileSearchReader ?? widget.sessionController?.fileSearchReader;
 
   String? _resolvedRoot() {
     final explicitRoot = _normalizedText(widget.root);
@@ -336,34 +344,45 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     unawaited(_loadDirectory(''));
   }
 
-  Future<void> _openFile(WorkspaceDirectoryEntry entry) async {
+  Future<void> _openFile(WorkspaceDirectoryEntry entry) {
+    if (entry.isSymlink) {
+      return _showSymlinkPreviewError(entry.path);
+    }
+    return _openFilePath(entry.path);
+  }
+
+  Future<void> _showSymlinkPreviewError(String path) async {
+    final root = _activeRoot;
+    if (root == null) {
+      return;
+    }
+    setState(() {
+      _preview = _FilePreviewState.failed(
+        root: root,
+        path: path,
+        error: const WorkspaceFileException(
+          WorkspaceFileFailureCode.pathOutsideRoot,
+          'Workspace path is outside the workspace root.',
+          detail: 'Symbolic links are not previewed.',
+        ),
+      );
+    });
+  }
+
+  Future<void> _openFilePath(String path) async {
     final root = _activeRoot;
     final reader = _fileReader;
     if (root == null || reader == null) {
       return;
     }
-    if (entry.isSymlink) {
-      setState(() {
-        _preview = _FilePreviewState.failed(
-          root: root,
-          path: entry.path,
-          error: const WorkspaceFileException(
-            WorkspaceFileFailureCode.pathOutsideRoot,
-            'Workspace path is outside the workspace root.',
-            detail: 'Symbolic links are not previewed.',
-          ),
-        );
-      });
-      return;
-    }
 
     final requestId = ++_nextFileRequestId;
     setState(() {
-      _preview = _FilePreviewState.loading(root: root, path: entry.path);
+      _preview = _FilePreviewState.loading(root: root, path: path);
     });
 
     try {
-      final stat = await reader.statFile(root: root, path: entry.path);
+      final stat = await reader.statFile(root: root, path: path);
       final unpreviewable = _unpreviewableStatError(stat);
       if (unpreviewable != null) {
         if (!mounted ||
@@ -374,7 +393,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
         setState(() {
           _preview = _FilePreviewState.failed(
             root: root,
-            path: entry.path,
+            path: path,
             stat: stat,
             error: unpreviewable,
           );
@@ -383,7 +402,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
       }
       final chunk = await reader.readFile(
         root: root,
-        path: entry.path,
+        path: path,
         limitBytes: _fileChunkBytes,
       );
       if (!mounted || requestId != _nextFileRequestId || _activeRoot != root) {
@@ -392,14 +411,14 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
       setState(() {
         _preview = _FilePreviewState.loaded(
           root: root,
-          path: entry.path,
+          path: path,
           stat: stat,
           content: chunk.content,
           sizeBytes: chunk.sizeBytes,
           bytesLoaded: chunk.bytesRead,
           nextOffset: chunk.nextOffset,
           hasMore: chunk.hasMore,
-          mode: _initialPreviewMode(entry.path, stat, chunk),
+          mode: _initialPreviewMode(path, stat, chunk),
         );
       });
     } on Object catch (error) {
@@ -409,11 +428,47 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
       setState(() {
         _preview = _FilePreviewState.failed(
           root: root,
-          path: entry.path,
+          path: path,
           error: error,
         );
       });
     }
+  }
+
+  Future<void> _searchWorkspace() async {
+    final root = _activeRoot;
+    final reader = _fileSearchReader;
+    if (root == null || reader == null) {
+      return;
+    }
+    final match = await showModalBottomSheet<FileSearchMatch>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => FileSearchSheet(
+        reader: reader,
+        roots: [root],
+        title: context.l10n.workspaceFilesTitle,
+        searchHint: context.l10n.mentionSearchHint,
+      ),
+    );
+    if (!mounted || match == null || _activeRoot != root) {
+      return;
+    }
+    final matchRoot = _normalizedText(match.root) ?? root;
+    if (matchRoot != root) {
+      setState(() {
+        _preview = _FilePreviewState.failed(
+          root: root,
+          path: match.path,
+          error: const WorkspaceFileException(
+            WorkspaceFileFailureCode.pathOutsideRoot,
+            'Workspace path is outside the workspace root.',
+          ),
+        );
+      });
+      return;
+    }
+    await _openFilePath(match.path);
   }
 
   Future<void> _loadMorePreview() async {
@@ -617,12 +672,14 @@ class _FilesToolbar extends StatelessWidget {
     required this.filterController,
     required this.includeHidden,
     required this.onIncludeHiddenChanged,
+    required this.onSearch,
     required this.onRefresh,
   });
 
   final TextEditingController filterController;
   final bool includeHidden;
   final ValueChanged<bool> onIncludeHiddenChanged;
+  final VoidCallback? onSearch;
   final VoidCallback onRefresh;
 
   @override
@@ -657,6 +714,13 @@ class _FilesToolbar extends StatelessWidget {
                     controlAffinity: ListTileControlAffinity.leading,
                   ),
                 ),
+                IconButton.filledTonal(
+                  key: const ValueKey('workspace-files-remote-search'),
+                  onPressed: onSearch,
+                  tooltip: l10n.mentionSearchHint,
+                  icon: const Icon(Icons.manage_search),
+                ),
+                const SizedBox(width: 8),
                 IconButton.filledTonal(
                   key: const ValueKey('workspace-files-refresh'),
                   onPressed: onRefresh,

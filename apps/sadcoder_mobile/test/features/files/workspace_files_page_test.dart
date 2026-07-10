@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/features/files/workspace_files_page.dart';
+import 'package:sadcoder_mobile/src/files/file_search_reader.dart';
 import 'package:sadcoder_mobile/src/files/workspace_directory_reader.dart';
 import 'package:sadcoder_mobile/src/files/workspace_file_failure.dart';
 import 'package:sadcoder_mobile/src/files/workspace_file_kind.dart';
@@ -199,6 +200,65 @@ void main() {
 
     expect(find.text('pubspec.yaml'), findsWidgets);
     expect(find.text('README.md'), findsNothing);
+  });
+
+  testWidgets('opens remote file search results from the current root', (
+    tester,
+  ) async {
+    final searchCalls = <_FileSearchCall>[];
+    final directoryReader = _FakeWorkspaceDirectoryReader({
+      '': [_entry(path: 'README.md', name: 'README.md')],
+    });
+    const code = 'class SearchHit {}';
+    final fileReader = _FakeWorkspaceFileReader(
+      stats: {'lib/search_hit.dart': _stat(path: 'lib/search_hit.dart')},
+      chunks: {
+        'lib/search_hit.dart': [
+          _chunk(
+            path: 'lib/search_hit.dart',
+            content: code,
+            sizeBytes: code.length,
+          ),
+        ],
+      },
+    );
+    final searchReader = _FakeFileSearchReader(
+      calls: searchCalls,
+      page: const FileSearchResultPage(
+        files: [
+          FileSearchMatch(
+            root: '/repo',
+            path: 'lib/search_hit.dart',
+            matchType: 'fuzzy',
+            fileName: 'search_hit.dart',
+            score: 10,
+            indices: [4],
+          ),
+        ],
+      ),
+    );
+
+    await _pumpFilesPage(
+      tester,
+      directoryReader: directoryReader,
+      fileReader: fileReader,
+      fileSearchReader: searchReader,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-remote-search')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(searchCalls.single.roots, ['/repo']);
+    expect(find.text('lib/search_hit.dart'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('chat-mention-file-lib/search_hit.dart')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('class SearchHit'), findsOneWidget);
   });
 
   testWidgets('formats file row metadata with the active locale', (
@@ -541,6 +601,7 @@ Future<void> _pumpFilesPage(
   WidgetTester tester, {
   WorkspaceDirectoryReader? directoryReader,
   WorkspaceFileReader? fileReader,
+  FileSearchReader? fileSearchReader,
   String? root = '/repo',
   ThemeMode themeMode = ThemeMode.light,
   Locale? locale,
@@ -568,6 +629,7 @@ Future<void> _pumpFilesPage(
           root: root,
           directoryReader: directoryReader,
           fileReader: fileReader,
+          fileSearchReader: fileSearchReader,
           configOverrideController: configOverrideController,
           threadDetailController: threadDetailController,
         ),
@@ -756,6 +818,30 @@ class _FakeWorkspaceFileReader implements WorkspaceFileReader {
     }
     return chunk;
   }
+}
+
+class _FakeFileSearchReader implements FileSearchReader {
+  const _FakeFileSearchReader({required this.page, this.calls});
+
+  final FileSearchResultPage page;
+  final List<_FileSearchCall>? calls;
+
+  @override
+  Future<FileSearchResultPage> searchFiles({
+    required String query,
+    List<String> roots = const [],
+    String? cancellationToken,
+  }) async {
+    calls?.add(_FileSearchCall(query: query, roots: roots));
+    return page;
+  }
+}
+
+class _FileSearchCall {
+  const _FileSearchCall({required this.query, required this.roots});
+
+  final String query;
+  final List<String> roots;
 }
 
 class _RecordingWorkspaceFileReader implements WorkspaceFileReader {
