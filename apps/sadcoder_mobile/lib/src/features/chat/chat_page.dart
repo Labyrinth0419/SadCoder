@@ -18,6 +18,7 @@ import '../../mcp/mcp_server_status_reader.dart';
 import '../../models/model_list_controller.dart';
 import '../../permissions/permission_profile_list_controller.dart';
 import '../../permissions/permission_profile_list_reader.dart';
+import '../../plugins/plugin_list_reader.dart';
 import '../../reviews/thread_review_command.dart';
 import '../../security/permission_risk.dart';
 import '../../session/codex_session_state_controller.dart';
@@ -596,7 +597,11 @@ class _ChatPageState extends State<ChatPage> {
     final install = parts.length == 2 && command == 'install';
     final uninstall =
         parts.length == 2 && (command == 'uninstall' || command == 'remove');
-    if (parts.isNotEmpty && !install && !uninstall) {
+    final marketplaceKinds = _pluginMarketplaceKindsFromArguments(parts);
+    if (parts.isNotEmpty &&
+        !install &&
+        !uninstall &&
+        marketplaceKinds == null) {
       return null;
     }
 
@@ -630,7 +635,10 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     try {
-      final page = await reader.listPlugins(cwds: cwds);
+      final page = await reader.listPlugins(
+        cwds: cwds,
+        marketplaceKinds: marketplaceKinds ?? const [],
+      );
       return buildPluginsSummary(l10n: l10n, page: page);
     } on Object catch (error) {
       return '${l10n.pluginsTitle}\n${l10n.pluginsLoadFailed}: $error';
@@ -1667,6 +1675,37 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     return const [];
+  }
+
+  List<PluginMarketplaceKind>? _pluginMarketplaceKindsFromArguments(
+    List<String> parts,
+  ) {
+    if (parts.isEmpty) {
+      return const [];
+    }
+    final kind = switch (parts) {
+      [final rawKind] => _parsePluginMarketplaceKind(rawKind),
+      ['marketplace' || 'marketplaces', final rawKind] =>
+        _parsePluginMarketplaceKind(rawKind),
+      _ => null,
+    };
+    return kind == null ? null : [kind];
+  }
+
+  PluginMarketplaceKind? _parsePluginMarketplaceKind(String value) {
+    final normalized = value.trim().toLowerCase().replaceAll('_', '-');
+    for (final kind in PluginMarketplaceKind.values) {
+      final normalizedName = kind.name
+          .replaceAllMapped(
+            RegExp(r'[A-Z]'),
+            (match) => '-${match.group(0)!.toLowerCase()}',
+          )
+          .toLowerCase();
+      if (normalized == kind.wireName || normalized == normalizedName) {
+        return kind;
+      }
+    }
+    return null;
   }
 
   Future<String?> _resolvePlanModeModel() async {

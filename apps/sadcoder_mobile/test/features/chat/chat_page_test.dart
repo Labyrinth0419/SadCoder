@@ -3821,6 +3821,61 @@ void main() {
     expect(find.textContaining('linear (linear): installed'), findsOneWidget);
   });
 
+  testWidgets('/plugins filters by marketplace kind', (tester) async {
+    final approvalController = ApprovalStateController();
+    final pluginReader = _RecordingPluginListReader(
+      page: PluginListPage.fromJson({
+        'marketplaces': [
+          {
+            'name': 'workspace',
+            'plugins': [
+              {
+                'id': 'local-helper',
+                'name': 'local-helper',
+                'source': {'type': 'local', 'path': '/repo/.codex/plugins'},
+                'installed': false,
+                'enabled': false,
+                'installPolicy': 'AVAILABLE',
+                'authPolicy': 'NONE',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    final turnRunner = _FakeTurnRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+      pluginListReader: pluginReader,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+
+    await _pumpChatPage(tester, sessionController: sessionController);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/plugins marketplace workspace-directory',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(pluginReader.marketplaceKinds, [
+      [PluginMarketplaceKind.workspaceDirectory],
+    ]);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(find.textContaining('local-helper'), findsOneWidget);
+  });
+
   testWidgets(
     '/plugins unsupported arguments do not refresh or send a prompt',
     (tester) async {

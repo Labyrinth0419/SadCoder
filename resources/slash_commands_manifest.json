@@ -564,7 +564,7 @@
     {
       "command": "plugins",
       "aliases": [],
-      "description": "browse plugins; use install/uninstall <id>",
+      "description": "browse plugins; use install/uninstall <id> or filter by marketplace",
       "supportsInlineArgs": true,
       "availableDuringTask": true,
       "availableInSideConversation": false,

@@ -1998,7 +1998,7 @@ const _slashCommandDescriptions = <String, Map<String, String>>{
     'pets': '选择或隐藏终端 pet',
     'mcp': '列出 MCP 工具；可用 /mcp verbose、reload 或 login <server>',
     'apps': '管理 apps',
-    'plugins': '浏览插件；可用 install/uninstall <id>',
+    'plugins': '浏览插件；可用 install/uninstall <id> 或按 marketplace 过滤',
     'logout': '退出服务器 Codex 账户',
     'quit': '关闭当前 App 会话/代理连接',
     'exit': '关闭当前 App 会话/代理连接',
@@ -2032,7 +2032,7 @@ const _slashCommandArgumentHints = <String, Map<String, String>>{
     'usage': '[refresh]',
     'pets': '<show|hide>',
     'mcp': '<verbose|reload|login server>',
-    'plugins': '<install|uninstall> <id>',
+    'plugins': '<install|uninstall> <id> | [marketplace] <kind>',
   },
   'zh': {
     'ide': '<查询>',
@@ -2050,7 +2050,7 @@ const _slashCommandArgumentHints = <String, Map<String, String>>{
     'usage': '[refresh]',
     'pets': '<show|hide>',
     'mcp': '<verbose|reload|login server>',
-    'plugins': '<install|uninstall> <id>',
+    'plugins': '<install|uninstall> <id> | [marketplace] <kind>',
   },
 };
 
