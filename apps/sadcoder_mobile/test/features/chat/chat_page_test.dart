@@ -149,6 +149,28 @@ void main() {
     expect(find.byKey(const ValueKey('slash-command-app')), findsNothing);
   });
 
+  testWidgets('slash command palette can show diagnostic commands', (
+    tester,
+  ) async {
+    final appearanceController = AppAppearanceController(
+      showUnavailableSlashCommands: true,
+    );
+    addTearDown(appearanceController.dispose);
+
+    await _pumpChatPage(tester, appearanceController: appearanceController);
+
+    await tester.tap(find.byKey(const ValueKey('chat-slash-command-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('slash-command-search-field')),
+      'rollout',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('slash-command-rollout')), findsOneWidget);
+    expect(find.text('/rollout'), findsOneWidget);
+  });
+
   testWidgets('slash command palette searches localized descriptions', (
     tester,
   ) async {

@@ -96,12 +96,14 @@ class AppAppearanceController extends ChangeNotifier {
         AppComposerSendShortcut.enter,
     AppTerminalPetPreference terminalPetPreference =
         AppTerminalPetPreference.tuiOnly,
+    bool showUnavailableSlashCommands = false,
   }) : _theme = theme,
        _titleDisplay = titleDisplay,
        _statusLineDisplay = statusLineDisplay,
        _composerInputMode = composerInputMode,
        _composerSendShortcut = composerSendShortcut,
-       _terminalPetPreference = terminalPetPreference;
+       _terminalPetPreference = terminalPetPreference,
+       _showUnavailableSlashCommands = showUnavailableSlashCommands;
 
   AppThemePreference _theme;
   AppTitleDisplaySettings _titleDisplay;
@@ -109,6 +111,7 @@ class AppAppearanceController extends ChangeNotifier {
   AppComposerInputMode _composerInputMode;
   AppComposerSendShortcut _composerSendShortcut;
   AppTerminalPetPreference _terminalPetPreference;
+  bool _showUnavailableSlashCommands;
 
   AppThemePreference get theme => _theme;
 
@@ -123,6 +126,8 @@ class AppAppearanceController extends ChangeNotifier {
   AppComposerSendShortcut get composerSendShortcut => _composerSendShortcut;
 
   AppTerminalPetPreference get terminalPetPreference => _terminalPetPreference;
+
+  bool get showUnavailableSlashCommands => _showUnavailableSlashCommands;
 
   void setTheme(AppThemePreference theme) {
     if (_theme == theme) {
@@ -169,6 +174,14 @@ class AppAppearanceController extends ChangeNotifier {
       return;
     }
     _terminalPetPreference = preference;
+    notifyListeners();
+  }
+
+  void setShowUnavailableSlashCommands(bool value) {
+    if (_showUnavailableSlashCommands == value) {
+      return;
+    }
+    _showUnavailableSlashCommands = value;
     notifyListeners();
   }
 }

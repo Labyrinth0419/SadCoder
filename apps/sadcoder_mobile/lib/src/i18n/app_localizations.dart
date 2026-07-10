@@ -407,6 +407,10 @@ class AppLocalizations {
   String get terminalPetTuiOnly => _text('terminalPetTuiOnly');
   String get terminalPetHidden => _text('terminalPetHidden');
   String get applyTerminalPetDisplay => _text('applyTerminalPetDisplay');
+  String get showUnavailableSlashCommands =>
+      _text('showUnavailableSlashCommands');
+  String get showUnavailableSlashCommandsBody =>
+      _text('showUnavailableSlashCommandsBody');
   String get diffTitle => _text('diffTitle');
   String get diffUnavailable => _text('diffUnavailable');
   String get diffNotGitRepository => _text('diffNotGitRepository');
@@ -1111,6 +1115,9 @@ const _values = <String, Map<String, String>>{
     'terminalPetTuiOnly': 'TUI-only',
     'terminalPetHidden': 'Hidden on mobile',
     'applyTerminalPetDisplay': 'Apply pet display',
+    'showUnavailableSlashCommands': 'Show unavailable commands',
+    'showUnavailableSlashCommandsBody':
+        'Include desktop-only and diagnostic slash commands in the command palette.',
     'diffTitle': 'Git diff',
     'diffUnavailable': 'Connect to a host to compute git diff.',
     'diffNotGitRepository':
@@ -1670,6 +1677,8 @@ const _values = <String, Map<String, String>>{
     'terminalPetTuiOnly': '仅 TUI',
     'terminalPetHidden': '在移动端隐藏',
     'applyTerminalPetDisplay': '应用终端宠物显示',
+    'showUnavailableSlashCommands': '显示不可用命令',
+    'showUnavailableSlashCommandsBody': '在命令面板中显示桌面端专属和诊断用斜杠命令。',
     'diffTitle': 'Git 差异',
     'diffUnavailable': '连接到主机后才能计算 Git 差异。',
     'diffNotGitRepository': '当前工作区不在 Git 仓库中。',

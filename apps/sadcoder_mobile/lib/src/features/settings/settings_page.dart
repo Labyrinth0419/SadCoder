@@ -245,6 +245,16 @@ class _AppearanceSettingsContent extends StatelessWidget {
                 controller.setTheme(selection.single);
               },
             ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              key: const ValueKey('settings-show-unavailable-slash-commands'),
+              contentPadding: EdgeInsets.zero,
+              secondary: const Icon(Icons.bug_report_outlined),
+              title: Text(l10n.showUnavailableSlashCommands),
+              subtitle: Text(l10n.showUnavailableSlashCommandsBody),
+              value: controller.showUnavailableSlashCommands,
+              onChanged: controller.setShowUnavailableSlashCommands,
+            ),
           ],
         ),
       ),

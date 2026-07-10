@@ -162,6 +162,35 @@ void main() {
     expect(appearanceController.theme, AppThemePreference.dark);
   });
 
+  testWidgets('toggles unavailable slash command display from settings', (
+    tester,
+  ) async {
+    final overrideController = CodexConfigOverrideController();
+    final appearanceController = AppAppearanceController();
+    addTearDown(overrideController.dispose);
+    addTearDown(appearanceController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      appearanceController: appearanceController,
+    );
+
+    expect(appearanceController.showUnavailableSlashCommands, false);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-show-unavailable-slash-commands')),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-show-unavailable-slash-commands')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(appearanceController.showUnavailableSlashCommands, true);
+  });
+
   testWidgets('toggles active-turn background connection retention', (
     tester,
   ) async {

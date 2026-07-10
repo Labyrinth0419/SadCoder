@@ -337,6 +337,8 @@ class _ChatPageState extends State<ChatPage> {
         registry: widget.registry,
         hasActiveTurn: widget.turnController?.activeTurnId != null,
         isSideConversation: _sideConversation != null,
+        showUnavailableCommands:
+            widget.appearanceController?.showUnavailableSlashCommands ?? false,
         onSelected: _selectSlashCommand,
       );
     } finally {

@@ -144,4 +144,20 @@ void main() {
     expect(controller.terminalPetPreference, AppTerminalPetPreference.hidden);
     expect(notifications, 1);
   });
+
+  test(
+    'controller notifies when unavailable slash command display changes',
+    () {
+      final controller = AppAppearanceController();
+      addTearDown(controller.dispose);
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      controller.setShowUnavailableSlashCommands(true);
+      controller.setShowUnavailableSlashCommands(true);
+
+      expect(controller.showUnavailableSlashCommands, true);
+      expect(notifications, 1);
+    },
+  );
 }
