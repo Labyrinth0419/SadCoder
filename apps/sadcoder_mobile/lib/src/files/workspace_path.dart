@@ -40,7 +40,7 @@ class WorkspacePath {
 
 String _normalizeRoot(String root) {
   var normalized = root.trim();
-  if (normalized.isEmpty || !_isAbsolutePath(normalized)) {
+  if (normalized.isEmpty || !_isAbsoluteRootPath(normalized)) {
     throw const WorkspaceFileException(
       WorkspaceFileFailureCode.noCwd,
       'Workspace root is not available.',
@@ -106,6 +106,19 @@ bool _isAbsolutePath(String path) {
     return true;
   }
   if (RegExp(r'^[A-Za-z]:').hasMatch(path)) {
+    return true;
+  }
+  return false;
+}
+
+bool _isAbsoluteRootPath(String path) {
+  if (path.startsWith('/')) {
+    return true;
+  }
+  if (path.startsWith(r'\\')) {
+    return true;
+  }
+  if (RegExp(r'^[A-Za-z]:[\\/]').hasMatch(path)) {
     return true;
   }
   return false;
