@@ -52,9 +52,9 @@ Backend selection is controlled by `--backend` or `SADCODER_BACKEND`:
   app-server daemon.
 - `stdio` forces the direct stdio debug path; SSH disconnect can end that
   app-server process.
-- `daemon` is accepted for compatibility, but is disabled because npm/NVM Codex
-  CLIs can expose daemon commands that still require the official standalone
-  installer layout.
+- `daemon` is accepted for compatibility, but falls back to stdio because
+  npm/NVM Codex CLIs can expose daemon commands that still require the official
+  standalone installer layout.
 
 `slash-commands --json` prints the shared slash command manifest from
 `resources/slash_commands_manifest.json`. The manifest tracks the current Codex

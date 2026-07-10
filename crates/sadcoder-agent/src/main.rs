@@ -550,10 +550,7 @@ fn select_backend(backend_mode: BackendMode) -> Result<SelectedBackend, String> 
     match backend_mode {
         BackendMode::Auto => Ok(SelectedBackend::Service),
         BackendMode::Stdio => Ok(SelectedBackend::Stdio),
-        BackendMode::Daemon => Err(
-            "official Codex app-server daemon backend is disabled in SadCoder; use auto or stdio"
-                .into(),
-        ),
+        BackendMode::Daemon => Ok(SelectedBackend::Stdio),
     }
 }
 
@@ -1122,7 +1119,7 @@ mod tests {
     }
 
     #[test]
-    fn backend_selection_uses_service_by_default_and_rejects_daemon() {
+    fn backend_selection_uses_service_by_default_and_falls_back_from_daemon() {
         assert_eq!(
             select_backend(BackendMode::Auto),
             Ok(SelectedBackend::Service)
@@ -1131,10 +1128,9 @@ mod tests {
             select_backend(BackendMode::Stdio),
             Ok(SelectedBackend::Stdio)
         );
-        assert!(
-            select_backend(BackendMode::Daemon)
-                .expect_err("daemon should not be selected")
-                .contains("disabled")
+        assert_eq!(
+            select_backend(BackendMode::Daemon),
+            Ok(SelectedBackend::Stdio)
         );
     }
 
