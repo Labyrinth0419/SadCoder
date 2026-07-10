@@ -481,14 +481,31 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<String?> _buildMcpSummary(String arguments) async {
-    final normalized = arguments.trim().toLowerCase();
-    final verbose = normalized == 'verbose';
-    final reload = normalized == 'reload' || normalized == 'refresh';
-    if (normalized.isNotEmpty && !verbose && !reload) {
+    final parts = arguments
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+    final command = parts.isEmpty ? '' : parts.first.toLowerCase();
+    final verbose = parts.length == 1 && command == 'verbose';
+    final reload =
+        parts.length == 1 && (command == 'reload' || command == 'refresh');
+    final oauthLogin =
+        parts.length == 2 &&
+        (command == 'login' || command == 'oauth' || command == 'auth');
+    if (parts.isNotEmpty && !verbose && !reload && !oauthLogin) {
       return null;
     }
 
     final l10n = context.l10n;
+    if (oauthLogin) {
+      final runner = widget.sessionController?.mcpServerOAuthRunner;
+      if (runner == null) {
+        return null;
+      }
+      final result = await runner.startOAuthLogin(serverName: parts[1]);
+      return buildMcpServerOAuthLoginSummary(l10n: l10n, result: result);
+    }
     if (reload) {
       final runner = widget.sessionController?.mcpServerConfigRunner;
       if (runner == null) {

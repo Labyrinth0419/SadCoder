@@ -68,6 +68,12 @@ class CodexAppServerClient {
     return _request('config/mcpServer/reload');
   }
 
+  Future<Map<String, Object?>> startMcpServerOAuthLogin({
+    required String serverName,
+  }) {
+    return _request('mcpServer/oauth/login', {'serverName': serverName.trim()});
+  }
+
   Future<Map<String, Object?>> readAccount({bool refreshToken = false}) {
     return _request('account/read', {'refreshToken': refreshToken});
   }

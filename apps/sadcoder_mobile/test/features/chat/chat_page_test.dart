@@ -31,6 +31,7 @@ import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_config_runner.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_server_oauth_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_controller.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_controller.dart';
@@ -3329,6 +3330,53 @@ void main() {
     );
   });
 
+  testWidgets('/mcp login starts OAuth login for a server', (tester) async {
+    final oauthRunner = _RecordingMcpServerOAuthRunner(
+      result: const McpServerOAuthLoginResult(
+        serverName: 'github',
+        authorizationUrl: 'https://example.test/oauth',
+        userCode: 'ABCD-1234',
+        raw: <String, Object?>{},
+      ),
+    );
+    final turnRunner = _FakeTurnRunner();
+    final sessionController = CodexSessionStateController(
+      connector: _FakeSessionStarter(
+        threadListReader: const _FakeThreadListReader(
+          page: ThreadListPage(threads: []),
+        ),
+        turnRunner: turnRunner,
+        mcpServerOAuthRunner: oauthRunner,
+      ),
+      approvalController: ApprovalStateController(),
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(sessionController.approvalController.dispose);
+    await sessionController.connect(_profile);
+
+    await _pumpChatPage(tester, sessionController: sessionController);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/mcp login github',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(oauthRunner.serverNames, ['github']);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(
+      find.textContaining('Started MCP OAuth login for github.'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Open URL: https://example.test/oauth'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Code: ABCD-1234'), findsOneWidget);
+  });
+
   testWidgets('/mcp unsupported arguments do not refresh or send a prompt', (
     tester,
   ) async {
@@ -5844,6 +5892,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.gitDiffReader = const _FakeGitDiffReader(),
     this.fileSearchReader = const _FakeFileSearchReader(),
     this.mcpServerConfigRunner = const _FakeMcpServerConfigRunner(),
+    this.mcpServerOAuthRunner = const _FakeMcpServerOAuthRunner(),
   });
 
   final ThreadListReader threadListReader;
@@ -5861,6 +5910,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final GitDiffReader gitDiffReader;
   final FileSearchReader fileSearchReader;
   final McpServerConfigRunner mcpServerConfigRunner;
+  final McpServerOAuthRunner mcpServerOAuthRunner;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -5886,6 +5936,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       workspaceDirectoryReader: const _FakeWorkspaceDirectoryReader(),
       workspaceFileReader: const _FakeWorkspaceFileReader(),
       mcpServerConfigRunner: mcpServerConfigRunner,
+      mcpServerOAuthRunner: mcpServerOAuthRunner,
     );
   }
 }
@@ -5910,6 +5961,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.workspaceDirectoryReader,
     required this.workspaceFileReader,
     required this.mcpServerConfigRunner,
+    required this.mcpServerOAuthRunner,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -5967,6 +6019,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final McpServerConfigRunner mcpServerConfigRunner;
+
+  @override
+  final McpServerOAuthRunner mcpServerOAuthRunner;
 
   @override
   ModelListReader get modelListReader => const _FakeModelListReader();
@@ -6407,6 +6462,35 @@ class _RecordingMcpServerConfigRunner implements McpServerConfigRunner {
   @override
   Future<void> reloadMcpServers() async {
     reloadCalls++;
+  }
+}
+
+class _FakeMcpServerOAuthRunner implements McpServerOAuthRunner {
+  const _FakeMcpServerOAuthRunner();
+
+  @override
+  Future<McpServerOAuthLoginResult> startOAuthLogin({
+    required String serverName,
+  }) async {
+    return McpServerOAuthLoginResult(
+      serverName: serverName,
+      raw: const <String, Object?>{},
+    );
+  }
+}
+
+class _RecordingMcpServerOAuthRunner implements McpServerOAuthRunner {
+  _RecordingMcpServerOAuthRunner({required this.result});
+
+  final McpServerOAuthLoginResult result;
+  final serverNames = <String>[];
+
+  @override
+  Future<McpServerOAuthLoginResult> startOAuthLogin({
+    required String serverName,
+  }) async {
+    serverNames.add(serverName);
+    return result;
   }
 }
 

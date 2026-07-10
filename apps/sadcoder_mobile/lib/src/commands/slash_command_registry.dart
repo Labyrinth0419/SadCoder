@@ -573,10 +573,12 @@ const builtInSlashCommands = <SlashCommandSpec>[
   ),
   SlashCommandSpec(
     command: 'mcp',
-    description: 'list configured MCP tools; use /mcp verbose or /mcp reload',
+    description:
+        'list configured MCP tools; use /mcp verbose, reload, or login <server>',
     supportsInlineArgs: true,
     mappingType: SlashCommandMappingType.appServer,
-    mappingTarget: 'mcpServerStatus/list + config/mcpServer/reload',
+    mappingTarget:
+        'mcpServerStatus/list + config/mcpServer/reload + mcpServer/oauth/login',
     phase: SlashCommandPhase.secondStage,
   ),
   SlashCommandSpec(

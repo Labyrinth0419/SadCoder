@@ -28,6 +28,7 @@ import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_config_runner.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_server_oauth_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
@@ -893,6 +894,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
       const _FakeMcpServerConfigRunner();
 
   @override
+  McpServerOAuthRunner get mcpServerOAuthRunner =>
+      const _FakeMcpServerOAuthRunner();
+
+  @override
   McpServerStatusReader get mcpServerStatusReader =>
       const _FakeMcpServerStatusReader();
 
@@ -1098,6 +1103,20 @@ class _FakeMcpServerConfigRunner implements McpServerConfigRunner {
 
   @override
   Future<void> reloadMcpServers() async {}
+}
+
+class _FakeMcpServerOAuthRunner implements McpServerOAuthRunner {
+  const _FakeMcpServerOAuthRunner();
+
+  @override
+  Future<McpServerOAuthLoginResult> startOAuthLogin({
+    required String serverName,
+  }) async {
+    return McpServerOAuthLoginResult(
+      serverName: serverName,
+      raw: const <String, Object?>{},
+    );
+  }
 }
 
 class _FakeMcpServerStatusReader implements McpServerStatusReader {

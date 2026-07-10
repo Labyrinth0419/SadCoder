@@ -1,4 +1,5 @@
 import '../../i18n/app_localizations.dart';
+import '../../mcp/mcp_server_oauth_runner.dart';
 import '../../mcp/mcp_server_status_controller.dart';
 import '../../mcp/mcp_server_status_reader.dart';
 
@@ -41,6 +42,26 @@ String buildMcpServerStatusSummary({
     lines.add(l10n.mcpServersMore);
   }
 
+  return lines.join('\n');
+}
+
+String buildMcpServerOAuthLoginSummary({
+  required AppLocalizations l10n,
+  required McpServerOAuthLoginResult result,
+}) {
+  final lines = <String>[l10n.mcpServersOAuthLoginStarted(result.serverName)];
+  final message = result.message;
+  if (message != null) {
+    lines.add(message);
+  }
+  final url = result.bestUrl;
+  if (url != null) {
+    lines.add(l10n.mcpServersOAuthUrl(url));
+  }
+  final userCode = result.userCode;
+  if (userCode != null) {
+    lines.add(l10n.mcpServersOAuthUserCode(userCode));
+  }
   return lines.join('\n');
 }
 

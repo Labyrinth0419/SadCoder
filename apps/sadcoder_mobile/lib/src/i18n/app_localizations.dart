@@ -467,6 +467,12 @@ class AppLocalizations {
   String get backgroundTerminalRss => _text('backgroundTerminalRss');
   String get mcpServersStatus => _text('mcpServersStatus');
   String get mcpServersReloaded => _text('mcpServersReloaded');
+  String mcpServersOAuthLoginStarted(String server) =>
+      _text('mcpServersOAuthLoginStarted').replaceAll('{server}', server);
+  String mcpServersOAuthUrl(String url) =>
+      _text('mcpServersOAuthUrl').replaceAll('{url}', url);
+  String mcpServersOAuthUserCode(String code) =>
+      _text('mcpServersOAuthUserCode').replaceAll('{code}', code);
   String get mcpServersUnavailable => _text('mcpServersUnavailable');
   String get mcpServersLoadFailed => _text('mcpServersLoadFailed');
   String get mcpServersEmpty => _text('mcpServersEmpty');
@@ -1123,6 +1129,9 @@ const _values = <String, Map<String, String>>{
     'backgroundTerminalRss': 'memory',
     'mcpServersStatus': 'MCP servers',
     'mcpServersReloaded': 'Reloaded MCP server configuration.',
+    'mcpServersOAuthLoginStarted': 'Started MCP OAuth login for {server}.',
+    'mcpServersOAuthUrl': 'Open URL: {url}',
+    'mcpServersOAuthUserCode': 'Code: {code}',
     'mcpServersUnavailable': 'Connect to a host, then run /mcp.',
     'mcpServersLoadFailed': 'Failed to load MCP servers',
     'mcpServersEmpty': 'No MCP servers configured.',
@@ -1643,6 +1652,9 @@ const _values = <String, Map<String, String>>{
     'backgroundTerminalRss': '内存',
     'mcpServersStatus': 'MCP 服务器',
     'mcpServersReloaded': '已重新加载 MCP 服务器配置。',
+    'mcpServersOAuthLoginStarted': '已为 {server} 启动 MCP OAuth 登录。',
+    'mcpServersOAuthUrl': '打开 URL：{url}',
+    'mcpServersOAuthUserCode': '验证码：{code}',
     'mcpServersUnavailable': '连接主机后运行 /mcp。',
     'mcpServersLoadFailed': 'MCP 服务器加载失败',
     'mcpServersEmpty': '未配置 MCP 服务器。',

@@ -240,6 +240,20 @@ void main() {
     expect(requests.single.params, isNull);
   });
 
+  test('startMcpServerOAuthLogin uses app-server method name', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
+
+    final client = CodexAppServerClient(transport);
+    await client.startMcpServerOAuthLogin(serverName: ' github ');
+
+    expect(requests.single.method, 'mcpServer/oauth/login');
+    expect(requests.single.params, {'serverName': 'github'});
+  });
+
   test(
     'startTurn omits unset overrides and sends explicit overrides',
     () async {

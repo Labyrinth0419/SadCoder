@@ -25,6 +25,7 @@ void main() {
     await connection.pluginListReader.listPlugins();
     await connection.hookListReader.listHooks();
     await connection.appListReader.listApps();
+    await connection.mcpServerOAuthRunner.startOAuthLogin(serverName: 'github');
     await connection.accountSnapshotReader.readAccount();
     await connection.accountLogoutRunner.logout();
     await connection.feedbackUploadRunner.uploadFeedback(
@@ -52,6 +53,7 @@ void main() {
       'plugin/list',
       'hooks/list',
       'app/list',
+      'mcpServer/oauth/login',
       'account/read',
       'account/logout',
       'feedback/upload',
@@ -267,6 +269,7 @@ class _LineServerProxyConnector implements AgentProxyConnector {
     'plugin/list' => {'marketplaces': <Object?>[]},
     'hooks/list' => {'data': <Object?>[]},
     'app/list' => {'data': <Object?>[]},
+    'mcpServer/oauth/login' => {'serverName': 'github'},
     'account/read' => {'account': null, 'requiresOpenaiAuth': false},
     'command/exec' => {'exitCode': 128, 'stdout': '', 'stderr': ''},
     'thread/start' => {

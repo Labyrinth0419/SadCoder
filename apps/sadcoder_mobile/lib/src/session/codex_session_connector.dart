@@ -27,8 +27,10 @@ import '../goals/thread_goal_runner.dart';
 import '../hooks/codex_hook_list_reader.dart';
 import '../hooks/hook_list_reader.dart';
 import '../mcp/codex_mcp_server_config_runner.dart';
+import '../mcp/codex_mcp_server_oauth_runner.dart';
 import '../mcp/codex_mcp_server_status_reader.dart';
 import '../mcp/mcp_server_config_runner.dart';
+import '../mcp/mcp_server_oauth_runner.dart';
 import '../mcp/mcp_server_status_reader.dart';
 import '../models/codex_model_list_reader.dart';
 import '../models/model_list_reader.dart';
@@ -82,6 +84,8 @@ abstract interface class CodexSessionConnectionHandle {
   WorkspaceFileReader get workspaceFileReader;
 
   McpServerConfigRunner get mcpServerConfigRunner;
+
+  McpServerOAuthRunner get mcpServerOAuthRunner;
 
   McpServerStatusReader get mcpServerStatusReader;
 
@@ -180,6 +184,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
           CodexWorkspaceCommandRunner(session.client),
         ),
         mcpServerConfigRunner: CodexMcpServerConfigRunner(session.client),
+        mcpServerOAuthRunner: CodexMcpServerOAuthRunner(session.client),
         mcpServerStatusReader: CodexMcpServerStatusReader(session.client),
         modelListReader: CodexModelListReader(session.client),
         permissionProfileListReader: CodexPermissionProfileListReader(
@@ -253,6 +258,7 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
     required this.workspaceFileReader,
     required this.gitDiffReader,
     required this.mcpServerConfigRunner,
+    required this.mcpServerOAuthRunner,
     required this.mcpServerStatusReader,
     required this.modelListReader,
     required this.permissionProfileListReader,
@@ -301,6 +307,8 @@ class CodexSessionConnection implements CodexSessionConnectionHandle {
   final GitDiffReader gitDiffReader;
   @override
   final McpServerConfigRunner mcpServerConfigRunner;
+  @override
+  final McpServerOAuthRunner mcpServerOAuthRunner;
   @override
   final McpServerStatusReader mcpServerStatusReader;
   @override

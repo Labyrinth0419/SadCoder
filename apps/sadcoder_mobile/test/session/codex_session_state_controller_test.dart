@@ -26,6 +26,7 @@ import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_config_runner.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_server_oauth_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
@@ -81,6 +82,7 @@ void main() {
     expect(controller.workspaceDirectoryReader, isNotNull);
     expect(controller.workspaceFileReader, isNotNull);
     expect(controller.mcpServerConfigRunner, isNotNull);
+    expect(controller.mcpServerOAuthRunner, isNotNull);
     expect(controller.modelListReader, isNotNull);
     expect(controller.permissionProfileListReader, isNotNull);
     expect(controller.skillListReader, isNotNull);
@@ -724,6 +726,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       workspaceFileReader: const _FakeWorkspaceFileReader(),
       gitDiffReader: const _FakeGitDiffReader(),
       mcpServerConfigRunner: const _FakeMcpServerConfigRunner(),
+      mcpServerOAuthRunner: const _FakeMcpServerOAuthRunner(),
       mcpServerStatusReader: const _FakeMcpServerStatusReader(),
       modelListReader: const _FakeModelListReader(),
       permissionProfileListReader: const _FakePermissionProfileListReader(),
@@ -873,6 +876,20 @@ class _FakeMcpServerConfigRunner implements McpServerConfigRunner {
 
   @override
   Future<void> reloadMcpServers() async {}
+}
+
+class _FakeMcpServerOAuthRunner implements McpServerOAuthRunner {
+  const _FakeMcpServerOAuthRunner();
+
+  @override
+  Future<McpServerOAuthLoginResult> startOAuthLogin({
+    required String serverName,
+  }) async {
+    return McpServerOAuthLoginResult(
+      serverName: serverName,
+      raw: const <String, Object?>{},
+    );
+  }
 }
 
 class _FakeAccountUsageSnapshotReader implements AccountUsageSnapshotReader {
