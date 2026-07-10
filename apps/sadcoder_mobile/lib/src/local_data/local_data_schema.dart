@@ -4,6 +4,15 @@ enum LocalDataRetention { durable, reconnectCache, diagnostic }
 
 enum LocalDataContentPolicy { metadataOnly, mayContainProjectContent }
 
+enum LocalDataColumnPrivacy {
+  publicMetadata,
+  credentialReference,
+  localSettingsPayload,
+  remoteStatePayload,
+  projectContentPayload,
+  redactedDiagnosticPayload,
+}
+
 class LocalDataColumn {
   const LocalDataColumn({
     required this.name,
@@ -11,6 +20,7 @@ class LocalDataColumn {
     this.nullable = false,
     this.primaryKey = false,
     this.defaultValue,
+    this.privacy = LocalDataColumnPrivacy.publicMetadata,
   });
 
   final String name;
@@ -18,6 +28,7 @@ class LocalDataColumn {
   final bool nullable;
   final bool primaryKey;
   final String? defaultValue;
+  final LocalDataColumnPrivacy privacy;
 
   String get sql {
     final parts = <String>[name, type];
@@ -99,7 +110,12 @@ class LocalDataSchema {
         LocalDataColumn(name: 'port', type: 'INTEGER'),
         LocalDataColumn(name: 'username', type: 'TEXT'),
         LocalDataColumn(name: 'auth_type', type: 'TEXT'),
-        LocalDataColumn(name: 'credential_ref', type: 'TEXT', nullable: true),
+        LocalDataColumn(
+          name: 'credential_ref',
+          type: 'TEXT',
+          nullable: true,
+          privacy: LocalDataColumnPrivacy.credentialReference,
+        ),
         LocalDataColumn(name: 'default_cwd', type: 'TEXT', nullable: true),
         LocalDataColumn(name: 'agent_command', type: 'TEXT', nullable: true),
         LocalDataColumn(name: 'updated_at_ms', type: 'INTEGER'),
@@ -164,11 +180,20 @@ class LocalDataSchema {
         LocalDataColumn(name: 'session_id', type: 'TEXT', nullable: true),
         LocalDataColumn(name: 'profile_id', type: 'TEXT', nullable: true),
         LocalDataColumn(name: 'cwd', type: 'TEXT', nullable: true),
-        LocalDataColumn(name: 'preview', type: 'TEXT', nullable: true),
+        LocalDataColumn(
+          name: 'preview',
+          type: 'TEXT',
+          nullable: true,
+          privacy: LocalDataColumnPrivacy.projectContentPayload,
+        ),
         LocalDataColumn(name: 'status', type: 'TEXT'),
         LocalDataColumn(name: 'updated_at_ms', type: 'INTEGER'),
         LocalDataColumn(name: 'cached_at_ms', type: 'INTEGER'),
-        LocalDataColumn(name: 'raw_json', type: 'TEXT'),
+        LocalDataColumn(
+          name: 'raw_json',
+          type: 'TEXT',
+          privacy: LocalDataColumnPrivacy.projectContentPayload,
+        ),
       ],
       indexes: [
         LocalDataIndex(
@@ -190,8 +215,17 @@ class LocalDataSchema {
         LocalDataColumn(name: 'turn_id', type: 'TEXT', nullable: true),
         LocalDataColumn(name: 'item_type', type: 'TEXT'),
         LocalDataColumn(name: 'status', type: 'TEXT', nullable: true),
-        LocalDataColumn(name: 'summary', type: 'TEXT', nullable: true),
-        LocalDataColumn(name: 'raw_json', type: 'TEXT'),
+        LocalDataColumn(
+          name: 'summary',
+          type: 'TEXT',
+          nullable: true,
+          privacy: LocalDataColumnPrivacy.projectContentPayload,
+        ),
+        LocalDataColumn(
+          name: 'raw_json',
+          type: 'TEXT',
+          privacy: LocalDataColumnPrivacy.projectContentPayload,
+        ),
         LocalDataColumn(name: 'cached_at_ms', type: 'INTEGER'),
       ],
       indexes: [
@@ -212,9 +246,17 @@ class LocalDataSchema {
         LocalDataColumn(name: 'request_id', type: 'TEXT', primaryKey: true),
         LocalDataColumn(name: 'thread_id', type: 'TEXT', nullable: true),
         LocalDataColumn(name: 'kind', type: 'TEXT'),
-        LocalDataColumn(name: 'title', type: 'TEXT'),
+        LocalDataColumn(
+          name: 'title',
+          type: 'TEXT',
+          privacy: LocalDataColumnPrivacy.projectContentPayload,
+        ),
         LocalDataColumn(name: 'requested_at_ms', type: 'INTEGER'),
-        LocalDataColumn(name: 'raw_json', type: 'TEXT'),
+        LocalDataColumn(
+          name: 'raw_json',
+          type: 'TEXT',
+          privacy: LocalDataColumnPrivacy.projectContentPayload,
+        ),
       ],
       indexes: [
         LocalDataIndex(
@@ -231,7 +273,11 @@ class LocalDataSchema {
       contentPolicy: LocalDataContentPolicy.metadataOnly,
       columns: [
         LocalDataColumn(name: 'key', type: 'TEXT', primaryKey: true),
-        LocalDataColumn(name: 'value_json', type: 'TEXT'),
+        LocalDataColumn(
+          name: 'value_json',
+          type: 'TEXT',
+          privacy: LocalDataColumnPrivacy.localSettingsPayload,
+        ),
         LocalDataColumn(name: 'updated_at_ms', type: 'INTEGER'),
       ],
     ),
@@ -245,7 +291,11 @@ class LocalDataSchema {
         LocalDataColumn(name: 'profile_id', type: 'TEXT', nullable: true),
         LocalDataColumn(name: 'cwd', type: 'TEXT', nullable: true),
         LocalDataColumn(name: 'captured_at_ms', type: 'INTEGER'),
-        LocalDataColumn(name: 'raw_json', type: 'TEXT'),
+        LocalDataColumn(
+          name: 'raw_json',
+          type: 'TEXT',
+          privacy: LocalDataColumnPrivacy.remoteStatePayload,
+        ),
       ],
       indexes: [
         LocalDataIndex(
@@ -264,7 +314,11 @@ class LocalDataSchema {
         LocalDataColumn(name: 'id', type: 'TEXT', primaryKey: true),
         LocalDataColumn(name: 'name', type: 'TEXT'),
         LocalDataColumn(name: 'scope', type: 'TEXT'),
-        LocalDataColumn(name: 'overrides_json', type: 'TEXT'),
+        LocalDataColumn(
+          name: 'overrides_json',
+          type: 'TEXT',
+          privacy: LocalDataColumnPrivacy.remoteStatePayload,
+        ),
         LocalDataColumn(name: 'updated_at_ms', type: 'INTEGER'),
       ],
       notes:
@@ -279,7 +333,11 @@ class LocalDataSchema {
       columns: [
         LocalDataColumn(name: 'profile_id', type: 'TEXT', primaryKey: true),
         LocalDataColumn(name: 'cwd', type: 'TEXT', nullable: true),
-        LocalDataColumn(name: 'manifest_json', type: 'TEXT'),
+        LocalDataColumn(
+          name: 'manifest_json',
+          type: 'TEXT',
+          privacy: LocalDataColumnPrivacy.remoteStatePayload,
+        ),
         LocalDataColumn(name: 'cached_at_ms', type: 'INTEGER'),
       ],
     ),
@@ -319,7 +377,11 @@ class LocalDataSchema {
         LocalDataColumn(name: 'method', type: 'TEXT', nullable: true),
         LocalDataColumn(name: 'captured_at_ms', type: 'INTEGER'),
         LocalDataColumn(name: 'redaction_version', type: 'INTEGER'),
-        LocalDataColumn(name: 'redacted_json', type: 'TEXT'),
+        LocalDataColumn(
+          name: 'redacted_json',
+          type: 'TEXT',
+          privacy: LocalDataColumnPrivacy.redactedDiagnosticPayload,
+        ),
       ],
       indexes: [
         LocalDataIndex(

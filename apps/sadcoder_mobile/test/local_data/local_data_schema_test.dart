@@ -61,18 +61,25 @@ void main() {
   test(
     'credential and raw RPC tables keep sensitive data out of plain fields',
     () {
-      final sshColumns = LocalDataSchema.table(
-        'ssh_profiles',
-      ).columns.map((column) => column.name).toSet();
-      expect(sshColumns, isNot(contains('password')));
-      expect(sshColumns, isNot(contains('private_key')));
-      expect(sshColumns, contains('credential_ref'));
+      final sshColumns = {
+        for (final column in LocalDataSchema.table('ssh_profiles').columns)
+          column.name: column,
+      };
+      expect(sshColumns.keys, isNot(contains('password')));
+      expect(sshColumns.keys, isNot(contains('private_key')));
+      expect(
+        sshColumns['credential_ref']?.privacy,
+        LocalDataColumnPrivacy.credentialReference,
+      );
 
       final rpcLogs = LocalDataSchema.table('raw_rpc_logs');
       expect(rpcLogs.requiresExportRedaction, isTrue);
+      final redactedColumn = rpcLogs.columns.singleWhere(
+        (column) => column.name == 'redacted_json',
+      );
       expect(
-        rpcLogs.columns.map((column) => column.name),
-        contains('redacted_json'),
+        redactedColumn.privacy,
+        LocalDataColumnPrivacy.redactedDiagnosticPayload,
       );
       expect(
         rpcLogs.columns.map((column) => column.name),
@@ -80,6 +87,48 @@ void main() {
       );
     },
   );
+
+  test('payload columns carry explicit privacy classifications', () {
+    for (final table in LocalDataSchema.tables) {
+      for (final column in table.columns) {
+        if (column.name.endsWith('_json') || column.name == 'preview') {
+          expect(
+            column.privacy,
+            isNot(LocalDataColumnPrivacy.publicMetadata),
+            reason: '${table.name}.${column.name} stores structured payload',
+          );
+        }
+      }
+    }
+  });
+
+  test('project content columns stay in non-durable cache or diagnostics', () {
+    for (final table in LocalDataSchema.tables) {
+      final projectContentColumns = table.columns.where(
+        (column) =>
+            column.privacy == LocalDataColumnPrivacy.projectContentPayload,
+      );
+      for (final column in projectContentColumns) {
+        expect(
+          table.contentPolicy,
+          LocalDataContentPolicy.mayContainProjectContent,
+          reason: '${table.name}.${column.name} may contain project content',
+        );
+        expect(
+          table.retention,
+          isNot(LocalDataRetention.durable),
+          reason: '${table.name}.${column.name} must not be durable',
+        );
+        expect(
+          table.requiresExportRedaction ||
+              table.authority == LocalDataAuthority.remoteCodexAuthoritative,
+          isTrue,
+          reason:
+              '${table.name}.${column.name} needs redaction or remote-cache semantics',
+        );
+      }
+    }
+  });
 
   test('generates stable create statements for tables and indexes', () {
     final statements = LocalDataSchema.createStatements;
