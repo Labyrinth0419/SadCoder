@@ -22,6 +22,7 @@ import '../../plugins/plugin_list_reader.dart';
 import '../../reviews/thread_review_command.dart';
 import '../../security/permission_risk.dart';
 import '../../session/codex_session_state_controller.dart';
+import '../../session/host_session_summary.dart';
 import '../../ssh/ssh_profile.dart';
 import '../../ssh/ssh_profile_store.dart';
 import '../../theme/sadcoder_theme.dart';
@@ -56,13 +57,6 @@ import 'slash_command_palette.dart';
 import 'turn_override_controls.dart';
 
 typedef ChatProfileConnector = Future<void> Function(SshProfile profile);
-
-class ChatHostSessionSummary {
-  const ChatHostSessionSummary({required this.profile, required this.status});
-
-  final SshProfile profile;
-  final CodexSessionStatus status;
-}
 
 class ChatPage extends StatefulWidget {
   const ChatPage({
@@ -102,7 +96,7 @@ class ChatPage extends StatefulWidget {
   final ModelListController? modelListController;
   final PermissionProfileListController? permissionProfileListController;
   final SshProfileStore? profileStore;
-  final List<ChatHostSessionSummary> hostSessions;
+  final List<HostSessionSummary> hostSessions;
   final ChatProfileConnector? profileConnector;
   final SlashCommandActionDispatcher? slashCommandDispatcher;
 
@@ -3650,7 +3644,7 @@ class _ChatConnectionControls extends StatelessWidget {
   final List<SshProfile> profiles;
   final SshProfile? selectedProfile;
   final SshProfile? connectedProfile;
-  final List<ChatHostSessionSummary> hostSessions;
+  final List<HostSessionSummary> hostSessions;
   final CodexSessionStatus status;
   final String connectionLabel;
   final Object? profileLoadError;

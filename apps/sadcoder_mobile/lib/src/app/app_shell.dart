@@ -23,6 +23,7 @@ import '../permissions/permission_profile_list_controller.dart';
 import '../session/codex_session_connector.dart';
 import '../session/codex_session_state_controller.dart';
 import '../session/host_session_manager.dart';
+import '../session/host_session_summary.dart';
 import '../session/session_heartbeat.dart';
 import '../ssh/dart_ssh_proxy_connector.dart';
 import '../ssh/dart_ssh_remote_command_runner.dart';
@@ -325,6 +326,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       0 => HostsPage(
         sessionController: _sessionController,
         profileStore: widget.profileStore,
+        hostSessions: _hostSessions(),
         profileConnector: _connectProfile,
       ),
       1 => ChatPage(
@@ -342,7 +344,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         modelListController: _modelListController,
         permissionProfileListController: _permissionProfileListController,
         profileStore: widget.profileStore,
-        hostSessions: _chatHostSessions(),
+        hostSessions: _hostSessions(),
         profileConnector: _connectProfile,
       ),
       2 => WorkspaceFilesPage(
@@ -374,6 +376,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       _ => HostsPage(
         sessionController: _sessionController,
         profileStore: widget.profileStore,
+        hostSessions: _hostSessions(),
         profileConnector: _connectProfile,
       ),
     };
@@ -393,17 +396,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     }
   }
 
-  List<ChatHostSessionSummary> _chatHostSessions() {
+  List<HostSessionSummary> _hostSessions() {
     final manager = _hostSessionManager;
     if (manager == null) {
       return const [];
     }
     return [
       for (final session in manager.sessions)
-        ChatHostSessionSummary(
-          profile: session.profile,
-          status: session.status,
-        ),
+        HostSessionSummary(profile: session.profile, status: session.status),
     ];
   }
 

@@ -43,6 +43,7 @@ import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/reconnect_policy.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
+import 'package:sadcoder_mobile/src/session/host_session_summary.dart';
 import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
 import 'package:sadcoder_mobile/src/ssh/known_host.dart';
 import 'package:sadcoder_mobile/src/ssh/known_host_verifier.dart';
@@ -741,33 +742,46 @@ secret-key-material
 
   testWidgets('groups saved SSH profiles by collapsible host', (tester) async {
     final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
-    final store = _FakeProfileStore(
-      initialProfiles: const [
-        SshProfile(
-          id: 'alice@srv.dev:22',
-          name: 'Dev Alice',
-          host: 'srv.dev',
-          username: 'alice',
+    const profiles = [
+      SshProfile(
+        id: 'alice@srv.dev:22',
+        name: 'Dev Alice',
+        host: 'srv.dev',
+        username: 'alice',
+      ),
+      SshProfile(
+        id: 'bob@srv.dev:22',
+        name: 'Dev Bob',
+        host: 'srv.dev',
+        username: 'bob',
+        authType: SshAuthType.privateKey,
+        privateKeyPem: 'bob-key',
+      ),
+      SshProfile(
+        id: 'root@prod.dev:2200',
+        name: 'Prod',
+        host: 'prod.dev',
+        port: 2200,
+        username: 'root',
+      ),
+    ];
+    final store = _FakeProfileStore(initialProfiles: profiles);
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      profileStore: store,
+      hostSessions: [
+        HostSessionSummary(
+          profile: profiles[0],
+          status: CodexSessionStatus.connected,
         ),
-        SshProfile(
-          id: 'bob@srv.dev:22',
-          name: 'Dev Bob',
-          host: 'srv.dev',
-          username: 'bob',
-          authType: SshAuthType.privateKey,
-          privateKeyPem: 'bob-key',
-        ),
-        SshProfile(
-          id: 'root@prod.dev:2200',
-          name: 'Prod',
-          host: 'prod.dev',
-          port: 2200,
-          username: 'root',
+        HostSessionSummary(
+          profile: profiles[2],
+          status: CodexSessionStatus.reconnecting,
         ),
       ],
     );
-
-    await _pumpHostsPage(tester, runner, profileStore: store);
     await tester.pumpAndSettle();
 
     expect(find.text('Saved hosts'), findsOneWidget);
@@ -782,6 +796,18 @@ secret-key-material
       findsOneWidget,
     );
     expect(find.text('Dev Bob'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('saved-host-status-alice@srv.dev:22')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('saved-host-status-root@prod.dev:2200')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('saved-host-status-bob@srv.dev:22')),
+      findsNothing,
+    );
 
     await tester.tap(find.text('srv.dev:22'));
     await tester.pumpAndSettle();
@@ -997,6 +1023,7 @@ Future<void> _pumpHostsPage(
   SshImportFileSource importFileSource = const _FakeImportFileSource(null),
   SshKeyGenerator? keyGenerator,
   SshPublicKeyExporter? publicKeyExporter,
+  List<HostSessionSummary> hostSessions = const [],
 }) {
   tester.view.physicalSize = const Size(800, 900);
   tester.view.devicePixelRatio = 1;
@@ -1020,6 +1047,7 @@ Future<void> _pumpHostsPage(
           importFileSource: importFileSource,
           keyGenerator: keyGenerator ?? const DartSshKeyGenerator(),
           publicKeyExporter: publicKeyExporter ?? _FakePublicKeyExporter(null),
+          hostSessions: hostSessions,
         ),
       ),
     ),

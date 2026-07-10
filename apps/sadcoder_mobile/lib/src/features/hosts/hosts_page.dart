@@ -7,6 +7,8 @@ import '../../i18n/app_localizations.dart';
 import '../../probe/m0_probe_coordinator.dart';
 import '../../probe/ssh_connection_probe.dart';
 import '../../session/codex_session_state_controller.dart';
+import '../../session/host_session_manager.dart';
+import '../../session/host_session_summary.dart';
 import '../../ssh/dart_ssh_proxy_connector.dart';
 import '../../ssh/dart_ssh_remote_command_runner.dart';
 import '../../ssh/known_host_verifier.dart';
@@ -41,6 +43,7 @@ class HostsPage extends StatefulWidget {
     this.importFileSource = const FilePickerSshImportFileSource(),
     this.keyGenerator = const DartSshKeyGenerator(),
     this.publicKeyExporter = const FilePickerSshPublicKeyExporter(),
+    this.hostSessions = const [],
     this.profileConnector,
   });
 
@@ -51,6 +54,7 @@ class HostsPage extends StatefulWidget {
   final SshImportFileSource importFileSource;
   final SshKeyGenerator keyGenerator;
   final SshPublicKeyExporter publicKeyExporter;
+  final List<HostSessionSummary> hostSessions;
   final HostProfileConnector? profileConnector;
 
   @override
@@ -150,6 +154,7 @@ class _HostsPageState extends State<HostsPage> {
           _SavedHostProfilesPanel(
             profiles: _profiles,
             collapsedHosts: _collapsedHosts,
+            hostSessions: widget.hostSessions,
             onHostExpandedChanged: _setSavedHostExpanded,
             onProfileSelected: _selectProfile,
           ),
@@ -790,12 +795,14 @@ class _SavedHostProfilesPanel extends StatelessWidget {
   const _SavedHostProfilesPanel({
     required this.profiles,
     required this.collapsedHosts,
+    required this.hostSessions,
     required this.onHostExpandedChanged,
     required this.onProfileSelected,
   });
 
   final List<SshProfile> profiles;
   final Set<String> collapsedHosts;
+  final List<HostSessionSummary> hostSessions;
   final void Function(String hostKey, bool expanded) onHostExpandedChanged;
   final ValueChanged<SshProfile> onProfileSelected;
 
@@ -803,6 +810,10 @@ class _SavedHostProfilesPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final groupedProfiles = _groupProfilesByHost(profiles);
+    final statusByProfileId = {
+      for (final session in hostSessions)
+        hostSessionProfileId(session.profile): session.status,
+    };
     return Card(
       key: const ValueKey('saved-hosts-panel'),
       child: Column(
@@ -825,19 +836,10 @@ class _SavedHostProfilesPanel extends StatelessWidget {
                   onHostExpandedChanged(entry.key, expanded),
               children: [
                 for (final profile in entry.value)
-                  ListTile(
-                    key: ValueKey('saved-host-profile-${profile.id}'),
-                    leading: Icon(_authIcon(profile.authType)),
-                    title: Text(_profileTitle(profile)),
-                    subtitle: Text(
-                      '${profile.endpoint} | ${_authLabel(l10n, profile.authType)}',
-                    ),
-                    trailing: IconButton(
-                      tooltip: l10n.useSshProfile,
-                      onPressed: () => onProfileSelected(profile),
-                      icon: const Icon(Icons.drive_file_move_outline),
-                    ),
-                    onTap: () => onProfileSelected(profile),
+                  _SavedHostProfileTile(
+                    profile: profile,
+                    status: statusByProfileId[hostSessionProfileId(profile)],
+                    onProfileSelected: onProfileSelected,
                   ),
               ],
             ),
@@ -845,6 +847,95 @@ class _SavedHostProfilesPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SavedHostProfileTile extends StatelessWidget {
+  const _SavedHostProfileTile({
+    required this.profile,
+    required this.status,
+    required this.onProfileSelected,
+  });
+
+  final SshProfile profile;
+  final CodexSessionStatus? status;
+  final ValueChanged<SshProfile> onProfileSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final statusLabel = _hostSessionStatusLabel(l10n, status);
+    return ListTile(
+      key: ValueKey('saved-host-profile-${profile.id}'),
+      leading: Icon(_authIcon(profile.authType)),
+      title: Text(_profileTitle(profile)),
+      subtitle: Text(
+        '${profile.endpoint} | ${_authLabel(l10n, profile.authType)}',
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (statusLabel != null) ...[
+            _HostSessionStatusChip(
+              key: ValueKey('saved-host-status-${profile.id}'),
+              label: statusLabel,
+              status: status!,
+            ),
+            const SizedBox(width: 4),
+          ],
+          IconButton(
+            tooltip: l10n.useSshProfile,
+            onPressed: () => onProfileSelected(profile),
+            icon: const Icon(Icons.drive_file_move_outline),
+          ),
+        ],
+      ),
+      onTap: () => onProfileSelected(profile),
+    );
+  }
+}
+
+class _HostSessionStatusChip extends StatelessWidget {
+  const _HostSessionStatusChip({
+    super.key,
+    required this.label,
+    required this.status,
+  });
+
+  final String label;
+  final CodexSessionStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final active =
+        status == CodexSessionStatus.connected ||
+        status == CodexSessionStatus.reconnecting;
+    return Chip(
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      label: Text(label),
+      labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: active ? colorScheme.onPrimaryContainer : colorScheme.onSurface,
+      ),
+      backgroundColor: active
+          ? colorScheme.primaryContainer
+          : colorScheme.surfaceContainerHighest,
+    );
+  }
+}
+
+String? _hostSessionStatusLabel(
+  AppLocalizations l10n,
+  CodexSessionStatus? status,
+) {
+  return switch (status) {
+    CodexSessionStatus.connecting => l10n.connecting,
+    CodexSessionStatus.connected => l10n.connected,
+    CodexSessionStatus.reconnecting => l10n.reconnecting,
+    CodexSessionStatus.disconnecting => l10n.disconnecting,
+    CodexSessionStatus.failed => l10n.connectionFailed,
+    CodexSessionStatus.idle || null => null,
+  };
 }
 
 class _HostImportActionsPanel extends StatelessWidget {
