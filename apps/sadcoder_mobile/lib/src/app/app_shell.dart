@@ -32,7 +32,7 @@ import '../threads/thread_detail_controller.dart';
 import '../threads/thread_list_controller.dart';
 import '../turns/turn_controller.dart';
 import '../usage/account_usage_snapshot_controller.dart';
-import 'app_session_recovery_coordinator.dart';
+import 'app_host_session_ui_state.dart';
 
 const _defaultSessionConnector = CodexSessionConnector(
   proxyConnector: DartSshProxyConnector(),
@@ -82,10 +82,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _index = 0;
   late ApprovalStateController _approvalController;
   late CodexSessionStateController _sessionController;
-  late ThreadListController _threadListController;
-  late ThreadDetailController _threadDetailController;
-  late TurnController _turnController;
-  late ChatTimelineController _timelineController;
+  late AppHostSessionUiState _activeUiState;
+  final Map<String, AppHostSessionUiState> _hostUiStates = {};
   late CodexConfigOverrideController _configOverrideController;
   late CodexConfigSnapshotController _configSnapshotController;
   late AccountSnapshotController _accountSnapshotController;
@@ -94,7 +92,6 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late ModelListController _modelListController;
   late PermissionProfileListController _permissionProfileListController;
   late BackgroundConnectionPreferences _backgroundConnectionPreferences;
-  late AppSessionRecoveryCoordinator _sessionRecoveryCoordinator;
   late DiagnosticLogExportController _diagnosticLogExportController;
   HostSessionManager? _hostSessionManager;
   AppLifecycleConnectionCoordinator? _lifecycleConnectionCoordinator;
@@ -102,6 +99,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
   late bool _ownsBackgroundConnectionPreferences;
+
+  ThreadListController get _threadListController =>
+      _activeUiState.threadListController;
+  ThreadDetailController get _threadDetailController =>
+      _activeUiState.threadDetailController;
+  TurnController get _turnController => _activeUiState.turnController;
+  ChatTimelineController get _timelineController =>
+      _activeUiState.timelineController;
 
   @override
   void initState() {
@@ -227,13 +232,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         backgroundConnectionPreferences == null;
     _backgroundConnectionPreferences =
         backgroundConnectionPreferences ?? BackgroundConnectionPreferences();
-    _threadListController = ThreadListController(
-      readerProvider: () => _sessionController.threadListReader,
-    );
-    _threadDetailController = ThreadDetailController(
-      readerProvider: () => _sessionController.threadDetailReader,
-    );
     _configOverrideController = CodexConfigOverrideController();
+    _activeUiState = AppHostSessionUiState(
+      sessionController: _sessionController,
+      configOverrideController: _configOverrideController,
+    );
     _configSnapshotController = CodexConfigSnapshotController(
       readerProvider: () => _sessionController.configSnapshotReader,
     );
@@ -252,33 +255,15 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _permissionProfileListController = PermissionProfileListController(
       readerProvider: () => _sessionController.permissionProfileListReader,
     );
-    _turnController = TurnController(
-      runnerProvider: () => _sessionController.turnRunner,
-      activeThreadIdProvider: () => _threadDetailController.selectedThreadId,
-      overrideLayersProvider: () => _configOverrideController.layers,
-    );
-    _timelineController = ChatTimelineController(
-      onTurnCompleted: ({required threadId, required turn}) {
-        _turnController.finishTurn(threadId: threadId, turn: turn);
-      },
-    );
-    _sessionRecoveryCoordinator = AppSessionRecoveryCoordinator(
-      threadListController: _threadListController,
-      threadDetailController: _threadDetailController,
-      turnController: _turnController,
-    );
     _diagnosticLogExportController = DiagnosticLogExportController(
       entriesProvider: () => _sessionController.diagnosticLogs,
     );
-    _threadDetailController.addListener(_handleThreadDetailChanged);
     _attachActiveSessionBindings();
   }
 
   void _disposeOwnedControllers() {
     _hostSessionManager?.removeListener(_handleHostSessionManagerChanged);
     _detachActiveSessionBindings();
-    _threadDetailController.removeListener(_handleThreadDetailChanged);
-    _timelineController.dispose();
     _configOverrideController.dispose();
     _configSnapshotController.dispose();
     _accountSnapshotController.dispose();
@@ -286,9 +271,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _mcpServerStatusController.dispose();
     _modelListController.dispose();
     _permissionProfileListController.dispose();
-    _turnController.dispose();
-    _threadDetailController.dispose();
-    _threadListController.dispose();
+    for (final state in {_activeUiState, ..._hostUiStates.values}) {
+      state.dispose();
+    }
+    _hostUiStates.clear();
     if (_ownsSessionController) {
       _sessionController.dispose();
     }
@@ -305,16 +291,16 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   void _attachActiveSessionBindings() {
     _sessionController.addListener(_handleSessionChanged);
-    _timelineController.attach(_sessionController.events);
+    _activeUiState.attachEvents();
     _startLifecycleConnectionCoordinator();
-    _sessionRecoveryCoordinator.handleSessionStatus(_sessionController.status);
+    _activeUiState.handleSessionStatus(_sessionController.status);
   }
 
   void _detachActiveSessionBindings() {
     unawaited(_lifecycleConnectionCoordinator?.dispose());
     _lifecycleConnectionCoordinator = null;
     _sessionController.removeListener(_handleSessionChanged);
-    _timelineController.attach(null);
+    _activeUiState.detachEvents();
   }
 
   void _startLifecycleConnectionCoordinator() {
@@ -415,24 +401,28 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 
   void _activateHostSession(HostSessionEntry entry) {
+    final nextUiState = _uiStateForHost(entry);
     if (identical(_sessionController, entry.sessionController) &&
-        identical(_approvalController, entry.approvalController)) {
+        identical(_approvalController, entry.approvalController) &&
+        identical(_activeUiState, nextUiState)) {
       return;
     }
 
     final previousSessionController = _sessionController;
     final previousApprovalController = _approvalController;
+    final previousUiState = _activeUiState;
     final disposePreviousSessionController = _ownsSessionController;
     final disposePreviousApprovalController = _ownsApprovalController;
+    final disposePreviousUiState = !_hostUiStates.containsValue(
+      previousUiState,
+    );
 
     _detachActiveSessionBindings();
     _sessionController = entry.sessionController;
     _approvalController = entry.approvalController;
+    _activeUiState = nextUiState;
     _ownsSessionController = false;
     _ownsApprovalController = false;
-    _threadDetailController.clear();
-    _turnController.clearLocalConversation();
-    _timelineController.clear();
     _attachActiveSessionBindings();
 
     if (disposePreviousSessionController) {
@@ -441,14 +431,27 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (disposePreviousApprovalController) {
       previousApprovalController.dispose();
     }
+    if (disposePreviousUiState) {
+      previousUiState.dispose();
+    }
     if (mounted) {
       setState(() {});
     }
   }
 
+  AppHostSessionUiState _uiStateForHost(HostSessionEntry entry) {
+    return _hostUiStates.putIfAbsent(
+      entry.profileId,
+      () => AppHostSessionUiState(
+        sessionController: entry.sessionController,
+        configOverrideController: _configOverrideController,
+      ),
+    );
+  }
+
   void _handleSessionChanged() {
-    _timelineController.attach(_sessionController.events);
-    _sessionRecoveryCoordinator.handleSessionStatus(_sessionController.status);
+    _activeUiState.attachEvents();
+    _activeUiState.handleSessionStatus(_sessionController.status);
     if (_sessionController.isConnected) {
       unawaited(_configSnapshotController.refresh());
       unawaited(_accountSnapshotController.refresh());
@@ -457,24 +460,6 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           cwd: _configOverrideController.resolved.cwd,
         ),
       );
-    }
-  }
-
-  void _handleThreadDetailChanged() {
-    switch (_threadDetailController.status) {
-      case ThreadDetailStatus.loading:
-        _timelineController.selectThread(
-          _threadDetailController.selectedThreadId,
-        );
-      case ThreadDetailStatus.loaded:
-        final detail = _threadDetailController.detail;
-        if (detail != null) {
-          _timelineController.showThread(detail.thread);
-        }
-      case ThreadDetailStatus.idle:
-        _timelineController.clear();
-      case ThreadDetailStatus.failed:
-        break;
     }
   }
 }

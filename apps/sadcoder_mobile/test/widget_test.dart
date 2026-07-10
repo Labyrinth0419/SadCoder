@@ -113,6 +113,68 @@ void main() {
     expect(find.text('Remote Linux'), findsOneWidget);
   });
 
+  testWidgets('chat host selector restores per-host thread timeline state', (
+    tester,
+  ) async {
+    const remoteProfile = SshProfile(
+      id: 'remote',
+      name: 'Remote Linux',
+      host: 'remote.example.com',
+      username: 'dev',
+    );
+    final starter = _ProfileStaticSessionStarter({
+      _profile.id: _StaticSessionData(
+        threads: [_thread('local_thread', 'Local task')],
+        detail: _threadDetail(
+          id: 'local_thread',
+          preview: 'Local task',
+          message: 'Local history preserved',
+        ),
+      ),
+      remoteProfile.id: _StaticSessionData(
+        threads: [_thread('remote_thread', 'Remote task')],
+        detail: _threadDetail(
+          id: 'remote_thread',
+          preview: 'Remote task',
+          message: 'Remote history preserved',
+        ),
+      ),
+    });
+    final manager = HostSessionManager(
+      controllerFactory: (approvalController) => CodexSessionStateController(
+        connector: starter,
+        approvalController: approvalController,
+      ),
+    );
+    addTearDown(manager.dispose);
+
+    await tester.pumpWidget(
+      SadCoderApp(
+        hostSessionManager: manager,
+        profileStore: const _FakeProfileStore([_profile, remoteProfile]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Chat').last);
+    await tester.pumpAndSettle();
+    await _selectChatHost(tester, _profile.id);
+    await _openThreadFromChat(tester, 'local_thread');
+    await _scrollToTimeline(tester);
+    expect(find.text('Local history preserved'), findsOneWidget);
+
+    await _selectChatHost(tester, remoteProfile.id);
+    await _openThreadFromChat(tester, 'remote_thread');
+    await _scrollToTimeline(tester);
+    expect(find.text('Remote history preserved'), findsOneWidget);
+
+    await _selectChatHost(tester, _profile.id);
+    await _scrollToTimeline(tester);
+
+    expect(find.text('Local history preserved'), findsOneWidget);
+    expect(find.text('Remote history preserved'), findsNothing);
+  });
+
   testWidgets('renders Chinese localization', (tester) async {
     await tester.pumpWidget(const SadCoderApp(locale: Locale('zh')));
 
@@ -515,6 +577,74 @@ void main() {
   });
 }
 
+Future<void> _selectChatHost(WidgetTester tester, String profileId) async {
+  await tester.tap(find.byKey(const ValueKey('chat-host-selector')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(ValueKey('chat-host-option-$profileId')));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openThreadFromChat(WidgetTester tester, String threadId) async {
+  final threadTile = find.byKey(ValueKey('thread-summary-$threadId'));
+  await tester.scrollUntilVisible(
+    threadTile,
+    160,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(threadTile);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _scrollToTimeline(WidgetTester tester) async {
+  await tester.scrollUntilVisible(
+    find.text('Timeline'),
+    160,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
+}
+
+ThreadSummary _thread(String id, String preview) {
+  return ThreadSummary.fromJson({
+    'id': id,
+    'sessionId': 'sess_$id',
+    'preview': preview,
+    'ephemeral': false,
+    'status': 'idle',
+    'cwd': '/repo',
+    'updatedAt': 1,
+  });
+}
+
+ThreadDetail _threadDetail({
+  required String id,
+  required String preview,
+  required String message,
+}) {
+  return ThreadDetail(
+    thread: ThreadSummary.fromJson({
+      'id': id,
+      'sessionId': 'sess_$id',
+      'preview': preview,
+      'ephemeral': false,
+      'status': 'idle',
+      'cwd': '/repo',
+      'updatedAt': 1,
+      'turns': [
+        {
+          'id': 'turn_$id',
+          'status': 'completed',
+          'itemsView': 'full',
+          'items': [
+            {'id': 'item_$id', 'type': 'agentMessage', 'text': message},
+          ],
+        },
+      ],
+    }),
+  );
+}
+
 const _profile = SshProfile(
   id: 'local',
   name: 'Local',
@@ -582,6 +712,42 @@ class _RecordingStaticSessionStarter implements CodexSessionConnectionStarter {
       profile: profile,
       threads: threads,
       detail: detail,
+      workspaceDirectoryReader: const _NoopWorkspaceDirectoryReader(),
+      workspaceFileReader: const _NoopWorkspaceFileReader(),
+    );
+    connections.add(connection);
+    return connection;
+  }
+}
+
+class _StaticSessionData {
+  const _StaticSessionData({required this.threads, required this.detail});
+
+  final List<ThreadSummary> threads;
+  final ThreadDetail detail;
+}
+
+class _ProfileStaticSessionStarter implements CodexSessionConnectionStarter {
+  _ProfileStaticSessionStarter(this.sessionsByProfileId);
+
+  final Map<String, _StaticSessionData> sessionsByProfileId;
+  final connectedProfiles = <SshProfile>[];
+  final connections = <_StaticSessionConnection>[];
+
+  @override
+  Future<CodexSessionConnectionHandle> connect(
+    SshProfile profile, {
+    ApprovalStateController? approvalController,
+  }) async {
+    final data = sessionsByProfileId[profile.id];
+    if (data == null) {
+      throw StateError('No fake session data for ${profile.id}');
+    }
+    connectedProfiles.add(profile);
+    final connection = _StaticSessionConnection(
+      profile: profile,
+      threads: data.threads,
+      detail: data.detail,
       workspaceDirectoryReader: const _NoopWorkspaceDirectoryReader(),
       workspaceFileReader: const _NoopWorkspaceFileReader(),
     );
