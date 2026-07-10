@@ -70,6 +70,7 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
     final sheetHeight = preferredSheetHeight < minSheetHeight
         ? minSheetHeight
         : preferredSheetHeight;
+    final compactHeight = sheetHeight < 180;
     final commands = _filteredCommands(l10n);
     final groups = _groupsFor(commands);
     final selectedGroup = groups.isEmpty
@@ -87,37 +88,42 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
         child: SizedBox(
           height: sheetHeight,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            padding: compactHeight
+                ? const EdgeInsets.fromLTRB(12, 8, 12, 8)
+                : const EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.max,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.manage_search),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        l10n.slashCommands,
-                        style: Theme.of(context).textTheme.titleMedium,
+                if (!compactHeight) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.manage_search),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          l10n.slashCommands,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 TextField(
                   key: const ValueKey('slash-command-search-field'),
                   controller: _filterController,
                   autofocus: true,
                   autocorrect: false,
                   decoration: InputDecoration(
+                    isDense: compactHeight,
                     labelText: l10n.typeCommandName,
                     prefixIcon: const Icon(Icons.search),
                     border: const OutlineInputBorder(),
                   ),
                   onChanged: (value) => setState(() => _filter = value),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: compactHeight ? 8 : 12),
                 Expanded(
                   child: selectedGroup == null
                       ? const SizedBox.shrink()

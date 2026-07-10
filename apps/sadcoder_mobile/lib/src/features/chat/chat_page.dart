@@ -187,166 +187,187 @@ class _ChatPageState extends State<ChatPage> {
     final terminalPetPreference =
         widget.appearanceController?.terminalPetPreference ??
         AppTerminalPetPreference.tuiOnly;
-    return Column(
-      children: [
-        _ChatHeader(
-          title: _chatHeaderTitle(l10n),
-          connectionLabel: _connectionLabel(l10n, sessionController?.status),
-          connected: sessionController?.status == CodexSessionStatus.connected,
-          statusLineParts: _chatStatusLineParts(l10n),
-          connectionControls: _ChatConnectionControls(
-            profiles: _headerProfiles(),
-            selectedProfile: _selectedHeaderProfile(),
-            connectedProfile: sessionController?.profile,
-            hostSessions: widget.hostSessions,
-            status: sessionController?.status ?? CodexSessionStatus.idle,
-            connectionLabel: _connectionLabel(l10n, sessionController?.status),
-            profileLoadError: _profileLoadError,
-            onProfileSelected:
-                sessionController == null && widget.profileConnector == null
-                ? null
-                : _selectHeaderProfile,
-          ),
-        ),
-        const Divider(height: 1),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _ThreadListPanel(
-                controller: threadListController,
-                detailController: threadDetailController,
-                archived: _showArchivedThreads,
-                onArchivedChanged: _setThreadArchiveView,
-                onUnarchiveThread: _unarchiveThread,
-              ),
-              _ThreadDetailPanel(controller: threadDetailController),
-              if (_sideConversation != null)
-                _SideConversationPanel(
-                  conversation: _sideConversation!,
-                  canReturn: turnController?.canSubmit == true,
-                  onReturn: _returnToMainThread,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compactHeight = constraints.maxHeight < 240;
+        return Column(
+          children: [
+            if (!compactHeight) ...[
+              _ChatHeader(
+                title: _chatHeaderTitle(l10n),
+                connectionLabel: _connectionLabel(
+                  l10n,
+                  sessionController?.status,
                 ),
-              _ChatTimelinePanel(
-                controller: widget.timelineController,
-                showRaw: _showRawTranscript,
-              ),
-              _TurnStatusPanel(controller: turnController),
-              _SlashCommandPreview(
-                result: _slashCommand,
-                sendAsText: _isSlashTextPrompt(
-                  _composerController.text,
-                  _slashCommand,
-                ),
-                onSendAsText: _markSlashInputAsText,
-              ),
-            ],
-          ),
-        ),
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.configOverrideController != null) ...[
-                  _AdvancedChatControlsToggle(
-                    expanded: _showAdvancedControls,
-                    onPressed: () => setState(
-                      () => _showAdvancedControls = !_showAdvancedControls,
-                    ),
+                connected:
+                    sessionController?.status == CodexSessionStatus.connected,
+                statusLineParts: _chatStatusLineParts(l10n),
+                connectionControls: _ChatConnectionControls(
+                  profiles: _headerProfiles(),
+                  selectedProfile: _selectedHeaderProfile(),
+                  connectedProfile: sessionController?.profile,
+                  hostSessions: widget.hostSessions,
+                  status: sessionController?.status ?? CodexSessionStatus.idle,
+                  connectionLabel: _connectionLabel(
+                    l10n,
+                    sessionController?.status,
                   ),
-                  if (_showAdvancedControls) ...[
-                    const SizedBox(height: 8),
-                    SessionOverrideControls(
-                      controller: widget.configOverrideController!,
+                  profileLoadError: _profileLoadError,
+                  onProfileSelected:
+                      sessionController == null &&
+                          widget.profileConnector == null
+                      ? null
+                      : _selectHeaderProfile,
+                ),
+              ),
+              const Divider(height: 1),
+            ],
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.all(compactHeight ? 8 : 16),
+                children: [
+                  _ThreadListPanel(
+                    controller: threadListController,
+                    detailController: threadDetailController,
+                    archived: _showArchivedThreads,
+                    onArchivedChanged: _setThreadArchiveView,
+                    onUnarchiveThread: _unarchiveThread,
+                  ),
+                  _ThreadDetailPanel(controller: threadDetailController),
+                  if (_sideConversation != null)
+                    _SideConversationPanel(
+                      conversation: _sideConversation!,
+                      canReturn: turnController?.canSubmit == true,
+                      onReturn: _returnToMainThread,
                     ),
-                    const SizedBox(height: 8),
-                    TurnOverrideControls(
-                      controller: widget.configOverrideController!,
+                  _ChatTimelinePanel(
+                    controller: widget.timelineController,
+                    showRaw: _showRawTranscript,
+                  ),
+                  _TurnStatusPanel(controller: turnController),
+                  _SlashCommandPreview(
+                    result: _slashCommand,
+                    sendAsText: _isSlashTextPrompt(
+                      _composerController.text,
+                      _slashCommand,
+                    ),
+                    onSendAsText: _markSlashInputAsText,
+                  ),
+                ],
+              ),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.all(compactHeight ? 8 : 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!compactHeight &&
+                        widget.configOverrideController != null) ...[
+                      _AdvancedChatControlsToggle(
+                        expanded: _showAdvancedControls,
+                        onPressed: () => setState(
+                          () => _showAdvancedControls = !_showAdvancedControls,
+                        ),
+                      ),
+                      if (_showAdvancedControls) ...[
+                        const SizedBox(height: 8),
+                        SessionOverrideControls(
+                          controller: widget.configOverrideController!,
+                        ),
+                        const SizedBox(height: 8),
+                        TurnOverrideControls(
+                          controller: widget.configOverrideController!,
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                    ],
+                    CallbackShortcuts(
+                      bindings: <ShortcutActivator, VoidCallback>{
+                        if (composerSendShortcut ==
+                            AppComposerSendShortcut.ctrlEnter)
+                          const SingleActivator(
+                            LogicalKeyboardKey.enter,
+                            control: true,
+                          ): () {
+                            if (canSend) {
+                              unawaited(_sendComposerText());
+                            }
+                          },
+                      },
+                      child: TextField(
+                        key: const ValueKey('chat-composer-field'),
+                        controller: _composerController,
+                        onChanged: _handleComposerChanged,
+                        keyboardType:
+                            composerSendShortcut ==
+                                AppComposerSendShortcut.ctrlEnter
+                            ? TextInputType.multiline
+                            : TextInputType.text,
+                        minLines: 1,
+                        maxLines:
+                            !compactHeight &&
+                                composerSendShortcut ==
+                                    AppComposerSendShortcut.ctrlEnter
+                            ? 4
+                            : 1,
+                        textInputAction:
+                            composerSendShortcut ==
+                                AppComposerSendShortcut.enter
+                            ? TextInputAction.send
+                            : TextInputAction.newline,
+                        onSubmitted:
+                            composerSendShortcut ==
+                                    AppComposerSendShortcut.enter &&
+                                canSend
+                            ? (_) => unawaited(_sendComposerText())
+                            : null,
+                        decoration: InputDecoration(
+                          hintText: l10n.connectBeforeTurn,
+                          helperText: compactHeight
+                              ? null
+                              : _composerHelperText(
+                                  l10n,
+                                  composerInputMode,
+                                  composerSendShortcut,
+                                  terminalPetPreference,
+                                ),
+                          helperMaxLines: compactHeight ? null : 2,
+                          prefixIcon: IconButton(
+                            key: const ValueKey('chat-slash-command-button'),
+                            onPressed: _openSlashCommandPalette,
+                            icon: const Icon(Icons.manage_search),
+                            tooltip: l10n.slashCommands,
+                          ),
+                          suffixIcon: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                onPressed: turnController?.canInterrupt == true
+                                    ? _interruptActiveTurn
+                                    : null,
+                                icon: const Icon(Icons.stop_circle_outlined),
+                                tooltip: l10n.interruptTurn,
+                              ),
+                              IconButton(
+                                onPressed: canSend ? _sendComposerText : null,
+                                icon: const Icon(Icons.send),
+                                tooltip: l10n.send,
+                              ),
+                            ],
+                          ),
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
                     ),
                   ],
-                  const SizedBox(height: 8),
-                ],
-                CallbackShortcuts(
-                  bindings: <ShortcutActivator, VoidCallback>{
-                    if (composerSendShortcut ==
-                        AppComposerSendShortcut.ctrlEnter)
-                      const SingleActivator(
-                        LogicalKeyboardKey.enter,
-                        control: true,
-                      ): () {
-                        if (canSend) {
-                          unawaited(_sendComposerText());
-                        }
-                      },
-                  },
-                  child: TextField(
-                    key: const ValueKey('chat-composer-field'),
-                    controller: _composerController,
-                    onChanged: _handleComposerChanged,
-                    keyboardType:
-                        composerSendShortcut ==
-                            AppComposerSendShortcut.ctrlEnter
-                        ? TextInputType.multiline
-                        : TextInputType.text,
-                    minLines: 1,
-                    maxLines:
-                        composerSendShortcut ==
-                            AppComposerSendShortcut.ctrlEnter
-                        ? 4
-                        : 1,
-                    textInputAction:
-                        composerSendShortcut == AppComposerSendShortcut.enter
-                        ? TextInputAction.send
-                        : TextInputAction.newline,
-                    onSubmitted:
-                        composerSendShortcut == AppComposerSendShortcut.enter &&
-                            canSend
-                        ? (_) => unawaited(_sendComposerText())
-                        : null,
-                    decoration: InputDecoration(
-                      hintText: l10n.connectBeforeTurn,
-                      helperText: _composerHelperText(
-                        l10n,
-                        composerInputMode,
-                        composerSendShortcut,
-                        terminalPetPreference,
-                      ),
-                      helperMaxLines: 2,
-                      prefixIcon: IconButton(
-                        key: const ValueKey('chat-slash-command-button'),
-                        onPressed: _openSlashCommandPalette,
-                        icon: const Icon(Icons.manage_search),
-                        tooltip: l10n.slashCommands,
-                      ),
-                      suffixIcon: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            onPressed: turnController?.canInterrupt == true
-                                ? _interruptActiveTurn
-                                : null,
-                            icon: const Icon(Icons.stop_circle_outlined),
-                            tooltip: l10n.interruptTurn,
-                          ),
-                          IconButton(
-                            onPressed: canSend ? _sendComposerText : null,
-                            icon: const Icon(Icons.send),
-                            tooltip: l10n.send,
-                          ),
-                        ],
-                      ),
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 

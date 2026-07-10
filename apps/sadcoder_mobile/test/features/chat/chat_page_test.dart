@@ -235,6 +235,29 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('slash command palette fits above a compact keyboard', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 320);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetViewInsets);
+
+    await _pumpChatPage(tester);
+
+    await tester.tap(find.byKey(const ValueKey('chat-slash-command-button')));
+    await tester.pumpAndSettle();
+    tester.view.viewInsets = const FakeViewPadding(bottom: 220);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('slash-command-search-field')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('slash command palette hides unavailable platform commands', (
     tester,
   ) async {
