@@ -14,9 +14,12 @@ use std::time::UNIX_EPOCH;
 
 use crate::app_server_socket::AppServerSocket;
 use crate::codex_command::ResolvedCodexCommand;
+use crate::service_bridge::ServiceBridge;
+use crate::service_bridge::service_socket_is_ready;
 
 const SERVICE_INFO_FILE_NAME: &str = "agent-service.json";
-const SERVICE_SOCKET_FILE_NAME: &str = "app-server.sock";
+const SERVICE_SOCKET_FILE_NAME: &str = "agent.sock";
+const APP_SERVER_SOCKET_FILE_NAME: &str = "app-server.sock";
 const SERVICE_STDERR_FILE_NAME: &str = "app-server.stderr.log";
 const SERVICE_START_TIMEOUT: Duration = Duration::from_secs(10);
 const SERVICE_STOP_TIMEOUT: Duration = Duration::from_secs(5);
@@ -29,6 +32,8 @@ pub(crate) struct AgentServiceInfo {
     pub(crate) service_pid: u32,
     pub(crate) app_server_pid: u32,
     pub(crate) socket_path: PathBuf,
+    #[serde(default)]
+    pub(crate) app_server_socket_path: PathBuf,
     pub(crate) listen_url: String,
     pub(crate) started_at_unix_ms: u128,
 }
@@ -37,6 +42,7 @@ pub(crate) struct AgentServiceInfo {
 pub(crate) struct AgentServicePaths {
     pub(crate) info_path: PathBuf,
     pub(crate) socket_path: PathBuf,
+    pub(crate) app_server_socket_path: PathBuf,
     pub(crate) stderr_log_path: PathBuf,
 }
 
@@ -49,6 +55,7 @@ pub(crate) fn resolve_service_paths(state_path: &Path) -> AgentServicePaths {
     AgentServicePaths {
         info_path: base.join(SERVICE_INFO_FILE_NAME),
         socket_path: base.join(SERVICE_SOCKET_FILE_NAME),
+        app_server_socket_path: base.join(APP_SERVER_SOCKET_FILE_NAME),
         stderr_log_path: base.join(SERVICE_STDERR_FILE_NAME),
     }
 }
@@ -73,13 +80,7 @@ pub(crate) fn service_is_ready(paths: &AgentServicePaths) -> bool {
     if info.socket_path != paths.socket_path {
         return false;
     }
-    match AppServerSocket::connect(&paths.socket_path) {
-        Ok(mut socket) => {
-            let _ = socket.writer.write_close();
-            true
-        }
-        Err(_) => false,
-    }
+    service_socket_is_ready(&paths.socket_path)
 }
 
 pub(crate) fn wait_for_service_ready(paths: &AgentServicePaths, timeout: Duration) -> bool {
@@ -201,7 +202,7 @@ pub(crate) fn run_service(codex: &ResolvedCodexCommand, state_path: &Path) -> an
 
     let stderr_log = File::create(&paths.stderr_log_path)
         .with_context(|| format!("failed to create {}", paths.stderr_log_path.display()))?;
-    let listen_url = format!("unix://{}", paths.socket_path.display());
+    let listen_url = format!("unix://{}", paths.app_server_socket_path.display());
     let mut command = codex.command()?;
     let mut child = command
         .args(["app-server", "--listen"])
@@ -217,24 +218,61 @@ pub(crate) fn run_service(codex: &ResolvedCodexCommand, state_path: &Path) -> an
             )
         })?;
 
+    let upstream = wait_for_app_server_socket(&paths.app_server_socket_path)?;
+    let bridge = ServiceBridge::bind(&paths.socket_path, upstream, state_path)?;
     let info = AgentServiceInfo {
-        schema_version: 1,
+        schema_version: 2,
         service_pid: std::process::id(),
         app_server_pid: child.id(),
         socket_path: paths.socket_path.clone(),
+        app_server_socket_path: paths.app_server_socket_path.clone(),
         listen_url,
         started_at_unix_ms: now_unix_ms(),
     };
     write_service_info(&paths.info_path, &info)?;
 
-    let status = child.wait().context("failed to wait for app-server")?;
+    let bridge_result = bridge.run();
+    let status = match child.try_wait().context("failed to poll app-server")? {
+        Some(status) => status,
+        None => {
+            let _ = child.kill();
+            child.wait().context("failed to stop app-server")?
+        }
+    };
     remove_file_if_exists(&paths.info_path)?;
     remove_file_if_exists(&paths.socket_path)?;
+    remove_file_if_exists(&paths.app_server_socket_path)?;
+    bridge_result?;
     if status.success() {
         Ok(())
     } else {
         anyhow::bail!("app-server exited with status {status}")
     }
+}
+
+fn wait_for_app_server_socket(socket_path: &Path) -> anyhow::Result<AppServerSocket> {
+    let started = std::time::Instant::now();
+    let mut last_error = None;
+    while started.elapsed() < SERVICE_START_TIMEOUT {
+        match AppServerSocket::connect(socket_path) {
+            Ok(socket) => return Ok(socket),
+            Err(error) => last_error = Some(error),
+        }
+        thread::sleep(SERVICE_POLL_INTERVAL);
+    }
+    Err(last_error.unwrap_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::TimedOut,
+            "app-server socket did not become available",
+        )
+    }))
+    .with_context(|| {
+        format!(
+            "app-server did not accept the SadCoder service connection at {} within {} seconds",
+            socket_path.display(),
+            SERVICE_START_TIMEOUT.as_secs()
+        )
+    })
 }
 
 fn write_service_info(path: &Path, info: &AgentServiceInfo) -> anyhow::Result<()> {
@@ -252,7 +290,8 @@ fn remove_file_if_exists(path: &Path) -> anyhow::Result<()> {
 
 fn cleanup_unready_service_files(paths: &AgentServicePaths) -> anyhow::Result<()> {
     remove_file_if_exists(&paths.info_path)?;
-    remove_file_if_exists(&paths.socket_path)
+    remove_file_if_exists(&paths.socket_path)?;
+    remove_file_if_exists(&paths.app_server_socket_path)
 }
 
 fn terminate_service_processes(info: &AgentServiceInfo, force: bool) {
@@ -305,6 +344,10 @@ mod tests {
 
         assert_eq!(paths.info_path, base.join(SERVICE_INFO_FILE_NAME));
         assert_eq!(paths.socket_path, base.join(SERVICE_SOCKET_FILE_NAME));
+        assert_eq!(
+            paths.app_server_socket_path,
+            base.join(APP_SERVER_SOCKET_FILE_NAME)
+        );
         assert_eq!(paths.stderr_log_path, base.join(SERVICE_STDERR_FILE_NAME));
     }
 
@@ -372,7 +415,8 @@ mod tests {
             service_pid: 1,
             app_server_pid: 2,
             socket_path: paths.socket_path.clone(),
-            listen_url: format!("unix://{}", paths.socket_path.display()),
+            app_server_socket_path: paths.app_server_socket_path.clone(),
+            listen_url: format!("unix://{}", paths.app_server_socket_path.display()),
             started_at_unix_ms: now_unix_ms(),
         };
         write_service_info(&paths.info_path, &info).expect("write service info");
@@ -397,16 +441,19 @@ mod tests {
             service_pid: 1,
             app_server_pid: 2,
             socket_path: paths.socket_path.clone(),
-            listen_url: format!("unix://{}", paths.socket_path.display()),
+            app_server_socket_path: paths.app_server_socket_path.clone(),
+            listen_url: format!("unix://{}", paths.app_server_socket_path.display()),
             started_at_unix_ms: now_unix_ms(),
         };
         write_service_info(&paths.info_path, &info).expect("write service info");
         fs::write(&paths.socket_path, b"stale").expect("write stale socket file");
+        fs::write(&paths.app_server_socket_path, b"stale").expect("write stale app-server socket");
 
         stop_service_process(&paths).expect("stop stale service");
 
         assert!(!paths.info_path.exists());
         assert!(!paths.socket_path.exists());
+        assert!(!paths.app_server_socket_path.exists());
 
         let _ = fs::remove_dir_all(&base);
     }
