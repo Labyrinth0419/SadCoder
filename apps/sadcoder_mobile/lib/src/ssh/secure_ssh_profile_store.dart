@@ -61,11 +61,13 @@ class SecureSshProfileStore implements SshProfileListStore {
   }
 
   Future<SshProfile> _withSecrets(SshProfile profile) async {
+    final metadataProfile = _metadataOnly(profile);
     final secrets = await credentialStore.loadSecrets(profile.id);
     if (secrets.isEmpty) {
-      return profile;
+      return metadataProfile;
     }
-    return profile.copyWith(
+    return _withCredentialSecrets(
+      metadataProfile,
       password: secrets.password,
       privateKeyPem: secrets.privateKeyPem,
       passphrase: secrets.passphrase,
@@ -81,6 +83,27 @@ SshProfile _metadataOnly(SshProfile profile) {
     port: profile.port,
     username: profile.username,
     authType: profile.authType,
+    agentCommand: profile.agentCommand,
+    defaultCwd: profile.defaultCwd,
+  );
+}
+
+SshProfile _withCredentialSecrets(
+  SshProfile profile, {
+  String? password,
+  String? privateKeyPem,
+  String? passphrase,
+}) {
+  return SshProfile(
+    id: profile.id,
+    name: profile.name,
+    host: profile.host,
+    port: profile.port,
+    username: profile.username,
+    authType: profile.authType,
+    password: password,
+    privateKeyPem: privateKeyPem,
+    passphrase: passphrase,
     agentCommand: profile.agentCommand,
     defaultCwd: profile.defaultCwd,
   );

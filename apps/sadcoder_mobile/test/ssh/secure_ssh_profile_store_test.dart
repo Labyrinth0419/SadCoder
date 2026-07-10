@@ -12,6 +12,9 @@ void main() {
         name: 'Dev',
         host: 'srv.dev',
         username: 'alice',
+        password: 'stale-metadata-secret',
+        privateKeyPem: 'stale-metadata-key',
+        passphrase: 'stale-metadata-passphrase',
       ),
     );
     final credentialStore = _FakeCredentialStore(
@@ -26,6 +29,8 @@ void main() {
 
     expect(profile?.host, 'srv.dev');
     expect(profile?.password, 'secret');
+    expect(profile?.privateKeyPem, isNull);
+    expect(profile?.passphrase, isNull);
     expect(credentialStore.loadedProfileIds, ['manual']);
   });
 
