@@ -12,6 +12,7 @@ use std::time::Duration;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
+use crate::app_server_socket::AppServerSocket;
 use crate::codex_command::CodexCommandSource;
 use crate::codex_command::ResolvedCodexCommand;
 
@@ -66,10 +67,19 @@ pub(crate) fn load_service_info(
 }
 
 pub(crate) fn service_is_ready(paths: &AgentServicePaths) -> bool {
-    if load_service_info(paths).ok().flatten().is_none() {
+    let Some(info) = load_service_info(paths).ok().flatten() else {
+        return false;
+    };
+    if info.socket_path != paths.socket_path {
         return false;
     }
-    paths.socket_path.exists()
+    match AppServerSocket::connect(&paths.socket_path) {
+        Ok(mut socket) => {
+            let _ = socket.writer.write_close();
+            true
+        }
+        Err(_) => false,
+    }
 }
 
 pub(crate) fn wait_for_service_ready(paths: &AgentServicePaths, timeout: Duration) -> bool {
@@ -91,6 +101,7 @@ pub(crate) fn start_service_process(
     if service_is_ready(paths) {
         return Ok(());
     }
+    cleanup_unready_service_files(paths)?;
 
     if let Some(parent) = paths.info_path.parent() {
         fs::create_dir_all(parent)
@@ -182,6 +193,11 @@ fn remove_file_if_exists(path: &Path) -> anyhow::Result<()> {
     }
 }
 
+fn cleanup_unready_service_files(paths: &AgentServicePaths) -> anyhow::Result<()> {
+    remove_file_if_exists(&paths.info_path)?;
+    remove_file_if_exists(&paths.socket_path)
+}
+
 fn now_unix_ms() -> u128 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -212,5 +228,30 @@ mod tests {
         let paths = resolve_service_paths(&base.join("agent-state.json"));
 
         assert!(!service_is_ready(&paths));
+    }
+
+    #[test]
+    fn stale_service_record_and_socket_file_are_not_ready() {
+        let base = std::env::temp_dir().join(format!(
+            "sadcoder-agent-stale-service-{}-{}",
+            std::process::id(),
+            now_unix_ms()
+        ));
+        let paths = resolve_service_paths(&base.join("agent-state.json"));
+        fs::create_dir_all(&base).expect("create state dir");
+        let info = AgentServiceInfo {
+            schema_version: 1,
+            service_pid: 1,
+            app_server_pid: 2,
+            socket_path: paths.socket_path.clone(),
+            listen_url: format!("unix://{}", paths.socket_path.display()),
+            started_at_unix_ms: now_unix_ms(),
+        };
+        write_service_info(&paths.info_path, &info).expect("write service info");
+        fs::write(&paths.socket_path, b"stale").expect("write stale socket file");
+
+        assert!(!service_is_ready(&paths));
+
+        let _ = fs::remove_dir_all(&base);
     }
 }

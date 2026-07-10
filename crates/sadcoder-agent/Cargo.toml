@@ -10,3 +10,6 @@ clap.workspace = true
 sadcoder-protocol = { path = "../sadcoder-protocol" }
 serde.workspace = true
 serde_json.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+uds_windows = "1.1.0"

@@ -29,11 +29,13 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
+mod app_server_socket;
 mod codex_command;
 mod service;
 mod state_cache;
 mod workspace_files;
 
+use app_server_socket::AppServerSocket;
 use codex_command::CodexCommandConfig;
 use codex_command::CodexCommandSource;
 use codex_command::CodexProbeFailure;
@@ -720,22 +722,13 @@ fn proxy_service_app_server(
 ) -> anyhow::Result<()> {
     start_backend(codex, BackendMode::Auto, &state_path)?;
     let service_paths = resolve_service_paths(&state_path);
-    let mut command = codex.command()?;
-    let child = command
-        .args(["app-server", "proxy", "--sock"])
-        .arg(&service_paths.socket_path)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .with_context(|| {
-            format!(
-                "failed to spawn `{} app-server proxy --sock {}`",
-                codex.display_program(),
-                service_paths.socket_path.display()
-            )
-        })?;
-    proxy_child_process(child, state_path)
+    let socket = AppServerSocket::connect(&service_paths.socket_path).with_context(|| {
+        format!(
+            "failed to connect SadCoder proxy to app-server socket {}",
+            service_paths.socket_path.display()
+        )
+    })?;
+    proxy_socket_connection(socket, state_path)
 }
 
 fn proxy_stdio_app_server(codex: &ResolvedCodexCommand, state_path: PathBuf) -> anyhow::Result<()> {
@@ -827,6 +820,77 @@ fn proxy_child_process(mut child: Child, state_path: PathBuf) -> anyhow::Result<
     } else {
         anyhow::bail!("app-server exited with status {status}")
     }
+}
+
+fn proxy_socket_connection(socket: AppServerSocket, state_path: PathBuf) -> anyhow::Result<()> {
+    let cache = Arc::new(Mutex::new(
+        AgentStateCache::load(&state_path).unwrap_or_else(|_| AgentStateCache::empty()),
+    ));
+    let stdout = Arc::new(Mutex::new(io::stdout()));
+
+    let mut socket_writer = socket.writer;
+    let stdin_cache = Arc::clone(&cache);
+    let stdin_state_path = state_path.clone();
+    let stdin_stdout = Arc::clone(&stdout);
+    let stdin_thread = thread::spawn(move || {
+        let mut reader = BufReader::new(io::stdin().lock());
+        let mut line = Vec::new();
+        loop {
+            line.clear();
+            let bytes = match reader.read_until(b'\n', &mut line) {
+                Ok(bytes) => bytes,
+                Err(_) => break,
+            };
+            if bytes == 0 {
+                break;
+            }
+            observe_and_save_cache(&stdin_cache, &stdin_state_path, |cache| {
+                cache.observe_client_line_bytes(&line)
+            });
+            if let Some(response) = workspace_response_from_client_line(&line) {
+                if write_proxy_json_response(&stdin_stdout, &response).is_err() {
+                    break;
+                }
+                continue;
+            }
+            if socket_writer
+                .write_text_message(json_line_payload(&line))
+                .is_err()
+            {
+                break;
+            }
+        }
+        let _ = socket_writer.write_close();
+    });
+
+    let mut socket_reader = socket.reader;
+    let stdout_cache = Arc::clone(&cache);
+    let stdout_state_path = state_path;
+    let socket_stdout = Arc::clone(&stdout);
+    let stdout_thread = thread::spawn(move || {
+        while let Ok(Some(payload)) = socket_reader.read_text_message() {
+            let mut line = payload;
+            line.push(b'\n');
+            observe_and_save_cache(&stdout_cache, &stdout_state_path, |cache| {
+                cache.observe_server_line_bytes(&line)
+            });
+            if write_proxy_line(&socket_stdout, &line).is_err() {
+                break;
+            }
+        }
+    });
+
+    let _ = stdin_thread.join();
+    let _ = stdout_thread.join();
+    Ok(())
+}
+
+fn json_line_payload(line: &[u8]) -> &[u8] {
+    let mut end = line.len();
+    while end > 0 && matches!(line[end - 1], b'\n' | b'\r') {
+        end -= 1;
+    }
+    &line[..end]
 }
 
 fn workspace_response_from_client_line(line: &[u8]) -> Option<JsonRpcResponse> {
