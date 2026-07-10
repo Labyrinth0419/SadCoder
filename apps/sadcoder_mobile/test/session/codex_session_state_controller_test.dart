@@ -14,6 +14,7 @@ import 'package:sadcoder_mobile/src/background_terminals/thread_background_termi
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal_runner.dart';
 import 'package:sadcoder_mobile/src/commands/slash_command_manifest_reader.dart';
 import 'package:sadcoder_mobile/src/commands/slash_command_registry.dart';
+import 'package:sadcoder_mobile/src/command_exec/codex_command_exec_runner.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
@@ -960,6 +961,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       slashCommandManifestReader: const _FakeSlashCommandManifestReader(),
       threadMutationRunner: const _FakeThreadMutationRunner(),
       threadShellCommandRunner: CodexThreadShellCommandRunner(session.client),
+      commandExecRunner: CodexCommandExecRunner(session.client),
       threadBackgroundTerminalRunner:
           const _FakeThreadBackgroundTerminalRunner(),
       threadGoalRunner: const _FakeThreadGoalRunner(),

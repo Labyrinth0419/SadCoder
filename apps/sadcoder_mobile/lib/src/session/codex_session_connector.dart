@@ -11,6 +11,8 @@ import '../apps/codex_app_list_reader.dart';
 import '../approvals/approval_state_controller.dart';
 import '../commands/codex_slash_command_manifest_reader.dart';
 import '../commands/slash_command_manifest_reader.dart';
+import '../command_exec/codex_command_exec_runner.dart';
+import '../command_exec/command_exec_runner.dart';
 import '../config/codex_config_snapshot_reader.dart';
 import '../config/codex_config_snapshot_remote_reader.dart';
 import '../diffs/codex_git_diff_reader.dart';
@@ -150,6 +152,10 @@ abstract interface class ThreadShellCommandConnectionHandle {
   ThreadShellCommandRunner get threadShellCommandRunner;
 }
 
+abstract interface class CommandExecConnectionHandle {
+  CommandExecRunner get commandExecRunner;
+}
+
 abstract interface class CodexSessionConnectionStarter {
   Future<CodexSessionConnectionHandle> connect(
     SshProfile profile, {
@@ -234,6 +240,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         ),
         threadMutationRunner: CodexThreadMutationRunner(session.client),
         threadShellCommandRunner: CodexThreadShellCommandRunner(session.client),
+        commandExecRunner: CodexCommandExecRunner(session.client),
         threadBackgroundTerminalRunner: CodexThreadBackgroundTerminalRunner(
           session.client,
         ),
@@ -284,7 +291,8 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
 class CodexSessionConnection
     implements
         CodexSessionConnectionHandle,
-        ThreadShellCommandConnectionHandle {
+        ThreadShellCommandConnectionHandle,
+        CommandExecConnectionHandle {
   CodexSessionConnection({
     required this.profile,
     required this.session,
@@ -315,6 +323,7 @@ class CodexSessionConnection
     required this.slashCommandManifestReader,
     required this.threadMutationRunner,
     required this.threadShellCommandRunner,
+    required this.commandExecRunner,
     required this.threadBackgroundTerminalRunner,
     required this.threadGoalRunner,
     required this.threadReviewRunner,
@@ -385,6 +394,8 @@ class CodexSessionConnection
   final ThreadMutationRunner threadMutationRunner;
   @override
   final ThreadShellCommandRunner threadShellCommandRunner;
+  @override
+  final CommandExecRunner commandExecRunner;
   @override
   final ThreadBackgroundTerminalRunner threadBackgroundTerminalRunner;
   @override

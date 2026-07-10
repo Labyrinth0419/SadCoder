@@ -8,6 +8,8 @@ class CodexAppServerClient {
   final JsonRpcTransport _transport;
   int _nextId = 1;
 
+  Stream<Map<String, Object?>> get notifications => _transport.notifications;
+
   Future<Map<String, Object?>> initialize({
     String clientName = 'sadcoder-mobile',
     bool experimentalApi = true,
@@ -130,25 +132,47 @@ class CodexAppServerClient {
 
   Future<Map<String, Object?>> execCommand({
     required List<String> command,
+    String? processId,
     String? cwd,
     Map<String, String?> env = const {},
+    bool tty = false,
+    bool streamStdin = false,
+    bool streamStdoutStderr = false,
+    Map<String, Object?>? size,
     int? timeoutMs,
+    bool disableTimeout = false,
     int? outputBytesCap,
     bool disableOutputCap = false,
+    Map<String, Object?>? sandboxPolicy,
   }) {
+    final trimmedProcessId = processId?.trim();
     final trimmedCwd = cwd?.trim();
     final normalizedEnv = <String, Object?>{
       for (final entry in env.entries)
         if (entry.key.trim().isNotEmpty) entry.key.trim(): entry.value,
     };
     final params = <String, Object?>{'command': command};
+    if (trimmedProcessId != null && trimmedProcessId.isNotEmpty) {
+      params['processId'] = trimmedProcessId;
+    }
+    if (tty) {
+      params['tty'] = true;
+    }
+    if (streamStdin) {
+      params['streamStdin'] = true;
+    }
+    if (streamStdoutStderr) {
+      params['streamStdoutStderr'] = true;
+    }
     if (trimmedCwd != null && trimmedCwd.isNotEmpty) {
       params['cwd'] = trimmedCwd;
     }
     if (normalizedEnv.isNotEmpty) {
       params['env'] = normalizedEnv;
     }
-    if (timeoutMs != null) {
+    if (disableTimeout) {
+      params['disableTimeout'] = true;
+    } else if (timeoutMs != null) {
       params['timeoutMs'] = timeoutMs;
     }
     if (disableOutputCap) {
@@ -156,7 +180,42 @@ class CodexAppServerClient {
     } else if (outputBytesCap != null) {
       params['outputBytesCap'] = outputBytesCap;
     }
+    if (size != null) {
+      params['size'] = size;
+    }
+    if (sandboxPolicy?.isNotEmpty == true) {
+      params['sandboxPolicy'] = sandboxPolicy;
+    }
     return _request('command/exec', params);
+  }
+
+  Future<Map<String, Object?>> writeExecCommand({
+    required String processId,
+    String? deltaBase64,
+    bool closeStdin = false,
+  }) {
+    return _request('command/exec/write', {
+      'processId': processId,
+      'deltaBase64': ?deltaBase64,
+      if (closeStdin) 'closeStdin': true,
+    });
+  }
+
+  Future<Map<String, Object?>> resizeExecCommand({
+    required String processId,
+    required int rows,
+    required int cols,
+  }) {
+    return _request('command/exec/resize', {
+      'processId': processId,
+      'size': {'rows': rows, 'cols': cols},
+    });
+  }
+
+  Future<Map<String, Object?>> terminateExecCommand({
+    required String processId,
+  }) {
+    return _request('command/exec/terminate', {'processId': processId});
   }
 
   Future<Map<String, Object?>> searchFiles({
