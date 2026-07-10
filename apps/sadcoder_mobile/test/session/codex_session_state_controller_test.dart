@@ -30,6 +30,7 @@ import 'package:sadcoder_mobile/src/mcp/mcp_server_oauth_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
+import 'package:sadcoder_mobile/src/plugins/plugin_detail_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_session.dart';
@@ -88,6 +89,7 @@ void main() {
     expect(controller.permissionProfileListReader, isNotNull);
     expect(controller.skillListReader, isNotNull);
     expect(controller.pluginListReader, isNotNull);
+    expect(controller.pluginDetailReader, isNotNull);
     expect(controller.pluginMutationRunner, isNotNull);
     expect(controller.hookListReader, isNotNull);
     expect(controller.appListReader, isNotNull);
@@ -591,6 +593,7 @@ void main() {
     expect(controller.permissionProfileListReader, isNull);
     expect(controller.skillListReader, isNull);
     expect(controller.pluginListReader, isNull);
+    expect(controller.pluginDetailReader, isNull);
     expect(controller.pluginMutationRunner, isNull);
     expect(controller.hookListReader, isNull);
     expect(controller.appListReader, isNull);
@@ -735,6 +738,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       permissionProfileListReader: const _FakePermissionProfileListReader(),
       skillListReader: const _FakeSkillListReader(),
       pluginListReader: const _FakePluginListReader(),
+      pluginDetailReader: const _FakePluginDetailReader(),
       pluginMutationRunner: const _FakePluginMutationRunner(),
       hookListReader: const _FakeHookListReader(),
       appListReader: const _FakeAppListReader(),
@@ -966,6 +970,27 @@ class _FakePluginListReader implements PluginListReader {
     List<PluginMarketplaceKind> marketplaceKinds = const [],
   }) async {
     return const PluginListPage(marketplaces: []);
+  }
+}
+
+class _FakePluginDetailReader implements PluginDetailReader {
+  const _FakePluginDetailReader();
+
+  @override
+  Future<PluginDetail> readPlugin({
+    required String pluginId,
+    List<String> cwds = const [],
+  }) async {
+    return PluginDetail.fromJson(
+      pluginId: pluginId,
+      json: {
+        'plugin': {
+          'id': pluginId,
+          'name': pluginId,
+          'source': {'type': 'remote'},
+        },
+      },
+    );
   }
 }
 

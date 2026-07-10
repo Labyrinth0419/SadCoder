@@ -23,6 +23,7 @@ void main() {
     await connection.permissionProfileListReader.listPermissionProfiles();
     await connection.skillListReader.listSkills();
     await connection.pluginListReader.listPlugins();
+    await connection.pluginDetailReader.readPlugin(pluginId: 'linear');
     await connection.pluginMutationRunner.installPlugin(pluginId: 'linear');
     await connection.pluginMutationRunner.uninstallPlugin(pluginId: 'linear');
     await connection.hookListReader.listHooks();
@@ -53,6 +54,7 @@ void main() {
       'permissionProfile/list',
       'skills/list',
       'plugin/list',
+      'plugin/read',
       'plugin/install',
       'plugin/uninstall',
       'hooks/list',
@@ -271,6 +273,13 @@ class _LineServerProxyConnector implements AgentProxyConnector {
     'permissionProfile/list' => {'data': <Object?>[]},
     'skills/list' => {'data': <Object?>[]},
     'plugin/list' => {'marketplaces': <Object?>[]},
+    'plugin/read' => {
+      'plugin': {
+        'id': 'linear',
+        'name': 'linear',
+        'source': {'type': 'remote'},
+      },
+    },
     'plugin/install' => {'pluginId': 'linear'},
     'plugin/uninstall' => {'pluginId': 'linear'},
     'hooks/list' => {'data': <Object?>[]},

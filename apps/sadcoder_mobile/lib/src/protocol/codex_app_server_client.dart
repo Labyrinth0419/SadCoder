@@ -360,6 +360,20 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> readPlugin({
+    required String pluginId,
+    List<String> cwds = const [],
+  }) {
+    final normalizedCwds = [
+      for (final cwd in cwds)
+        if (cwd.trim().isNotEmpty) cwd.trim(),
+    ];
+    return _request('plugin/read', {
+      'pluginId': pluginId.trim(),
+      if (normalizedCwds.isNotEmpty) 'cwds': normalizedCwds,
+    });
+  }
+
   Future<Map<String, Object?>> installPlugin({
     required String pluginId,
     List<String> cwds = const [],

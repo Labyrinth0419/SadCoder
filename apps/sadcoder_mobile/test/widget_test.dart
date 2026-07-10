@@ -30,6 +30,7 @@ import 'package:sadcoder_mobile/src/mcp/mcp_server_oauth_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
+import 'package:sadcoder_mobile/src/plugins/plugin_detail_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc_diagnostic_log.dart';
@@ -564,6 +565,10 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
   PluginListReader get pluginListReader => const _StaticPluginListReader();
 
   @override
+  PluginDetailReader get pluginDetailReader =>
+      const _StaticPluginDetailReader();
+
+  @override
   PluginMutationRunner get pluginMutationRunner =>
       const _NoopPluginMutationRunner();
 
@@ -872,6 +877,27 @@ class _StaticPluginListReader implements PluginListReader {
     List<PluginMarketplaceKind> marketplaceKinds = const [],
   }) async {
     return const PluginListPage(marketplaces: []);
+  }
+}
+
+class _StaticPluginDetailReader implements PluginDetailReader {
+  const _StaticPluginDetailReader();
+
+  @override
+  Future<PluginDetail> readPlugin({
+    required String pluginId,
+    List<String> cwds = const [],
+  }) async {
+    return PluginDetail.fromJson(
+      pluginId: pluginId,
+      json: {
+        'plugin': {
+          'id': pluginId,
+          'name': pluginId,
+          'source': {'type': 'remote'},
+        },
+      },
+    );
   }
 }
 

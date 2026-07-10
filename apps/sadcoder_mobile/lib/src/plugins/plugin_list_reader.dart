@@ -116,7 +116,7 @@ class PluginSummary {
 
   static PluginSummary? fromJson(Object? value) {
     final map = _objectMap(value);
-    final id = _stringValue(map['id']);
+    final id = _stringField(map, ['id', 'pluginId', 'plugin_id']);
     final name = _stringValue(map['name']);
     if (id == null || name == null) {
       return null;

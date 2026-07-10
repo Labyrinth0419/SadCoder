@@ -61,6 +61,7 @@ void main() {
       cwds: [' /repo ', '  '],
       marketplaceKinds: ['local', 'workspace-directory'],
     );
+    await client.readPlugin(pluginId: ' linear ', cwds: [' /repo ', '  ']);
     await client.listHooks(cwds: [' /repo ', '  ']);
     await client.listApps(
       cursor: ' apps_cursor ',
@@ -123,6 +124,7 @@ void main() {
       'thread/compact/start',
       'skills/list',
       'plugin/list',
+      'plugin/read',
       'hooks/list',
       'app/list',
       'thread/goal/get',
@@ -170,54 +172,58 @@ void main() {
       'marketplaceKinds': ['local', 'workspace-directory'],
     });
     expect(requests[15].params, {
+      'pluginId': 'linear',
       'cwds': ['/repo'],
     });
     expect(requests[16].params, {
+      'cwds': ['/repo'],
+    });
+    expect(requests[17].params, {
       'cursor': 'apps_cursor',
       'limit': 25,
       'threadId': 'thr_1',
       'forceRefetch': true,
     });
-    expect(requests[17].params, {'threadId': 'thr_1'});
-    expect(requests[18].params, {
+    expect(requests[18].params, {'threadId': 'thr_1'});
+    expect(requests[19].params, {
       'threadId': 'thr_1',
       'objective': 'Ship goal support',
       'status': 'active',
       'tokenBudget': 5000,
     });
-    expect(requests[19].params, {'threadId': 'thr_1'});
-    expect(requests[20].params, {
+    expect(requests[20].params, {'threadId': 'thr_1'});
+    expect(requests[21].params, {
       'threadId': 'thr_1',
       'target': {'type': 'commit', 'sha': 'abc123', 'title': 'Polish colors'},
       'delivery': 'detached',
     });
-    expect(requests[21].params, {
+    expect(requests[22].params, {
       'threadId': 'thr_1',
       'name': 'Renamed thread',
     });
-    expect(requests[22].params, {'threadId': 'thr_1'});
     expect(requests[23].params, {'threadId': 'thr_1'});
-    expect(requests[24].params, isNull);
-    expect(requests[25].params, {
+    expect(requests[24].params, {'threadId': 'thr_1'});
+    expect(requests[25].params, isNull);
+    expect(requests[26].params, {
       'classification': 'bug',
       'reason': 'broken',
       'threadId': 'thr_1',
       'includeLogs': true,
       'tags': {'turn_id': 'turn_1'},
     });
-    expect(requests[26].params, {
+    expect(requests[27].params, {
       'command': ['git', 'diff'],
       'cwd': '/repo',
       'env': {'GIT_CONFIG_COUNT': '0'},
       'timeoutMs': 30000,
       'outputBytesCap': 1024,
     });
-    expect(requests[27].params, {
+    expect(requests[28].params, {
       'query': 'main',
       'roots': ['/repo'],
       'cancellation_token': 'token-1',
     });
-    expect(requests[28].params, {
+    expect(requests[29].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},

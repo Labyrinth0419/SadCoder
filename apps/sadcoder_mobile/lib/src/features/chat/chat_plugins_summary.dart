@@ -1,4 +1,5 @@
 import '../../i18n/app_localizations.dart';
+import '../../plugins/plugin_detail_reader.dart';
 import '../../plugins/plugin_list_reader.dart';
 import '../../plugins/plugin_mutation_runner.dart';
 
@@ -49,6 +50,41 @@ String buildPluginsSummary({
     }
   }
 
+  return lines.join('\n');
+}
+
+String buildPluginDetailSummary({
+  required AppLocalizations l10n,
+  required PluginDetail detail,
+}) {
+  final plugin = detail.plugin;
+  final lines = <String>[l10n.pluginsTitle, _pluginLine(l10n, plugin)];
+  final description = plugin.description;
+  if (description.isNotEmpty) {
+    lines.add('${l10n.pluginDescription}: $description');
+  }
+  if (detail.marketplaceName != null) {
+    lines.add('${l10n.pluginMarketplace}: ${detail.marketplaceName}');
+  }
+  if (detail.marketplacePath != null) {
+    lines.add('${l10n.pluginMarketplacePath}: ${detail.marketplacePath}');
+  }
+  final version = _versionLabel(plugin);
+  if (version.isNotEmpty) {
+    lines.add('${l10n.pluginVersion}: $version');
+  }
+  final source = _sourceLabel(plugin.source);
+  if (source.isNotEmpty) {
+    lines.add('${l10n.pluginSource}: $source');
+  }
+  final capabilities = plugin.interface?.capabilities ?? const [];
+  if (capabilities.isNotEmpty) {
+    lines.add('${l10n.pluginCapabilities}: ${capabilities.join(', ')}');
+  }
+  final readme = detail.readme;
+  if (readme != null) {
+    lines.add('${l10n.pluginReadme}:\n$readme');
+  }
   return lines.join('\n');
 }
 

@@ -551,6 +551,7 @@ class AppLocalizations {
   String get pluginVersion => _text('pluginVersion');
   String get pluginSource => _text('pluginSource');
   String get pluginCapabilities => _text('pluginCapabilities');
+  String get pluginReadme => _text('pluginReadme');
   String get pluginInstalled => _text('pluginInstalled');
   String get pluginNotInstalled => _text('pluginNotInstalled');
   String get pluginEnabled => _text('pluginEnabled');
@@ -1267,6 +1268,7 @@ const _values = <String, Map<String, String>>{
     'pluginVersion': 'Version',
     'pluginSource': 'Source',
     'pluginCapabilities': 'Capabilities',
+    'pluginReadme': 'README',
     'pluginInstalled': 'installed',
     'pluginNotInstalled': 'not installed',
     'pluginEnabled': 'enabled',
@@ -1836,6 +1838,7 @@ const _values = <String, Map<String, String>>{
     'pluginVersion': '版本',
     'pluginSource': '来源',
     'pluginCapabilities': '能力',
+    'pluginReadme': 'README',
     'pluginInstalled': '已安装',
     'pluginNotInstalled': '未安装',
     'pluginEnabled': '已启用',

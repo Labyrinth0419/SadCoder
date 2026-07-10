@@ -594,11 +594,15 @@ class _ChatPageState extends State<ChatPage> {
         .where((part) => part.isNotEmpty)
         .toList(growable: false);
     final command = parts.isEmpty ? '' : parts.first.toLowerCase();
+    final read =
+        parts.length == 2 &&
+        (command == 'read' || command == 'show' || command == 'detail');
     final install = parts.length == 2 && command == 'install';
     final uninstall =
         parts.length == 2 && (command == 'uninstall' || command == 'remove');
     final marketplaceKinds = _pluginMarketplaceKindsFromArguments(parts);
     if (parts.isNotEmpty &&
+        !read &&
         !install &&
         !uninstall &&
         marketplaceKinds == null) {
@@ -608,6 +612,21 @@ class _ChatPageState extends State<ChatPage> {
     final l10n = context.l10n;
     final reader = widget.sessionController?.pluginListReader;
     final cwds = _currentWorkspaceCwds();
+    if (read) {
+      final detailReader = widget.sessionController?.pluginDetailReader;
+      if (detailReader == null) {
+        return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
+      }
+      try {
+        final detail = await detailReader.readPlugin(
+          pluginId: parts[1],
+          cwds: cwds,
+        );
+        return buildPluginDetailSummary(l10n: l10n, detail: detail);
+      } on Object catch (error) {
+        return '${l10n.pluginsTitle}\n${l10n.pluginsLoadFailed}: $error';
+      }
+    }
     if (install || uninstall) {
       final runner = widget.sessionController?.pluginMutationRunner;
       if (runner == null) {

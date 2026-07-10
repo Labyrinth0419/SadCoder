@@ -38,6 +38,7 @@ import 'package:sadcoder_mobile/src/models/model_list_controller.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_controller.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
+import 'package:sadcoder_mobile/src/plugins/plugin_detail_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc_diagnostic_log.dart';
@@ -3732,6 +3733,87 @@ void main() {
     expect(find.textContaining('Capabilities: mcp'), findsOneWidget);
   });
 
+  testWidgets('/plugins read renders plugin detail', (tester) async {
+    final approvalController = ApprovalStateController();
+    final pluginDetailReader = _RecordingPluginDetailReader(
+      detail: PluginDetail.fromJson(
+        pluginId: 'linear',
+        json: {
+          'marketplaceName': 'openai-curated',
+          'readme': '# Linear\nPlan work',
+          'plugin': {
+            'id': 'linear',
+            'name': 'linear',
+            'version': '1.2.3',
+            'source': {'type': 'remote'},
+            'installed': true,
+            'enabled': true,
+            'availability': 'AVAILABLE',
+            'interface': {
+              'displayName': 'Linear',
+              'shortDescription': 'Plan work',
+              'capabilities': ['mcp'],
+            },
+          },
+        },
+      ),
+    );
+    final turnRunner = _FakeTurnRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+      pluginDetailReader: pluginDetailReader,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_selected',
+            'sessionId': 'sess_1',
+            'preview': 'Selected thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+            'turns': <Object?>[],
+          }),
+        ),
+      ),
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(detailController.dispose);
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_selected');
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/plugins read linear',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(pluginDetailReader.calls.single.pluginId, 'linear');
+    expect(pluginDetailReader.calls.single.cwds, ['/repo']);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(find.textContaining('Linear (linear): installed'), findsOneWidget);
+    expect(find.textContaining('Marketplace: openai-curated'), findsOneWidget);
+    expect(find.textContaining('README:'), findsOneWidget);
+  });
+
   testWidgets('/plugins install mutates and refreshes plugin list', (
     tester,
   ) async {
@@ -6244,6 +6326,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.threadReviewRunner = const _FakeThreadReviewRunner(),
     this.skillListReader = const _FakeSkillListReader(),
     this.pluginListReader = const _FakePluginListReader(),
+    this.pluginDetailReader = const _FakePluginDetailReader(),
     this.pluginMutationRunner = const _FakePluginMutationRunner(),
     this.hookListReader = const _FakeHookListReader(),
     this.appListReader = const _FakeAppListReader(),
@@ -6263,6 +6346,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final ThreadReviewRunner threadReviewRunner;
   final SkillListReader skillListReader;
   final PluginListReader pluginListReader;
+  final PluginDetailReader pluginDetailReader;
   final PluginMutationRunner pluginMutationRunner;
   final HookListReader hookListReader;
   final AppListReader appListReader;
@@ -6288,6 +6372,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       threadReviewRunner: threadReviewRunner,
       skillListReader: skillListReader,
       pluginListReader: pluginListReader,
+      pluginDetailReader: pluginDetailReader,
       pluginMutationRunner: pluginMutationRunner,
       hookListReader: hookListReader,
       appListReader: appListReader,
@@ -6314,6 +6399,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.threadReviewRunner,
     required this.skillListReader,
     required this.pluginListReader,
+    required this.pluginDetailReader,
     required this.pluginMutationRunner,
     required this.hookListReader,
     required this.appListReader,
@@ -6355,6 +6441,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final PluginListReader pluginListReader;
+
+  @override
+  final PluginDetailReader pluginDetailReader;
 
   @override
   final PluginMutationRunner pluginMutationRunner;
@@ -6590,6 +6679,43 @@ class _FakePluginListReader implements PluginListReader {
     List<PluginMarketplaceKind> marketplaceKinds = const [],
   }) async {
     return const PluginListPage(marketplaces: []);
+  }
+}
+
+class _FakePluginDetailReader implements PluginDetailReader {
+  const _FakePluginDetailReader();
+
+  @override
+  Future<PluginDetail> readPlugin({
+    required String pluginId,
+    List<String> cwds = const [],
+  }) async {
+    return PluginDetail.fromJson(
+      pluginId: pluginId,
+      json: {
+        'plugin': {
+          'id': pluginId,
+          'name': pluginId,
+          'source': {'type': 'remote'},
+        },
+      },
+    );
+  }
+}
+
+class _RecordingPluginDetailReader implements PluginDetailReader {
+  _RecordingPluginDetailReader({required this.detail});
+
+  final PluginDetail detail;
+  final calls = <({String pluginId, List<String> cwds})>[];
+
+  @override
+  Future<PluginDetail> readPlugin({
+    required String pluginId,
+    List<String> cwds = const [],
+  }) async {
+    calls.add((pluginId: pluginId, cwds: List.unmodifiable(cwds)));
+    return detail;
   }
 }
 
