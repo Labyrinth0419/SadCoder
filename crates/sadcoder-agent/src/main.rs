@@ -9,6 +9,7 @@ use sadcoder_protocol::BackendState;
 use sadcoder_protocol::BackendStatus;
 use sadcoder_protocol::JsonRpcNotification;
 use sadcoder_protocol::JsonRpcRequest;
+use sadcoder_protocol::JsonRpcResponse;
 use sadcoder_protocol::RequestId;
 use sadcoder_protocol::SlashCommandManifest;
 use serde::Serialize;
@@ -31,6 +32,7 @@ use std::thread;
 mod codex_command;
 mod service;
 mod state_cache;
+mod workspace_files;
 
 use codex_command::CodexCommandConfig;
 use codex_command::CodexCommandSource;
@@ -47,6 +49,7 @@ use service::service_is_ready;
 use service::start_service_process;
 use state_cache::AgentStateCache;
 use state_cache::resolve_state_path;
+use workspace_files::handle_workspace_request;
 
 #[derive(Debug, Parser)]
 #[command(name = "sadcoder-agent")]
@@ -756,12 +759,14 @@ fn proxy_stdio_app_server(codex: &ResolvedCodexCommand, state_path: PathBuf) -> 
 fn proxy_child_process(mut child: Child, state_path: PathBuf) -> anyhow::Result<()> {
     let mut child_stdin = child.stdin.take().context("child stdin was not piped")?;
     let mut child_stdout = child.stdout.take().context("child stdout was not piped")?;
+    let stdout = Arc::new(Mutex::new(io::stdout()));
     let cache = Arc::new(Mutex::new(
         AgentStateCache::load(&state_path).unwrap_or_else(|_| AgentStateCache::empty()),
     ));
 
     let stdin_cache = Arc::clone(&cache);
     let stdin_state_path = state_path.clone();
+    let stdin_stdout = Arc::clone(&stdout);
     let stdin_thread = thread::spawn(move || {
         let mut reader = BufReader::new(io::stdin().lock());
         let mut line = Vec::new();
@@ -777,6 +782,12 @@ fn proxy_child_process(mut child: Child, state_path: PathBuf) -> anyhow::Result<
             observe_and_save_cache(&stdin_cache, &stdin_state_path, |cache| {
                 cache.observe_client_line_bytes(&line)
             });
+            if let Some(response) = workspace_response_from_client_line(&line) {
+                if write_proxy_json_response(&stdin_stdout, &response).is_err() {
+                    break;
+                }
+                continue;
+            }
             if child_stdin.write_all(&line).is_err() {
                 break;
             }
@@ -785,9 +796,9 @@ fn proxy_child_process(mut child: Child, state_path: PathBuf) -> anyhow::Result<
     });
     let stdout_cache = Arc::clone(&cache);
     let stdout_state_path = state_path;
+    let child_stdout_writer = Arc::clone(&stdout);
     let stdout_thread = thread::spawn(move || {
         let mut reader = BufReader::new(&mut child_stdout);
-        let mut stdout = io::stdout().lock();
         let mut line = Vec::new();
         loop {
             line.clear();
@@ -801,10 +812,9 @@ fn proxy_child_process(mut child: Child, state_path: PathBuf) -> anyhow::Result<
             observe_and_save_cache(&stdout_cache, &stdout_state_path, |cache| {
                 cache.observe_server_line_bytes(&line)
             });
-            if stdout.write_all(&line).is_err() {
+            if write_proxy_line(&child_stdout_writer, &line).is_err() {
                 break;
             }
-            let _ = stdout.flush();
         }
     });
 
@@ -817,6 +827,29 @@ fn proxy_child_process(mut child: Child, state_path: PathBuf) -> anyhow::Result<
     } else {
         anyhow::bail!("app-server exited with status {status}")
     }
+}
+
+fn workspace_response_from_client_line(line: &[u8]) -> Option<JsonRpcResponse> {
+    let request = serde_json::from_slice::<JsonRpcRequest>(line).ok()?;
+    handle_workspace_request(&request)
+}
+
+fn write_proxy_json_response(
+    stdout: &Arc<Mutex<io::Stdout>>,
+    response: &JsonRpcResponse,
+) -> io::Result<()> {
+    let mut line = serde_json::to_vec(response)
+        .map_err(|error| io::Error::new(io::ErrorKind::Other, error))?;
+    line.push(b'\n');
+    write_proxy_line(stdout, &line)
+}
+
+fn write_proxy_line(stdout: &Arc<Mutex<io::Stdout>>, line: &[u8]) -> io::Result<()> {
+    let mut stdout = stdout
+        .lock()
+        .map_err(|_| io::Error::new(io::ErrorKind::Other, "stdout lock poisoned"))?;
+    stdout.write_all(line)?;
+    stdout.flush()
 }
 
 fn observe_and_save_cache(

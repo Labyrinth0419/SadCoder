@@ -50,6 +50,11 @@ WorkspaceFileFailureCode? _codeFromMessage(String message) {
       message.contains('connection closed')) {
     return WorkspaceFileFailureCode.notConnected;
   }
+  if (message.contains('no cwd') ||
+      message.contains('workspace root is not available') ||
+      message.contains('workspace root must be an absolute path')) {
+    return WorkspaceFileFailureCode.noCwd;
+  }
   if (message.contains('no such file') ||
       message.contains('not found') ||
       message.contains('enoent')) {
