@@ -250,6 +250,82 @@ void main() {
     expect(find.text('Binary files cannot be previewed.'), findsOneWidget);
   });
 
+  testWidgets('shows empty directory and structured file error states', (
+    tester,
+  ) async {
+    Future<void> pumpErrorCase({
+      required String path,
+      required String expectedText,
+      Map<String, WorkspaceFileException> statErrors = const {},
+      Map<String, WorkspaceFileException> readErrors = const {},
+    }) async {
+      await _pumpFilesPage(
+        tester,
+        directoryReader: _FakeWorkspaceDirectoryReader({
+          '': [_entry(path: path, name: path)],
+        }),
+        fileReader: _FakeWorkspaceFileReader(
+          stats: {path: _stat(path: path)},
+          statErrors: statErrors,
+          readErrors: readErrors,
+        ),
+      );
+
+      await tester.tap(find.byKey(ValueKey('workspace-files-entry-$path')));
+      await tester.pumpAndSettle();
+      expect(find.text(expectedText), findsOneWidget);
+    }
+
+    await _pumpFilesPage(
+      tester,
+      directoryReader: const _FakeWorkspaceDirectoryReader({'': []}),
+      fileReader: const _FakeWorkspaceFileReader(),
+    );
+
+    expect(find.text('No files found'), findsOneWidget);
+
+    await pumpErrorCase(
+      path: 'denied.txt',
+      expectedText: 'Permission denied while reading path.',
+      readErrors: const {
+        'denied.txt': WorkspaceFileException(
+          WorkspaceFileFailureCode.permissionDenied,
+          'Workspace path cannot be read because permission was denied.',
+        ),
+      },
+    );
+    await pumpErrorCase(
+      path: 'large.txt',
+      expectedText: 'File is too large to preview.',
+      readErrors: const {
+        'large.txt': WorkspaceFileException(
+          WorkspaceFileFailureCode.tooLarge,
+          'Workspace file is too large to preview.',
+        ),
+      },
+    );
+    await pumpErrorCase(
+      path: 'missing.txt',
+      expectedText: 'Path was not found.',
+      statErrors: const {
+        'missing.txt': WorkspaceFileException(
+          WorkspaceFileFailureCode.notFound,
+          'Workspace path was not found.',
+        ),
+      },
+    );
+    await pumpErrorCase(
+      path: 'outside.txt',
+      expectedText: 'Path is outside the workspace root.',
+      statErrors: const {
+        'outside.txt': WorkspaceFileException(
+          WorkspaceFileFailureCode.pathOutsideRoot,
+          'Workspace path is outside the workspace root.',
+        ),
+      },
+    );
+  });
+
   testWidgets('shows no connection and no cwd states', (tester) async {
     await _pumpFilesPage(tester);
 
@@ -381,16 +457,24 @@ class _FakeWorkspaceFileReader implements WorkspaceFileReader {
   const _FakeWorkspaceFileReader({
     this.stats = const {},
     this.chunks = const {},
+    this.statErrors = const {},
+    this.readErrors = const {},
   });
 
   final Map<String, WorkspaceFileStat> stats;
   final Map<String, List<WorkspaceFileReadChunk>> chunks;
+  final Map<String, WorkspaceFileException> statErrors;
+  final Map<String, WorkspaceFileException> readErrors;
 
   @override
   Future<WorkspaceFileStat> statFile({
     required String root,
     required String path,
   }) async {
+    final error = statErrors[path];
+    if (error != null) {
+      throw error;
+    }
     final stat = stats[path];
     if (stat == null) {
       throw const WorkspaceFileException(
@@ -409,6 +493,10 @@ class _FakeWorkspaceFileReader implements WorkspaceFileReader {
     int limitBytes = 64 * 1024,
     String encoding = 'utf-8',
   }) async {
+    final error = readErrors[path];
+    if (error != null) {
+      throw error;
+    }
     final chunk = chunks[path]
         ?.where((chunk) => chunk.offset == offset)
         .firstOrNull;

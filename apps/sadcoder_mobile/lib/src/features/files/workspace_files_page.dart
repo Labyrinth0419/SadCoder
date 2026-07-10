@@ -66,17 +66,21 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
   @override
   void didUpdateWidget(WorkspaceFilesPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    var forceReload = false;
     if (oldWidget.sessionController != widget.sessionController ||
         oldWidget.threadDetailController != widget.threadDetailController ||
         oldWidget.configOverrideController != widget.configOverrideController) {
       _detachListeners(oldWidget);
       _attachListeners();
-      _handleSourcesChanged();
+      forceReload = true;
     }
     if (oldWidget.directoryReader != widget.directoryReader ||
         oldWidget.fileReader != widget.fileReader ||
         oldWidget.root != widget.root) {
-      _handleSourcesChanged();
+      forceReload = true;
+    }
+    if (forceReload) {
+      _handleSourcesChanged(forceReload: true);
     }
   }
 
@@ -188,10 +192,10 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     setState(() => _filter = next);
   }
 
-  void _handleSourcesChanged() {
+  void _handleSourcesChanged({bool forceReload = false}) {
     final nextRoot = _resolvedRoot();
     final rootChanged = nextRoot != _activeRoot;
-    if (rootChanged) {
+    if (rootChanged || forceReload) {
       _activeRoot = nextRoot;
       _directories.clear();
       _directoryRequestIds.clear();
@@ -203,7 +207,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     if (mounted) {
       setState(() {});
     }
-    if ((rootChanged || !_directories.containsKey('')) &&
+    if ((rootChanged || forceReload || !_directories.containsKey('')) &&
         nextRoot != null &&
         _directoryReader != null) {
       unawaited(_loadDirectory(''));
