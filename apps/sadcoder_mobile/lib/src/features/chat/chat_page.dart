@@ -101,6 +101,7 @@ class _ChatPageState extends State<ChatPage> {
   String? _slashTextPrompt;
   bool _slashPaletteOpen = false;
   bool _showRawTranscript = false;
+  bool _showAdvancedControls = false;
 
   @override
   void initState() {
@@ -176,14 +177,6 @@ class _ChatPageState extends State<ChatPage> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _MessageBlock(
-                title: l10n.m0ProtocolClient,
-                body: l10n.m0ProtocolClientBody,
-              ),
-              _MessageBlock(
-                title: l10n.slashCommandSurface,
-                body: l10n.slashCommandSurfaceBody,
-              ),
               _ThreadListPanel(
                 controller: threadListController,
                 detailController: threadDetailController,
@@ -219,13 +212,22 @@ class _ChatPageState extends State<ChatPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (widget.configOverrideController != null) ...[
-                  SessionOverrideControls(
-                    controller: widget.configOverrideController!,
+                  _AdvancedChatControlsToggle(
+                    expanded: _showAdvancedControls,
+                    onPressed: () => setState(
+                      () => _showAdvancedControls = !_showAdvancedControls,
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  TurnOverrideControls(
-                    controller: widget.configOverrideController!,
-                  ),
+                  if (_showAdvancedControls) ...[
+                    const SizedBox(height: 8),
+                    SessionOverrideControls(
+                      controller: widget.configOverrideController!,
+                    ),
+                    const SizedBox(height: 8),
+                    TurnOverrideControls(
+                      controller: widget.configOverrideController!,
+                    ),
+                  ],
                   const SizedBox(height: 8),
                 ],
                 CallbackShortcuts(
@@ -3648,6 +3650,34 @@ class _ChatHeader extends StatelessWidget {
   }
 }
 
+class _AdvancedChatControlsToggle extends StatelessWidget {
+  const _AdvancedChatControlsToggle({
+    required this.expanded,
+    required this.onPressed,
+  });
+
+  final bool expanded;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Align(
+      alignment: Alignment.centerRight,
+      child: TextButton.icon(
+        key: const ValueKey('chat-advanced-controls-toggle'),
+        onPressed: onPressed,
+        icon: Icon(expanded ? Icons.expand_less : Icons.tune),
+        label: Text(
+          expanded
+              ? l10n.hideChatAdvancedControls
+              : l10n.showChatAdvancedControls,
+        ),
+      ),
+    );
+  }
+}
+
 class _ThreadListPanel extends StatelessWidget {
   const _ThreadListPanel({
     required this.controller,
@@ -4343,30 +4373,6 @@ class _TurnSummaryTile extends StatelessWidget {
       title: Text('${context.l10n.approvalTurn}: ${turn.id}'),
       subtitle: Text(
         '${turn.status} / ${turn.itemCount} items / ${turn.itemsView}',
-      ),
-    );
-  }
-}
-
-class _MessageBlock extends StatelessWidget {
-  const _MessageBlock({required this.title, required this.body});
-
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(body),
-          ],
-        ),
       ),
     );
   }

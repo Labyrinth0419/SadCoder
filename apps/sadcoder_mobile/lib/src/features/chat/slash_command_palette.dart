@@ -46,6 +46,7 @@ class _SlashCommandPalette extends StatefulWidget {
 class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
   final TextEditingController _filterController = TextEditingController();
   String _filter = '';
+  _SlashCommandGroup _selectedGroup = _SlashCommandGroup.common;
 
   @override
   void dispose() {
@@ -57,61 +58,91 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final availableHeight = screenHeight - bottomInset;
+    final sheetHeight = (availableHeight * 0.86)
+        .clamp(220.0, screenHeight * 0.86)
+        .toDouble();
     final commands = _filteredCommands(l10n);
-    final rows = _groupedRows(commands);
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
+    final groups = _groupsFor(commands);
+    final selectedGroup = groups.isEmpty
+        ? null
+        : (groups.contains(_selectedGroup) ? _selectedGroup : groups.first);
+    final selectedCommands = selectedGroup == null
+        ? const <SlashCommandSpec>[]
+        : _commandsForGroup(commands, selectedGroup);
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: sheetHeight,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.max,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.manage_search),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    l10n.slashCommands,
-                    style: Theme.of(context).textTheme.titleMedium,
+                Row(
+                  children: [
+                    const Icon(Icons.manage_search),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        l10n.slashCommands,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  key: const ValueKey('slash-command-search-field'),
+                  controller: _filterController,
+                  autofocus: true,
+                  autocorrect: false,
+                  decoration: InputDecoration(
+                    labelText: l10n.typeCommandName,
+                    prefixIcon: const Icon(Icons.search),
+                    border: const OutlineInputBorder(),
                   ),
+                  onChanged: (value) => setState(() => _filter = value),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: selectedGroup == null
+                      ? const SizedBox.shrink()
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _SlashCommandGroupRail(
+                              groups: groups,
+                              selectedGroup: selectedGroup,
+                              onSelected: (group) =>
+                                  setState(() => _selectedGroup = group),
+                            ),
+                            const VerticalDivider(width: 16),
+                            Expanded(
+                              child: ListView.builder(
+                                itemCount: selectedCommands.length,
+                                itemBuilder: (context, index) =>
+                                    _SlashCommandTile(
+                                      command: selectedCommands[index],
+                                      hasActiveTurn: widget.hasActiveTurn,
+                                      isSideConversation:
+                                          widget.isSideConversation,
+                                      onSelected: widget.onSelected,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            TextField(
-              key: const ValueKey('slash-command-search-field'),
-              controller: _filterController,
-              autofocus: true,
-              autocorrect: false,
-              decoration: InputDecoration(
-                labelText: l10n.typeCommandName,
-                prefixIcon: const Icon(Icons.search),
-                border: const OutlineInputBorder(),
-              ),
-              onChanged: (value) => setState(() => _filter = value),
-            ),
-            const SizedBox(height: 12),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 420),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: rows.length,
-                itemBuilder: (context, index) {
-                  return switch (rows[index]) {
-                    _SlashCommandGroupRow(:final group) =>
-                      _SlashCommandGroupHeader(group: group),
-                    _SlashCommandTileRow(:final command) => _SlashCommandTile(
-                      command: command,
-                      hasActiveTurn: widget.hasActiveTurn,
-                      isSideConversation: widget.isSideConversation,
-                      onSelected: widget.onSelected,
-                    ),
-                  };
-                },
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -144,19 +175,21 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
         argumentHint.toLowerCase().contains(query);
   }
 
-  List<_SlashCommandPaletteRow> _groupedRows(List<SlashCommandSpec> commands) {
-    final rows = <_SlashCommandPaletteRow>[];
-    for (final group in _SlashCommandGroup.values) {
-      final groupCommands = commands
-          .where((command) => _groupFor(command) == group)
-          .toList(growable: false);
-      if (groupCommands.isEmpty) {
-        continue;
-      }
-      rows.add(_SlashCommandGroupRow(group));
-      rows.addAll(groupCommands.map(_SlashCommandTileRow.new));
-    }
-    return rows;
+  List<_SlashCommandGroup> _groupsFor(List<SlashCommandSpec> commands) {
+    return [
+      for (final group in _SlashCommandGroup.values)
+        if (commands.any((command) => _groupFor(command) == group)) group,
+    ];
+  }
+
+  List<SlashCommandSpec> _commandsForGroup(
+    List<SlashCommandSpec> commands,
+    _SlashCommandGroup group,
+  ) {
+    return [
+      for (final command in commands)
+        if (_groupFor(command) == group) command,
+    ];
   }
 }
 
@@ -170,22 +203,6 @@ bool _isVisibleByDefault(SlashCommandSpec command) {
   };
 }
 
-sealed class _SlashCommandPaletteRow {
-  const _SlashCommandPaletteRow();
-}
-
-class _SlashCommandGroupRow extends _SlashCommandPaletteRow {
-  const _SlashCommandGroupRow(this.group);
-
-  final _SlashCommandGroup group;
-}
-
-class _SlashCommandTileRow extends _SlashCommandPaletteRow {
-  const _SlashCommandTileRow(this.command);
-
-  final SlashCommandSpec command;
-}
-
 enum _SlashCommandGroup {
   common,
   session,
@@ -195,24 +212,102 @@ enum _SlashCommandGroup {
   debug,
 }
 
-class _SlashCommandGroupHeader extends StatelessWidget {
-  const _SlashCommandGroupHeader({required this.group});
+class _SlashCommandGroupRail extends StatelessWidget {
+  const _SlashCommandGroupRail({
+    required this.groups,
+    required this.selectedGroup,
+    required this.onSelected,
+  });
 
-  final _SlashCommandGroup group;
+  final List<_SlashCommandGroup> groups;
+  final _SlashCommandGroup selectedGroup;
+  final ValueChanged<_SlashCommandGroup> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return SizedBox(
+      width: 116,
+      child: ListView.separated(
+        itemCount: groups.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 6),
+        itemBuilder: (context, index) {
+          final group = groups[index];
+          return _SlashCommandGroupButton(
+            group: group,
+            selected: group == selectedGroup,
+            onTap: () => onSelected(group),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SlashCommandGroupButton extends StatelessWidget {
+  const _SlashCommandGroupButton({
+    required this.group,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _SlashCommandGroup group;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Material(
       key: ValueKey('slash-command-group-${group.name}'),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-      child: Text(
-        context.l10n.slashCommandGroupLabel(group.name),
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: Theme.of(context).colorScheme.primary,
-          fontWeight: FontWeight.w700,
+      color: selected
+          ? colorScheme.secondaryContainer
+          : colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          child: Row(
+            children: [
+              Icon(
+                _groupIcon(group),
+                size: 18,
+                color: selected
+                    ? colorScheme.onSecondaryContainer
+                    : colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  context.l10n.slashCommandGroupLabel(group.name),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: selected
+                        ? colorScheme.onSecondaryContainer
+                        : colorScheme.onSurfaceVariant,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  IconData _groupIcon(_SlashCommandGroup group) {
+    return switch (group) {
+      _SlashCommandGroup.common => Icons.star_outline,
+      _SlashCommandGroup.session => Icons.forum_outlined,
+      _SlashCommandGroup.configuration => Icons.tune,
+      _SlashCommandGroup.filesAndCommands => Icons.terminal,
+      _SlashCommandGroup.mcpAndExtensions => Icons.extension_outlined,
+      _SlashCommandGroup.debug => Icons.bug_report_outlined,
+    };
   }
 }
 
@@ -232,37 +327,70 @@ class _SlashCommandTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final theme = Theme.of(context);
     final unavailableDuringTask = hasActiveTurn && !command.availableDuringTask;
     final unavailableInSide =
         isSideConversation && !command.availableInSideConversation;
     final disabled = unavailableDuringTask || unavailableInSide;
-    return ListTile(
+    final subtitle = _subtitle(
+      l10n,
+      unavailableDuringTask: unavailableDuringTask,
+      unavailableInSide: unavailableInSide,
+    );
+    return Material(
       key: ValueKey('slash-command-${command.command}'),
-      enabled: !disabled,
-      leading: Icon(_iconFor(command)),
-      title: Text(command.slash),
-      subtitle: Text(
-        _subtitle(
-          l10n,
-          unavailableDuringTask: unavailableDuringTask,
-          unavailableInSide: unavailableInSide,
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: disabled
+            ? null
+            : () {
+                onSelected(command);
+                Navigator.of(context).pop();
+              },
+        child: Opacity(
+          opacity: disabled ? 0.48 : 1,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Icon(_iconFor(command)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(command.slash, style: theme.textTheme.titleSmall),
+                      const SizedBox(height: 4),
+                      Text(subtitle, style: theme.textTheme.bodySmall),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          _SmallBadge(
+                            label: l10n.slashCommandMappingLabel(
+                              command.mappingType.name,
+                            ),
+                          ),
+                          _SmallBadge(
+                            label: l10n.slashCommandPhaseLabel(
+                              command.phase.name,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-      trailing: Wrap(
-        spacing: 6,
-        children: [
-          _SmallBadge(
-            label: l10n.slashCommandMappingLabel(command.mappingType.name),
-          ),
-          _SmallBadge(label: l10n.slashCommandPhaseLabel(command.phase.name)),
-        ],
-      ),
-      onTap: disabled
-          ? null
-          : () {
-              onSelected(command);
-              Navigator.of(context).pop();
-            },
     );
   }
 

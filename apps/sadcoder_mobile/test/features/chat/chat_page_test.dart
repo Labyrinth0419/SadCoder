@@ -105,6 +105,44 @@ void main() {
     expect(find.text('Type a command name'), findsOneWidget);
   });
 
+  testWidgets('keeps diagnostic controls out of the default chat surface', (
+    tester,
+  ) async {
+    final overrideController = CodexConfigOverrideController();
+    addTearDown(overrideController.dispose);
+
+    await _pumpChatPage(tester, configOverrideController: overrideController);
+
+    expect(find.text('M0 protocol client'), findsNothing);
+    expect(find.text('Slash command surface'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('chat-session-overrides-edit')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('chat-turn-overrides-edit')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('chat-session-overrides-edit')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('chat-turn-overrides-edit')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('slash command button opens a searchable command palette', (
     tester,
   ) async {
@@ -411,6 +449,10 @@ void main() {
       configOverrideController: overrideController,
     );
 
+    await tester.tap(
+      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
+    );
+    await tester.pumpAndSettle();
     expect(find.textContaining('Model: gpt-5 / app default'), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey('chat-turn-overrides-edit')));
@@ -489,6 +531,10 @@ void main() {
       configOverrideController: overrideController,
     );
 
+    await tester.tap(
+      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
+    );
+    await tester.pumpAndSettle();
     expect(find.textContaining('Model: gpt-5 / app default'), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey('chat-session-overrides-edit')));
@@ -5149,10 +5195,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final forkTile = tester.widget<ListTile>(
-      find.byKey(const ValueKey('slash-command-fork')),
+    final forkAction = tester.widget<InkWell>(
+      find.descendant(
+        of: find.byKey(const ValueKey('slash-command-fork')),
+        matching: find.byType(InkWell),
+      ),
     );
-    expect(forkTile.enabled, false);
+    expect(forkAction.onTap, isNull);
     expect(
       find.textContaining('Unavailable in a side conversation'),
       findsWidgets,
@@ -5843,10 +5892,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final deleteTile = tester.widget<ListTile>(
-        find.byKey(const ValueKey('slash-command-delete')),
+      final deleteAction = tester.widget<InkWell>(
+        find.descendant(
+          of: find.byKey(const ValueKey('slash-command-delete')),
+          matching: find.byType(InkWell),
+        ),
       );
-      expect(deleteTile.enabled, false);
+      expect(deleteAction.onTap, isNull);
       expect(
         find.textContaining('Unavailable while a turn is active'),
         findsOneWidget,

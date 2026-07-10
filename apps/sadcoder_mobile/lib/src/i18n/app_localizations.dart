@@ -131,6 +131,8 @@ class AppLocalizations {
   String get m0ProtocolClientBody => _text('m0ProtocolClientBody');
   String get slashCommandSurface => _text('slashCommandSurface');
   String get slashCommandSurfaceBody => _text('slashCommandSurfaceBody');
+  String get showChatAdvancedControls => _text('showChatAdvancedControls');
+  String get hideChatAdvancedControls => _text('hideChatAdvancedControls');
   String get connectBeforeTurn => _text('connectBeforeTurn');
   String get connectBeforeLoadingThreads =>
       _text('connectBeforeLoadingThreads');
@@ -898,6 +900,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandSurface': 'Slash command surface',
     'slashCommandSurfaceBody':
         'Typing / will later open the SadCoder command palette instead of sending slash text as a normal prompt.',
+    'showChatAdvancedControls': 'Advanced controls',
+    'hideChatAdvancedControls': 'Hide advanced controls',
     'connectBeforeTurn': 'Connect to a host before sending a turn',
     'connectBeforeLoadingThreads': 'Connect to a host to load sessions.',
     'refreshThreads': 'Refresh sessions',
@@ -1493,6 +1497,8 @@ const _values = <String, Map<String, String>>{
         '应用已经具备 initialize、model/list 和 thread/list 的 JSON-RPC 客户端，SSH 传输复用同一接口。',
     'slashCommandSurface': '斜杠命令入口',
     'slashCommandSurfaceBody': '输入 / 后会打开 SadCoder 命令面板，而不是把斜杠文本当作普通提示词发送。',
+    'showChatAdvancedControls': '高级控制',
+    'hideChatAdvancedControls': '收起高级控制',
     'connectBeforeTurn': '连接主机后才能发送任务',
     'connectBeforeLoadingThreads': '连接主机后加载会话。',
     'refreshThreads': '刷新会话',
