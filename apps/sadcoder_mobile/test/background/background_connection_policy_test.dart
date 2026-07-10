@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/background/background_connection_policy.dart';
@@ -12,6 +14,11 @@ void main() {
     expect(fixture.disconnects, 1);
     expect(fixture.connected.value, false);
     expect(fixture.recordingKeeper.retainContexts, isEmpty);
+
+    await fixture.coordinator.handleLifecycleState(AppLifecycleState.resumed);
+
+    expect(fixture.resumes, 1);
+    expect(fixture.connected.value, true);
   });
 
   test('background with active turn retains the connection', () async {
@@ -28,6 +35,7 @@ void main() {
     await fixture.coordinator.handleLifecycleState(AppLifecycleState.resumed);
 
     expect(fixture.recordingKeeper.retentions.single.released, true);
+    expect(fixture.resumes, 0);
   });
 
   test('disabled active-turn retention disconnects in background', () async {
@@ -84,6 +92,44 @@ void main() {
     expect(fixture.disconnects, 1);
     expect(fixture.connected.value, false);
   });
+
+  test('rapid resume waits for the background disconnect to finish', () async {
+    final disconnectGate = Completer<void>();
+    final events = <String>[];
+    late _Fixture fixture;
+    fixture = _Fixture(
+      disconnect: () async {
+        events.add('disconnect-start');
+        await disconnectGate.future;
+        fixture.disconnects++;
+        fixture.connected.value = false;
+        events.add('disconnect-end');
+      },
+      resume: () async {
+        fixture.resumes++;
+        fixture.connected.value = true;
+        events.add('resume');
+      },
+    );
+    addTearDown(fixture.dispose);
+
+    final paused = fixture.coordinator.handleLifecycleState(
+      AppLifecycleState.paused,
+    );
+    await Future<void>.delayed(Duration.zero);
+    final resumed = fixture.coordinator.handleLifecycleState(
+      AppLifecycleState.resumed,
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(events, ['disconnect-start']);
+
+    disconnectGate.complete();
+    await Future.wait([paused, resumed]);
+
+    expect(events, ['disconnect-start', 'disconnect-end', 'resume']);
+    expect(fixture.connected.value, true);
+  });
 }
 
 class _Fixture {
@@ -91,9 +137,23 @@ class _Fixture {
     String? activeTurnId,
     BackgroundConnectionPreferences? preferences,
     BackgroundConnectionKeeper? keeper,
+    BackgroundDisconnectAction? disconnect,
+    BackgroundResumeAction? resume,
   }) : preferences = preferences ?? BackgroundConnectionPreferences(),
        keeper = keeper ?? _RecordingKeeper(),
        turnId = ValueNotifier<String?>(activeTurnId) {
+    final disconnectAction =
+        disconnect ??
+        () async {
+          disconnects++;
+          connected.value = false;
+        };
+    final resumeAction =
+        resume ??
+        () async {
+          resumes++;
+          connected.value = true;
+        };
     coordinator = AppLifecycleConnectionCoordinator(
       sessionListenable: connected,
       turnListenable: turnId,
@@ -105,10 +165,8 @@ class _Fixture {
       endpointProvider: () => 'tester@localhost:22',
       activeThreadIdProvider: () => turnId.value == null ? null : 'thr_1',
       activeTurnIdProvider: () => turnId.value,
-      disconnect: () async {
-        disconnects++;
-        connected.value = false;
-      },
+      disconnect: disconnectAction,
+      resume: resumeAction,
     )..start();
   }
 
@@ -118,6 +176,7 @@ class _Fixture {
   final BackgroundConnectionKeeper keeper;
   late final AppLifecycleConnectionCoordinator coordinator;
   int disconnects = 0;
+  int resumes = 0;
 
   _RecordingKeeper get recordingKeeper => keeper as _RecordingKeeper;
 

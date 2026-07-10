@@ -260,6 +260,30 @@ class CodexSessionStateController extends ChangeNotifier {
     }
   }
 
+  Future<void> resumeConnection() async {
+    if (_status == CodexSessionStatus.connected ||
+        _status == CodexSessionStatus.connecting ||
+        _status == CodexSessionStatus.reconnecting) {
+      return;
+    }
+    if (_status == CodexSessionStatus.disconnecting) {
+      throw StateError('A session transition is already in progress');
+    }
+    final profile = _profile;
+    if (profile == null) {
+      return;
+    }
+    if (!_autoReconnect) {
+      await connect(profile);
+      return;
+    }
+
+    final generation = ++_generation;
+    _reconnectAttempt = 0;
+    _nextReconnectDelay = null;
+    unawaited(_reconnect(profile, generation, _error));
+  }
+
   Future<void> restartBackend() async {
     final connection = _connection;
     final profile = _profile;

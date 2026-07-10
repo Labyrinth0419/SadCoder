@@ -694,12 +694,11 @@ void main() {
     expect(directoryRoots.last, '/workspace');
   });
 
-  testWidgets('backgrounding without an active turn disconnects observation', (
-    tester,
-  ) async {
-    final approvalController = ApprovalStateController();
-    final sessionController = CodexSessionStateController(
-      connector: _StaticSessionStarter(
+  testWidgets(
+    'backgrounding without an active turn reconnects observation on resume',
+    (tester) async {
+      final approvalController = ApprovalStateController();
+      final starter = _RecordingStaticSessionStarter(
         threads: [
           ThreadSummary.fromJson({
             'id': 'thr_1',
@@ -722,27 +721,41 @@ void main() {
             'updatedAt': 1,
           }),
         ),
-      ),
-      approvalController: approvalController,
-    );
-    addTearDown(sessionController.dispose);
-    addTearDown(approvalController.dispose);
+      );
+      final sessionController = CodexSessionStateController(
+        connector: starter,
+        approvalController: approvalController,
+        autoReconnect: false,
+      );
+      addTearDown(sessionController.dispose);
+      addTearDown(approvalController.dispose);
 
-    await sessionController.connect(_profile);
-    await tester.pumpWidget(SadCoderApp(sessionController: sessionController));
-    await tester.pumpAndSettle();
+      await sessionController.connect(_profile);
+      await tester.pumpWidget(
+        SadCoderApp(sessionController: sessionController),
+      );
+      await tester.pumpAndSettle();
 
-    expect(sessionController.status, CodexSessionStatus.connected);
+      expect(sessionController.status, CodexSessionStatus.connected);
+      expect(starter.connectedProfiles, [_profile]);
 
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-    await tester.pumpAndSettle();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pumpAndSettle();
 
-    expect(sessionController.status, CodexSessionStatus.idle);
+      expect(sessionController.status, CodexSessionStatus.idle);
+      expect(starter.connections.single.closeCount, 1);
 
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-  });
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      expect(sessionController.status, CodexSessionStatus.connected);
+      expect(starter.connectedProfiles, [_profile, _profile]);
+      expect(starter.connections, hasLength(2));
+      expect(starter.connections.last.closeCount, 0);
+    },
+  );
 }
 
 Future<void> _selectChatHost(WidgetTester tester, String profileId) async {

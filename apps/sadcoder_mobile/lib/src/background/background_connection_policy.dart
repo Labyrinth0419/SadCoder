@@ -74,6 +74,7 @@ class NoopBackgroundConnectionRetention
 typedef BackgroundBoolProvider = bool Function();
 typedef BackgroundStringProvider = String? Function();
 typedef BackgroundDisconnectAction = Future<void> Function();
+typedef BackgroundResumeAction = Future<void> Function();
 
 class AppLifecycleConnectionCoordinator {
   AppLifecycleConnectionCoordinator({
@@ -87,6 +88,7 @@ class AppLifecycleConnectionCoordinator {
     required BackgroundStringProvider activeThreadIdProvider,
     required BackgroundStringProvider activeTurnIdProvider,
     required BackgroundDisconnectAction disconnect,
+    required BackgroundResumeAction resume,
     BackgroundConnectionKeeper keeper = const NoopBackgroundConnectionKeeper(),
   }) : _sessionListenable = sessionListenable,
        _turnListenable = turnListenable,
@@ -98,6 +100,7 @@ class AppLifecycleConnectionCoordinator {
        _activeThreadIdProvider = activeThreadIdProvider,
        _activeTurnIdProvider = activeTurnIdProvider,
        _disconnect = disconnect,
+       _resume = resume,
        _keeper = keeper;
 
   final Listenable _sessionListenable;
@@ -110,11 +113,14 @@ class AppLifecycleConnectionCoordinator {
   final BackgroundStringProvider _activeThreadIdProvider;
   final BackgroundStringProvider _activeTurnIdProvider;
   final BackgroundDisconnectAction _disconnect;
+  final BackgroundResumeAction _resume;
   final BackgroundConnectionKeeper _keeper;
 
   bool _started = false;
   bool _backgrounded = false;
   bool _disconnecting = false;
+  bool _disconnectedForBackground = false;
+  Future<void> _pendingOperation = Future<void>.value();
   BackgroundConnectionRetention? _retention;
 
   void start() {
@@ -136,10 +142,15 @@ class AppLifecycleConnectionCoordinator {
     _sessionListenable.removeListener(_handleObservedStateChanged);
     _turnListenable.removeListener(_handleObservedStateChanged);
     _preferences.removeListener(_handleObservedStateChanged);
+    await _pendingOperation;
     await _releaseRetention();
   }
 
-  Future<void> handleLifecycleState(AppLifecycleState state) async {
+  Future<void> handleLifecycleState(AppLifecycleState state) {
+    return _enqueue(() => _applyLifecycleState(state));
+  }
+
+  Future<void> _applyLifecycleState(AppLifecycleState state) async {
     if (_isBackgroundState(state)) {
       _backgrounded = true;
       await _applyBackgroundPolicy();
@@ -148,6 +159,7 @@ class AppLifecycleConnectionCoordinator {
     if (state == AppLifecycleState.resumed) {
       _backgrounded = false;
       await _releaseRetention();
+      await _resumeIfNeeded();
     }
   }
 
@@ -155,7 +167,7 @@ class AppLifecycleConnectionCoordinator {
     if (!_backgrounded) {
       return;
     }
-    unawaited(_applyBackgroundPolicy());
+    unawaited(_enqueue(_applyBackgroundPolicy));
   }
 
   Future<void> _applyBackgroundPolicy() async {
@@ -195,11 +207,33 @@ class AppLifecycleConnectionCoordinator {
       return;
     }
     _disconnecting = true;
+    _disconnectedForBackground = true;
     try {
       await _disconnect();
     } finally {
       _disconnecting = false;
     }
+  }
+
+  Future<void> _resumeIfNeeded() async {
+    if (!_disconnectedForBackground) {
+      return;
+    }
+    try {
+      await _resume();
+      _disconnectedForBackground = false;
+    } on Object {
+      // Keep the marker so a later foreground transition can retry.
+    }
+  }
+
+  Future<void> _enqueue(Future<void> Function() operation) {
+    final next = _pendingOperation.then((_) => operation());
+    _pendingOperation = next.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return next;
   }
 
   Future<void> _releaseRetention() async {

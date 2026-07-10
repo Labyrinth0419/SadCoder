@@ -364,6 +364,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       activeThreadIdProvider: () => _turnController.activeThreadId,
       activeTurnIdProvider: () => _turnController.activeTurnId,
       disconnect: _sessionController.disconnect,
+      resume: _sessionController.resumeConnection,
     )..start();
   }
 

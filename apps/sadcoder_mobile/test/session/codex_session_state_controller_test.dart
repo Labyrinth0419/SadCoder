@@ -698,6 +698,55 @@ void main() {
     expect(approvalController.approvals.single.requestId, 'approval-1');
     expect(approvalController.canRespond, false);
   });
+
+  test(
+    'resumeConnection reconnects the preserved profile with backoff',
+    () async {
+      final approvalController = ApprovalStateController(
+        initialApprovals: const [
+          PendingApproval(
+            requestId: 'approval-1',
+            method: commandExecutionApprovalMethod,
+            kind: PendingApprovalKind.commandExecution,
+            rawParams: {},
+          ),
+        ],
+      );
+      final connector = _FakeSessionStarter();
+      final scheduler = _FakeReconnectDelayScheduler();
+      final controller = CodexSessionStateController(
+        connector: connector,
+        approvalController: approvalController,
+        reconnectPolicy: const ReconnectPolicy.fixed(
+          delays: [Duration(milliseconds: 1)],
+        ),
+        reconnectDelayScheduler: scheduler,
+      );
+      addTearDown(controller.dispose);
+      addTearDown(approvalController.dispose);
+
+      await controller.connect(_profile);
+      await controller.disconnect();
+
+      expect(controller.status, CodexSessionStatus.idle);
+      expect(controller.profile, _profile);
+
+      await controller.resumeConnection();
+
+      expect(controller.status, CodexSessionStatus.reconnecting);
+      expect(controller.reconnectAttempt, 1);
+      expect(scheduler.delays, [const Duration(milliseconds: 1)]);
+
+      scheduler.completeNext();
+      await _flushMicrotasks();
+
+      expect(controller.status, CodexSessionStatus.connected);
+      expect(controller.profile, _profile);
+      expect(connector.connectedProfiles, [_profile, _profile]);
+      expect(approvalController.approvals.single.requestId, 'approval-1');
+      expect(approvalController.canRespond, true);
+    },
+  );
 }
 
 const _emptySnapshot = AgentSnapshot(
