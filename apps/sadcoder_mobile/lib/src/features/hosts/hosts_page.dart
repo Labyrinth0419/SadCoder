@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../agent/agent_remote_service.dart';
 import '../../agent/agent_status.dart';
@@ -12,6 +13,7 @@ import '../../ssh/known_host_verifier.dart';
 import '../../ssh/open_ssh_config_parser.dart';
 import '../../ssh/shared_preferences_known_host_store.dart';
 import '../../ssh/ssh_import_file_source.dart';
+import '../../ssh/ssh_key_generator.dart';
 import '../../ssh/ssh_profile.dart';
 import '../../ssh/ssh_profile_store.dart';
 
@@ -34,6 +36,7 @@ class HostsPage extends StatefulWidget {
     this.profileStore,
     this.knownHostVerifier,
     this.importFileSource = const FilePickerSshImportFileSource(),
+    this.keyGenerator = const DartSshKeyGenerator(),
   });
 
   final M0ProbeRunner? probeRunner;
@@ -41,6 +44,7 @@ class HostsPage extends StatefulWidget {
   final SshProfileStore? profileStore;
   final KnownHostVerifier? knownHostVerifier;
   final SshImportFileSource importFileSource;
+  final SshKeyGenerator keyGenerator;
 
   @override
   State<HostsPage> createState() => _HostsPageState();
@@ -62,6 +66,8 @@ class _HostsPageState extends State<HostsPage> {
   bool _savingProfile = false;
   bool _importingSshConfig = false;
   bool _importingPrivateKey = false;
+  bool _generatingKey = false;
+  GeneratedSshKeyPair? _generatedKeyPair;
   M0ProbeReport? _report;
   List<SshProfile> _profiles = const [];
   final Set<String> _collapsedHosts = {};
@@ -78,6 +84,8 @@ class _HostsPageState extends State<HostsPage> {
       widget.knownHostVerifier ?? _defaultKnownHostVerifier;
 
   SshImportFileSource get _importFileSource => widget.importFileSource;
+
+  SshKeyGenerator get _keyGenerator => widget.keyGenerator;
 
   @override
   void initState() {
@@ -140,8 +148,14 @@ class _HostsPageState extends State<HostsPage> {
         _HostImportActionsPanel(
           importingSshConfig: _importingSshConfig,
           importingPrivateKey: _importingPrivateKey,
+          generatingKey: _generatingKey,
+          generatedKeyPair: _generatedKeyPair,
           onImportSshConfig: _importSshConfig,
           onImportPrivateKey: _importPrivateKey,
+          onGenerateKey: _generateSshKey,
+          onCopyPublicKey: _generatedKeyPair == null
+              ? null
+              : _copyGeneratedPublicKey,
         ),
         const SizedBox(height: 12),
         _HostProfileForm(
@@ -151,7 +165,12 @@ class _HostsPageState extends State<HostsPage> {
           portController: _portController,
           usernameController: _usernameController,
           authType: _authType,
-          onAuthTypeChanged: (value) => setState(() => _authType = value),
+          onAuthTypeChanged: (value) => setState(() {
+            _authType = value;
+            if (value != SshAuthType.privateKey) {
+              _generatedKeyPair = null;
+            }
+          }),
           passwordController: _passwordController,
           privateKeyController: _privateKeyController,
           passphraseController: _passphraseController,
@@ -266,20 +285,12 @@ class _HostsPageState extends State<HostsPage> {
       final privateKeyPem = parseSshPrivateKeyPem(text);
       _authType = SshAuthType.privateKey;
       _privateKeyController.text = privateKeyPem;
+      _generatedKeyPair = null;
 
       final store = _profileStore;
       final validationError = _profileValidationError(l10n);
       if (store != null && validationError == null) {
-        final profile = _buildProfile();
-        if (store is SshProfileListStore) {
-          await store.saveProfile(profile);
-          final profiles = await store.loadProfiles();
-          if (mounted) {
-            setState(() => _profiles = profiles);
-          }
-        } else {
-          await store.saveLastProfile(profile);
-        }
+        await _persistProfile(_buildProfile());
         if (mounted) {
           setState(() {
             _profileMessage = l10n.privateKeyImportedAndSaved;
@@ -306,6 +317,73 @@ class _HostsPageState extends State<HostsPage> {
         setState(() => _importingPrivateKey = false);
       }
     }
+  }
+
+  Future<void> _generateSshKey(SshKeyGenerationAlgorithm algorithm) async {
+    if (_generatingKey) {
+      return;
+    }
+    final l10n = context.l10n;
+    setState(() {
+      _generatingKey = true;
+      _profileMessage = null;
+      _profileError = null;
+    });
+
+    try {
+      final generated = await _keyGenerator.generate(
+        algorithm: algorithm,
+        comment: _sshKeyComment(),
+      );
+      _authType = SshAuthType.privateKey;
+      _privateKeyController.text = generated.privateKeyPem;
+      _generatedKeyPair = generated;
+
+      final store = _profileStore;
+      final validationError = _profileValidationError(l10n);
+      if (store != null && validationError == null) {
+        await _persistProfile(_buildProfile());
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _profileMessage = l10n.sshKeyGeneratedAndSaved;
+          _profileError = null;
+        });
+        return;
+      }
+
+      if (mounted) {
+        setState(() {
+          _profileMessage = l10n.sshKeyGenerationNeedsProfile;
+          _profileError = null;
+        });
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        setState(
+          () => _profileError = '${l10n.sshKeyGenerationFailed}: $error',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _generatingKey = false);
+      }
+    }
+  }
+
+  Future<void> _copyGeneratedPublicKey() async {
+    final publicKey = _generatedKeyPair?.publicKeyOpenSsh;
+    if (publicKey == null) {
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: publicKey));
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.publicKeyCopied)));
   }
 
   Future<void> _runProbe() async {
@@ -390,15 +468,7 @@ class _HostsPageState extends State<HostsPage> {
 
     try {
       final profile = _buildProfile();
-      if (store is SshProfileListStore) {
-        await store.saveProfile(profile);
-        final profiles = await store.loadProfiles();
-        if (mounted) {
-          setState(() => _profiles = profiles);
-        }
-      } else {
-        await store.saveLastProfile(profile);
-      }
+      await _persistProfile(profile);
       if (mounted) {
         setState(() => _profileMessage = context.l10n.profileSaved);
       }
@@ -483,6 +553,7 @@ class _HostsPageState extends State<HostsPage> {
     _privateKeyController.text = profile.privateKeyPem ?? '';
     _passphraseController.text = profile.passphrase ?? '';
     _agentCommandController.text = profile.agentCommand;
+    _generatedKeyPair = null;
   }
 
   void _selectProfile(SshProfile profile) {
@@ -518,6 +589,37 @@ class _HostsPageState extends State<HostsPage> {
       return l10n.invalidPort;
     }
     return null;
+  }
+
+  Future<void> _persistProfile(SshProfile profile) async {
+    final store = _profileStore;
+    if (store == null) {
+      return;
+    }
+    if (store is SshProfileListStore) {
+      await store.saveProfile(profile);
+      final profiles = await store.loadProfiles();
+      if (mounted) {
+        setState(() => _profiles = profiles);
+      }
+    } else {
+      await store.saveLastProfile(profile);
+    }
+  }
+
+  String _sshKeyComment() {
+    final username = _usernameController.text.trim();
+    final host = _hostController.text.trim();
+    if (username.isNotEmpty && host.isNotEmpty) {
+      return '$username@$host';
+    }
+    if (host.isNotEmpty) {
+      return host;
+    }
+    if (username.isNotEmpty) {
+      return username;
+    }
+    return 'sadcoder-mobile';
   }
 
   Future<T> _runWithKnownHostConfirmation<T>({
@@ -671,14 +773,22 @@ class _HostImportActionsPanel extends StatelessWidget {
   const _HostImportActionsPanel({
     required this.importingSshConfig,
     required this.importingPrivateKey,
+    required this.generatingKey,
+    required this.generatedKeyPair,
     required this.onImportSshConfig,
     required this.onImportPrivateKey,
+    required this.onGenerateKey,
+    required this.onCopyPublicKey,
   });
 
   final bool importingSshConfig;
   final bool importingPrivateKey;
+  final bool generatingKey;
+  final GeneratedSshKeyPair? generatedKeyPair;
   final VoidCallback onImportSshConfig;
   final VoidCallback onImportPrivateKey;
+  final ValueChanged<SshKeyGenerationAlgorithm> onGenerateKey;
+  final VoidCallback? onCopyPublicKey;
 
   @override
   Widget build(BuildContext context) {
@@ -686,46 +796,118 @@ class _HostImportActionsPanel extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: OverflowBar(
-          alignment: MainAxisAlignment.start,
-          spacing: 8,
-          overflowSpacing: 8,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            OutlinedButton.icon(
-              key: const ValueKey('host-import-ssh-config-button'),
-              onPressed: importingSshConfig ? null : onImportSshConfig,
-              icon: importingSshConfig
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.rule_folder_outlined),
-              label: Text(
-                importingSshConfig
-                    ? l10n.importingSshConfig
-                    : l10n.importSshConfig,
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  key: const ValueKey('host-import-ssh-config-button'),
+                  onPressed: importingSshConfig ? null : onImportSshConfig,
+                  icon: importingSshConfig
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.rule_folder_outlined),
+                  label: Text(
+                    importingSshConfig
+                        ? l10n.importingSshConfig
+                        : l10n.importSshConfig,
+                  ),
+                ),
+                OutlinedButton.icon(
+                  key: const ValueKey('host-import-private-key-button'),
+                  onPressed: importingPrivateKey ? null : onImportPrivateKey,
+                  icon: importingPrivateKey
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.upload_file_outlined),
+                  label: Text(
+                    importingPrivateKey
+                        ? l10n.importingPrivateKey
+                        : l10n.importPrivateKeyFile,
+                  ),
+                ),
+                OutlinedButton.icon(
+                  key: const ValueKey('host-generate-ed25519-key-button'),
+                  onPressed: generatingKey
+                      ? null
+                      : () => onGenerateKey(SshKeyGenerationAlgorithm.ed25519),
+                  icon: _keyButtonIcon(generatingKey),
+                  label: Text(
+                    generatingKey
+                        ? l10n.generatingSshKey
+                        : l10n.generateEd25519Key,
+                  ),
+                ),
+                OutlinedButton.icon(
+                  key: const ValueKey('host-generate-rsa-key-button'),
+                  onPressed: generatingKey
+                      ? null
+                      : () => onGenerateKey(SshKeyGenerationAlgorithm.rsa),
+                  icon: _keyButtonIcon(generatingKey),
+                  label: Text(
+                    generatingKey ? l10n.generatingSshKey : l10n.generateRsaKey,
+                  ),
+                ),
+                OutlinedButton.icon(
+                  key: const ValueKey('host-copy-public-key-button'),
+                  onPressed: onCopyPublicKey,
+                  icon: const Icon(Icons.copy_all_outlined),
+                  label: Text(l10n.copyPublicKey),
+                ),
+              ],
             ),
-            OutlinedButton.icon(
-              key: const ValueKey('host-import-private-key-button'),
-              onPressed: importingPrivateKey ? null : onImportPrivateKey,
-              icon: importingPrivateKey
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.upload_file_outlined),
-              label: Text(
-                importingPrivateKey
-                    ? l10n.importingPrivateKey
-                    : l10n.importPrivateKeyFile,
+            if (generatedKeyPair != null) ...[
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              Text(
+                l10n.generatedPublicKey,
+                style: Theme.of(context).textTheme.titleSmall,
               ),
-            ),
+              const SizedBox(height: 6),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SelectableText(
+                      key: const ValueKey('host-generated-public-key-text'),
+                      generatedKeyPair!.publicKeyOpenSsh,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _keyButtonIcon(bool generating) {
+    if (!generating) {
+      return const Icon(Icons.key_outlined);
+    }
+    return const SizedBox(
+      width: 18,
+      height: 18,
+      child: CircularProgressIndicator(strokeWidth: 2),
     );
   }
 }

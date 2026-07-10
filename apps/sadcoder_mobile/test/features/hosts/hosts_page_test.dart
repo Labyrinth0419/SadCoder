@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/accounts/account_logout_runner.dart';
@@ -46,6 +47,7 @@ import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
 import 'package:sadcoder_mobile/src/ssh/known_host.dart';
 import 'package:sadcoder_mobile/src/ssh/known_host_verifier.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_import_file_source.dart';
+import 'package:sadcoder_mobile/src/ssh/ssh_key_generator.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile_store.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
@@ -567,6 +569,15 @@ secret-key-material
     expect(store.savedProfile?.authType, SshAuthType.privateKey);
     expect(store.savedProfile?.privateKeyPem, contains('secret-key-material'));
     expect(store.savedProfile?.id, 'alice@srv.dev:22');
+    await tester.scrollUntilVisible(
+      find.text(
+        'Private key imported and profile saved securely.',
+        skipOffstage: false,
+      ),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     expect(
       find.text(
         'Private key imported and profile saved securely.',
@@ -584,6 +595,132 @@ secret-key-material
           ?.text,
       contains('OPENSSH PRIVATE KEY'),
     );
+  });
+
+  testWidgets('generates an ED25519 key and saves the current profile', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final store = _FakeProfileStore();
+    final keyGenerator = _FakeKeyGenerator();
+    Object? clipboardText;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        clipboardText = (call.arguments as Map)['text'];
+      }
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      profileStore: store,
+      keyGenerator: keyGenerator,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('host-name-field')),
+      'Dev',
+    );
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('host-generate-ed25519-key-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(keyGenerator.algorithms.single, SshKeyGenerationAlgorithm.ed25519);
+    expect(keyGenerator.comments.single, 'alice@srv.dev');
+    expect(store.savedProfile?.authType, SshAuthType.privateKey);
+    expect(
+      store.savedProfile?.privateKeyPem,
+      'generated-ed25519-private-alice@srv.dev',
+    );
+    expect(store.savedProfile?.id, 'alice@srv.dev:22');
+    expect(find.byKey(const ValueKey('private-key-field')), findsOneWidget);
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const ValueKey('private-key-field')),
+          )
+          .controller
+          ?.text,
+      'generated-ed25519-private-alice@srv.dev',
+    );
+    expect(find.text('ssh-ed25519 fake-ed25519 alice@srv.dev'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('host-copy-public-key-button')));
+    await tester.pumpAndSettle();
+
+    expect(clipboardText, 'ssh-ed25519 fake-ed25519 alice@srv.dev');
+    expect(find.text('Public key copied.'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text(
+        'SSH key generated and profile saved securely.',
+        skipOffstage: false,
+      ),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text(
+        'SSH key generated and profile saved securely.',
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('generates an RSA key without saving until profile is complete', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final store = _FakeProfileStore();
+    final keyGenerator = _FakeKeyGenerator();
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      profileStore: store,
+      keyGenerator: keyGenerator,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('host-generate-rsa-key-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(keyGenerator.algorithms.single, SshKeyGenerationAlgorithm.rsa);
+    expect(keyGenerator.comments.single, 'sadcoder-mobile');
+    expect(store.savedProfile, isNull);
+    expect(find.byKey(const ValueKey('private-key-field')), findsOneWidget);
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const ValueKey('private-key-field')),
+          )
+          .controller
+          ?.text,
+      'generated-rsa-private-sadcoder-mobile',
+    );
+    expect(
+      find.text(
+        'SSH key generated. Complete host and username, then save the profile to store it securely.',
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('ssh-rsa fake-rsa sadcoder-mobile'), findsOneWidget);
   });
 
   testWidgets('groups saved SSH profiles by collapsible host', (tester) async {
@@ -842,6 +979,7 @@ Future<void> _pumpHostsPage(
   SshProfileStore? profileStore,
   KnownHostVerifier? knownHostVerifier,
   SshImportFileSource importFileSource = const _FakeImportFileSource(null),
+  SshKeyGenerator? keyGenerator,
 }) {
   tester.view.physicalSize = const Size(800, 900);
   tester.view.devicePixelRatio = 1;
@@ -856,12 +994,15 @@ Future<void> _pumpHostsPage(
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      home: HostsPage(
-        probeRunner: runner,
-        sessionController: sessionController,
-        profileStore: profileStore,
-        knownHostVerifier: knownHostVerifier,
-        importFileSource: importFileSource,
+      home: Scaffold(
+        body: HostsPage(
+          probeRunner: runner,
+          sessionController: sessionController,
+          profileStore: profileStore,
+          knownHostVerifier: knownHostVerifier,
+          importFileSource: importFileSource,
+          keyGenerator: keyGenerator ?? const DartSshKeyGenerator(),
+        ),
       ),
     ),
   );
@@ -999,6 +1140,33 @@ class _FakeImportFileSource implements SshImportFileSource {
     required String dialogTitle,
   }) async {
     return text;
+  }
+}
+
+class _FakeKeyGenerator implements SshKeyGenerator {
+  final algorithms = <SshKeyGenerationAlgorithm>[];
+  final comments = <String>[];
+
+  @override
+  Future<GeneratedSshKeyPair> generate({
+    required SshKeyGenerationAlgorithm algorithm,
+    String comment = 'sadcoder-mobile',
+  }) async {
+    algorithms.add(algorithm);
+    comments.add(comment);
+    final suffix = switch (algorithm) {
+      SshKeyGenerationAlgorithm.ed25519 => 'ed25519',
+      SshKeyGenerationAlgorithm.rsa => 'rsa',
+    };
+    final publicKeyType = switch (algorithm) {
+      SshKeyGenerationAlgorithm.ed25519 => 'ssh-ed25519',
+      SshKeyGenerationAlgorithm.rsa => 'ssh-rsa',
+    };
+    return GeneratedSshKeyPair(
+      algorithm: algorithm,
+      privateKeyPem: 'generated-$suffix-private-$comment',
+      publicKeyOpenSsh: '$publicKeyType fake-$suffix $comment',
+    );
   }
 }
 

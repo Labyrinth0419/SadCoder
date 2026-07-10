@@ -64,6 +64,16 @@ class AppLocalizations {
   String get privateKeyImportNeedsProfile =>
       _text('privateKeyImportNeedsProfile');
   String get privateKeyImportFailed => _text('privateKeyImportFailed');
+  String get generateEd25519Key => _text('generateEd25519Key');
+  String get generateRsaKey => _text('generateRsaKey');
+  String get generatingSshKey => _text('generatingSshKey');
+  String get generatedPublicKey => _text('generatedPublicKey');
+  String get copyPublicKey => _text('copyPublicKey');
+  String get publicKeyCopied => _text('publicKeyCopied');
+  String get sshKeyGeneratedAndSaved => _text('sshKeyGeneratedAndSaved');
+  String get sshKeyGenerationNeedsProfile =>
+      _text('sshKeyGenerationNeedsProfile');
+  String get sshKeyGenerationFailed => _text('sshKeyGenerationFailed');
   String get test => _text('test');
   String get testing => _text('testing');
   String get hostRequired => _text('hostRequired');
@@ -857,6 +867,16 @@ const _values = <String, Map<String, String>>{
     'privateKeyImportNeedsProfile':
         'Private key imported. Complete host and username, then save the profile to store it securely.',
     'privateKeyImportFailed': 'Private key import failed',
+    'generateEd25519Key': 'Generate ED25519',
+    'generateRsaKey': 'Generate RSA',
+    'generatingSshKey': 'Generating key',
+    'generatedPublicKey': 'Generated public key',
+    'copyPublicKey': 'Copy public key',
+    'publicKeyCopied': 'Public key copied.',
+    'sshKeyGeneratedAndSaved': 'SSH key generated and profile saved securely.',
+    'sshKeyGenerationNeedsProfile':
+        'SSH key generated. Complete host and username, then save the profile to store it securely.',
+    'sshKeyGenerationFailed': 'SSH key generation failed',
     'test': 'Test',
     'testing': 'Testing',
     'hostRequired': 'Host is required',
@@ -1489,6 +1509,15 @@ const _values = <String, Map<String, String>>{
     'privateKeyImportedAndSaved': '私钥已导入，配置已安全保存。',
     'privateKeyImportNeedsProfile': '私钥已导入。补全主机和用户名后保存配置，即可安全持久化。',
     'privateKeyImportFailed': '私钥导入失败',
+    'generateEd25519Key': '生成 ED25519',
+    'generateRsaKey': '生成 RSA',
+    'generatingSshKey': '正在生成密钥',
+    'generatedPublicKey': '生成的公钥',
+    'copyPublicKey': '复制公钥',
+    'publicKeyCopied': '公钥已复制。',
+    'sshKeyGeneratedAndSaved': 'SSH 密钥已生成，配置已安全保存。',
+    'sshKeyGenerationNeedsProfile': 'SSH 密钥已生成。补全主机和用户名后保存配置，即可安全持久化。',
+    'sshKeyGenerationFailed': 'SSH 密钥生成失败',
     'test': '测试',
     'testing': '测试中',
     'hostRequired': '请填写主机',
