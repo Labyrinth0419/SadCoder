@@ -66,4 +66,45 @@ void main() {
 
     expect(calls, isEmpty);
   });
+
+  test('propagates Android channel retain failures', () async {
+    const channel = MethodChannel(
+      'com.sadcoder.sadcoder_mobile/background_connection_failure_test',
+    );
+    final calls = <MethodCall>[];
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      throw PlatformException(
+        code: 'notification_permission_denied',
+        message: 'Notification permission is required.',
+      );
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+    const keeper = AndroidForegroundConnectionKeeper(
+      channel: channel,
+      platform: TargetPlatform.android,
+    );
+
+    await expectLater(
+      keeper.retain(const BackgroundConnectionContext(turnId: 'turn_1')),
+      throwsA(
+        isA<PlatformException>()
+            .having(
+              (exception) => exception.code,
+              'code',
+              'notification_permission_denied',
+            )
+            .having(
+              (exception) => exception.message,
+              'message',
+              'Notification permission is required.',
+            ),
+      ),
+    );
+
+    expect(calls.map((call) => call.method), ['retain']);
+  });
 }
