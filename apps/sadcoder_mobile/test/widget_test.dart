@@ -339,6 +339,55 @@ void main() {
     expect(find.text('Shell file visible'), findsOneWidget);
   });
 
+  testWidgets('files page uses the connected profile default cwd', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final directoryRoots = <String>[];
+    final directoryReader = _MapWorkspaceDirectoryReader({
+      '': [
+        const WorkspaceDirectoryEntry(
+          root: '/workspace',
+          path: 'default.txt',
+          name: 'default.txt',
+          kind: WorkspaceFileKind.file,
+          isHidden: false,
+        ),
+      ],
+    }, directoryRoots);
+    final sessionController = CodexSessionStateController(
+      connector: _StaticSessionStarter(
+        threads: const [],
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'unused',
+            'sessionId': 'sess_unused',
+            'preview': 'Unused',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '',
+            'updatedAt': 1,
+          }),
+        ),
+        workspaceDirectoryReader: directoryReader,
+      ),
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(
+      _profile.copyWith(defaultCwd: '/workspace'),
+    );
+    await tester.pumpWidget(SadCoderApp(sessionController: sessionController));
+    await tester.tap(find.text('Files').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Root: /workspace'), findsOneWidget);
+    expect(find.text('default.txt'), findsWidgets);
+    expect(directoryRoots.last, '/workspace');
+  });
+
   testWidgets('backgrounding without an active turn disconnects observation', (
     tester,
   ) async {
@@ -694,9 +743,10 @@ class _NoopMcpServerOAuthRunner implements McpServerOAuthRunner {
 }
 
 class _MapWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
-  const _MapWorkspaceDirectoryReader(this.entriesByPath);
+  const _MapWorkspaceDirectoryReader(this.entriesByPath, [this.roots]);
 
   final Map<String, List<WorkspaceDirectoryEntry>> entriesByPath;
+  final List<String>? roots;
 
   @override
   Future<WorkspaceDirectoryPage> listDirectory({
@@ -706,6 +756,7 @@ class _MapWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
     String? cursor,
     bool includeHidden = false,
   }) async {
+    roots?.add(root);
     return WorkspaceDirectoryPage(
       root: root,
       path: path,

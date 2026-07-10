@@ -181,7 +181,13 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     if (overrideRoot != null) {
       return overrideRoot;
     }
-    return _normalizedText(widget.threadDetailController?.detail?.thread.cwd);
+    final threadRoot = _normalizedText(
+      widget.threadDetailController?.detail?.thread.cwd,
+    );
+    if (threadRoot != null) {
+      return threadRoot;
+    }
+    return _normalizedText(widget.sessionController?.profile?.defaultCwd);
   }
 
   void _handleFilterChanged() {
