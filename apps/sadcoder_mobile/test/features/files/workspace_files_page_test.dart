@@ -125,7 +125,10 @@ void main() {
     final directoryReader = _FakeWorkspaceDirectoryReader({
       '': [_entry(path: 'lib/main.dart', name: 'main.dart')],
     });
-    const code = 'void main() {\n  print("hi"); // comment\n}';
+    const code =
+        'void main() {\n'
+        '  final url = "https://example.com"; // comment\n'
+        '}';
     final fileReader = _FakeWorkspaceFileReader(
       stats: {'lib/main.dart': _stat(path: 'lib/main.dart', language: 'dart')},
       chunks: {
@@ -176,6 +179,23 @@ void main() {
     expect(spanColors, contains(SadCoderThemeColors.dark.codeKeyword));
     expect(spanColors, contains(SadCoderThemeColors.dark.codeString));
     expect(spanColors, contains(SadCoderThemeColors.dark.codeComment));
+    final spans = codeText.textSpan!.children!.whereType<TextSpan>().toList();
+    expect(
+      spans.any(
+        (span) =>
+            span.text == '"https://example.com"' &&
+            span.style?.color == SadCoderThemeColors.dark.codeString,
+      ),
+      true,
+    );
+    expect(
+      spans.any(
+        (span) =>
+            span.text == '// comment' &&
+            span.style?.color == SadCoderThemeColors.dark.codeComment,
+      ),
+      true,
+    );
   });
 
   testWidgets('filters visible workspace entries', (tester) async {

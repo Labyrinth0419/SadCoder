@@ -527,13 +527,43 @@ RegExp _keywordPattern(String? language) {
 }
 
 int _commentIndex(String line) {
-  final slash = line.indexOf('//');
-  final hash = line.trimLeft().startsWith('#') ? line.indexOf('#') : -1;
-  if (slash == -1) {
-    return hash;
+  var inSingleQuotedString = false;
+  var inDoubleQuotedString = false;
+  var escaped = false;
+  for (var index = 0; index < line.length; index++) {
+    final char = line[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (inSingleQuotedString || inDoubleQuotedString) {
+      if (char == '\\') {
+        escaped = true;
+        continue;
+      }
+      if (char == "'" && inSingleQuotedString) {
+        inSingleQuotedString = false;
+      } else if (char == '"' && inDoubleQuotedString) {
+        inDoubleQuotedString = false;
+      }
+      continue;
+    }
+    if (char == "'") {
+      inSingleQuotedString = true;
+      continue;
+    }
+    if (char == '"') {
+      inDoubleQuotedString = true;
+      continue;
+    }
+    if (char == '/' && index + 1 < line.length && line[index + 1] == '/') {
+      return index;
+    }
   }
-  if (hash == -1) {
-    return slash;
+
+  final firstNonWhitespace = line.indexOf(RegExp(r'\S'));
+  if (firstNonWhitespace != -1 && line[firstNonWhitespace] == '#') {
+    return firstNonWhitespace;
   }
-  return slash < hash ? slash : hash;
+  return -1;
 }
