@@ -671,6 +671,9 @@ class AppLocalizations {
   String workspaceFilesFileSize(int sizeBytes) => _text(
     'workspaceFilesFileSize',
   ).replaceAll('{size}', formatFileSize(sizeBytes));
+  String workspaceFilesModifiedAt(DateTime modifiedAt) => _text(
+    'workspaceFilesModifiedAt',
+  ).replaceAll('{timestamp}', formatDateTime(modifiedAt));
   String workspaceFilesFileType(String type) =>
       _text('workspaceFilesFileType').replaceAll('{type}', type);
   String get workspaceFilesKindFile => _text('workspaceFilesKindFile');
@@ -689,11 +692,13 @@ class AppLocalizations {
       NumberFormat.decimalPattern(_intlLocale).format(value);
 
   String formatUnixTimestampSeconds(int timestamp) {
-    initializeDateFormatting(_intlLocale);
-    final dateTime = DateTime.fromMillisecondsSinceEpoch(
-      timestamp * 1000,
-      isUtc: true,
+    return formatDateTime(
+      DateTime.fromMillisecondsSinceEpoch(timestamp * 1000, isUtc: true),
     );
+  }
+
+  String formatDateTime(DateTime dateTime) {
+    initializeDateFormatting(_intlLocale);
     return DateFormat.yMd(_intlLocale).add_Hm().format(dateTime);
   }
 
@@ -1347,6 +1352,7 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesReadFailed': 'Failed to read workspace file.',
     'workspaceFilesTooLarge': 'File is too large to preview.',
     'workspaceFilesFileSize': 'Size: {size}',
+    'workspaceFilesModifiedAt': 'Modified: {timestamp}',
     'workspaceFilesFileType': 'Type: {type}',
     'workspaceFilesKindFile': 'file',
     'workspaceFilesKindDirectory': 'directory',
@@ -1904,6 +1910,7 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesReadFailed': '读取工作区文件失败。',
     'workspaceFilesTooLarge': '文件过大，无法预览。',
     'workspaceFilesFileSize': '大小：{size}',
+    'workspaceFilesModifiedAt': '修改时间：{timestamp}',
     'workspaceFilesFileType': '类型：{type}',
     'workspaceFilesKindFile': '文件',
     'workspaceFilesKindDirectory': '目录',

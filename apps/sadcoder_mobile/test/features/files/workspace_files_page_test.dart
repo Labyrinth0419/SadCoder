@@ -201,6 +201,43 @@ void main() {
     expect(find.text('README.md'), findsNothing);
   });
 
+  testWidgets('formats file row metadata with the active locale', (
+    tester,
+  ) async {
+    final modifiedAt = DateTime.utc(2024, 11, 7, 8, 9);
+    final directoryReader = _FakeWorkspaceDirectoryReader({
+      '': [
+        _entry(
+          path: 'lib/main.dart',
+          name: 'main.dart',
+          sizeBytes: 2048,
+          modifiedAt: modifiedAt,
+        ),
+      ],
+    });
+
+    await _pumpFilesPage(
+      tester,
+      directoryReader: directoryReader,
+      fileReader: const _FakeWorkspaceFileReader(),
+    );
+
+    expect(find.textContaining('Size: 2 KB'), findsOneWidget);
+    expect(find.textContaining('Modified:'), findsOneWidget);
+    expect(find.textContaining('2024'), findsOneWidget);
+
+    await _pumpFilesPage(
+      tester,
+      locale: const Locale('zh', 'CN'),
+      directoryReader: directoryReader,
+      fileReader: const _FakeWorkspaceFileReader(),
+    );
+
+    expect(find.textContaining('大小：2 KB'), findsOneWidget);
+    expect(find.textContaining('修改时间：'), findsOneWidget);
+    expect(find.textContaining('2024'), findsOneWidget);
+  });
+
   testWidgets('pages directory rows', (tester) async {
     final calls = <_DirectoryListCall>[];
     final entriesByPath = <String, List<WorkspaceDirectoryEntry>>{
@@ -506,11 +543,13 @@ Future<void> _pumpFilesPage(
   WorkspaceFileReader? fileReader,
   String? root = '/repo',
   ThemeMode themeMode = ThemeMode.light,
+  Locale? locale,
   CodexConfigOverrideController? configOverrideController,
   ThreadDetailController? threadDetailController,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: locale,
       theme: ThemeData(extensions: const [SadCoderThemeColors.light]),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
@@ -543,12 +582,16 @@ WorkspaceDirectoryEntry _entry({
   required String name,
   WorkspaceFileKind kind = WorkspaceFileKind.file,
   bool isSymlink = false,
+  int? sizeBytes,
+  DateTime? modifiedAt,
 }) {
   return WorkspaceDirectoryEntry(
     root: '/repo',
     path: path,
     name: name,
     kind: kind,
+    sizeBytes: sizeBytes,
+    modifiedAt: modifiedAt,
     isHidden: name.startsWith('.'),
     isSymlink: isSymlink,
   );

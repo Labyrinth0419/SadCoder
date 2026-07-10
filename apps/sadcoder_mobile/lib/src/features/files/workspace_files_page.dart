@@ -710,8 +710,16 @@ class _WorkspaceEntryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final isDirectory =
         entry.kind == WorkspaceFileKind.directory && !entry.isSymlink;
+    final details = [
+      entry.path,
+      if (!isDirectory && entry.sizeBytes != null)
+        l10n.workspaceFilesFileSize(entry.sizeBytes!),
+      if (entry.modifiedAt != null)
+        l10n.workspaceFilesModifiedAt(entry.modifiedAt!),
+    ];
     return ListTile(
       contentPadding: EdgeInsetsDirectional.only(
         start: 16.0 + depth * 20,
@@ -728,10 +736,10 @@ class _WorkspaceEntryRow extends StatelessWidget {
             : _fileIcon(entry.path),
       ),
       title: Text(entry.name, overflow: TextOverflow.ellipsis),
-      subtitle: Text(entry.path, overflow: TextOverflow.ellipsis),
+      subtitle: Text(details.join(' | '), overflow: TextOverflow.ellipsis),
       trailing: IconButton(
         onPressed: onCopy,
-        tooltip: context.l10n.workspaceFilesCopyPath,
+        tooltip: l10n.workspaceFilesCopyPath,
         icon: const Icon(Icons.copy),
       ),
       onTap: onTap,

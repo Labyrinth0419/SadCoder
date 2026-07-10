@@ -52,6 +52,14 @@ void main() {
     expect(en.timelineDurationMilliseconds(1200), '1,200 ms');
     expect(en.rateLimitResetsAt(1730947200), contains('2024'));
     expect(en.rateLimitResetsAt(1730947200), isNot(contains('1730947200')));
+    expect(
+      en.workspaceFilesModifiedAt(DateTime.utc(2024, 11, 7, 8, 9)),
+      contains('Modified:'),
+    );
+    expect(
+      en.workspaceFilesModifiedAt(DateTime.utc(2024, 11, 7, 8, 9)),
+      contains('2024'),
+    );
 
     final zh = await AppLocalizations.delegate.load(const Locale('zh', 'CN'));
     expect(zh.tokenCount(1234), '1,234 个 token');
@@ -59,6 +67,14 @@ void main() {
     expect(zh.timelineDurationMilliseconds(1200), '1,200 毫秒');
     expect(zh.rateLimitResetsAt(1730947200), contains('2024'));
     expect(zh.rateLimitResetsAt(1730947200), isNot(contains('1730947200')));
+    expect(
+      zh.workspaceFilesModifiedAt(DateTime.utc(2024, 11, 7, 8, 9)),
+      contains('修改时间：'),
+    );
+    expect(
+      zh.workspaceFilesModifiedAt(DateTime.utc(2024, 11, 7, 8, 9)),
+      contains('2024'),
+    );
   });
 
   test('localizes slash command descriptions and command metadata labels', () {
