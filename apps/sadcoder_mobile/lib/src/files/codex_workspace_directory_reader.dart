@@ -1,4 +1,5 @@
 import '../protocol/codex_app_server_client.dart';
+import 'codex_workspace_path_guard.dart';
 import 'workspace_directory_reader.dart';
 import 'workspace_file_failure.dart';
 import 'workspace_file_kind.dart';
@@ -19,6 +20,11 @@ class CodexWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
   }) async {
     try {
       final workspacePath = WorkspacePath.fromRoot(root, path);
+      await rejectSymlinkAncestors(
+        _client,
+        workspacePath,
+        detail: 'Symbolic link ancestors are not browsed.',
+      );
       await _rejectSymlinkPath(workspacePath);
       final response = await _client.fsReadDirectory(
         path: workspacePath.absolutePath,

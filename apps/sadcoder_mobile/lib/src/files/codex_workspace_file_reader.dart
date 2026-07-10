@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import '../protocol/codex_app_server_client.dart';
+import 'codex_workspace_path_guard.dart';
 import 'workspace_file_failure.dart';
 import 'workspace_file_kind.dart';
 import 'workspace_file_reader.dart';
@@ -19,6 +20,11 @@ class CodexWorkspaceFileReader implements WorkspaceFileReader {
   }) async {
     try {
       final workspacePath = WorkspacePath.fromRoot(root, path);
+      await rejectSymlinkAncestors(
+        _client,
+        workspacePath,
+        detail: 'Symbolic link ancestors are not previewed.',
+      );
       final response = await _client.fsGetMetadata(
         path: workspacePath.absolutePath,
       );
@@ -53,6 +59,11 @@ class CodexWorkspaceFileReader implements WorkspaceFileReader {
       }
       final normalizedEncoding = _normalizeEncoding(encoding);
       final workspacePath = WorkspacePath.fromRoot(root, path);
+      await rejectSymlinkAncestors(
+        _client,
+        workspacePath,
+        detail: 'Symbolic link ancestors are not previewed.',
+      );
       final metadata = await _client.fsGetMetadata(
         path: workspacePath.absolutePath,
       );

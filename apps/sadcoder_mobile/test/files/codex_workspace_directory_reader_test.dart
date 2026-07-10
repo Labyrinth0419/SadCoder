@@ -13,11 +13,15 @@ void main() {
       final client = CodexAppServerClient(
         MemoryJsonRpcTransport((request) {
           requests.add(request);
-          expect(request.params, {'path': '/repo/lib/src'});
           switch (request.method) {
             case 'fs/getMetadata':
+              expect(
+                request.params?['path'],
+                anyOf('/repo/lib', '/repo/lib/src'),
+              );
               return {'isDirectory': true, 'isFile': false, 'isSymlink': false};
             case 'fs/readDirectory':
+              expect(request.params, {'path': '/repo/lib/src'});
               return {
                 'entries': [
                   {
@@ -77,7 +81,9 @@ void main() {
       expect(secondPage.nextCursor, isNull);
       expect(requests.map((request) => request.method), [
         'fs/getMetadata',
+        'fs/getMetadata',
         'fs/readDirectory',
+        'fs/getMetadata',
         'fs/getMetadata',
         'fs/readDirectory',
       ]);
@@ -151,6 +157,34 @@ void main() {
 
       await expectLater(
         reader.listDirectory(root: '/repo', path: 'linked'),
+        throwsA(
+          isA<WorkspaceFileException>().having(
+            (error) => error.code,
+            'code',
+            WorkspaceFileFailureCode.pathOutsideRoot,
+          ),
+        ),
+      );
+      expect(requests.map((request) => request.method), ['fs/getMetadata']);
+    },
+  );
+
+  test(
+    'listDirectory rejects symlink ancestors before reading directory',
+    () async {
+      final requests = <JsonRpcRequest>[];
+      final client = CodexAppServerClient(
+        MemoryJsonRpcTransport((request) {
+          requests.add(request);
+          expect(request.method, 'fs/getMetadata');
+          expect(request.params, {'path': '/repo/linked'});
+          return {'isDirectory': true, 'isFile': false, 'isSymlink': true};
+        }),
+      );
+      final reader = CodexWorkspaceDirectoryReader(client);
+
+      await expectLater(
+        reader.listDirectory(root: '/repo', path: 'linked/secret'),
         throwsA(
           isA<WorkspaceFileException>().having(
             (error) => error.code,

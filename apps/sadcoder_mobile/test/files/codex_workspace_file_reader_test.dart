@@ -14,7 +14,11 @@ void main() {
       MemoryJsonRpcTransport((request) {
         requests.add(request);
         expect(request.method, 'fs/getMetadata');
-        expect(request.params, {'path': '/repo/lib/main.dart'});
+        final path = request.params?['path'];
+        if (path == '/repo/lib') {
+          return {'isDirectory': true, 'isFile': false, 'isSymlink': false};
+        }
+        expect(path, '/repo/lib/main.dart');
         return {
           'isDirectory': false,
           'isFile': true,
@@ -36,7 +40,10 @@ void main() {
       DateTime.fromMillisecondsSinceEpoch(1700000000000, isUtc: true),
     );
     expect(stat.language, 'dart');
-    expect(requests, hasLength(1));
+    expect(requests.map((request) => request.params?['path']), [
+      '/repo/lib',
+      '/repo/lib/main.dart',
+    ]);
   });
 
   test('readFile parses app-server range chunks', () async {
@@ -209,6 +216,31 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('readFile rejects symlink ancestors before reading file', () async {
+    final requests = <JsonRpcRequest>[];
+    final client = CodexAppServerClient(
+      MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        expect(request.method, 'fs/getMetadata');
+        expect(request.params, {'path': '/repo/linked'});
+        return {'isDirectory': true, 'isFile': false, 'isSymlink': true};
+      }),
+    );
+    final reader = CodexWorkspaceFileReader(client);
+
+    await expectLater(
+      reader.readFile(root: '/repo', path: 'linked/secret.txt'),
+      throwsA(
+        isA<WorkspaceFileException>().having(
+          (error) => error.code,
+          'code',
+          WorkspaceFileFailureCode.pathOutsideRoot,
+        ),
+      ),
+    );
+    expect(requests.map((request) => request.method), ['fs/getMetadata']);
   });
 
   test('readFile rejects traversal paths before calling app-server', () async {
