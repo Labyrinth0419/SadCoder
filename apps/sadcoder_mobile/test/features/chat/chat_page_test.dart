@@ -3093,9 +3093,9 @@ void main() {
     );
     expect(find.textContaining('cwd: /repo'), findsOneWidget);
     expect(find.textContaining('item: item_1'), findsOneWidget);
-    expect(find.textContaining('OS pid: 1234'), findsOneWidget);
+    expect(find.textContaining('OS pid: 1,234'), findsOneWidget);
     expect(find.textContaining('CPU: 12.5%'), findsOneWidget);
-    expect(find.textContaining('memory: 2048 KB'), findsOneWidget);
+    expect(find.textContaining('memory: 2 MB'), findsOneWidget);
   });
 
   testWidgets('/stop cleans background terminals without interrupting a turn', (

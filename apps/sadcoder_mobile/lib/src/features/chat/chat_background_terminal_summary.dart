@@ -18,15 +18,19 @@ String buildThreadBackgroundTerminalsSummary({
     }
     lines.add('  ${l10n.backgroundTerminalItem}: ${terminal.itemId}');
     if (terminal.osPid != null) {
-      lines.add('  ${l10n.backgroundTerminalOsPid}: ${terminal.osPid}');
+      lines.add(
+        '  ${l10n.backgroundTerminalOsPid}: ${l10n.formatNumber(terminal.osPid!)}',
+      );
     }
     if (terminal.cpuPercent != null) {
       lines.add(
-        '  ${l10n.backgroundTerminalCpu}: ${terminal.cpuPercent!.toStringAsFixed(1)}%',
+        '  ${l10n.backgroundTerminalCpu}: ${l10n.formatNumber(terminal.cpuPercent!)}%',
       );
     }
     if (terminal.rssKb != null) {
-      lines.add('  ${l10n.backgroundTerminalRss}: ${terminal.rssKb} KB');
+      lines.add(
+        '  ${l10n.backgroundTerminalRss}: ${l10n.formatFileSize(terminal.rssKb! * 1024)}',
+      );
     }
   }
 
