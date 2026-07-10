@@ -15,6 +15,8 @@ import '../../session/codex_session_state_controller.dart';
 import '../../theme/sadcoder_theme.dart';
 import '../../threads/thread_detail_controller.dart';
 import 'file_search_sheet.dart';
+import 'workspace_markdown_preview.dart';
+import 'workspace_syntax_highlighter.dart';
 
 part 'workspace_file_preview.dart';
 
