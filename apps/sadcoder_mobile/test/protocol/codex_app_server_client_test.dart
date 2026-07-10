@@ -428,6 +428,36 @@ void main() {
     ]);
   });
 
+  test('agent methods use sadcoder agent request names', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
+
+    final client = CodexAppServerClient(transport);
+    await client.agentHello();
+    await client.agentHealth();
+    await client.agentSnapshot();
+    await client.agentSlashCommandsList();
+    await client.agentPing();
+
+    expect(requests.map((request) => request.method), [
+      'agent/hello',
+      'agent/health',
+      'agent/snapshot',
+      'agent/slashCommands/list',
+      'agent/ping',
+    ]);
+    expect(requests.map((request) => request.params), [
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
+  });
+
   test(
     'forkThread sends side conversation fork options when provided',
     () async {

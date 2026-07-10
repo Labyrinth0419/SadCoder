@@ -29,12 +29,14 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
+mod agent_rpc;
 mod app_server_socket;
 mod codex_command;
 mod service;
 mod state_cache;
 mod workspace_files;
 
+use agent_rpc::AgentRpcMethod;
 use app_server_socket::AppServerSocket;
 use codex_command::CodexCommandConfig;
 use codex_command::CodexCommandSource;
@@ -52,6 +54,13 @@ use service::start_service_process;
 use state_cache::AgentStateCache;
 use state_cache::resolve_state_path;
 use workspace_files::handle_workspace_request;
+
+#[derive(Debug, Clone)]
+struct AgentProxyContext {
+    codex: ResolvedCodexCommand,
+    backend_mode: BackendMode,
+    state_path: PathBuf,
+}
 
 #[derive(Debug, Parser)]
 #[command(name = "sadcoder-agent")]
@@ -728,7 +737,14 @@ fn proxy_service_app_server(
             service_paths.socket_path.display()
         )
     })?;
-    proxy_socket_connection(socket, state_path)
+    proxy_socket_connection(
+        socket,
+        AgentProxyContext {
+            codex: codex.clone(),
+            backend_mode: BackendMode::Auto,
+            state_path,
+        },
+    )
 }
 
 fn proxy_stdio_app_server(codex: &ResolvedCodexCommand, state_path: PathBuf) -> anyhow::Result<()> {
@@ -746,13 +762,21 @@ fn proxy_stdio_app_server(codex: &ResolvedCodexCommand, state_path: PathBuf) -> 
             )
         })?;
 
-    proxy_child_process(child, state_path)
+    proxy_child_process(
+        child,
+        AgentProxyContext {
+            codex: codex.clone(),
+            backend_mode: BackendMode::Stdio,
+            state_path,
+        },
+    )
 }
 
-fn proxy_child_process(mut child: Child, state_path: PathBuf) -> anyhow::Result<()> {
+fn proxy_child_process(mut child: Child, context: AgentProxyContext) -> anyhow::Result<()> {
     let mut child_stdin = child.stdin.take().context("child stdin was not piped")?;
     let mut child_stdout = child.stdout.take().context("child stdout was not piped")?;
     let stdout = Arc::new(Mutex::new(io::stdout()));
+    let state_path = context.state_path.clone();
     let cache = Arc::new(Mutex::new(
         AgentStateCache::load(&state_path).unwrap_or_else(|_| AgentStateCache::empty()),
     ));
@@ -760,6 +784,7 @@ fn proxy_child_process(mut child: Child, state_path: PathBuf) -> anyhow::Result<
     let stdin_cache = Arc::clone(&cache);
     let stdin_state_path = state_path.clone();
     let stdin_stdout = Arc::clone(&stdout);
+    let stdin_context = context.clone();
     let stdin_thread = thread::spawn(move || {
         let mut reader = BufReader::new(io::stdin().lock());
         let mut line = Vec::new();
@@ -775,7 +800,7 @@ fn proxy_child_process(mut child: Child, state_path: PathBuf) -> anyhow::Result<
             observe_and_save_cache(&stdin_cache, &stdin_state_path, |cache| {
                 cache.observe_client_line_bytes(&line)
             });
-            if let Some(response) = workspace_response_from_client_line(&line) {
+            if let Some(response) = local_response_from_client_line(&line, &stdin_context) {
                 if write_proxy_json_response(&stdin_stdout, &response).is_err() {
                     break;
                 }
@@ -822,7 +847,11 @@ fn proxy_child_process(mut child: Child, state_path: PathBuf) -> anyhow::Result<
     }
 }
 
-fn proxy_socket_connection(socket: AppServerSocket, state_path: PathBuf) -> anyhow::Result<()> {
+fn proxy_socket_connection(
+    socket: AppServerSocket,
+    context: AgentProxyContext,
+) -> anyhow::Result<()> {
+    let state_path = context.state_path.clone();
     let cache = Arc::new(Mutex::new(
         AgentStateCache::load(&state_path).unwrap_or_else(|_| AgentStateCache::empty()),
     ));
@@ -832,6 +861,7 @@ fn proxy_socket_connection(socket: AppServerSocket, state_path: PathBuf) -> anyh
     let stdin_cache = Arc::clone(&cache);
     let stdin_state_path = state_path.clone();
     let stdin_stdout = Arc::clone(&stdout);
+    let stdin_context = context.clone();
     let stdin_thread = thread::spawn(move || {
         let mut reader = BufReader::new(io::stdin().lock());
         let mut line = Vec::new();
@@ -847,7 +877,7 @@ fn proxy_socket_connection(socket: AppServerSocket, state_path: PathBuf) -> anyh
             observe_and_save_cache(&stdin_cache, &stdin_state_path, |cache| {
                 cache.observe_client_line_bytes(&line)
             });
-            if let Some(response) = workspace_response_from_client_line(&line) {
+            if let Some(response) = local_response_from_client_line(&line, &stdin_context) {
                 if write_proxy_json_response(&stdin_stdout, &response).is_err() {
                     break;
                 }
@@ -893,9 +923,44 @@ fn json_line_payload(line: &[u8]) -> &[u8] {
     &line[..end]
 }
 
-fn workspace_response_from_client_line(line: &[u8]) -> Option<JsonRpcResponse> {
+fn local_response_from_client_line(
+    line: &[u8],
+    context: &AgentProxyContext,
+) -> Option<JsonRpcResponse> {
     let request = serde_json::from_slice::<JsonRpcRequest>(line).ok()?;
+    if let Some(response) = handle_agent_request(&request, context) {
+        return Some(response);
+    }
     handle_workspace_request(&request)
+}
+
+fn handle_agent_request(
+    request: &JsonRpcRequest,
+    context: &AgentProxyContext,
+) -> Option<JsonRpcResponse> {
+    let method = AgentRpcMethod::from_request(request)?;
+    let result = match method {
+        AgentRpcMethod::Hello => Ok(agent_rpc::hello_result()),
+        AgentRpcMethod::Ping => Ok(agent_rpc::ping_result()),
+        AgentRpcMethod::Health => serde_json::to_value(collect_status(
+            &context.codex,
+            context.backend_mode,
+            &context.state_path,
+        ))
+        .map_err(|error| error.to_string()),
+        AgentRpcMethod::Snapshot => AgentStateCache::load(&context.state_path)
+            .map(AgentStateCache::into_snapshot)
+            .and_then(|snapshot| serde_json::to_value(snapshot).map_err(Into::into))
+            .map_err(|error| error.to_string()),
+        AgentRpcMethod::SlashCommands => load_slash_command_manifest()
+            .and_then(|manifest| serde_json::to_value(manifest).map_err(Into::into))
+            .map_err(|error| error.to_string()),
+    };
+
+    Some(match result {
+        Ok(result) => agent_rpc::success_response(request, result),
+        Err(detail) => agent_rpc::error_response(request, detail),
+    })
 }
 
 fn write_proxy_json_response(
@@ -940,6 +1005,25 @@ mod tests {
             path_prepend: Vec::new(),
             source: CodexCommandSource::Config,
         }
+    }
+
+    fn test_proxy_context(state_path: PathBuf) -> AgentProxyContext {
+        AgentProxyContext {
+            codex: missing_configured_codex(),
+            backend_mode: BackendMode::Auto,
+            state_path,
+        }
+    }
+
+    fn request_line(method: &str, params: Option<Value>) -> Vec<u8> {
+        let request = JsonRpcRequest::new(RequestId::Number(7), method, params);
+        let mut line = serde_json::to_vec(&request).expect("serialize request");
+        line.push(b'\n');
+        line
+    }
+
+    fn response_json(response: JsonRpcResponse) -> Value {
+        serde_json::to_value(response).expect("serialize response")
     }
 
     #[test]
@@ -1038,6 +1122,108 @@ mod tests {
 
         assert_eq!(status.kind, BackendKind::SadcoderAgentService);
         assert_eq!(status.state, BackendState::NotStarted);
+    }
+
+    #[test]
+    fn local_proxy_handles_agent_hello_without_forwarding() {
+        let context = test_proxy_context(std::env::temp_dir().join(format!(
+            "sadcoder-agent-rpc-hello-{}.json",
+            std::process::id()
+        )));
+        let response =
+            local_response_from_client_line(&request_line("agent/hello", None), &context)
+                .expect("local response");
+        let response = response_json(response);
+
+        assert_eq!(response["id"], 7);
+        assert_eq!(response["result"]["capabilities"]["agentRpc"], true);
+        assert!(
+            response["result"]["methods"]
+                .as_array()
+                .expect("methods")
+                .iter()
+                .any(|method| method.as_str() == Some("agent/health"))
+        );
+    }
+
+    #[test]
+    fn local_proxy_handles_agent_health_with_status_shape() {
+        let context = test_proxy_context(std::env::temp_dir().join(format!(
+            "sadcoder-agent-rpc-health-{}.json",
+            std::process::id()
+        )));
+        let response =
+            local_response_from_client_line(&request_line("agent/health", None), &context)
+                .expect("local response");
+        let response = response_json(response);
+
+        assert_eq!(response["id"], 7);
+        assert_eq!(
+            response["result"]["agentVersion"],
+            env!("CARGO_PKG_VERSION")
+        );
+        assert_eq!(response["result"]["backend"]["state"], "unavailable");
+        assert!(
+            response["result"]["backend"]["detail"]
+                .as_str()
+                .expect("backend detail")
+                .contains("configured-path-missing")
+        );
+    }
+
+    #[test]
+    fn local_proxy_handles_agent_snapshot_from_cache_file() {
+        let path = std::env::temp_dir().join(format!(
+            "sadcoder-agent-rpc-snapshot-{}-{}.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        let mut cache = AgentStateCache::empty();
+        cache
+            .snapshot
+            .pending_approvals
+            .push(sadcoder_protocol::AgentCachedServerRequest {
+                id: json!("approval-1"),
+                method: "item/commandExecution/requestApproval".to_string(),
+                params: Some(json!({ "command": "cargo test" })),
+            });
+        cache.save(&path).expect("save cache");
+        let context = test_proxy_context(path.clone());
+
+        let response =
+            local_response_from_client_line(&request_line("agent/snapshot", None), &context)
+                .expect("local response");
+        let response = response_json(response);
+        let _ = std::fs::remove_file(&path);
+
+        assert_eq!(
+            response["result"]["pendingApprovals"][0]["id"],
+            "approval-1"
+        );
+        assert_eq!(
+            response["result"]["pendingApprovals"][0]["method"],
+            "item/commandExecution/requestApproval"
+        );
+    }
+
+    #[test]
+    fn local_proxy_handles_agent_slash_command_manifest() {
+        let context = test_proxy_context(std::env::temp_dir().join(format!(
+            "sadcoder-agent-rpc-slash-{}.json",
+            std::process::id()
+        )));
+        let response = local_response_from_client_line(
+            &request_line("agent/slashCommands/list", None),
+            &context,
+        )
+        .expect("local response");
+        let response = response_json(response);
+
+        assert_eq!(response["result"]["schemaVersion"], 1);
+        assert_eq!(response["result"]["commands"][0]["command"], "model");
     }
 
     #[test]

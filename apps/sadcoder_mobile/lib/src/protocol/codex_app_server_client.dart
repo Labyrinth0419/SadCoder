@@ -247,6 +247,26 @@ class CodexAppServerClient {
     return _request('workspace/fileRead', params);
   }
 
+  Future<Map<String, Object?>> agentHello() {
+    return _request('agent/hello');
+  }
+
+  Future<Map<String, Object?>> agentHealth() {
+    return _request('agent/health');
+  }
+
+  Future<Map<String, Object?>> agentSnapshot() {
+    return _request('agent/snapshot');
+  }
+
+  Future<Map<String, Object?>> agentSlashCommandsList() {
+    return _request('agent/slashCommands/list');
+  }
+
+  Future<Map<String, Object?>> agentPing() {
+    return _request('agent/ping');
+  }
+
   Future<Map<String, Object?>> readAccountRateLimits() {
     return _request('account/rateLimits/read');
   }
