@@ -77,6 +77,7 @@ pub(crate) fn error_response(
         error: Some(JsonRpcError {
             code: AGENT_RPC_ERROR_CODE,
             message: format!("agent RPC failed: {}", detail.into()),
+            data: None,
         }),
     }
 }

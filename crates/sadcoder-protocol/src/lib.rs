@@ -64,6 +64,8 @@ pub struct JsonRpcResponse {
 pub struct JsonRpcError {
     pub code: i64,
     pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<Value>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -292,6 +294,29 @@ mod tests {
             "item/commandExecution/requestApproval"
         );
         assert_eq!(encoded["recentEvents"][0]["params"]["threadId"], "thr_1");
+    }
+
+    #[test]
+    fn json_rpc_error_data_is_optional() {
+        let without_data = JsonRpcError {
+            code: -32025,
+            message: "workspace file request failed".to_string(),
+            data: None,
+        };
+        let with_data = JsonRpcError {
+            code: -32023,
+            message: "workspace path is outside the workspace root".to_string(),
+            data: Some(serde_json::json!({
+                "code": "path-outside-root",
+                "detail": "workspace path traversal is not allowed",
+            })),
+        };
+
+        let encoded_without = serde_json::to_value(without_data).expect("serialize error");
+        let encoded_with = serde_json::to_value(with_data).expect("serialize error");
+
+        assert!(encoded_without.get("data").is_none());
+        assert_eq!(encoded_with["data"]["code"], "path-outside-root");
     }
 
     #[test]

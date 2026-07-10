@@ -53,6 +53,7 @@ fn error_response(request: &JsonRpcRequest, error: WorkspaceFileRpcError) -> Jso
         error: Some(JsonRpcError {
             code: error.json_rpc_code(),
             message: error.message(),
+            data: Some(error.data()),
         }),
     }
 }
@@ -716,6 +717,38 @@ impl WorkspaceFileRpcError {
         }
     }
 
+    fn data(&self) -> Value {
+        json!({
+            "code": self.failure_code(),
+            "message": self.message(),
+            "detail": self.detail(),
+        })
+    }
+
+    fn failure_code(&self) -> &'static str {
+        match self {
+            Self::NoCwd(_) => "no-cwd",
+            Self::NotFound(_) => "not-found",
+            Self::PermissionDenied(_) => "permission-denied",
+            Self::PathOutsideRoot(_) => "path-outside-root",
+            Self::BinaryNotPreviewable => "binary-not-previewable",
+            Self::TooLarge(_) => "too-large",
+            Self::ReadFailed(_) => "read-failed",
+        }
+    }
+
+    fn detail(&self) -> String {
+        match self {
+            Self::NoCwd(detail)
+            | Self::NotFound(detail)
+            | Self::PermissionDenied(detail)
+            | Self::PathOutsideRoot(detail)
+            | Self::TooLarge(detail)
+            | Self::ReadFailed(detail) => detail.clone(),
+            Self::BinaryNotPreviewable => "binary file is not previewable as text".to_string(),
+        }
+    }
+
     fn message(&self) -> String {
         match self {
             Self::NoCwd(detail) => format!("workspace root is not available: {detail}"),
@@ -846,6 +879,8 @@ mod tests {
             json!({"root": root.path_string(), "path": "image.bin"}),
         );
 
+        assert_eq!(error["code"].as_i64(), Some(-32024));
+        assert_eq!(error["data"]["code"], "binary-not-previewable");
         assert!(
             error["message"]
                 .as_str()
@@ -869,6 +904,13 @@ mod tests {
         );
 
         assert_eq!(error["code"].as_i64(), Some(-32026));
+        assert_eq!(error["data"]["code"], "too-large");
+        assert!(
+            error["data"]["detail"]
+                .as_str()
+                .expect("detail")
+                .contains("maximum")
+        );
         assert!(
             error["message"]
                 .as_str()
@@ -886,6 +928,7 @@ mod tests {
             "workspace/fileStat",
             json!({"root": root.path_string(), "path": "../README.md"}),
         );
+        assert_eq!(traversal["data"]["code"], "path-outside-root");
         assert!(
             traversal["message"]
                 .as_str()
@@ -914,6 +957,7 @@ mod tests {
             json!({"root": root.path_string(), "path": "missing.txt"}),
         );
 
+        assert_eq!(error["data"]["code"], "not-found");
         assert!(
             error["message"]
                 .as_str()
