@@ -372,6 +372,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     return switch (index) {
       0 => HostsPage(
         sessionController: _sessionController,
+        hostSessionManager: widget.hostSessionManager ?? _hostSessionManager,
         profileStore: widget.profileStore,
         hostSessions: _hostSessions(),
         profileConnector: _connectProfile,
@@ -430,6 +431,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       ),
       _ => HostsPage(
         sessionController: _sessionController,
+        hostSessionManager: widget.hostSessionManager ?? _hostSessionManager,
         profileStore: widget.profileStore,
         hostSessions: _hostSessions(),
         profileConnector: _connectProfile,

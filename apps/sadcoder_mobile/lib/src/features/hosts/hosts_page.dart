@@ -38,6 +38,7 @@ class HostsPage extends StatefulWidget {
     super.key,
     this.probeRunner,
     this.sessionController,
+    this.hostSessionManager,
     this.profileStore,
     this.knownHostVerifier,
     this.importFileSource = const FilePickerSshImportFileSource(),
@@ -49,6 +50,7 @@ class HostsPage extends StatefulWidget {
 
   final M0ProbeRunner? probeRunner;
   final CodexSessionStateController? sessionController;
+  final HostSessionManager? hostSessionManager;
   final SshProfileStore? profileStore;
   final KnownHostVerifier? knownHostVerifier;
   final SshImportFileSource importFileSource;
@@ -690,6 +692,12 @@ class _HostsPageState extends State<HostsPage> {
 
     try {
       await store.deleteProfile(profile.id);
+      final hostSessionManager = widget.hostSessionManager;
+      if (hostSessionManager != null) {
+        await hostSessionManager.closeSession(profile.id);
+      } else if (widget.sessionController?.profile?.id == profile.id) {
+        await widget.sessionController!.disconnect();
+      }
       final profiles = await store.loadProfiles();
       if (!mounted) {
         return;

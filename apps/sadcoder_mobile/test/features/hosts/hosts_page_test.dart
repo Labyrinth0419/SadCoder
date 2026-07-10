@@ -45,6 +45,7 @@ import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/reconnect_policy.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
+import 'package:sadcoder_mobile/src/session/host_session_manager.dart';
 import 'package:sadcoder_mobile/src/session/host_session_summary.dart';
 import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
 import 'package:sadcoder_mobile/src/ssh/known_host.dart';
@@ -884,6 +885,54 @@ secret-key-material
     );
   });
 
+  testWidgets('deleting an active saved SSH profile closes the host session', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    const profile = SshProfile(
+      id: 'alice@srv.dev:22',
+      name: 'Dev',
+      host: 'srv.dev',
+      username: 'alice',
+    );
+    final store = _FakeProfileStore(initialProfiles: [profile]);
+    final starter = _FakeSessionStarter();
+    final manager = HostSessionManager(
+      controllerFactory: (approvalController) => CodexSessionStateController(
+        connector: starter,
+        approvalController: approvalController,
+      ),
+    );
+    addTearDown(manager.dispose);
+
+    await manager.connect(profile);
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      profileStore: store,
+      hostSessionManager: manager,
+      hostSessions: [
+        HostSessionSummary(
+          profile: profile,
+          status: CodexSessionStatus.connected,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey('saved-host-delete-alice@srv.dev:22')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete profile').last);
+    await tester.pumpAndSettle();
+
+    expect(store.profiles, isEmpty);
+    expect(manager.sessions, isEmpty);
+    expect(starter.closeCount, 1);
+  });
+
   testWidgets('connects and disconnects a Codex app session', (tester) async {
     final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
     final approvalController = ApprovalStateController(
@@ -1130,6 +1179,7 @@ Future<void> _pumpHostsPage(
   WidgetTester tester,
   M0ProbeRunner runner, {
   CodexSessionStateController? sessionController,
+  HostSessionManager? hostSessionManager,
   SshProfileStore? profileStore,
   KnownHostVerifier? knownHostVerifier,
   SshImportFileSource importFileSource = const _FakeImportFileSource(null),
@@ -1154,6 +1204,7 @@ Future<void> _pumpHostsPage(
         body: HostsPage(
           probeRunner: runner,
           sessionController: sessionController,
+          hostSessionManager: hostSessionManager,
           profileStore: profileStore,
           knownHostVerifier: knownHostVerifier,
           importFileSource: importFileSource,
