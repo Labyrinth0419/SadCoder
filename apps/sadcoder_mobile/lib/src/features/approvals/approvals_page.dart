@@ -108,7 +108,7 @@ class _ActiveApprovalHostBanner extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                '${context.l10n.activeConnection}: ${profile.endpoint}',
+                '${context.l10n.activeConnection}: ${profile.displayName}',
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,

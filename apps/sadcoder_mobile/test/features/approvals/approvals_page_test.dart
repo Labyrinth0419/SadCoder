@@ -28,7 +28,7 @@ void main() {
     );
 
     expect(find.byKey(const ValueKey('approvals-active-host')), findsOneWidget);
-    expect(find.text('Active connection: alice@srv.dev:22'), findsOneWidget);
+    expect(find.text('Active connection: Dev'), findsOneWidget);
   });
 
   testWidgets('renders command and MCP pending approvals', (tester) async {

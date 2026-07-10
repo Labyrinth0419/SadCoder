@@ -45,6 +45,11 @@ class SshProfile {
 
   String get endpoint => '$username@$host:$port';
 
+  String get displayName {
+    final trimmedName = name.trim();
+    return trimmedName.isEmpty ? endpoint : trimmedName;
+  }
+
   SshProfile copyWith({
     String? id,
     String? name,

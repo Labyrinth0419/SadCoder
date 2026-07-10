@@ -33,7 +33,7 @@ String buildChatStatusSummary({
 
   final profile = sessionController?.profile;
   if (profile != null) {
-    lines.add('${l10n.host}: ${profile.endpoint}');
+    lines.add('${l10n.host}: ${profile.displayName}');
     final defaultCwd = profile.defaultCwd?.trim();
     if (defaultCwd != null && defaultCwd.isNotEmpty) {
       lines.add('${l10n.approvalWorkingDirectory}: $defaultCwd');

@@ -3914,8 +3914,7 @@ String? _chatHostStatusLabel(
 }
 
 String _chatProfileTitle(SshProfile profile) {
-  final name = profile.name.trim();
-  return name.isEmpty ? profile.endpoint : name;
+  return profile.displayName;
 }
 
 IconData _chatAuthIcon(SshAuthType authType) {

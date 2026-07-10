@@ -929,7 +929,7 @@ secret-key-material
     expect(starter.connectedProfiles.single.host, 'srv.dev');
     expect(starter.connectedProfiles.single.username, 'alice');
     expect(sessionController.status, CodexSessionStatus.connected);
-    expect(find.text('Active connection: alice@srv.dev:22'), findsOneWidget);
+    expect(find.text('Active connection: srv.dev'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('session-disconnect-button')),
       findsOneWidget,
@@ -1015,7 +1015,7 @@ secret-key-material
     ]);
     expect(starter.connections.first.restartBackendCount, 1);
     expect(starter.closeCount, 1);
-    expect(find.text('Active connection: alice@srv.dev:22'), findsOneWidget);
+    expect(find.text('Active connection: srv.dev'), findsOneWidget);
   });
 
   testWidgets('shows connection failure from the session controller', (
@@ -1053,7 +1053,7 @@ secret-key-material
     );
 
     expect(sessionController.status, CodexSessionStatus.failed);
-    expect(find.text('Connection failed: alice@srv.dev:22'), findsOneWidget);
+    expect(find.text('Connection failed: srv.dev'), findsOneWidget);
     expect(find.textContaining('connect failed'), findsOneWidget);
   });
 
@@ -1103,7 +1103,7 @@ secret-key-material
       describe: () => 'status=${sessionController.status}',
     );
 
-    expect(find.text('Reconnecting: alice@srv.dev:22 (1s)'), findsOneWidget);
+    expect(find.text('Reconnecting: srv.dev (1s)'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('session-disconnect-button')),
       findsOneWidget,

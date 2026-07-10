@@ -1783,7 +1783,7 @@ void main() {
     expect(
       find.text(
         'Connection status: Connected\n'
-        'Host: tester@localhost:22\n'
+        'Host: Local\n'
         'Thread: thr_new\n'
         'Sessions: 0\n'
         'Turn: Turn submitted: turn_1\n'

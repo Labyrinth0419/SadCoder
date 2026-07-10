@@ -842,11 +842,7 @@ Map<String, List<SshProfile>> _groupProfilesByHost(List<SshProfile> profiles) {
 }
 
 String _profileTitle(SshProfile profile) {
-  final name = profile.name.trim();
-  if (name.isNotEmpty) {
-    return name;
-  }
-  return profile.endpoint;
+  return profile.displayName;
 }
 
 String _hostGroupTitle(List<SshProfile> profiles, String fallback) {
@@ -1595,21 +1591,23 @@ class _SessionStatusPanel extends StatelessWidget {
   };
 
   String _statusText(AppLocalizations l10n) {
-    final endpoint = controller.profile?.endpoint;
+    final profileName = controller.profile?.displayName;
     return switch (controller.status) {
       CodexSessionStatus.idle => l10n.noActiveConnection,
       CodexSessionStatus.connecting =>
-        endpoint == null ? l10n.connecting : '${l10n.connecting}: $endpoint',
+        profileName == null
+            ? l10n.connecting
+            : '${l10n.connecting}: $profileName',
       CodexSessionStatus.connected =>
-        endpoint == null
+        profileName == null
             ? l10n.connected
-            : '${l10n.activeConnection}: $endpoint',
-      CodexSessionStatus.reconnecting => _reconnectingText(l10n, endpoint),
+            : '${l10n.activeConnection}: $profileName',
+      CodexSessionStatus.reconnecting => _reconnectingText(l10n, profileName),
       CodexSessionStatus.disconnecting => l10n.disconnecting,
       CodexSessionStatus.failed =>
-        endpoint == null
+        profileName == null
             ? l10n.connectionFailed
-            : '${l10n.connectionFailed}: $endpoint',
+            : '${l10n.connectionFailed}: $profileName',
     };
   }
 
