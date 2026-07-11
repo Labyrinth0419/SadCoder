@@ -122,6 +122,46 @@ void main() {
     expect(find.textContaining('hello world'), findsOneWidget);
   });
 
+  testWidgets(
+    'retries a failed additional file chunk without resetting preview',
+    (tester) async {
+      final directoryReader = _FakeWorkspaceDirectoryReader({
+        '': [_entry(path: 'large.txt', name: 'large.txt')],
+      });
+      final fileReader = _FlakyLoadMoreWorkspaceFileReader();
+
+      await _pumpFilesPage(
+        tester,
+        directoryReader: directoryReader,
+        fileReader: fileReader,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('workspace-files-entry-large.txt')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('hello'), findsOneWidget);
+      final loadMore = find.byKey(
+        const ValueKey('workspace-files-preview-load-more'),
+      );
+      await tester.ensureVisible(loadMore);
+      await tester.pumpAndSettle();
+      await tester.tap(loadMore);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('hello'), findsOneWidget);
+      expect(find.text('Failed to read workspace file.'), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
+
+      await tester.tap(loadMore);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('hello world'), findsOneWidget);
+      expect(find.text('Retry'), findsNothing);
+      expect(fileReader.readOffsets, [0, 6, 6]);
+    },
+  );
+
   testWidgets('keeps large Markdown in raw mode after loading all chunks', (
     tester,
   ) async {
@@ -1048,6 +1088,47 @@ class _FakeWorkspaceFileReader implements WorkspaceFileReader {
       );
     }
     return chunk;
+  }
+}
+
+class _FlakyLoadMoreWorkspaceFileReader implements WorkspaceFileReader {
+  final List<int> readOffsets = [];
+  var _failedSecondChunk = false;
+
+  @override
+  Future<WorkspaceFileStat> statFile({
+    required String root,
+    required String path,
+  }) async {
+    return _stat(path: path, language: 'text');
+  }
+
+  @override
+  Future<WorkspaceFileReadChunk> readFile({
+    required String root,
+    required String path,
+    int offset = 0,
+    int limitBytes = 64 * 1024,
+    String encoding = 'utf-8',
+  }) async {
+    readOffsets.add(offset);
+    if (offset == 0) {
+      return _chunk(
+        path: path,
+        content: 'hello ',
+        sizeBytes: 11,
+        nextOffset: 6,
+        hasMore: true,
+      );
+    }
+    if (offset == 6 && !_failedSecondChunk) {
+      _failedSecondChunk = true;
+      throw const WorkspaceFileException(
+        WorkspaceFileFailureCode.readFailed,
+        'Transient chunk failure.',
+      );
+    }
+    return _chunk(path: path, content: 'world', sizeBytes: 11, offset: 6);
   }
 }
 

@@ -163,6 +163,7 @@ class _PreviewContent extends StatelessWidget {
     final l10n = context.l10n;
     final isMarkdown = preview.isMarkdown;
     final canRenderMarkdown = _canRenderMarkdown(preview);
+    final hasLoadMoreError = loadMoreErrorText != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -241,8 +242,12 @@ class _PreviewContent extends StatelessWidget {
                       dimension: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.expand_more),
-              label: Text(l10n.workspaceFilesLoadMore),
+                  : Icon(hasLoadMoreError ? Icons.refresh : Icons.expand_more),
+              label: Text(
+                hasLoadMoreError
+                    ? l10n.workspaceFilesRetry
+                    : l10n.workspaceFilesLoadMore,
+              ),
             ),
           ),
         ],
