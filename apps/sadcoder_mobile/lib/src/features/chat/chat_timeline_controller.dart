@@ -162,6 +162,13 @@ class ChatTimelineController extends ChangeNotifier {
     required String threadId,
     required List<ThreadItemSummary> items,
   }) {
+    restoreThreadItems(threadId: threadId, items: items);
+  }
+
+  void restoreThreadItems({
+    required String threadId,
+    required List<ThreadItemSummary> items,
+  }) {
     final normalizedThreadId = threadId.trim();
     if (normalizedThreadId.isEmpty || items.isEmpty) {
       return;

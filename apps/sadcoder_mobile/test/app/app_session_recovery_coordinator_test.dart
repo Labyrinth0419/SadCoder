@@ -3,6 +3,7 @@ import 'package:sadcoder_mobile/src/app/app_session_recovery_coordinator.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
+import 'package:sadcoder_mobile/src/threads/thread_item_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
@@ -84,6 +85,30 @@ void main() {
     },
   );
 
+  test('backfills thread items when turn list reader is unavailable', () async {
+    final itemListReader = _RecordingThreadItemListReader(
+      page: ThreadItemsPage(
+        items: [_item('item_recovered', 'Recovered item', turnId: 'turn_1')],
+      ),
+    );
+    final fixture = _Fixture(threadItemListReader: itemListReader);
+    addTearDown(fixture.dispose);
+    await fixture.threadDetailController.readThread('thr_selected');
+    fixture.threadDetailReader.clear();
+
+    fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
+    await _flushMicrotasks();
+
+    expect(fixture.threadDetailReader.threadIds, ['thr_selected']);
+    expect(fixture.threadDetailReader.includeTurnsValues, [false]);
+    expect(itemListReader.calls, [
+      (threadId: 'thr_selected', limit: 200, sortDirection: 'asc'),
+    ]);
+    expect(fixture.recoveredItems.single.threadId, 'thr_selected');
+    expect(fixture.recoveredItems.single.items.single.id, 'item_recovered');
+    expect(fixture.recoveredItems.single.items.single.turnId, 'turn_1');
+  });
+
   test('falls back to full thread read when turns backfill fails', () async {
     final fixture = _Fixture(
       threadTurnListReader: _FailingThreadTurnListReader(),
@@ -100,6 +125,29 @@ void main() {
       'thr_selected',
     ]);
     expect(fixture.threadDetailReader.includeTurnsValues, [false, true]);
+  });
+
+  test('falls back to thread items when turns backfill fails', () async {
+    final itemListReader = _RecordingThreadItemListReader(
+      page: ThreadItemsPage(
+        items: [_item('item_recovered', 'Recovered item', turnId: 'turn_1')],
+      ),
+    );
+    final fixture = _Fixture(
+      threadTurnListReader: _FailingThreadTurnListReader(),
+      threadItemListReader: itemListReader,
+    );
+    addTearDown(fixture.dispose);
+    await fixture.threadDetailController.readThread('thr_selected');
+    fixture.threadDetailReader.clear();
+
+    fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
+    await _flushMicrotasks();
+
+    expect(fixture.threadDetailReader.threadIds, ['thr_selected']);
+    expect(fixture.threadDetailReader.includeTurnsValues, [false]);
+    expect(itemListReader.calls.single.threadId, 'thr_selected');
+    expect(fixture.recoveredItems.single.items.single.text, 'Recovered item');
   });
 
   test('rereads the active turn thread before the selected thread', () async {
@@ -125,9 +173,11 @@ void main() {
 }
 
 class _Fixture {
-  _Fixture({ThreadTurnListReader? threadTurnListReader})
-    : threadListReader = _RecordingThreadListReader(),
-      threadDetailReader = _RecordingThreadDetailReader() {
+  _Fixture({
+    ThreadTurnListReader? threadTurnListReader,
+    ThreadItemListReader? threadItemListReader,
+  }) : threadListReader = _RecordingThreadListReader(),
+       threadDetailReader = _RecordingThreadDetailReader() {
     threadListController = ThreadListController(
       readerProvider: () => threadListReader,
     );
@@ -142,6 +192,12 @@ class _Fixture {
       threadTurnListReaderProvider: threadTurnListReader == null
           ? null
           : () => threadTurnListReader,
+      threadItemListReaderProvider: threadItemListReader == null
+          ? null
+          : () => threadItemListReader,
+      threadItemRecoveryHandler: ({required threadId, required items}) {
+        recoveredItems.add((threadId: threadId, items: items));
+      },
     );
   }
 
@@ -151,6 +207,7 @@ class _Fixture {
   late final ThreadDetailController threadDetailController;
   late final TurnController turnController;
   late final AppSessionRecoveryCoordinator coordinator;
+  final recoveredItems = <({String threadId, List<ThreadItemSummary> items})>[];
 
   void dispose() {
     threadListController.dispose();
@@ -237,6 +294,25 @@ class _FailingThreadTurnListReader implements ThreadTurnListReader {
   }
 }
 
+class _RecordingThreadItemListReader implements ThreadItemListReader {
+  _RecordingThreadItemListReader({required this.page});
+
+  final ThreadItemsPage page;
+  final calls = <({String threadId, int? limit, String? sortDirection})>[];
+
+  @override
+  Future<ThreadItemsPage> listItems({
+    required String threadId,
+    String? turnId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+  }) async {
+    calls.add((threadId: threadId, limit: limit, sortDirection: sortDirection));
+    return page;
+  }
+}
+
 ThreadSummary _thread(String id) {
   return ThreadSummary.fromJson({
     'id': id,
@@ -247,6 +323,18 @@ ThreadSummary _thread(String id) {
     'cwd': '/repo',
     'updatedAt': 1,
   });
+}
+
+ThreadItemSummary _item(String id, String text, {String? turnId}) {
+  final json = <String, Object?>{
+    'id': id,
+    'type': 'agentMessage',
+    'text': text,
+  };
+  if (turnId != null) {
+    json['turnId'] = turnId;
+  }
+  return ThreadItemSummary.fromJson(json);
 }
 
 TurnSummary _turn(String id, String status, String text) {

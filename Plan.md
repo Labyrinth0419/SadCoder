@@ -986,8 +986,8 @@ MVP 可以简化为底部导航：
 - 已落地 Chat 顶栏主机选择器、Settings 二级菜单、candy/lagoon/ember palette 和斜杠命令高级可见性开关。
 - 已落地 per-host pending approval 聚合与动作路由：Approvals 页面展示所有已连接 host 的待审批项，审批响应回到所属 host 的 `ApprovalStateController`。
 - 已落地 per-host thread summary/detail cache 持久化/恢复：每个 host 的最近线程列表、选中 threadId 和当前 thread detail 通过 `ThreadCacheStore` 独立保存，重建 host UI state 时优先恢复缓存，再由远端权威 thread/detail 读取刷新。
-- 已落地 per-host thread item cache reader 与 timeline 恢复接入：`ThreadItemCacheStore` 按 profile/thread 隔离保存 item summaries 和分页游标，`local_data` schema 已补 `item_cache.profile_id` 与 profile/thread 索引；`CodexSessionStateController.threadItemListReader` 已通过缓存 decorator 保存/回退 canonical thread item 读取，host UI state 恢复选中 thread 时会从 item cache 回填 timeline。
-- 后续仍需完整多 host 同时连接架构：`HostSessionManager` 已作为基础控制器引入，但断线事件回填、后台保活策略和更完整的 reconnect item/turn reconciliation 还需要继续拆分完善。
+- 已落地 per-host thread item cache reader、timeline 恢复和 reconnect item fallback：`ThreadItemCacheStore` 按 profile/thread 隔离保存 item summaries 和分页游标，`local_data` schema 已补 `item_cache.profile_id` 与 profile/thread 索引；`CodexSessionStateController.threadItemListReader` 已通过缓存 decorator 保存/回退 canonical thread item 读取，host UI state 恢复选中 thread 时会从 item cache 回填 timeline；重连时若 `thread/turns/list` 不可用或失败，会尝试 `thread/items/list` 回填当前 thread timeline。
+- 后续仍需完整多 host 同时连接架构：`HostSessionManager` 已作为基础控制器引入，但后台保活策略、断线期间事件 cursor/分页增量回填和更完整的 reconnect turn/item reconciliation 还需要继续拆分完善。
 
 ### 9.8 i18n
 

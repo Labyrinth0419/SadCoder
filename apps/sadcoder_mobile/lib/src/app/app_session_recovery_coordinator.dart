@@ -2,9 +2,17 @@ import 'dart:async';
 
 import '../session/codex_session_state_controller.dart';
 import '../threads/thread_detail_controller.dart';
+import '../threads/thread_item_list_reader.dart';
 import '../threads/thread_list_controller.dart';
+import '../threads/thread_summary.dart';
 import '../threads/thread_turn_list_reader.dart';
 import '../turns/turn_controller.dart';
+
+typedef ThreadItemRecoveryHandler =
+    void Function({
+      required String threadId,
+      required List<ThreadItemSummary> items,
+    });
 
 class AppSessionRecoveryCoordinator {
   AppSessionRecoveryCoordinator({
@@ -12,18 +20,25 @@ class AppSessionRecoveryCoordinator {
     required ThreadDetailController threadDetailController,
     required TurnController turnController,
     ThreadTurnListReader? Function()? threadTurnListReaderProvider,
+    ThreadItemListReader? Function()? threadItemListReaderProvider,
+    ThreadItemRecoveryHandler? threadItemRecoveryHandler,
   }) : _threadListController = threadListController,
        _threadDetailController = threadDetailController,
        _turnController = turnController,
-       _threadTurnListReaderProvider = threadTurnListReaderProvider;
+       _threadTurnListReaderProvider = threadTurnListReaderProvider,
+       _threadItemListReaderProvider = threadItemListReaderProvider,
+       _threadItemRecoveryHandler = threadItemRecoveryHandler;
 
   final ThreadListController _threadListController;
   final ThreadDetailController _threadDetailController;
   final TurnController _turnController;
   final ThreadTurnListReader? Function()? _threadTurnListReaderProvider;
+  final ThreadItemListReader? Function()? _threadItemListReaderProvider;
+  final ThreadItemRecoveryHandler? _threadItemRecoveryHandler;
   CodexSessionStatus? _lastStatus;
 
   static const _turnBackfillLimit = 50;
+  static const _itemBackfillLimit = 200;
 
   void handleSessionStatus(CodexSessionStatus status) {
     final becameConnected =
@@ -44,7 +59,10 @@ class AppSessionRecoveryCoordinator {
   Future<void> _recoverThread(String threadId) async {
     final turnListReader = _threadTurnListReaderProvider?.call();
     if (turnListReader == null) {
-      await _threadDetailController.readThread(threadId);
+      final itemRecovered = await _recoverThreadWithItems(threadId);
+      if (!itemRecovered) {
+        await _threadDetailController.readThread(threadId);
+      }
       return;
     }
 
@@ -65,8 +83,45 @@ class AppSessionRecoveryCoordinator {
       );
     } catch (_) {
       if (_threadDetailController.selectedThreadId == threadId) {
-        await _threadDetailController.readThread(threadId);
+        final itemRecovered = await _recoverThreadItems(threadId);
+        if (!itemRecovered) {
+          await _threadDetailController.readThread(threadId);
+        }
       }
+    }
+  }
+
+  Future<bool> _recoverThreadWithItems(String threadId) async {
+    final itemReader = _threadItemListReaderProvider?.call();
+    if (itemReader == null || _threadItemRecoveryHandler == null) {
+      return false;
+    }
+    await _threadDetailController.readThread(threadId, includeTurns: false);
+    if (_threadDetailController.selectedThreadId != threadId) {
+      return true;
+    }
+    return _recoverThreadItems(threadId);
+  }
+
+  Future<bool> _recoverThreadItems(String threadId) async {
+    final itemReader = _threadItemListReaderProvider?.call();
+    final recoveryHandler = _threadItemRecoveryHandler;
+    if (itemReader == null || recoveryHandler == null) {
+      return false;
+    }
+    try {
+      final page = await itemReader.listItems(
+        threadId: threadId,
+        limit: _itemBackfillLimit,
+        sortDirection: 'asc',
+      );
+      if (page.items.isNotEmpty &&
+          _threadDetailController.selectedThreadId == threadId) {
+        recoveryHandler(threadId: threadId, items: page.items);
+      }
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
