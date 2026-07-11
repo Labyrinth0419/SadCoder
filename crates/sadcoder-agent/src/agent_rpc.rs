@@ -12,6 +12,7 @@ const AGENT_RPC_ERROR_CODE: i64 = -32040;
 pub(crate) enum AgentRpcMethod {
     Hello,
     Health,
+    Logs,
     Snapshot,
     SlashCommands,
     RestartBackend,
@@ -23,6 +24,7 @@ impl AgentRpcMethod {
         match request.method.as_str() {
             "agent/hello" => Some(Self::Hello),
             "agent/health" | "agent/status" => Some(Self::Health),
+            "agent/logs" => Some(Self::Logs),
             "agent/snapshot" => Some(Self::Snapshot),
             "agent/slashCommands/list" => Some(Self::SlashCommands),
             "agent/restartBackend" => Some(Self::RestartBackend),
@@ -42,6 +44,7 @@ pub(crate) fn hello_result() -> Value {
         "capabilities": {
             "agentRpc": true,
             "health": true,
+            "logs": true,
             "restartBackend": true,
             "reconnectSnapshot": true,
             "slashCommands": true,
@@ -87,6 +90,7 @@ fn agent_methods() -> Vec<&'static str> {
         "agent/hello",
         "agent/health",
         "agent/status",
+        "agent/logs",
         "agent/snapshot",
         "agent/slashCommands/list",
         "agent/restartBackend",
@@ -105,6 +109,7 @@ mod tests {
             ("agent/hello", AgentRpcMethod::Hello),
             ("agent/health", AgentRpcMethod::Health),
             ("agent/status", AgentRpcMethod::Health),
+            ("agent/logs", AgentRpcMethod::Logs),
             ("agent/snapshot", AgentRpcMethod::Snapshot),
             ("agent/slashCommands/list", AgentRpcMethod::SlashCommands),
             ("agent/restartBackend", AgentRpcMethod::RestartBackend),
@@ -120,6 +125,7 @@ mod tests {
         let result = hello_result();
 
         assert_eq!(result["capabilities"]["agentRpc"], true);
+        assert_eq!(result["capabilities"]["logs"], true);
         assert_eq!(result["capabilities"]["workspaceFiles"], true);
         assert!(
             result["methods"]

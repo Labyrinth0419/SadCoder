@@ -31,6 +31,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
+mod agent_logs;
 mod agent_rpc;
 mod app_server_socket;
 mod codex_command;
@@ -39,6 +40,9 @@ mod service_bridge;
 mod state_cache;
 mod workspace_files;
 
+use agent_logs::DEFAULT_LOG_TAIL_BYTES;
+use agent_logs::collect_agent_logs;
+use agent_logs::collect_agent_logs_from_params;
 use agent_rpc::AgentRpcMethod;
 use codex_command::CodexCommandConfig;
 use codex_command::CodexCommandSource;
@@ -134,6 +138,13 @@ enum AgentCommand {
         #[arg(long)]
         json: bool,
     },
+    /// Print bounded service and app-server logs.
+    Logs {
+        #[arg(long)]
+        json: bool,
+        #[arg(long = "tail-bytes", default_value_t = DEFAULT_LOG_TAIL_BYTES)]
+        tail_bytes: u64,
+    },
     /// Diagnose the resolved Codex executable and runtime environment.
     Doctor {
         #[arg(long)]
@@ -187,6 +198,9 @@ fn main() -> anyhow::Result<()> {
         }
         AgentCommand::SlashCommands { json } => print_slash_commands(json),
         AgentCommand::Snapshot { json } => print_snapshot(cli.state_path.as_deref(), json),
+        AgentCommand::Logs { json, tail_bytes } => {
+            print_logs(cli.state_path.as_deref(), json, tail_bytes)
+        }
         AgentCommand::Doctor { json } => {
             let codex = resolve_codex_command(cli_codex_program)?;
             print_doctor(&codex, cli.backend, cli.state_path.as_deref(), json)
@@ -508,6 +522,38 @@ fn print_snapshot(state_path: Option<&Path>, json_output: bool) -> anyhow::Resul
             snapshot.recent_events.len()
         );
         println!("{}", state_path.display());
+    }
+    Ok(())
+}
+
+fn print_logs(state_path: Option<&Path>, json_output: bool, tail_bytes: u64) -> anyhow::Result<()> {
+    let state_path = resolve_state_path(state_path);
+    let logs = collect_agent_logs(&state_path, tail_bytes);
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&logs)?);
+    } else {
+        for log in &logs.logs {
+            println!("{}: {}", log.name, log.path);
+            if !log.exists {
+                println!("missing");
+                continue;
+            }
+            println!(
+                "size: {} bytes, tail: {} bytes{}",
+                log.size_bytes,
+                log.tail_bytes,
+                if log.truncated { " (truncated)" } else { "" }
+            );
+            if let Some(error) = &log.error {
+                println!("error: {error}");
+            }
+            if !log.content.is_empty() {
+                print!("{}", log.content);
+                if !log.content.ends_with('\n') {
+                    println!();
+                }
+            }
+        }
     }
     Ok(())
 }
@@ -1123,6 +1169,11 @@ fn handle_agent_request(
             &context.state_path,
         ))
         .map_err(|error| error.to_string()),
+        AgentRpcMethod::Logs => {
+            collect_agent_logs_from_params(&context.state_path, request.params.as_ref())
+                .and_then(|logs| serde_json::to_value(logs).map_err(Into::into))
+                .map_err(|error| error.to_string())
+        }
         AgentRpcMethod::Snapshot => AgentStateCache::load(&context.state_path)
             .map(AgentStateCache::into_snapshot)
             .and_then(|snapshot| serde_json::to_value(snapshot).map_err(Into::into))
@@ -1452,6 +1503,20 @@ mod tests {
     }
 
     #[test]
+    fn logs_command_parses_tail_bytes() {
+        let cli = Cli::try_parse_from(["sadcoder-agent", "logs", "--tail-bytes", "8192", "--json"])
+            .expect("parse logs command");
+
+        match cli.command {
+            AgentCommand::Logs { json, tail_bytes } => {
+                assert!(json);
+                assert_eq!(tail_bytes, 8192);
+            }
+            command => panic!("expected logs command, got {command:?}"),
+        }
+    }
+
+    #[test]
     fn hidden_service_command_parses_resolved_codex_snapshot() {
         let cli = Cli::try_parse_from([
             "sadcoder-agent",
@@ -1593,6 +1658,39 @@ mod tests {
                 .expect("backend detail")
                 .contains("configured-path-missing")
         );
+    }
+
+    #[test]
+    fn local_proxy_handles_agent_logs_from_service_log_file() {
+        let path = std::env::temp_dir().join(format!(
+            "sadcoder-agent-rpc-logs-{}-{}/agent-state.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        let service_paths = resolve_service_paths(&path);
+        std::fs::create_dir_all(service_paths.stderr_log_path.parent().expect("parent"))
+            .expect("create log dir");
+        std::fs::write(&service_paths.stderr_log_path, b"first\nsecond\nthird")
+            .expect("write service log");
+        let context = test_proxy_context(path.clone());
+
+        let response = local_response_from_client_line(
+            &request_line("agent/logs", Some(json!({ "tailBytes": 5 }))),
+            &context,
+        )
+        .expect("local response");
+        let response = response_json(response);
+        let _ = std::fs::remove_dir_all(service_paths.stderr_log_path.parent().expect("parent"));
+
+        assert_eq!(response["id"], 7);
+        assert_eq!(response["result"]["schemaVersion"], 1);
+        assert_eq!(response["result"]["logs"][0]["name"], "app-server.stderr");
+        assert_eq!(response["result"]["logs"][0]["exists"], true);
+        assert_eq!(response["result"]["logs"][0]["truncated"], true);
+        assert_eq!(response["result"]["logs"][0]["content"], "third");
     }
 
     #[test]
