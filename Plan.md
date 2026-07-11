@@ -951,6 +951,7 @@ MVP 可以简化为底部导航：
 - 使用 Material 3 dynamic color 可选，但默认提供稳定主题。
 - 支持 system / light / dark。
 - 代码块、diff、terminal output 要有专门配色，不能只用普通文本颜色。
+- 配色方案可影响代码关键字、终端 accent 和标题区等语义 accent，但 diff added/removed、风险状态等角色必须保持可识别，不能随主题被简单染成同一种主色。
 
 ### 9.7.1 主机、设置与主题后续改造
 

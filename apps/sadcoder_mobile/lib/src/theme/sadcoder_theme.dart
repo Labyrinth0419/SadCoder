@@ -13,9 +13,10 @@ ThemeData sadCoderThemeData({
       brightness: brightness,
     ),
     extensions: [
-      brightness == Brightness.dark
-          ? SadCoderThemeColors.dark
-          : SadCoderThemeColors.light,
+      SadCoderThemeColors.forPalette(
+        colorPalette: colorPalette,
+        brightness: brightness,
+      ),
     ],
   );
 }
@@ -127,6 +128,76 @@ class SadCoderThemeColors extends ThemeExtension<SadCoderThemeColors> {
     terminalMuted: Color(0xFF8DA19B),
     terminalAccent: Color(0xFF5EEAD4),
   );
+
+  static SadCoderThemeColors forPalette({
+    required AppColorPalette colorPalette,
+    required Brightness brightness,
+  }) {
+    final base = brightness == Brightness.dark ? dark : light;
+    return switch ((colorPalette, brightness)) {
+      (AppColorPalette.sadcoder, _) => base,
+      (AppColorPalette.candy, Brightness.light) => base.copyWith(
+        codeBackground: const Color(0xFFFFF6FA),
+        codeForeground: const Color(0xFF261821),
+        codeKeyword: const Color(0xFFB0006D),
+        codeString: const Color(0xFF8B5E00),
+        codeComment: const Color(0xFF766575),
+        diffHeaderBackground: const Color(0xFFFFEDF7),
+        diffHeaderForeground: const Color(0xFF432338),
+        terminalAccent: const Color(0xFF67E8F9),
+      ),
+      (AppColorPalette.candy, Brightness.dark) => base.copyWith(
+        codeBackground: const Color(0xFF1B1218),
+        codeForeground: const Color(0xFFFFF0F7),
+        codeKeyword: const Color(0xFFFF7AB6),
+        codeString: const Color(0xFFFFD166),
+        codeComment: const Color(0xFFBCA7B8),
+        diffHeaderBackground: const Color(0xFF281722),
+        diffHeaderForeground: const Color(0xFFFFD7EA),
+        terminalAccent: const Color(0xFF67E8F9),
+      ),
+      (AppColorPalette.lagoon, Brightness.light) => base.copyWith(
+        codeBackground: const Color(0xFFF1F7FF),
+        codeForeground: const Color(0xFF111F33),
+        codeKeyword: const Color(0xFF1D4ED8),
+        codeString: const Color(0xFF047857),
+        codeComment: const Color(0xFF586A7B),
+        diffHeaderBackground: const Color(0xFFE6F4FF),
+        diffHeaderForeground: const Color(0xFF16324F),
+        terminalAccent: const Color(0xFF38BDF8),
+      ),
+      (AppColorPalette.lagoon, Brightness.dark) => base.copyWith(
+        codeBackground: const Color(0xFF0C1420),
+        codeForeground: const Color(0xFFE6F2FF),
+        codeKeyword: const Color(0xFF93C5FD),
+        codeString: const Color(0xFF5EEAD4),
+        codeComment: const Color(0xFF9CB4C7),
+        diffHeaderBackground: const Color(0xFF101C2B),
+        diffHeaderForeground: const Color(0xFFCFE8FF),
+        terminalAccent: const Color(0xFF22D3EE),
+      ),
+      (AppColorPalette.ember, Brightness.light) => base.copyWith(
+        codeBackground: const Color(0xFFFFF7ED),
+        codeForeground: const Color(0xFF2A1B12),
+        codeKeyword: const Color(0xFF7C3AED),
+        codeString: const Color(0xFFB45309),
+        codeComment: const Color(0xFF756557),
+        diffHeaderBackground: const Color(0xFFFFEEDB),
+        diffHeaderForeground: const Color(0xFF432511),
+        terminalAccent: const Color(0xFFF59E0B),
+      ),
+      (AppColorPalette.ember, Brightness.dark) => base.copyWith(
+        codeBackground: const Color(0xFF1B120C),
+        codeForeground: const Color(0xFFFFF1E5),
+        codeKeyword: const Color(0xFFC4B5FD),
+        codeString: const Color(0xFFFFC971),
+        codeComment: const Color(0xFFB7A493),
+        diffHeaderBackground: const Color(0xFF28180D),
+        diffHeaderForeground: const Color(0xFFFFDDBC),
+        terminalAccent: const Color(0xFFF59E0B),
+      ),
+    };
+  }
 
   static SadCoderThemeColors of(BuildContext context) {
     return Theme.of(context).extension<SadCoderThemeColors>() ??
