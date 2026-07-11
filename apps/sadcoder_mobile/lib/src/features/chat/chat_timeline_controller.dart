@@ -25,6 +25,9 @@ class ChatTimelineController extends ChangeNotifier {
 
   String? get selectedThreadId => _selectedThreadId;
 
+  ChatTimelineCursor get cursor =>
+      ChatTimelineCursor.fromTurns(threadId: _selectedThreadId, turns: _turns);
+
   List<GuardianAssessmentEvent> get recentAutoReviewDenials =>
       _recentAutoReviewDenials.entries;
 
@@ -540,6 +543,56 @@ class ChatTimelineTurn {
       items: mergedItems,
     );
   }
+}
+
+class ChatTimelineCursor {
+  const ChatTimelineCursor({
+    required this.threadId,
+    required this.turnIds,
+    required this.itemIds,
+    this.lastTurnId,
+    this.lastItemId,
+  });
+
+  factory ChatTimelineCursor.fromTurns({
+    required String? threadId,
+    required List<ChatTimelineTurn> turns,
+  }) {
+    final turnIds = <String>[];
+    final itemIds = <String>[];
+    String? lastTurnId;
+    String? lastItemId;
+    for (final turn in turns) {
+      final turnId = _normalized(turn.turnId);
+      if (turnId != null) {
+        turnIds.add(turnId);
+        lastTurnId = turnId;
+      }
+      for (final item in turn.items) {
+        final itemId = _normalized(item.itemId);
+        if (itemId == null) {
+          continue;
+        }
+        itemIds.add(itemId);
+        lastItemId = itemId;
+      }
+    }
+    return ChatTimelineCursor(
+      threadId: _normalized(threadId),
+      turnIds: List.unmodifiable(turnIds),
+      itemIds: List.unmodifiable(itemIds),
+      lastTurnId: lastTurnId,
+      lastItemId: lastItemId,
+    );
+  }
+
+  final String? threadId;
+  final List<String> turnIds;
+  final List<String> itemIds;
+  final String? lastTurnId;
+  final String? lastItemId;
+
+  bool get isEmpty => threadId == null && turnIds.isEmpty && itemIds.isEmpty;
 }
 
 class ChatTimelineItem {

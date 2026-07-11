@@ -987,6 +987,7 @@ MVP 可以简化为底部导航：
 - 已落地 per-host pending approval 聚合与动作路由：Approvals 页面展示所有已连接 host 的待审批项，审批响应回到所属 host 的 `ApprovalStateController`。
 - 已落地 per-host thread summary/detail cache 持久化/恢复：每个 host 的最近线程列表、选中 threadId 和当前 thread detail 通过 `ThreadCacheStore` 独立保存，重建 host UI state 时优先恢复缓存，再由远端权威 thread/detail 读取刷新。
 - 已落地 per-host thread item cache reader、timeline 恢复和 reconnect fallback：`ThreadItemCacheStore` 按 profile/thread 隔离保存 item summaries 和分页游标，`local_data` schema 已补 `item_cache.profile_id` 与 profile/thread 索引；`CodexSessionStateController.threadItemListReader` 已通过缓存 decorator 保存/回退 canonical thread item 读取，host UI state 恢复选中 thread 时会从 item cache 回填 timeline；重连时 `thread/turns/list(itemsView: full)` 会有界分页回填当前 thread，若 turn list 不可用或失败，会尝试 `thread/items/list` 有界分页回填 timeline；turn/item 分页边界按 id 去重，优先保留新页数据。
+- 已落地 timeline 本地 event cursor 快照基础：`ChatTimelineController.cursor` 可从当前 selected thread 的 turns/items 派生已见 turnId/itemId、lastTurnId 和 lastItemId，供后续持久化 cursor、断线增量回填和 agent delivered cursor 对接。
 - 已落地后台 active-turn retention 的上下文刷新：App 后台且 active turn 仍需保活时，如果 host/thread/turn context 变化，会释放旧 foreground retention 并用新 context 重新 retain，避免 Android 通知和保活上下文停留在旧 turn。
 - 后续仍需完整多 host 同时连接架构：`HostSessionManager` 已作为基础控制器引入，但完整后台保活策略、断线期间事件 cursor/分页增量回填和更完整的 reconnect turn/item reconciliation 还需要继续拆分完善。
 

@@ -128,6 +128,46 @@ void main() {
     expect(controller.turns.single.items[2].output, 'tests passed');
   });
 
+  test('cursor reports selected thread and seen turn item ids', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Fix bug',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': [
+          {
+            'id': 'turn_1',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': [
+              {'id': 'item_1', 'type': 'agentMessage', 'text': 'First'},
+            ],
+          },
+        ],
+      }),
+    );
+    controller.ingest(_turnStarted(threadId: 'thr_1', turnId: 'turn_2'));
+    controller.ingest(_agentDelta('item_2', 'second'));
+
+    final cursor = controller.cursor;
+    expect(cursor.threadId, 'thr_1');
+    expect(cursor.turnIds, ['turn_1', 'turn_2']);
+    expect(cursor.itemIds, ['item_1', 'item_2']);
+    expect(cursor.lastTurnId, 'turn_2');
+    expect(cursor.lastItemId, 'item_2');
+
+    controller.clear();
+
+    expect(controller.cursor.isEmpty, true);
+  });
+
   test('selected thread filters displayed live events only', () {
     ({String threadId, TurnSummary turn})? completed;
     final controller = ChatTimelineController(
