@@ -275,6 +275,7 @@ class _ChatPageState extends State<ChatPage> {
                         const SizedBox(height: 8),
                         SessionOverrideControls(
                           controller: widget.configOverrideController!,
+                          onApplySessionOverrides: _applySessionOverrides,
                         ),
                         const SizedBox(height: 8),
                         TurnOverrideControls(
@@ -1352,6 +1353,19 @@ class _ChatPageState extends State<ChatPage> {
     }
     controller.clearTurn();
     return SlashCommandCallbackResult.executed;
+  }
+
+  Future<void> _applySessionOverrides(CodexConfigOverrides overrides) async {
+    final runner = widget.sessionController?.threadMutationRunner;
+    final threadId = _currentThreadId();
+    if (runner == null || threadId == null) {
+      return;
+    }
+    await runner.updateThreadSettings(threadId: threadId, overrides: overrides);
+    _refreshVisibleThreads();
+    if (widget.threadDetailController?.selectedThreadId == threadId) {
+      unawaited(widget.threadDetailController?.readThread(threadId));
+    }
   }
 
   Future<bool> _startNewThread() async {

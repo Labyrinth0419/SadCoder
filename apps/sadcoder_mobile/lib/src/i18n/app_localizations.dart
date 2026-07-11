@@ -409,6 +409,7 @@ class AppLocalizations {
   String get editSessionOverrides => _text('editSessionOverrides');
   String get applySessionOverrides => _text('applySessionOverrides');
   String get clearSessionOverrides => _text('clearSessionOverrides');
+  String get threadSettingsUpdateFailed => _text('threadSettingsUpdateFailed');
   String get nextTurnOverrides => _text('nextTurnOverrides');
   String get editTurnOverrides => _text('editTurnOverrides');
   String get applyTurnOverrides => _text('applyTurnOverrides');
@@ -1239,6 +1240,7 @@ const _values = <String, Map<String, String>>{
     'editSessionOverrides': 'Edit session overrides',
     'applySessionOverrides': 'Apply to session',
     'clearSessionOverrides': 'Clear session overrides',
+    'threadSettingsUpdateFailed': 'Failed to update session settings',
     'nextTurnOverrides': 'Next turn overrides',
     'editTurnOverrides': 'Edit next turn overrides',
     'applyTurnOverrides': 'Apply to next turn',
@@ -1916,6 +1918,7 @@ const _values = <String, Map<String, String>>{
     'editSessionOverrides': '编辑会话覆盖',
     'applySessionOverrides': '应用到会话',
     'clearSessionOverrides': '清除会话覆盖',
+    'threadSettingsUpdateFailed': '更新会话设置失败',
     'nextTurnOverrides': '本次回合覆盖',
     'editTurnOverrides': '编辑本次回合覆盖',
     'applyTurnOverrides': '应用到本次回合',

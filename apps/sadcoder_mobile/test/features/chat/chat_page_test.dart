@@ -667,6 +667,7 @@ void main() {
   ) async {
     final approvalController = ApprovalStateController();
     final turnRunner = _FakeTurnRunner();
+    final mutationRunner = _FakeThreadMutationRunner();
     final overrideController = CodexConfigOverrideController(
       initialLayers: const CodexConfigOverrideLayers(
         appDefault: CodexConfigOverrides(model: 'gpt-5', effort: 'medium'),
@@ -677,6 +678,7 @@ void main() {
         page: ThreadListPage(threads: []),
       ),
       turnRunner: turnRunner,
+      threadMutationRunner: mutationRunner,
     );
     final sessionController = CodexSessionStateController(
       connector: starter,
@@ -692,6 +694,8 @@ void main() {
     addTearDown(overrideController.dispose);
 
     await sessionController.connect(_profile);
+    await turnController.startNewThread();
+    await tester.pumpAndSettle();
     await _pumpChatPage(
       tester,
       sessionController: sessionController,
@@ -720,6 +724,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(
+      mutationRunner.updatedThreadSettings.single.threadId,
+      turnController.activeThreadId,
+    );
+    expect(
+      mutationRunner.updatedThreadSettings.single.overrides
+          .toThreadSettingsUpdateParams(),
+      {'model': 'gpt-5-codex', 'cwd': '/repo'},
+    );
     expect(
       find.textContaining('Model: gpt-5-codex / session override'),
       findsWidgets,

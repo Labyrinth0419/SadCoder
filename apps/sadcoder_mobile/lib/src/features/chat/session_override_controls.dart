@@ -7,23 +7,37 @@ import 'config_override_controls.dart';
 import 'config_override_labels.dart';
 
 class SessionOverrideControls extends StatelessWidget {
-  const SessionOverrideControls({super.key, required this.controller});
+  const SessionOverrideControls({
+    super.key,
+    required this.controller,
+    this.onApplySessionOverrides,
+  });
 
   final CodexConfigOverrideController controller;
+  final Future<void> Function(CodexConfigOverrides overrides)?
+  onApplySessionOverrides;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: controller,
-      builder: (context, _) => _SessionOverrideBar(controller: controller),
+      builder: (context, _) => _SessionOverrideBar(
+        controller: controller,
+        onApplySessionOverrides: onApplySessionOverrides,
+      ),
     );
   }
 }
 
 class _SessionOverrideBar extends StatelessWidget {
-  const _SessionOverrideBar({required this.controller});
+  const _SessionOverrideBar({
+    required this.controller,
+    this.onApplySessionOverrides,
+  });
 
   final CodexConfigOverrideController controller;
+  final Future<void> Function(CodexConfigOverrides overrides)?
+  onApplySessionOverrides;
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +150,10 @@ class _SessionOverrideBar extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _SessionOverrideSheet(controller: controller),
+      builder: (context) => _SessionOverrideSheet(
+        controller: controller,
+        onApplySessionOverrides: onApplySessionOverrides,
+      ),
     );
   }
 
@@ -170,9 +187,14 @@ class _SessionOverrideBar extends StatelessWidget {
 bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
 
 class _SessionOverrideSheet extends StatefulWidget {
-  const _SessionOverrideSheet({required this.controller});
+  const _SessionOverrideSheet({
+    required this.controller,
+    this.onApplySessionOverrides,
+  });
 
   final CodexConfigOverrideController controller;
+  final Future<void> Function(CodexConfigOverrides overrides)?
+  onApplySessionOverrides;
 
   @override
   State<_SessionOverrideSheet> createState() => _SessionOverrideSheetState();
@@ -182,6 +204,7 @@ class _SessionOverrideSheetState extends State<_SessionOverrideSheet> {
   late final TextEditingController _modelController;
   late final TextEditingController _effortController;
   late final TextEditingController _cwdController;
+  bool _isApplying = false;
 
   @override
   void initState() {
@@ -247,7 +270,7 @@ class _SessionOverrideSheetState extends State<_SessionOverrideSheet> {
                 ),
                 FilledButton.icon(
                   key: const ValueKey('chat-session-overrides-apply'),
-                  onPressed: _apply,
+                  onPressed: _isApplying ? null : _apply,
                   icon: const Icon(Icons.check),
                   label: Text(l10n.applySessionOverrides),
                 ),
@@ -259,15 +282,34 @@ class _SessionOverrideSheetState extends State<_SessionOverrideSheet> {
     );
   }
 
-  void _apply() {
-    widget.controller.setSession(
-      CodexConfigOverrides(
-        model: _modelController.text,
-        effort: _effortController.text,
-        cwd: _cwdController.text,
-      ),
+  Future<void> _apply() async {
+    final overrides = CodexConfigOverrides(
+      model: _modelController.text,
+      effort: _effortController.text,
+      cwd: _cwdController.text,
     );
-    Navigator.of(context).pop();
+    setState(() => _isApplying = true);
+    try {
+      final applyToSession = widget.onApplySessionOverrides;
+      if (applyToSession != null) {
+        await applyToSession(overrides);
+      }
+      widget.controller.setSession(overrides);
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop();
+    } on Object catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _isApplying = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${context.l10n.threadSettingsUpdateFailed}: $error'),
+        ),
+      );
+    }
   }
 
   void _clear() {
