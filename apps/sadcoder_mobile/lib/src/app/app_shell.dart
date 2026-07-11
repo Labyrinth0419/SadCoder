@@ -74,6 +74,7 @@ class AppShell extends StatefulWidget {
     this.approvalController,
     this.sessionController,
     this.hostSessionManager,
+    this.configOverrideController,
     this.backgroundConnectionPreferences,
     this.backgroundConnectionKeeper,
     this.backgroundNotificationRouter,
@@ -85,6 +86,7 @@ class AppShell extends StatefulWidget {
   final ApprovalStateController? approvalController;
   final CodexSessionStateController? sessionController;
   final HostSessionManager? hostSessionManager;
+  final CodexConfigOverrideController? configOverrideController;
   final BackgroundConnectionPreferences? backgroundConnectionPreferences;
   final BackgroundConnectionKeeper? backgroundConnectionKeeper;
   final BackgroundNotificationRouter? backgroundNotificationRouter;
@@ -116,6 +118,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late bool _ownsHostSessionManager;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
+  late bool _ownsConfigOverrideController;
   late bool _ownsBackgroundConnectionPreferences;
 
   ThreadListController get _threadListController =>
@@ -144,6 +147,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       approvalController: widget.approvalController,
       sessionController: widget.sessionController,
       hostSessionManager: widget.hostSessionManager,
+      configOverrideController: widget.configOverrideController,
       backgroundConnectionPreferences: widget.backgroundConnectionPreferences,
     );
     _startBackgroundNotificationCoordinator(
@@ -157,6 +161,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (oldWidget.approvalController != widget.approvalController ||
         oldWidget.sessionController != widget.sessionController ||
         oldWidget.hostSessionManager != widget.hostSessionManager ||
+        oldWidget.configOverrideController != widget.configOverrideController ||
         oldWidget.backgroundConnectionPreferences !=
             widget.backgroundConnectionPreferences ||
         oldWidget.backgroundConnectionKeeper !=
@@ -168,6 +173,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         approvalController: widget.approvalController,
         sessionController: widget.sessionController,
         hostSessionManager: widget.hostSessionManager,
+        configOverrideController: widget.configOverrideController,
         backgroundConnectionPreferences: widget.backgroundConnectionPreferences,
       );
     }
@@ -242,6 +248,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     required ApprovalStateController? approvalController,
     required CodexSessionStateController? sessionController,
     required HostSessionManager? hostSessionManager,
+    required CodexConfigOverrideController? configOverrideController,
     required BackgroundConnectionPreferences? backgroundConnectionPreferences,
   }) {
     if (approvalController != null &&
@@ -274,7 +281,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         backgroundConnectionPreferences == null;
     _backgroundConnectionPreferences =
         backgroundConnectionPreferences ?? BackgroundConnectionPreferences();
-    _configOverrideController = CodexConfigOverrideController();
+    _ownsConfigOverrideController = configOverrideController == null;
+    _configOverrideController =
+        configOverrideController ?? CodexConfigOverrideController();
     _activeUiState = AppHostSessionUiState(
       sessionController: _sessionController,
       configOverrideController: _configOverrideController,
@@ -307,7 +316,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void _disposeOwnedControllers() {
     _hostSessionManager?.removeListener(_handleHostSessionManagerChanged);
     _detachActiveSessionBindings();
-    _configOverrideController.dispose();
+    if (_ownsConfigOverrideController) {
+      _configOverrideController.dispose();
+    }
     _configSnapshotController.dispose();
     _accountSnapshotController.dispose();
     _accountUsageSnapshotController.dispose();

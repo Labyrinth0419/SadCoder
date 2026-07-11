@@ -6,6 +6,7 @@ import '../approvals/approval_state_controller.dart';
 import '../background/background_connection_policy.dart';
 import '../background/background_notification_router.dart';
 import '../commands/slash_command_manifest_reader.dart';
+import '../config/codex_config_override_controller.dart';
 import '../i18n/app_localizations.dart';
 import '../session/codex_session_state_controller.dart';
 import '../session/host_session_manager.dart';
@@ -21,6 +22,7 @@ class SadCoderApp extends StatefulWidget {
     this.approvalController,
     this.sessionController,
     this.hostSessionManager,
+    this.configOverrideController,
     this.backgroundConnectionPreferences,
     this.backgroundConnectionKeeper,
     this.backgroundNotificationRouter,
@@ -33,6 +35,7 @@ class SadCoderApp extends StatefulWidget {
   final ApprovalStateController? approvalController;
   final CodexSessionStateController? sessionController;
   final HostSessionManager? hostSessionManager;
+  final CodexConfigOverrideController? configOverrideController;
   final BackgroundConnectionPreferences? backgroundConnectionPreferences;
   final BackgroundConnectionKeeper? backgroundConnectionKeeper;
   final BackgroundNotificationRouter? backgroundNotificationRouter;
@@ -103,6 +106,7 @@ class _SadCoderAppState extends State<SadCoderApp> {
             approvalController: widget.approvalController,
             sessionController: widget.sessionController,
             hostSessionManager: widget.hostSessionManager,
+            configOverrideController: widget.configOverrideController,
             backgroundConnectionPreferences:
                 widget.backgroundConnectionPreferences,
             backgroundConnectionKeeper: widget.backgroundConnectionKeeper,
