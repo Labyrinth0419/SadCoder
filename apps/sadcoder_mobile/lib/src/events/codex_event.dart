@@ -7,6 +7,7 @@ enum CodexEventKind {
   threadUnarchived,
   threadDeleted,
   threadNameUpdated,
+  threadSettingsUpdated,
   turnStarted,
   turnCompleted,
   itemStarted,
@@ -38,6 +39,7 @@ class CodexEvent {
     this.thread,
     this.turn,
     this.item,
+    this.threadSettings,
     this.fileChanges,
     this.guardianAssessment,
   });
@@ -67,6 +69,11 @@ class CodexEvent {
       ),
       'thread/name/updated' => _threadLifecycleEvent(
         CodexEventKind.threadNameUpdated,
+        method,
+        notification,
+        params,
+      ),
+      'thread/settings/updated' => _threadSettingsUpdated(
         method,
         notification,
         params,
@@ -173,6 +180,7 @@ class CodexEvent {
   final ThreadSummary? thread;
   final TurnSummary? turn;
   final Map<String, Object?>? item;
+  final Map<String, Object?>? threadSettings;
   final List<ThreadFileChangeSummary>? fileChanges;
   final GuardianAssessmentEvent? guardianAssessment;
   final Map<String, Object?> raw;
@@ -204,6 +212,21 @@ class CodexEvent {
       raw: Map.unmodifiable(raw),
       threadId: _stringValue(params['threadId']),
       threadName: _stringValue(params['threadName']),
+    );
+  }
+
+  static CodexEvent _threadSettingsUpdated(
+    String method,
+    Map<String, Object?> raw,
+    Map<String, Object?> params,
+  ) {
+    final settings = _stringKeyedMap(params['threadSettings']);
+    return CodexEvent(
+      kind: CodexEventKind.threadSettingsUpdated,
+      method: method,
+      raw: Map.unmodifiable(raw),
+      threadId: _stringValue(params['threadId']),
+      threadSettings: Map.unmodifiable(settings),
     );
   }
 

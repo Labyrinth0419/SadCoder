@@ -99,6 +99,7 @@ class ChatTimelineController extends ChangeNotifier {
           CodexEventKind.threadUnarchived ||
           CodexEventKind.threadDeleted ||
           CodexEventKind.threadNameUpdated ||
+          CodexEventKind.threadSettingsUpdated ||
           CodexEventKind.unknown:
         return;
     }

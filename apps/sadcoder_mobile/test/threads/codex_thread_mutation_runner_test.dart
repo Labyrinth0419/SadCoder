@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/events/guardian_assessment_event.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_server_client.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
@@ -114,6 +115,32 @@ void main() {
 
     expect(requests.single.method, 'thread/compact/start');
     expect(requests.single.params, {'threadId': 'thr_1'});
+  });
+
+  test('updateThreadSettings forwards explicit thread overrides', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
+    final runner = CodexThreadMutationRunner(CodexAppServerClient(transport));
+
+    await runner.updateThreadSettings(
+      threadId: 'thr_1',
+      overrides: const CodexConfigOverrides(
+        model: 'gpt-5-codex',
+        effort: 'medium',
+        cwd: '/repo',
+      ),
+    );
+
+    expect(requests.single.method, 'thread/settings/update');
+    expect(requests.single.params, {
+      'threadId': 'thr_1',
+      'model': 'gpt-5-codex',
+      'effort': 'medium',
+      'cwd': '/repo',
+    });
   });
 
   test('approveGuardianDeniedAction forwards the guardian event', () async {

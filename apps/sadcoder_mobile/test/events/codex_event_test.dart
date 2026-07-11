@@ -45,6 +45,17 @@ void main() {
       'method': 'thread/deleted',
       'params': {'threadId': 'thr_2'},
     });
+    final threadSettingsUpdated = CodexEvent.fromNotification({
+      'method': 'thread/settings/updated',
+      'params': {
+        'threadId': 'thr_1',
+        'threadSettings': {
+          'model': 'gpt-5-codex',
+          'cwd': '/repo',
+          'effort': 'high',
+        },
+      },
+    });
 
     expect(threadStarted.kind, CodexEventKind.threadStarted);
     expect(threadStarted.threadId, 'thr_1');
@@ -58,6 +69,13 @@ void main() {
     expect(threadUnarchived.threadId, 'thr_1');
     expect(threadDeleted.kind, CodexEventKind.threadDeleted);
     expect(threadDeleted.threadId, 'thr_2');
+    expect(threadSettingsUpdated.kind, CodexEventKind.threadSettingsUpdated);
+    expect(threadSettingsUpdated.threadId, 'thr_1');
+    expect(threadSettingsUpdated.threadSettings, {
+      'model': 'gpt-5-codex',
+      'cwd': '/repo',
+      'effort': 'high',
+    });
     expect(turnCompleted.kind, CodexEventKind.turnCompleted);
     expect(turnCompleted.threadId, 'thr_1');
     expect(turnCompleted.turnId, 'turn_1');

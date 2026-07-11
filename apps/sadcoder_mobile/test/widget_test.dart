@@ -1678,6 +1678,12 @@ class _NoopThreadMutationRunner implements ThreadMutationRunner {
   Future<void> compactThread({required String threadId}) async {}
 
   @override
+  Future<void> updateThreadSettings({
+    required String threadId,
+    CodexConfigOverrides overrides = CodexConfigOverrides.empty,
+  }) async {}
+
+  @override
   Future<void> approveGuardianDeniedAction({
     required String threadId,
     required GuardianAssessmentEvent event,

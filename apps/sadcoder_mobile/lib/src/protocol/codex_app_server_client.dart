@@ -467,6 +467,16 @@ class CodexAppServerClient {
     return _request('thread/compact/start', {'threadId': threadId});
   }
 
+  Future<Map<String, Object?>> updateThreadSettings({
+    required String threadId,
+    CodexConfigOverrides overrides = CodexConfigOverrides.empty,
+  }) {
+    return _request('thread/settings/update', {
+      'threadId': threadId,
+      ...overrides.toThreadSettingsUpdateParams(),
+    });
+  }
+
   Future<Map<String, Object?>> listThreadBackgroundTerminals({
     required String threadId,
     String? cursor,

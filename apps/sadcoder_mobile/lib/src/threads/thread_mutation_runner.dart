@@ -1,3 +1,4 @@
+import '../config/codex_config_overrides.dart';
 import '../events/guardian_assessment_event.dart';
 import 'thread_summary.dart';
 
@@ -18,6 +19,11 @@ abstract interface class ThreadMutationRunner {
   Future<ThreadSummary> startSideConversation({required String threadId});
 
   Future<void> compactThread({required String threadId});
+
+  Future<void> updateThreadSettings({
+    required String threadId,
+    CodexConfigOverrides overrides = CodexConfigOverrides.empty,
+  });
 
   Future<void> approveGuardianDeniedAction({
     required String threadId,

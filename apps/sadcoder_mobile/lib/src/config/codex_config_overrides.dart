@@ -79,6 +79,10 @@ class CodexConfigOverrides {
       if (hasCollaborationMode) 'collaborationMode': collaborationModeJson,
     };
   }
+
+  Map<String, Object?> toThreadSettingsUpdateParams() {
+    return toTurnStartParams();
+  }
 }
 
 class CodexCollaborationModeOverride {

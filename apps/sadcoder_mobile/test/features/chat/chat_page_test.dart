@@ -7968,6 +7968,8 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
   final rewoundThreads = <({String threadId, String lastTurnId})>[];
   final sideStartedThreads = <String>[];
   final compactedThreads = <String>[];
+  final updatedThreadSettings =
+      <({String threadId, CodexConfigOverrides overrides})>[];
   final approvedGuardianDenials =
       <({String threadId, GuardianAssessmentEvent event})>[];
   final renamedThreads = <({String threadId, String name})>[];
@@ -8015,6 +8017,14 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
   @override
   Future<void> compactThread({required String threadId}) async {
     compactedThreads.add(threadId);
+  }
+
+  @override
+  Future<void> updateThreadSettings({
+    required String threadId,
+    CodexConfigOverrides overrides = CodexConfigOverrides.empty,
+  }) async {
+    updatedThreadSettings.add((threadId: threadId, overrides: overrides));
   }
 
   @override
@@ -8079,6 +8089,12 @@ class _NoopThreadMutationRunner implements ThreadMutationRunner {
 
   @override
   Future<void> compactThread({required String threadId}) async {}
+
+  @override
+  Future<void> updateThreadSettings({
+    required String threadId,
+    CodexConfigOverrides overrides = CodexConfigOverrides.empty,
+  }) async {}
 
   @override
   Future<void> approveGuardianDeniedAction({

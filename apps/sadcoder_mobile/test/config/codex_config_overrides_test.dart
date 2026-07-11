@@ -4,6 +4,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 void main() {
   test('empty overrides serialize no turn start params', () {
     expect(CodexConfigOverrides.empty.toTurnStartParams(), isEmpty);
+    expect(CodexConfigOverrides.empty.toThreadSettingsUpdateParams(), isEmpty);
     expect(CodexConfigOverrides.empty.isEmpty, true);
   });
 
@@ -122,5 +123,30 @@ void main() {
       layers.sourceFor('collaborationMode'),
       CodexConfigOverrideSource.turn,
     );
+  });
+
+  test('thread settings update params reuse explicit override fields', () {
+    const overrides = CodexConfigOverrides(
+      model: 'gpt-5-codex',
+      effort: 'high',
+      summary: 'detailed',
+      approvalPolicy: 'on-request',
+      permissionProfile: ':workspace',
+      cwd: '/repo',
+      personality: 'pragmatic',
+      serviceTier: 'flex',
+      sandboxPolicy: {'type': 'readOnly'},
+    );
+
+    expect(overrides.toThreadSettingsUpdateParams(), {
+      'model': 'gpt-5-codex',
+      'effort': 'high',
+      'summary': 'detailed',
+      'approvalPolicy': 'on-request',
+      'permissions': ':workspace',
+      'cwd': '/repo',
+      'personality': 'pragmatic',
+      'serviceTier': 'flex',
+    });
   });
 }

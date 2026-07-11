@@ -75,6 +75,19 @@ void main() {
       ephemeral: true,
     );
     await client.compactThread(threadId: 'thr_1');
+    await client.updateThreadSettings(
+      threadId: 'thr_1',
+      overrides: CodexConfigOverrides(
+        model: 'gpt-5-codex',
+        effort: 'high',
+        summary: 'detailed',
+        approvalPolicy: 'on-request',
+        permissionProfile: ':workspace',
+        cwd: '/repo',
+        personality: 'pragmatic',
+        serviceTier: 'flex',
+      ),
+    );
     await client.listSkills(cwds: [' /repo ', '  '], forceReload: true);
     await client.listPlugins(
       cwds: [' /repo ', '  '],
@@ -144,6 +157,7 @@ void main() {
       'thread/resume',
       'thread/fork',
       'thread/compact/start',
+      'thread/settings/update',
       'skills/list',
       'plugin/list',
       'plugin/read',
@@ -205,73 +219,120 @@ void main() {
     });
     expect(requests[14].params, {'threadId': 'thr_1'});
     expect(requests[15].params, {
-      'cwds': ['/repo'],
-      'forceReload': true,
+      'threadId': 'thr_1',
+      'model': 'gpt-5-codex',
+      'effort': 'high',
+      'summary': 'detailed',
+      'approvalPolicy': 'on-request',
+      'permissions': ':workspace',
+      'cwd': '/repo',
+      'personality': 'pragmatic',
+      'serviceTier': 'flex',
     });
     expect(requests[16].params, {
       'cwds': ['/repo'],
-      'marketplaceKinds': ['local', 'workspace-directory'],
+      'forceReload': true,
     });
     expect(requests[17].params, {
+      'cwds': ['/repo'],
+      'marketplaceKinds': ['local', 'workspace-directory'],
+    });
+    expect(requests[18].params, {
       'pluginId': 'linear',
       'cwds': ['/repo'],
     });
-    expect(requests[18].params, {
+    expect(requests[19].params, {
       'cwds': ['/repo'],
     });
-    expect(requests[19].params, {
+    expect(requests[20].params, {
       'cursor': 'apps_cursor',
       'limit': 25,
       'threadId': 'thr_1',
       'forceRefetch': true,
     });
-    expect(requests[20].params, {'threadId': 'thr_1'});
-    expect(requests[21].params, {
+    expect(requests[21].params, {'threadId': 'thr_1'});
+    expect(requests[22].params, {
       'threadId': 'thr_1',
       'objective': 'Ship goal support',
       'status': 'active',
       'tokenBudget': 5000,
     });
-    expect(requests[22].params, {'threadId': 'thr_1'});
-    expect(requests[23].params, {
+    expect(requests[23].params, {'threadId': 'thr_1'});
+    expect(requests[24].params, {
       'threadId': 'thr_1',
       'target': {'type': 'commit', 'sha': 'abc123', 'title': 'Polish colors'},
       'delivery': 'detached',
     });
-    expect(requests[24].params, {
+    expect(requests[25].params, {
       'threadId': 'thr_1',
       'name': 'Renamed thread',
     });
-    expect(requests[25].params, {'threadId': 'thr_1'});
     expect(requests[26].params, {'threadId': 'thr_1'});
     expect(requests[27].params, {'threadId': 'thr_1'});
-    expect(requests[28].params, isNull);
-    expect(requests[29].params, {
+    expect(requests[28].params, {'threadId': 'thr_1'});
+    expect(requests[29].params, isNull);
+    expect(requests[30].params, {
       'classification': 'bug',
       'reason': 'broken',
       'threadId': 'thr_1',
       'includeLogs': true,
       'tags': {'turn_id': 'turn_1'},
     });
-    expect(requests[30].params, {
+    expect(requests[31].params, {
       'command': ['git', 'diff'],
       'cwd': '/repo',
       'env': {'GIT_CONFIG_COUNT': '0'},
       'timeoutMs': 30000,
       'outputBytesCap': 1024,
     });
-    expect(requests[31].params, {
+    expect(requests[32].params, {
       'query': 'main',
       'roots': ['/repo'],
       'cancellation_token': 'token-1',
     });
-    expect(requests[32].params, {
+    expect(requests[33].params, {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},
       ],
     });
     expect(requests.last.params, {'threadId': 'thr_1', 'turnId': 'turn_1'});
+  });
+
+  test('updateThreadSettings uses thread/settings/update', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
+
+    final client = CodexAppServerClient(transport);
+    await client.updateThreadSettings(
+      threadId: 'thr_1',
+      overrides: CodexConfigOverrides(
+        model: 'gpt-5.4',
+        effort: 'low',
+        summary: 'auto',
+        approvalPolicy: 'never',
+        permissionProfile: ':workspace',
+        cwd: '/repo',
+        personality: 'concise',
+        serviceTier: 'priority',
+      ),
+    );
+
+    expect(requests.single.method, 'thread/settings/update');
+    expect(requests.single.params, {
+      'threadId': 'thr_1',
+      'model': 'gpt-5.4',
+      'effort': 'low',
+      'summary': 'auto',
+      'approvalPolicy': 'never',
+      'permissions': ':workspace',
+      'cwd': '/repo',
+      'personality': 'concise',
+      'serviceTier': 'priority',
+    });
   });
 
   test('runThreadShellCommand calls thread/shellCommand', () async {

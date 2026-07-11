@@ -1,3 +1,4 @@
+import '../config/codex_config_overrides.dart';
 import '../events/guardian_assessment_event.dart';
 import '../protocol/codex_app_server_client.dart';
 import 'side_conversation.dart';
@@ -73,6 +74,17 @@ class CodexThreadMutationRunner implements ThreadMutationRunner {
   @override
   Future<void> compactThread({required String threadId}) async {
     await _client.compactThread(threadId: threadId);
+  }
+
+  @override
+  Future<void> updateThreadSettings({
+    required String threadId,
+    CodexConfigOverrides overrides = CodexConfigOverrides.empty,
+  }) async {
+    await _client.updateThreadSettings(
+      threadId: threadId,
+      overrides: overrides,
+    );
   }
 
   @override
