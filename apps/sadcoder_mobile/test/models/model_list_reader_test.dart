@@ -143,6 +143,66 @@ void main() {
     },
   );
 
+  test('ModelListPage parses GPT-5.6 raw model catalog entries', () {
+    final page = ModelListPage.fromJson({
+      'models': [
+        {
+          'slug': 'gpt-5.6-sol',
+          'display_name': 'GPT-5.6-Sol',
+          'description': 'Latest frontier agentic coding model.',
+          'default_reasoning_level': 'low',
+          'supported_reasoning_levels': [
+            {'effort': 'low', 'description': 'Fast responses'},
+            {'effort': 'medium', 'description': 'Balanced'},
+            {'effort': 'ultra', 'description': 'Automatic task delegation'},
+          ],
+          'visibility': 'list',
+          'availability_nux': {'message': 'Sol is available.'},
+          'upgrade': {
+            'model': 'gpt-5.6-sol',
+            'migration_markdown': 'Use {target_model}.',
+          },
+          'input_modalities': ['text', 'image'],
+          'service_tiers': [
+            {
+              'id': 'priority',
+              'name': 'Fast',
+              'description': '1.5x speed, increased usage',
+            },
+          ],
+          'default_service_tier': 'priority',
+        },
+        {
+          'slug': 'gpt-5.6-luna',
+          'display_name': 'GPT-5.6-Luna',
+          'visibility': 'hide',
+        },
+      ],
+    });
+
+    expect(page.models, hasLength(2));
+    expect(page.models[0].id, 'gpt-5.6-sol');
+    expect(page.models[0].label, 'GPT-5.6-Sol');
+    expect(page.models[0].hidden, isFalse);
+    expect(page.models[0].defaultReasoningEffort, 'low');
+    expect(
+      page.models[0].supportedReasoningEfforts.map((effort) => effort.id),
+      ['low', 'medium', 'ultra'],
+    );
+    expect(
+      page.models[0].supportedReasoningEfforts.last.description,
+      'Automatic task delegation',
+    );
+    expect(page.models[0].availabilityNux?.message, 'Sol is available.');
+    expect(page.models[0].upgrade?.model, 'gpt-5.6-sol');
+    expect(page.models[0].upgrade?.migrationMarkdown, 'Use {target_model}.');
+    expect(page.models[0].inputModalities, ['text', 'image']);
+    expect(page.models[0].serviceTiers.single.id, 'priority');
+    expect(page.models[0].defaultServiceTier, 'priority');
+    expect(page.models[1].id, 'gpt-5.6-luna');
+    expect(page.models[1].hidden, isTrue);
+  });
+
   test('ModelListPage treats missing model arrays as empty', () {
     expect(ModelListPage.fromJson({}).models, isEmpty);
     expect(ModelListPage.fromJson({'models': 'gpt-5'}).models, isEmpty);

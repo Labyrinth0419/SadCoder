@@ -154,7 +154,7 @@ CodexModelSummary? _modelFromJson(Object? value) {
           _stringValue(map['short_description']) ??
           _stringValue(map['shortDescription']),
       provider: _stringValue(map['provider']),
-      hidden: _boolValue(map['hidden']),
+      hidden: _hiddenValue(map),
       isDefault: _boolValue(map['isDefault'] ?? map['is_default']),
       upgrade: _upgradeFromJson(map['upgrade'], upgradeInfo),
       availabilityNux: _availabilityNuxFromJson(
@@ -163,11 +163,16 @@ CodexModelSummary? _modelFromJson(Object? value) {
       supportedReasoningEfforts: List.unmodifiable(
         _listOfMaps(
           map['supportedReasoningEfforts'] ??
-              map['supported_reasoning_efforts'],
+              map['supported_reasoning_efforts'] ??
+              map['supportedReasoningLevels'] ??
+              map['supported_reasoning_levels'],
         ).map(_reasoningEffortFromJson).nonNulls,
       ),
       defaultReasoningEffort: _stringValue(
-        map['defaultReasoningEffort'] ?? map['default_reasoning_effort'],
+        map['defaultReasoningEffort'] ??
+            map['default_reasoning_effort'] ??
+            map['defaultReasoningLevel'] ??
+            map['default_reasoning_level'],
       ),
       inputModalities: List.unmodifiable(
         _stringList(map['inputModalities'] ?? map['input_modalities']),
@@ -189,10 +194,13 @@ CodexModelUpgrade? _upgradeFromJson(
   Object? rawUpgrade,
   Map<String, Object?> upgradeInfo,
 ) {
+  final rawUpgradeMap = _stringKeyedMap(rawUpgrade);
   final model =
       _stringValue(rawUpgrade) ??
       _stringValue(upgradeInfo['model']) ??
-      _stringValue(upgradeInfo['id']);
+      _stringValue(upgradeInfo['id']) ??
+      _stringValue(rawUpgradeMap['model']) ??
+      _stringValue(rawUpgradeMap['id']);
   if (!_hasText(model)) {
     return null;
   }
@@ -200,14 +208,32 @@ CodexModelUpgrade? _upgradeFromJson(
     model: model!.trim(),
     copy:
         _stringValue(upgradeInfo['upgradeCopy']) ??
-        _stringValue(upgradeInfo['upgrade_copy']),
+        _stringValue(upgradeInfo['upgrade_copy']) ??
+        _stringValue(rawUpgradeMap['upgradeCopy']) ??
+        _stringValue(rawUpgradeMap['upgrade_copy']),
     link:
         _stringValue(upgradeInfo['modelLink']) ??
-        _stringValue(upgradeInfo['model_link']),
+        _stringValue(upgradeInfo['model_link']) ??
+        _stringValue(rawUpgradeMap['modelLink']) ??
+        _stringValue(rawUpgradeMap['model_link']),
     migrationMarkdown:
         _stringValue(upgradeInfo['migrationMarkdown']) ??
-        _stringValue(upgradeInfo['migration_markdown']),
+        _stringValue(upgradeInfo['migration_markdown']) ??
+        _stringValue(rawUpgradeMap['migrationMarkdown']) ??
+        _stringValue(rawUpgradeMap['migration_markdown']),
   );
+}
+
+bool _hiddenValue(Map<String, Object?> map) {
+  final hidden = map['hidden'];
+  if (hidden is bool) {
+    return hidden;
+  }
+  final visibility = _stringValue(map['visibility']);
+  if (visibility == null) {
+    return false;
+  }
+  return visibility != 'list';
 }
 
 CodexModelAvailabilityNux? _availabilityNuxFromJson(Object? value) {
@@ -220,7 +246,9 @@ CodexModelAvailabilityNux? _availabilityNuxFromJson(Object? value) {
 }
 
 CodexModelReasoningEffort? _reasoningEffortFromJson(Map<String, Object?> map) {
-  final id = _stringValue(map['reasoningEffort'] ?? map['reasoning_effort']);
+  final id = _stringValue(
+    map['reasoningEffort'] ?? map['reasoning_effort'] ?? map['effort'],
+  );
   final description = _stringValue(map['description']);
   if (!_hasText(id)) {
     return null;
