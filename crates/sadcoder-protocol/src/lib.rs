@@ -112,8 +112,17 @@ pub struct AgentStatus {
     pub codex_path: String,
     pub codex_available: bool,
     pub codex_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub codex_failure: Option<CodexFailureStatus>,
     pub backend: BackendStatus,
     pub reconnect_cache: AgentReconnectCacheStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexFailureStatus {
+    pub kind: String,
+    pub detail: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -245,6 +254,7 @@ mod tests {
             codex_path: "codex".to_string(),
             codex_available: true,
             codex_version: Some("codex-cli 1.2.3".to_string()),
+            codex_failure: None,
             backend: BackendStatus {
                 kind: BackendKind::CodexAppServerStdio,
                 state: BackendState::Ready,
@@ -263,12 +273,47 @@ mod tests {
 
         assert_eq!(encoded["agentVersion"], "0.1.0");
         assert_eq!(encoded["codexAvailable"], true);
+        assert!(encoded.get("codexFailure").is_none());
         assert_eq!(encoded["backend"]["kind"], "codex-app-server-stdio");
         assert_eq!(
             encoded["reconnectCache"]["statePath"],
             "/tmp/sadcoder-agent-state.json"
         );
         assert_eq!(encoded["reconnectCache"]["pendingApprovals"], 2);
+    }
+
+    #[test]
+    fn agent_status_serializes_codex_failure_when_present() {
+        let status = AgentStatus {
+            agent_version: "0.1.0".to_string(),
+            platform_os: "linux".to_string(),
+            platform_arch: "x86_64".to_string(),
+            codex_path: "/home/tester/.nvm/bin/codex".to_string(),
+            codex_available: false,
+            codex_version: None,
+            codex_failure: Some(CodexFailureStatus {
+                kind: "runtime-not-found".to_string(),
+                detail: "node: SyntaxError".to_string(),
+            }),
+            backend: BackendStatus {
+                kind: BackendKind::Unknown,
+                state: BackendState::Unavailable,
+                detail: Some("runtime-not-found: node: SyntaxError".to_string()),
+            },
+            reconnect_cache: AgentReconnectCacheStatus {
+                state_path: "/tmp/sadcoder-agent-state.json".to_string(),
+                schema_version: 1,
+                pending_approvals: 0,
+                recent_events: 0,
+                load_error: None,
+            },
+        };
+
+        let encoded = serde_json::to_value(status).expect("serialize status");
+
+        assert_eq!(encoded["codexAvailable"], false);
+        assert_eq!(encoded["codexFailure"]["kind"], "runtime-not-found");
+        assert_eq!(encoded["codexFailure"]["detail"], "node: SyntaxError");
     }
 
     #[test]

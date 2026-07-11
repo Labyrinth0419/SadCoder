@@ -7,6 +7,7 @@ use sadcoder_protocol::AgentStatus;
 use sadcoder_protocol::BackendKind;
 use sadcoder_protocol::BackendState;
 use sadcoder_protocol::BackendStatus;
+use sadcoder_protocol::CodexFailureStatus;
 use sadcoder_protocol::JsonRpcNotification;
 use sadcoder_protocol::JsonRpcRequest;
 use sadcoder_protocol::JsonRpcResponse;
@@ -472,6 +473,13 @@ fn collect_status_with_backend(
     let codex_probe = probe_codex_version(codex);
     let codex_version = codex_probe.as_ref().ok().cloned();
     let codex_available = codex_probe.is_ok();
+    let codex_failure = codex_probe
+        .as_ref()
+        .err()
+        .map(|failure| CodexFailureStatus {
+            kind: failure.kind.as_str().to_string(),
+            detail: failure.detail.clone(),
+        });
     let service_paths = resolve_service_paths(state_path);
     let backend = backend_override.unwrap_or_else(|| {
         collect_backend_status(codex_probe.as_ref().err(), backend_mode, &service_paths)
@@ -485,6 +493,7 @@ fn collect_status_with_backend(
         codex_path: codex.display_program(),
         codex_available,
         codex_version,
+        codex_failure,
         backend,
         reconnect_cache,
     }
@@ -1142,6 +1151,18 @@ mod tests {
         );
 
         assert!(!status.codex_available);
+        assert_eq!(
+            status
+                .codex_failure
+                .as_ref()
+                .map(|failure| failure.kind.as_str()),
+            Some("configured-path-missing")
+        );
+        assert!(status.codex_failure.as_ref().is_some_and(|failure| {
+            failure
+                .detail
+                .contains("definitely-missing-sadcoder-codex-binary")
+        }));
         assert_eq!(status.backend.kind, BackendKind::Unknown);
         assert_eq!(status.backend.state, BackendState::Unavailable);
         assert!(

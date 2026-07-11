@@ -42,6 +42,7 @@ void main() {
 
     expect(runner.lastCommand, 'sadcoder-agent status --json');
     expect(status.codexAvailable, true);
+    expect(status.codexFailure, isNull);
     expect(status.backendKind, BackendKind.codexAppServerStdio);
     expect(status.backendState, BackendState.ready);
     expect(
@@ -50,6 +51,46 @@ void main() {
     );
     expect(status.reconnectCache.pendingApprovals, 2);
     expect(status.reconnectCache.recentEvents, 7);
+  });
+
+  test('readStatus parses structured Codex failure diagnostics', () async {
+    final runner = _FakeRunner(
+      result: const RemoteCommandResult(
+        exitCode: 0,
+        stdout: '''
+{
+  "agentVersion": "0.1.0",
+  "platformOs": "linux",
+  "platformArch": "x86_64",
+  "codexPath": "/home/tester/.nvm/versions/node/v24/bin/codex",
+  "codexAvailable": false,
+  "codexFailure": {
+    "kind": "runtime-not-found",
+    "detail": "node: SyntaxError: Unexpected token"
+  },
+  "backend": {
+    "kind": "unknown",
+    "state": "unavailable",
+    "detail": "runtime-not-found: node: SyntaxError: Unexpected token"
+  }
+}
+''',
+        stderr: '',
+      ),
+    );
+    final service = AgentRemoteService(runner);
+
+    final status = await service.readStatus(_profile);
+
+    expect(status.codexAvailable, false);
+    expect(status.codexFailure?.kind, 'runtime-not-found');
+    expect(status.codexFailure?.detail, 'node: SyntaxError: Unexpected token');
+    expect(
+      status.codexFailure?.message,
+      'runtime-not-found: node: SyntaxError: Unexpected token',
+    );
+    expect(status.backendKind, BackendKind.unknown);
+    expect(status.backendState, BackendState.unavailable);
   });
 
   test('readStatus parses snake_case sadcoder-agent status JSON', () async {
@@ -64,6 +105,7 @@ void main() {
   "codex_path": "codex.exe",
   "codex_available": true,
   "codex_version": "codex-cli 0.143.0",
+  "codex_failure": null,
   "backend": {
     "kind": "sadcoder-agent-service",
     "state": "not-started",
@@ -91,6 +133,7 @@ void main() {
     expect(status.codexPath, 'codex.exe');
     expect(status.codexAvailable, true);
     expect(status.codexVersion, 'codex-cli 0.143.0');
+    expect(status.codexFailure, isNull);
     expect(status.backendKind, BackendKind.sadcoderAgentService);
     expect(status.backendState, BackendState.notStarted);
     expect(status.backendDetail, 'SadCoder service is not running');

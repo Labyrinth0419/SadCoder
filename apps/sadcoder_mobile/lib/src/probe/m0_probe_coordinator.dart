@@ -272,8 +272,11 @@ class M0ProbeCoordinator implements M0ProbeRunner {
 
 M0ProbeStepResult _codexVersionStepFromStatus(AgentStatus status) {
   final version = status.codexVersion?.trim();
+  final failureDetail = status.codexFailure?.message.trim();
   final detail = version == null || version.isEmpty
-      ? status.codexPath
+      ? (failureDetail == null || failureDetail.isEmpty
+            ? status.codexPath
+            : failureDetail)
       : version;
   if (!status.codexAvailable) {
     return M0ProbeStepResult(

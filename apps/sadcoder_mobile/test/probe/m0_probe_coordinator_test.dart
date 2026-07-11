@@ -237,7 +237,10 @@ void main() {
       M0ProbeStep.codexVersion,
     ]);
     expect(report.steps.last.ok, false);
-    expect(report.steps.last.detail, 'codex');
+    expect(
+      report.steps.last.detail,
+      'runtime-not-found: node: SyntaxError: Unexpected token',
+    );
     expect(report.steps.last.suggestion, M0ProbeSuggestion.installCodex);
     expect(connector.connectCount, 0);
   });
@@ -430,6 +433,10 @@ const _missingCodexStatus = AgentStatus(
   platformArch: 'x86_64',
   codexPath: 'codex',
   codexAvailable: false,
+  codexFailure: AgentCodexFailure(
+    kind: 'runtime-not-found',
+    detail: 'node: SyntaxError: Unexpected token',
+  ),
   backendKind: BackendKind.unknown,
   backendState: BackendState.unavailable,
 );

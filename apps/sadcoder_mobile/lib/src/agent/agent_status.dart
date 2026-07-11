@@ -34,6 +34,7 @@ class AgentStatus {
     required this.backendKind,
     required this.backendState,
     this.codexVersion,
+    this.codexFailure,
     this.backendDetail,
     this.reconnectCache = const AgentReconnectCacheStatus(),
   });
@@ -51,6 +52,9 @@ class AgentStatus {
       codexAvailable:
           _boolField(json, ['codexAvailable', 'codex_available']) ?? false,
       codexVersion: _stringField(json, ['codexVersion', 'codex_version']),
+      codexFailure: AgentCodexFailure.fromJsonOrNull(
+        _stringKeyedMap(_valueField(json, ['codexFailure', 'codex_failure'])),
+      ),
       backendKind: BackendKind.fromWire(_stringValue(backend['kind']) ?? ''),
       backendState: BackendState.fromWire(_stringValue(backend['state']) ?? ''),
       backendDetail: _stringValue(backend['detail']),
@@ -68,10 +72,40 @@ class AgentStatus {
   final String codexPath;
   final bool codexAvailable;
   final String? codexVersion;
+  final AgentCodexFailure? codexFailure;
   final BackendKind backendKind;
   final BackendState backendState;
   final String? backendDetail;
   final AgentReconnectCacheStatus reconnectCache;
+}
+
+class AgentCodexFailure {
+  const AgentCodexFailure({required this.kind, required this.detail});
+
+  factory AgentCodexFailure.fromJson(Map<String, Object?> json) {
+    return AgentCodexFailure(
+      kind: _stringField(json, ['kind']) ?? 'unknown',
+      detail: _stringField(json, ['detail']) ?? '',
+    );
+  }
+
+  static AgentCodexFailure? fromJsonOrNull(Map<String, Object?> json) {
+    if (json.isEmpty) {
+      return null;
+    }
+    return AgentCodexFailure.fromJson(json);
+  }
+
+  final String kind;
+  final String detail;
+
+  String get message {
+    final trimmedDetail = detail.trim();
+    if (trimmedDetail.isEmpty) {
+      return kind;
+    }
+    return '$kind: $trimmedDetail';
+  }
 }
 
 class AgentReconnectCacheStatus {
