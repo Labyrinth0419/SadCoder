@@ -882,13 +882,77 @@ MVP 可以简化为底部导航：
 - 对当前平台不可用的命令默认隐藏；高级设置可显示“不可用命令”用于诊断。
 - i18n 中保留原始 command 名，不翻译 `/model` 等命令本身，只翻译说明和错误。
 
-### 9.6 深色模式
+### 9.6 工作区文件浏览与只读查看
+
+工作区文件浏览是 `/mention`、`/ide`、代码审查、diff 查看和后续受控编辑能力的基础能力。它不应该继续塞进 `ChatPage` 内部，而应该作为独立的 `features/files` 模块建设。
+
+目标：
+
+- 基于当前 workspace cwd、thread cwd 或显式 cwd override 浏览工作区目录树。
+- 支持展开目录、刷新目录、搜索/过滤文件、复制文件路径。
+- 支持打开文本文件进行只读查看。
+- 支持代码文件语法高亮。
+- 支持 Markdown 文件在渲染视图和 raw 源码视图之间切换。
+- 支持大文件分段读取，不强制一次性读取完整文件。
+- MVP 明确不支持编辑、删除、重命名、新建文件或新建目录；后续编辑能力必须单独设计写入确认、diff 审批和冲突检测。
+
+结构要求：
+
+- 新增 `WorkspaceDirectoryReader`，负责目录列表读取、分页、隐藏文件策略和错误归一化。
+- 新增 `WorkspaceFileReader`，负责文件元信息和内容读取。
+- 优先使用结构化 app-server/agent file API；如果暂时只能通过 `command/exec` fallback 实现，fallback 必须封装在 reader 内，不允许 UI 直接拼命令。
+- 目录树、文件查看器、Markdown/raw 切换、代码高亮都放在 `features/files` 下，聊天页只负责入口或上下文联动。
+- 所有路径必须限制在 workspace root 内，禁止 `..`、绝对路径替换、符号链接逃逸等路径穿越。
+- 文件 API 必须返回结构化错误：未连接、无 cwd、路径不存在、权限不足、路径越界、二进制不可预览、文件过大、读取失败。
+
+建议协议：
+
+- `workspace/directoryList`
+  - 参数：`root`、`path`、`limit`、`cursor`、`includeHidden`。
+  - 返回：目录项列表、分页 cursor、文件/目录类型、大小、修改时间、是否隐藏。
+- `workspace/fileStat`
+  - 参数：`root`、`path`。
+  - 返回：文件类型、大小、mtime、是否二进制、mime/language、内容版本或 hash。
+- `workspace/fileRead`
+  - 参数：`root`、`path`、`offset`、`limitBytes`、`encoding`。
+  - 返回：`sizeBytes`、`offset`、`bytesRead`、`nextOffset`、`hasMore`、`encoding`、`isBinary`、`content`、`contentHash` 或 `version`。
+
+大文件策略：
+
+- 小文件可以一次性读取并完整渲染。
+- 大文件默认使用 range read：`offset + limitBytes`，UI 显示已加载大小/总大小，并提供“加载更多”。
+- range read 必须避免切坏 UTF-8 字符；服务端应在安全边界返回文本 chunk。
+- Markdown 大文件默认 raw 分段查看；只有文件大小低于阈值或用户明确触发时才完整渲染。
+- 代码高亮只保证对当前已加载内容生效，不要求跨 chunk 完整语义高亮。
+- 二进制文件默认不预览文本，显示文件大小、类型、路径和不可预览状态。
+
+验收标准：
+
+- 未连接、无 cwd、空目录、权限不足、路径不存在、路径越界、大文件、二进制文件都有明确 UI 状态。
+- 可以从当前 workspace root 浏览目录树并打开 `.dart`、`.rs`、`.md`、`.txt` 等文本文件。
+- Markdown 文件默认可渲染，并可切换 raw；大 Markdown 受大小阈值保护。
+- 代码文件有语法高亮；大文件模式不会阻塞 UI。
+- 文件读取支持分段加载，测试覆盖 `nextOffset`、`hasMore`、编码边界和错误状态。
+- 不出现任何写文件入口；只读查看不会触发 server turn、不会修改工作区。
+
+### 9.7 深色模式
 
 - 使用 Material 3 dynamic color 可选，但默认提供稳定主题。
 - 支持 system / light / dark。
 - 代码块、diff、terminal output 要有专门配色，不能只用普通文本颜色。
 
-### 9.7 i18n
+### 9.7.1 主机、设置与主题后续改造
+
+用户体验后续要求：
+
+- SSH 主机管理支持多台主机：本地保存多 profile，按 host 分组折叠展示；后续升级为多 host 同时连接和 per-host session/thread 列表。
+- SSH 主机管理补文件导入和密钥管理：支持从文件导入 OpenSSH config 与私钥；支持 App 内生成 RSA / ED25519 密钥对并导出/复制 public key；导入或生成的私钥必须进入 durable credential store（Android Keystore / iOS Keychain），不得归入可被“清缓存”删除的普通 cache。
+- Chat 顶栏右上角提供当前连接主机选择器和电源按钮：主机选择切换当前 session 上下文，电源按钮用于连接/断开当前主机，不直接中断 active turn。
+- Settings 页面改为多级菜单，最多二级：一级为 Account、Models、Permissions、Appearance、SSH、Diagnostics 等分组；二级进入具体设置页，避免单页继续膨胀。
+- Appearance 增加更多配色方案：保留系统/light/dark，新增 candy 等高辨识度 palette；代码块、diff、terminal output 仍使用语义色而不是简单整体换色。
+- 多连接架构需要独立设计 `HostSessionManager` 或等价控制器：每个 host 维护独立 `CodexSessionStateController`、thread cache、approval 归属和后台保活策略。
+
+### 9.8 i18n
 
 首版语言：
 
@@ -1084,7 +1148,7 @@ MVP 可以简化为底部导航：
 
 - fork/duplicate/rewind。
 - goal/compact。
-- file browser。
+- workspace file browser：目录树浏览、只读文件查看、range read 大文件加载、代码高亮、Markdown render/raw 切换。
 - shell command / command exec。
 - MCP server status/oauth。
 - plugin/skill marketplace。
