@@ -124,6 +124,53 @@ void main() {
     expect(find.text('Thread list (limit 1)'), findsOneWidget);
   });
 
+  testWidgets('shows structured Codex failure in agent status summary', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(
+      report: const M0ProbeReport(
+        agentStatus: _codexFailureStatus,
+        steps: [
+          M0ProbeStepResult(step: M0ProbeStep.agentStatus, ok: true),
+          M0ProbeStepResult(
+            step: M0ProbeStep.codexVersion,
+            ok: false,
+            detail: 'runtime-not-found: node: SyntaxError',
+            suggestion: M0ProbeSuggestion.installCodex,
+          ),
+        ],
+      ),
+    );
+
+    await _pumpHostsPage(tester, runner);
+
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('password-field')),
+      'secret',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('probe-test-button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('probe-test-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Probe failed'), findsOneWidget);
+    expect(
+      find.text('linux/x86_64 - runtime-not-found: node: SyntaxError'),
+      findsOneWidget,
+    );
+    expect(find.text('Backend: unknown'), findsOneWidget);
+  });
+
   testWidgets('validates required host fields before probing', (tester) async {
     final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
 
@@ -1268,6 +1315,21 @@ const _readyStatus = AgentStatus(
     pendingApprovals: 1,
     recentEvents: 7,
   ),
+);
+
+const _codexFailureStatus = AgentStatus(
+  agentVersion: '0.1.0',
+  platformOs: 'linux',
+  platformArch: 'x86_64',
+  codexPath: '/home/alice/.nvm/versions/node/v24/bin/codex',
+  codexAvailable: false,
+  codexFailure: AgentCodexFailure(
+    kind: 'runtime-not-found',
+    detail: 'node: SyntaxError',
+  ),
+  backendKind: BackendKind.unknown,
+  backendState: BackendState.unavailable,
+  backendDetail: 'runtime-not-found: node: SyntaxError',
 );
 
 const _passedProbeSteps = [

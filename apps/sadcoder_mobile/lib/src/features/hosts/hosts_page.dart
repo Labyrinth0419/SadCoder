@@ -1682,9 +1682,7 @@ class _ProbeResultPanel extends StatelessWidget {
             ],
             if (report?.agentStatus != null) ...[
               const SizedBox(height: 8),
-              Text(
-                '${report!.agentStatus!.platformOs}/${report.agentStatus!.platformArch} - ${report.agentStatus!.codexVersion ?? report.agentStatus!.codexPath}',
-              ),
+              Text(_agentStatusSummary(report!.agentStatus!)),
               const SizedBox(height: 4),
               Text(_backendSummary(l10n, report.agentStatus!)),
               if (report.agentStatus!.backendDetail != null) ...[
@@ -1764,6 +1762,22 @@ class _ProbeResultPanel extends StatelessWidget {
       BackendKind.unknown => l10n.backendUnknown,
     };
     return '${l10n.backend}: $kind';
+  }
+
+  String _agentStatusSummary(AgentStatus status) {
+    return '${status.platformOs}/${status.platformArch} - ${_codexSummary(status)}';
+  }
+
+  String _codexSummary(AgentStatus status) {
+    if (status.codexAvailable) {
+      final version = status.codexVersion?.trim();
+      return version == null || version.isEmpty ? status.codexPath : version;
+    }
+    final failure = status.codexFailure?.message.trim();
+    if (failure != null && failure.isNotEmpty) {
+      return failure;
+    }
+    return status.codexPath;
   }
 
   String _reconnectCacheSummary(AppLocalizations l10n, AgentStatus status) {
