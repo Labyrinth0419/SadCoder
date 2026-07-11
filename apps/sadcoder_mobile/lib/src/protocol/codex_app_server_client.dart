@@ -325,6 +325,14 @@ class CodexAppServerClient {
     return _request('agent/health');
   }
 
+  Future<Map<String, Object?>> agentLogs({int? tailBytes}) {
+    final params = <String, Object?>{};
+    if (tailBytes != null && tailBytes > 0) {
+      params['tailBytes'] = tailBytes;
+    }
+    return _request('agent/logs', params.isEmpty ? null : params);
+  }
+
   Future<Map<String, Object?>> agentSnapshot() {
     return _request('agent/snapshot');
   }

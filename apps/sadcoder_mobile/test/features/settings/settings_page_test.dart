@@ -9,6 +9,9 @@ import 'package:sadcoder_mobile/src/agent/agent_codex_configure_runner.dart';
 import 'package:sadcoder_mobile/src/agent/agent_doctor.dart';
 import 'package:sadcoder_mobile/src/agent/agent_doctor_controller.dart';
 import 'package:sadcoder_mobile/src/agent/agent_doctor_reader.dart';
+import 'package:sadcoder_mobile/src/agent/agent_logs.dart';
+import 'package:sadcoder_mobile/src/agent/agent_logs_controller.dart';
+import 'package:sadcoder_mobile/src/agent/agent_logs_reader.dart';
 import 'package:sadcoder_mobile/src/agent/agent_status.dart';
 import 'package:sadcoder_mobile/src/appearance/app_appearance_controller.dart';
 import 'package:sadcoder_mobile/src/background/background_connection_policy.dart';
@@ -693,6 +696,62 @@ void main() {
     expect(find.text('Codex version: codex-cli 0.143.0'), findsWidgets);
   });
 
+  testWidgets('refreshes and renders agent service logs read-only', (
+    tester,
+  ) async {
+    final overrideController = CodexConfigOverrideController();
+    final logsReader = _RecordingAgentLogsReader(
+      result: const AgentLogsResult(
+        schemaVersion: 1,
+        maxTailBytes: 262144,
+        logs: [
+          AgentLogEntry(
+            name: 'app-server.stderr',
+            path: '/home/tester/.sadcoder/app-server.stderr.log',
+            exists: true,
+            sizeBytes: 4096,
+            tailBytes: 128,
+            truncated: true,
+            content: 'first line\nlast line\n',
+          ),
+        ],
+      ),
+    );
+    final logsController = AgentLogsController(
+      readerProvider: () => logsReader,
+      profileProvider: () => _profile,
+      tailBytes: 8192,
+    );
+    addTearDown(overrideController.dispose);
+    addTearDown(logsController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      agentLogsController: logsController,
+    );
+    await _openSettingsSection(tester, 'diagnostics');
+
+    expect(find.text('Agent service logs'), findsOneWidget);
+    expect(find.text('Connect to a host, then refresh logs.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('settings-agent-logs-refresh')));
+    await tester.pumpAndSettle();
+
+    expect(logsReader.profiles, [_profile]);
+    expect(logsReader.tailBytesValues, [8192]);
+    expect(find.text('app-server.stderr'), findsOneWidget);
+    expect(
+      find.text('Log path: /home/tester/.sadcoder/app-server.stderr.log'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Showing the newest portion of this log.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('last line'), findsOneWidget);
+  });
+
   testWidgets('confirms before copying diagnostic logs', (tester) async {
     final overrideController = CodexConfigOverrideController();
     final copied = <String>[];
@@ -854,6 +913,7 @@ Future<void> _pumpSettings(
   BackgroundConnectionPreferences? backgroundConnectionPreferences,
   AgentDoctorController? agentDoctorController,
   AgentCodexConfigureController? agentCodexConfigureController,
+  AgentLogsController? agentLogsController,
   DiagnosticLogExportController? diagnosticLogExportController,
 }) {
   return tester.pumpWidget(
@@ -875,6 +935,7 @@ Future<void> _pumpSettings(
           backgroundConnectionPreferences: backgroundConnectionPreferences,
           agentDoctorController: agentDoctorController,
           agentCodexConfigureController: agentCodexConfigureController,
+          agentLogsController: agentLogsController,
           diagnosticLogExportController: diagnosticLogExportController,
         ),
       ),
@@ -973,6 +1034,21 @@ class _RecordingAgentDoctorReader implements AgentDoctorReader {
   @override
   Future<AgentDoctorResult> readDoctor(SshProfile profile) async {
     profiles.add(profile);
+    return result;
+  }
+}
+
+class _RecordingAgentLogsReader implements AgentLogsReader {
+  _RecordingAgentLogsReader({required this.result});
+
+  final AgentLogsResult result;
+  final List<SshProfile> profiles = [];
+  final List<int?> tailBytesValues = [];
+
+  @override
+  Future<AgentLogsResult> readLogs(SshProfile profile, {int? tailBytes}) async {
+    profiles.add(profile);
+    tailBytesValues.add(tailBytes);
     return result;
   }
 }

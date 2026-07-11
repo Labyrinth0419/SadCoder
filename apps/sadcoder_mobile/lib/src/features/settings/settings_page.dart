@@ -5,6 +5,8 @@ import '../../agent/agent_codex_configure.dart';
 import '../../agent/agent_codex_configure_controller.dart';
 import '../../agent/agent_doctor.dart';
 import '../../agent/agent_doctor_controller.dart';
+import '../../agent/agent_logs.dart';
+import '../../agent/agent_logs_controller.dart';
 import '../../agent/agent_status.dart';
 import '../../appearance/app_appearance_controller.dart';
 import '../../background/background_connection_policy.dart';
@@ -30,6 +32,7 @@ class SettingsPage extends StatefulWidget {
     this.backgroundConnectionPreferences,
     this.agentDoctorController,
     this.agentCodexConfigureController,
+    this.agentLogsController,
     this.diagnosticLogExportController,
   });
 
@@ -41,6 +44,7 @@ class SettingsPage extends StatefulWidget {
   final BackgroundConnectionPreferences? backgroundConnectionPreferences;
   final AgentDoctorController? agentDoctorController;
   final AgentCodexConfigureController? agentCodexConfigureController;
+  final AgentLogsController? agentLogsController;
   final DiagnosticLogExportController? diagnosticLogExportController;
 
   @override
@@ -198,6 +202,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _SettingsSection.diagnostics => [
         if (widget.agentDoctorController == null &&
             widget.agentCodexConfigureController == null &&
+            widget.agentLogsController == null &&
             widget.diagnosticLogExportController == null)
           _SettingsUnavailableCard(
             icon: Icons.article_outlined,
@@ -211,6 +216,8 @@ class _SettingsPageState extends State<SettingsPage> {
               controller: widget.agentCodexConfigureController!,
               doctorController: widget.agentDoctorController,
             ),
+          if (widget.agentLogsController != null)
+            _AgentLogsSettingsCard(controller: widget.agentLogsController!),
           if (widget.diagnosticLogExportController != null)
             _DiagnosticLogExportCard(
               controller: widget.diagnosticLogExportController!,
@@ -917,6 +924,191 @@ String _backendStateLabel(AppLocalizations l10n, BackendState state) {
     BackendState.notStarted => l10n.backendNotStarted,
     BackendState.unavailable => l10n.backendUnavailable,
   };
+}
+
+class _AgentLogsSettingsCard extends StatelessWidget {
+  const _AgentLogsSettingsCard({required this.controller});
+
+  final AgentLogsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) =>
+          _AgentLogsSettingsContent(controller: controller),
+    );
+  }
+}
+
+class _AgentLogsSettingsContent extends StatelessWidget {
+  const _AgentLogsSettingsContent({required this.controller});
+
+  final AgentLogsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.receipt_long_outlined),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.agentServiceLogs,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(l10n.agentServiceLogsBody),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  key: const ValueKey('settings-agent-logs-refresh'),
+                  onPressed: controller.status == AgentLogsStatus.loading
+                      ? null
+                      : () => controller.refresh(),
+                  icon: const Icon(Icons.refresh),
+                  tooltip: l10n.refreshAgentServiceLogs,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            switch (controller.status) {
+              AgentLogsStatus.idle => Text(l10n.agentServiceLogsUnavailable),
+              AgentLogsStatus.loading => const LinearProgressIndicator(),
+              AgentLogsStatus.failed => Text(
+                controller.error?.toString() ?? l10n.agentServiceLogsLoadFailed,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              AgentLogsStatus.loaded when controller.result == null => Text(
+                l10n.agentServiceLogsUnavailable,
+              ),
+              AgentLogsStatus.loaded => _LoadedAgentLogs(
+                result: controller.result!,
+              ),
+            },
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadedAgentLogs extends StatelessWidget {
+  const _LoadedAgentLogs({required this.result});
+
+  final AgentLogsResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    if (result.logs.isEmpty) {
+      return Text(l10n.agentServiceLogsEmpty);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (result.maxTailBytes > 0) ...[
+          Text(
+            l10n.agentServiceLogsMaxTail(
+              l10n.formatFileSize(result.maxTailBytes),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        for (final log in result.logs) ...[
+          _AgentLogEntryView(log: log),
+          if (!identical(log, result.logs.last)) const Divider(height: 24),
+        ],
+      ],
+    );
+  }
+}
+
+class _AgentLogEntryView extends StatelessWidget {
+  const _AgentLogEntryView({required this.log});
+
+  final AgentLogEntry log;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(log.name, style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 4),
+        if (log.path.trim().isNotEmpty)
+          _SettingsValueLine(label: l10n.agentLogPath, value: log.path),
+        Text(
+          l10n.agentLogSize(
+            l10n.formatFileSize(log.sizeBytes),
+            l10n.formatFileSize(log.tailBytes),
+          ),
+        ),
+        if (log.truncated)
+          Text(
+            l10n.agentLogTruncated,
+            style: TextStyle(color: colorScheme.secondary),
+          ),
+        if (log.error != null)
+          Text(
+            l10n.agentLogError(log.error!),
+            style: TextStyle(color: colorScheme.error),
+          ),
+        const SizedBox(height: 8),
+        if (!log.exists)
+          Text(l10n.agentLogMissing)
+        else if (log.content.isEmpty)
+          Text(l10n.agentLogEmpty)
+        else
+          _AgentLogContent(content: log.content),
+      ],
+    );
+  }
+}
+
+class _AgentLogContent extends StatelessWidget {
+  const _AgentLogContent({required this.content});
+
+  final String content;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      height: 220,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(12),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SelectableText(
+            content,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _DiagnosticLogExportCard extends StatefulWidget {

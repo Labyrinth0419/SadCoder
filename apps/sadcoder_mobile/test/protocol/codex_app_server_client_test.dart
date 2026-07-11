@@ -596,6 +596,7 @@ void main() {
     final client = CodexAppServerClient(transport);
     await client.agentHello();
     await client.agentHealth();
+    await client.agentLogs(tailBytes: 8192);
     await client.agentSnapshot();
     await client.agentSlashCommandsList();
     await client.agentRestartBackend();
@@ -604,6 +605,7 @@ void main() {
     expect(requests.map((request) => request.method), [
       'agent/hello',
       'agent/health',
+      'agent/logs',
       'agent/snapshot',
       'agent/slashCommands/list',
       'agent/restartBackend',
@@ -612,6 +614,7 @@ void main() {
     expect(requests.map((request) => request.params), [
       null,
       null,
+      {'tailBytes': 8192},
       null,
       null,
       null,

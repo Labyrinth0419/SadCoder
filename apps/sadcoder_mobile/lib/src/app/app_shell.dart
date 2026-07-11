@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../accounts/account_snapshot_controller.dart';
 import '../agent/agent_codex_configure_controller.dart';
 import '../agent/agent_doctor_controller.dart';
+import '../agent/agent_logs_controller.dart';
 import '../agent/agent_remote_service.dart';
 import '../appearance/app_appearance_controller.dart';
 import '../approvals/approval_state_controller.dart';
@@ -111,6 +112,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late AccountUsageSnapshotController _accountUsageSnapshotController;
   late AgentCodexConfigureController _agentCodexConfigureController;
   late AgentDoctorController _agentDoctorController;
+  late AgentLogsController _agentLogsController;
   late McpServerStatusController _mcpServerStatusController;
   late ModelListController _modelListController;
   late PermissionProfileListController _permissionProfileListController;
@@ -310,6 +312,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       readerProvider: () => _defaultAgentRemoteService,
       profileProvider: () => _sessionController.profile,
     );
+    _agentLogsController = AgentLogsController(
+      readerProvider: () => _defaultAgentRemoteService,
+      profileProvider: () => _sessionController.profile,
+    );
     _mcpServerStatusController = McpServerStatusController(
       readerProvider: () => _sessionController.mcpServerStatusReader,
     );
@@ -336,6 +342,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _accountUsageSnapshotController.dispose();
     _agentCodexConfigureController.dispose();
     _agentDoctorController.dispose();
+    _agentLogsController.dispose();
     _mcpServerStatusController.dispose();
     _modelListController.dispose();
     _permissionProfileListController.dispose();
@@ -454,6 +461,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         backgroundConnectionPreferences: _backgroundConnectionPreferences,
         agentCodexConfigureController: _agentCodexConfigureController,
         agentDoctorController: _agentDoctorController,
+        agentLogsController: _agentLogsController,
         diagnosticLogExportController: _diagnosticLogExportController,
       ),
       _ => HostsPage(

@@ -244,6 +244,52 @@ void main() {
     expect(doctor.status.reconnectCache.recentEvents, 4);
   });
 
+  test('readLogs parses bounded sadcoder-agent service logs', () async {
+    final runner = _FakeRunner(
+      result: const RemoteCommandResult(
+        exitCode: 0,
+        stdout: '''
+{
+  "schemaVersion": 1,
+  "maxTailBytes": 262144,
+  "logs": [
+    {
+      "name": "app-server.stderr",
+      "path": "/home/tester/.sadcoder/app-server.stderr.log",
+      "exists": true,
+      "sizeBytes": 4096,
+      "tailBytes": 128,
+      "truncated": true,
+      "content": "last line\\n",
+      "error": null
+    }
+  ]
+}
+''',
+        stderr: '',
+      ),
+    );
+    final service = AgentRemoteService(runner);
+
+    final logs = await service.readLogs(_profile, tailBytes: 8192);
+
+    expect(runner.lastCommand, 'sadcoder-agent logs --tail-bytes 8192 --json');
+    expect(runner.lastTimeout, const Duration(seconds: 20));
+    expect(logs.schemaVersion, 1);
+    expect(logs.maxTailBytes, 262144);
+    expect(logs.logs.single.name, 'app-server.stderr');
+    expect(
+      logs.logs.single.path,
+      '/home/tester/.sadcoder/app-server.stderr.log',
+    );
+    expect(logs.logs.single.exists, true);
+    expect(logs.logs.single.sizeBytes, 4096);
+    expect(logs.logs.single.tailBytes, 128);
+    expect(logs.logs.single.truncated, true);
+    expect(logs.logs.single.content, 'last line\n');
+    expect(logs.logs.single.error, isNull);
+  });
+
   test('configureCodex assembles the agent configure command', () async {
     final runner = _FakeRunner(
       result: const RemoteCommandResult(

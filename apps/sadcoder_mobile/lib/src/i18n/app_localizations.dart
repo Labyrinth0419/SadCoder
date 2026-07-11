@@ -466,6 +466,24 @@ class AppLocalizations {
   String get refreshAgentDoctor => _text('refreshAgentDoctor');
   String get agentDoctorUnavailable => _text('agentDoctorUnavailable');
   String get agentDoctorLoadFailed => _text('agentDoctorLoadFailed');
+  String get agentServiceLogs => _text('agentServiceLogs');
+  String get agentServiceLogsBody => _text('agentServiceLogsBody');
+  String get refreshAgentServiceLogs => _text('refreshAgentServiceLogs');
+  String get agentServiceLogsUnavailable =>
+      _text('agentServiceLogsUnavailable');
+  String get agentServiceLogsLoadFailed => _text('agentServiceLogsLoadFailed');
+  String get agentServiceLogsEmpty => _text('agentServiceLogsEmpty');
+  String agentServiceLogsMaxTail(String size) =>
+      _text('agentServiceLogsMaxTail').replaceAll('{size}', size);
+  String get agentLogPath => _text('agentLogPath');
+  String agentLogSize(String size, String tail) => _text(
+    'agentLogSize',
+  ).replaceAll('{size}', size).replaceAll('{tail}', tail);
+  String get agentLogTruncated => _text('agentLogTruncated');
+  String get agentLogMissing => _text('agentLogMissing');
+  String get agentLogEmpty => _text('agentLogEmpty');
+  String agentLogError(String error) =>
+      _text('agentLogError').replaceAll('{error}', error);
   String get agentCodexConfigure => _text('agentCodexConfigure');
   String get agentCodexConfigureBody => _text('agentCodexConfigureBody');
   String get codexArguments => _text('codexArguments');
@@ -1329,6 +1347,20 @@ const _values = <String, Map<String, String>>{
     'refreshAgentDoctor': 'Run agent doctor',
     'agentDoctorUnavailable': 'Connect to a host, then run agent doctor.',
     'agentDoctorLoadFailed': 'Failed to run agent doctor',
+    'agentServiceLogs': 'Agent service logs',
+    'agentServiceLogsBody':
+        'Bounded stderr tail from the sadcoder-agent service and app-server.',
+    'refreshAgentServiceLogs': 'Refresh agent logs',
+    'agentServiceLogsUnavailable': 'Connect to a host, then refresh logs.',
+    'agentServiceLogsLoadFailed': 'Failed to load agent service logs',
+    'agentServiceLogsEmpty': 'No agent service logs returned.',
+    'agentServiceLogsMaxTail': 'Maximum returned tail: {size}',
+    'agentLogPath': 'Log path',
+    'agentLogSize': 'Log size: {size}; returned tail: {tail}',
+    'agentLogTruncated': 'Showing the newest portion of this log.',
+    'agentLogMissing': 'Log file has not been created yet.',
+    'agentLogEmpty': 'Log file is empty.',
+    'agentLogError': 'Log read error: {error}',
     'agentCodexConfigure': 'Codex configuration',
     'agentCodexConfigureBody':
         'Persist the Codex program and PATH prepends used by sadcoder-agent.',
@@ -2023,6 +2055,20 @@ const _values = <String, Map<String, String>>{
     'refreshAgentDoctor': '运行 agent 诊断',
     'agentDoctorUnavailable': '连接主机后运行 agent 诊断。',
     'agentDoctorLoadFailed': '运行 agent 诊断失败',
+    'agentServiceLogs': 'Agent 服务日志',
+    'agentServiceLogsBody':
+        '从 sadcoder-agent service 和 app-server 读取有界 stderr 尾部。',
+    'refreshAgentServiceLogs': '刷新 agent 日志',
+    'agentServiceLogsUnavailable': '连接主机后刷新日志。',
+    'agentServiceLogsLoadFailed': '读取 agent 服务日志失败',
+    'agentServiceLogsEmpty': '未返回 agent 服务日志。',
+    'agentServiceLogsMaxTail': '最大返回尾部：{size}',
+    'agentLogPath': '日志路径',
+    'agentLogSize': '日志大小：{size}；已返回尾部：{tail}',
+    'agentLogTruncated': '当前只显示这份日志的最新部分。',
+    'agentLogMissing': '日志文件尚未创建。',
+    'agentLogEmpty': '日志文件为空。',
+    'agentLogError': '日志读取错误：{error}',
     'agentCodexConfigure': 'Codex 配置',
     'agentCodexConfigureBody': '持久化 sadcoder-agent 使用的 Codex 程序和 PATH 前置项。',
     'codexArguments': 'Codex 参数',

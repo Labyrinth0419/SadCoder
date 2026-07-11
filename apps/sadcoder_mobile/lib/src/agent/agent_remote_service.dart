@@ -8,6 +8,8 @@ import 'agent_codex_configure.dart';
 import 'agent_codex_configure_runner.dart';
 import 'agent_doctor.dart';
 import 'agent_doctor_reader.dart';
+import 'agent_logs.dart';
+import 'agent_logs_reader.dart';
 import 'agent_snapshot.dart';
 import 'agent_snapshot_reader.dart';
 import 'agent_status.dart';
@@ -26,6 +28,7 @@ class AgentRemoteService
         AgentStartRunner,
         AgentCodexConfigureRunner,
         AgentDoctorReader,
+        AgentLogsReader,
         AgentSnapshotReader,
         SlashCommandManifestReader {
   const AgentRemoteService(this._runner);
@@ -78,6 +81,18 @@ class AgentRemoteService
       timeout: const Duration(seconds: 20),
     );
     return AgentDoctorResult.fromJson(json);
+  }
+
+  @override
+  Future<AgentLogsResult> readLogs(SshProfile profile, {int? tailBytes}) async {
+    final json = await _readJsonObjectCommand(
+      profile,
+      _buildLogsCommand(profile, tailBytes: tailBytes),
+      failurePrefix: 'Agent logs',
+      invalidJsonMessage: 'Agent logs did not return a JSON object.',
+      timeout: const Duration(seconds: 20),
+    );
+    return AgentLogsResult.fromJson(json);
   }
 
   @override
@@ -165,6 +180,19 @@ String _buildConfigureCodexCommand(
       if (arg.isNotEmpty) ...['--codex-arg', _shellSingleQuoted(arg)],
     for (final path in request.pathPrepend.map((value) => value.trim()))
       if (path.isNotEmpty) ...['--path-prepend', _shellSingleQuoted(path)],
+    '--json',
+  ];
+  return parts.join(' ');
+}
+
+String _buildLogsCommand(SshProfile profile, {int? tailBytes}) {
+  final parts = <String>[
+    profile.agentCommand,
+    'logs',
+    if (tailBytes != null && tailBytes > 0) ...[
+      '--tail-bytes',
+      tailBytes.toString(),
+    ],
     '--json',
   ];
   return parts.join(' ');
