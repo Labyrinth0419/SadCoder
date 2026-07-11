@@ -73,6 +73,63 @@ void main() {
     expect(find.text('Cancel'), findsWidgets);
   });
 
+  testWidgets('renders pending approvals grouped by host', (tester) async {
+    await _pumpApprovalsPage(
+      tester,
+      const [],
+      approvalGroups: const [
+        ApprovalHostGroup(
+          profile: SshProfile(
+            id: 'alice@srv-a.dev:22',
+            name: 'Server A',
+            host: 'srv-a.dev',
+            username: 'alice',
+          ),
+          approvals: [
+            PendingApproval(
+              requestId: 'a-approval',
+              method: 'item/commandExecution/requestApproval',
+              kind: PendingApprovalKind.commandExecution,
+              rawParams: {},
+              title: 'cargo test on A',
+            ),
+          ],
+        ),
+        ApprovalHostGroup(
+          profile: SshProfile(
+            id: 'bob@srv-b.dev:22',
+            name: 'Server B',
+            host: 'srv-b.dev',
+            username: 'bob',
+          ),
+          approvals: [
+            PendingApproval(
+              requestId: 'b-approval',
+              method: 'item/fileChange/requestApproval',
+              kind: PendingApprovalKind.fileChange,
+              rawParams: {},
+              title: 'file change on B',
+            ),
+          ],
+        ),
+      ],
+    );
+
+    expect(find.text('No pending approvals'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('approval-host-group-alice@srv-a.dev:22')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('approval-host-group-bob@srv-b.dev:22')),
+      findsOneWidget,
+    );
+    expect(find.text('Server A'), findsOneWidget);
+    expect(find.text('cargo test on A'), findsWidgets);
+    expect(find.text('Server B'), findsOneWidget);
+    expect(find.text('file change on B'), findsWidgets);
+  });
+
   testWidgets('renders Chinese approval labels', (tester) async {
     await _pumpApprovalsPage(tester, const [
       PendingApproval(
@@ -464,6 +521,7 @@ Future<void> _pumpApprovalsPage(
   McpElicitationApprovalCallback? onMcpElicitationResponse,
   ToolUserInputApprovalCallback? onToolUserInputResponse,
   SshProfile? activeProfile,
+  List<ApprovalHostGroup> approvalGroups = const [],
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -478,6 +536,7 @@ Future<void> _pumpApprovalsPage(
       home: Scaffold(
         body: ApprovalsPage(
           approvals: approvals,
+          approvalGroups: approvalGroups,
           activeProfile: activeProfile,
           onCommandOrFileDecision: onCommandOrFileDecision,
           onPermissionsResponse: onPermissionsResponse,

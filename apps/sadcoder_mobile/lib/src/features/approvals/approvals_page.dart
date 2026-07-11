@@ -34,6 +34,7 @@ class ApprovalsPage extends StatelessWidget {
   const ApprovalsPage({
     super.key,
     this.approvals = const [],
+    this.approvalGroups = const [],
     this.onCommandOrFileDecision,
     this.onPermissionsResponse,
     this.onMcpElicitationResponse,
@@ -42,6 +43,7 @@ class ApprovalsPage extends StatelessWidget {
   });
 
   final List<PendingApproval> approvals;
+  final List<ApprovalHostGroup> approvalGroups;
   final CommandOrFileApprovalCallback? onCommandOrFileDecision;
   final PermissionsApprovalCallback? onPermissionsResponse;
   final McpElicitationApprovalCallback? onMcpElicitationResponse;
@@ -51,6 +53,10 @@ class ApprovalsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final grouped = approvalGroups.isNotEmpty;
+    final hasApprovals = grouped
+        ? approvalGroups.any((group) => group.approvals.isNotEmpty)
+        : approvals.isNotEmpty;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -60,7 +66,7 @@ class ApprovalsPage extends StatelessWidget {
           _ActiveApprovalHostBanner(profile: activeProfile!),
         ],
         const SizedBox(height: 12),
-        if (approvals.isEmpty)
+        if (!hasApprovals)
           Card(
             child: ListTile(
               leading: const Icon(Icons.check_circle_outline),
@@ -68,7 +74,10 @@ class ApprovalsPage extends StatelessWidget {
               subtitle: Text(l10n.approvalsBody),
             ),
           )
-        else
+        else if (grouped) ...[
+          for (final group in approvalGroups)
+            if (group.approvals.isNotEmpty) _ApprovalHostSection(group: group),
+        ] else ...[
           for (final approval in approvals)
             _ApprovalCard(
               approval: approval,
@@ -77,7 +86,72 @@ class ApprovalsPage extends StatelessWidget {
               onMcpElicitationResponse: onMcpElicitationResponse,
               onToolUserInputResponse: onToolUserInputResponse,
             ),
+        ],
       ],
+    );
+  }
+}
+
+class ApprovalHostGroup {
+  const ApprovalHostGroup({
+    required this.profile,
+    required this.approvals,
+    this.onCommandOrFileDecision,
+    this.onPermissionsResponse,
+    this.onMcpElicitationResponse,
+    this.onToolUserInputResponse,
+  });
+
+  final SshProfile profile;
+  final List<PendingApproval> approvals;
+  final CommandOrFileApprovalCallback? onCommandOrFileDecision;
+  final PermissionsApprovalCallback? onPermissionsResponse;
+  final McpElicitationApprovalCallback? onMcpElicitationResponse;
+  final ToolUserInputApprovalCallback? onToolUserInputResponse;
+}
+
+class _ApprovalHostSection extends StatelessWidget {
+  const _ApprovalHostSection({required this.group});
+
+  final ApprovalHostGroup group;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        key: ValueKey('approval-host-group-${group.profile.id}'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.dns_outlined, size: 18, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  group.profile.displayName,
+                  key: ValueKey('approval-host-label-${group.profile.id}'),
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (final approval in group.approvals)
+            _ApprovalCard(
+              approval: approval,
+              onCommandOrFileDecision: group.onCommandOrFileDecision,
+              onPermissionsResponse: group.onPermissionsResponse,
+              onMcpElicitationResponse: group.onMcpElicitationResponse,
+              onToolUserInputResponse: group.onToolUserInputResponse,
+            ),
+        ],
+      ),
     );
   }
 }

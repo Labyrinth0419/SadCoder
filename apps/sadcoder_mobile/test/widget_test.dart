@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/accounts/account_logout_runner.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/appearance/app_appearance_controller.dart';
+import 'package:sadcoder_mobile/src/approvals/approval_coordinator.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
@@ -37,6 +38,7 @@ import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.d
 import 'package:sadcoder_mobile/src/plugins/plugin_detail_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_mutation_runner.dart';
+import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc_diagnostic_log.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
@@ -129,6 +131,101 @@ void main() {
       find.byKey(const ValueKey('chat-host-status-remote')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('approvals page aggregates pending approvals across hosts', (
+    tester,
+  ) async {
+    const remoteProfile = SshProfile(
+      id: 'remote',
+      name: 'Remote Linux',
+      host: 'remote.example.com',
+      username: 'dev',
+    );
+    final starter = _RecordingStaticSessionStarter(
+      threads: const [],
+      detail: ThreadDetail(thread: _emptyThread),
+    );
+    final manager = HostSessionManager(
+      controllerFactory: (approvalController) => CodexSessionStateController(
+        connector: starter,
+        approvalController: approvalController,
+      ),
+    );
+    addTearDown(manager.dispose);
+
+    await tester.pumpWidget(
+      SadCoderApp(
+        hostSessionManager: manager,
+        profileStore: const _FakeProfileStore([_profile, remoteProfile]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await manager.connect(_profile);
+    await tester.pumpAndSettle();
+    await manager.connect(remoteProfile);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Approvals').last);
+    await tester.pumpAndSettle();
+    expect(find.text('No pending approvals'), findsOneWidget);
+
+    final localTransport = MemoryJsonRpcTransport((_) async => {});
+    final remoteTransport = MemoryJsonRpcTransport((_) async => {});
+    final localCoordinator = ApprovalCoordinator(transport: localTransport);
+    final remoteCoordinator = ApprovalCoordinator(transport: remoteTransport);
+    addTearDown(localCoordinator.close);
+    addTearDown(remoteCoordinator.close);
+    addTearDown(localTransport.close);
+    addTearDown(remoteTransport.close);
+
+    final localApprovals = manager.sessionFor(_profile.id)!.approvalController;
+    final remoteApprovals = manager
+        .sessionFor(remoteProfile.id)!
+        .approvalController;
+    localApprovals.attachCoordinator(localCoordinator);
+    remoteApprovals.attachCoordinator(remoteCoordinator);
+    localApprovals.upsert(
+      const PendingApproval(
+        requestId: 'local-approval',
+        method: commandExecutionApprovalMethod,
+        kind: PendingApprovalKind.commandExecution,
+        rawParams: {},
+        title: 'Local approval',
+        command: 'cargo test',
+      ),
+    );
+    remoteApprovals.upsert(
+      const PendingApproval(
+        requestId: 'remote-approval',
+        method: commandExecutionApprovalMethod,
+        kind: PendingApprovalKind.commandExecution,
+        rawParams: {},
+        title: 'Remote approval',
+        command: 'npm test',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Local'), findsWidgets);
+    expect(find.text('Local approval'), findsWidgets);
+    expect(find.text('Remote Linux'), findsWidgets);
+    expect(find.text('Remote approval'), findsWidgets);
+
+    final localApprove = find.descendant(
+      of: find.byKey(const ValueKey('approval-host-group-local')),
+      matching: find.text('Approve once'),
+    );
+    await tester.tap(localApprove);
+    await tester.pumpAndSettle();
+
+    expect(localTransport.responses.single.toJson(), {
+      'jsonrpc': '2.0',
+      'id': 'local-approval',
+      'result': {'decision': 'accept'},
+    });
+    expect(remoteTransport.responses, isEmpty);
   });
 
   testWidgets('chat page uses active session slash command manifest', (

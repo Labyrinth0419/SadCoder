@@ -147,6 +147,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     return _defaultAgentRemoteService;
   }
 
+  bool get _usesHostApprovalGroups =>
+      _hostSessionManager != null && _hostSessionManager!.sessions.isNotEmpty;
+
   @override
   void initState() {
     super.initState();
@@ -444,7 +447,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         configOverrideController: _configOverrideController,
       ),
       3 => ApprovalsPage(
-        approvals: _approvalController.approvals,
+        approvals: _usesHostApprovalGroups
+            ? const []
+            : _approvalController.approvals,
+        approvalGroups: _usesHostApprovalGroups ? _approvalGroups() : const [],
         activeProfile: _sessionController.profile,
         onCommandOrFileDecision: _approvalController.canRespond
             ? _approvalController.sendCommandOrFileDecision
@@ -557,6 +563,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (identical(_sessionController, entry.sessionController) &&
         identical(_approvalController, entry.approvalController) &&
         identical(_activeUiState, nextUiState)) {
+      if (mounted) {
+        setState(() {});
+      }
       return;
     }
 
@@ -614,5 +623,31 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         ),
       );
     }
+  }
+
+  List<ApprovalHostGroup> _approvalGroups() {
+    final manager = _hostSessionManager;
+    if (manager == null) {
+      return const [];
+    }
+    return [
+      for (final session in manager.sessions)
+        ApprovalHostGroup(
+          profile: session.profile,
+          approvals: session.approvalController.approvals,
+          onCommandOrFileDecision: session.approvalController.canRespond
+              ? session.approvalController.sendCommandOrFileDecision
+              : null,
+          onPermissionsResponse: session.approvalController.canRespond
+              ? session.approvalController.sendPermissionsResponse
+              : null,
+          onMcpElicitationResponse: session.approvalController.canRespond
+              ? session.approvalController.sendMcpElicitationResponse
+              : null,
+          onToolUserInputResponse: session.approvalController.canRespond
+              ? session.approvalController.sendToolUserInputResponse
+              : null,
+        ),
+    ];
   }
 }

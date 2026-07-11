@@ -64,6 +64,7 @@ class HostSessionManager extends ChangeNotifier {
     final profileId = hostSessionProfileId(profile);
     final entry = _sessions.putIfAbsent(profileId, () {
       final approvalController = ApprovalStateController();
+      approvalController.addListener(_handleManagedSessionChanged);
       final sessionController = _controllerFactory(approvalController)
         ..addListener(_handleManagedSessionChanged);
       return HostSessionEntry._(
@@ -135,6 +136,7 @@ class HostSessionManager extends ChangeNotifier {
     }
     await entry.sessionController.disconnect();
     entry.sessionController.removeListener(_handleManagedSessionChanged);
+    entry.approvalController.removeListener(_handleManagedSessionChanged);
     entry.sessionController.dispose();
     entry.approvalController.dispose();
     if (_activeProfileId == normalized) {
@@ -152,6 +154,7 @@ class HostSessionManager extends ChangeNotifier {
     _disposed = true;
     for (final entry in _sessions.values) {
       entry.sessionController.removeListener(_handleManagedSessionChanged);
+      entry.approvalController.removeListener(_handleManagedSessionChanged);
       entry.sessionController.dispose();
       entry.approvalController.dispose();
     }
