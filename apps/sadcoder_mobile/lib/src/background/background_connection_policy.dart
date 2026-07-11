@@ -31,6 +31,18 @@ class BackgroundConnectionContext {
   final String? endpoint;
   final String? threadId;
   final String? turnId;
+
+  @override
+  bool operator ==(Object other) {
+    return other is BackgroundConnectionContext &&
+        other.profileId == profileId &&
+        other.endpoint == endpoint &&
+        other.threadId == threadId &&
+        other.turnId == turnId;
+  }
+
+  @override
+  int get hashCode => Object.hash(profileId, endpoint, threadId, turnId);
 }
 
 abstract interface class BackgroundConnectionKeeper {
@@ -122,6 +134,7 @@ class AppLifecycleConnectionCoordinator {
   bool _disconnectedForBackground = false;
   Future<void> _pendingOperation = Future<void>.value();
   BackgroundConnectionRetention? _retention;
+  BackgroundConnectionContext? _retainedContext;
 
   void start() {
     if (_started) {
@@ -179,20 +192,22 @@ class AppLifecycleConnectionCoordinator {
     final shouldRetain =
         _hasActiveTurn() && _preferences.keepConnectionDuringActiveTurn;
     if (shouldRetain) {
-      if (_retention != null) {
+      final context = BackgroundConnectionContext(
+        profileId: _profileIdProvider(),
+        endpoint: _endpointProvider(),
+        threadId: _activeThreadIdProvider(),
+        turnId: _activeTurnIdProvider(),
+      );
+      if (_retention != null && _retainedContext == context) {
         return;
       }
+      await _releaseRetention();
       try {
-        _retention = await _keeper.retain(
-          BackgroundConnectionContext(
-            profileId: _profileIdProvider(),
-            endpoint: _endpointProvider(),
-            threadId: _activeThreadIdProvider(),
-            turnId: _activeTurnIdProvider(),
-          ),
-        );
+        _retention = await _keeper.retain(context);
+        _retainedContext = context;
       } on Object {
         _retention = null;
+        _retainedContext = null;
         await _disconnectIfNeeded();
       }
       return;
@@ -242,6 +257,7 @@ class AppLifecycleConnectionCoordinator {
       return;
     }
     _retention = null;
+    _retainedContext = null;
     await retention.release();
   }
 }

@@ -38,6 +38,27 @@ void main() {
     expect(fixture.resumes, 0);
   });
 
+  test('background active turn changes refresh retention context', () async {
+    final fixture = _Fixture(activeTurnId: 'turn_1');
+    addTearDown(fixture.dispose);
+
+    await fixture.coordinator.handleLifecycleState(AppLifecycleState.paused);
+    fixture.threadId.value = 'thr_2';
+    fixture.turnId.value = 'turn_2';
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(fixture.disconnects, 0);
+    expect(fixture.connected.value, true);
+    expect(
+      fixture.recordingKeeper.retainContexts.map((context) => context.turnId),
+      ['turn_1', 'turn_2'],
+    );
+    expect(fixture.recordingKeeper.retainContexts.last.threadId, 'thr_2');
+    expect(fixture.recordingKeeper.retentions.first.released, true);
+    expect(fixture.recordingKeeper.retentions.last.released, false);
+  });
+
   test('disabled active-turn retention disconnects in background', () async {
     final preferences = BackgroundConnectionPreferences(
       keepConnectionDuringActiveTurn: false,
@@ -141,6 +162,7 @@ class _Fixture {
     BackgroundResumeAction? resume,
   }) : preferences = preferences ?? BackgroundConnectionPreferences(),
        keeper = keeper ?? _RecordingKeeper(),
+       threadId = ValueNotifier<String?>(activeTurnId == null ? null : 'thr_1'),
        turnId = ValueNotifier<String?>(activeTurnId) {
     final disconnectAction =
         disconnect ??
@@ -163,7 +185,7 @@ class _Fixture {
       hasActiveTurn: () => turnId.value != null,
       profileIdProvider: () => 'local',
       endpointProvider: () => 'tester@localhost:22',
-      activeThreadIdProvider: () => turnId.value == null ? null : 'thr_1',
+      activeThreadIdProvider: () => threadId.value,
       activeTurnIdProvider: () => turnId.value,
       disconnect: disconnectAction,
       resume: resumeAction,
@@ -171,6 +193,7 @@ class _Fixture {
   }
 
   final ValueNotifier<bool> connected = ValueNotifier<bool>(true);
+  final ValueNotifier<String?> threadId;
   final ValueNotifier<String?> turnId;
   final BackgroundConnectionPreferences preferences;
   final BackgroundConnectionKeeper keeper;
@@ -183,6 +206,7 @@ class _Fixture {
   Future<void> dispose() async {
     await coordinator.dispose();
     connected.dispose();
+    threadId.dispose();
     turnId.dispose();
     preferences.dispose();
   }
