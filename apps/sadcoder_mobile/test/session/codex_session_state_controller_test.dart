@@ -140,6 +140,87 @@ void main() {
     expect(approvalController.approvals.single.command, 'cargo test');
   });
 
+  test(
+    'connect prefers proxy agent snapshot over ssh snapshot command',
+    () async {
+      final approvalController = ApprovalStateController();
+      final proxySnapshotReader = _FakeAgentSnapshotReader(
+        outcomes: [
+          _snapshotWithApproval(
+            requestId: 'approval-from-proxy-snapshot',
+            command: 'cargo test',
+          ),
+        ],
+      );
+      final sshSnapshotReader = _FakeAgentSnapshotReader(
+        outcomes: [
+          _snapshotWithApproval(
+            requestId: 'approval-from-ssh-snapshot',
+            command: 'dart test',
+          ),
+        ],
+      );
+      final controller = CodexSessionStateController(
+        connector: _FakeSessionStarter(
+          agentSnapshotReaders: [proxySnapshotReader],
+        ),
+        approvalController: approvalController,
+        snapshotReader: sshSnapshotReader,
+      );
+      addTearDown(controller.dispose);
+      addTearDown(approvalController.dispose);
+
+      await controller.connect(_profile);
+      await _flushMicrotasks();
+
+      expect(proxySnapshotReader.profiles, [_profile]);
+      expect(sshSnapshotReader.profiles, isEmpty);
+      expect(
+        approvalController.approvals.single.requestId,
+        'approval-from-proxy-snapshot',
+      );
+      expect(approvalController.approvals.single.command, 'cargo test');
+    },
+  );
+
+  test(
+    'connect falls back to ssh agent snapshot when proxy snapshot fails',
+    () async {
+      final approvalController = ApprovalStateController();
+      final proxySnapshotReader = _FakeAgentSnapshotReader(
+        outcomes: [StateError('agent/snapshot failed')],
+      );
+      final sshSnapshotReader = _FakeAgentSnapshotReader(
+        outcomes: [
+          _snapshotWithApproval(
+            requestId: 'approval-from-ssh-snapshot',
+            command: 'dart test',
+          ),
+        ],
+      );
+      final controller = CodexSessionStateController(
+        connector: _FakeSessionStarter(
+          agentSnapshotReaders: [proxySnapshotReader],
+        ),
+        approvalController: approvalController,
+        snapshotReader: sshSnapshotReader,
+      );
+      addTearDown(controller.dispose);
+      addTearDown(approvalController.dispose);
+
+      await controller.connect(_profile);
+      await _flushMicrotasks();
+
+      expect(proxySnapshotReader.profiles, [_profile]);
+      expect(sshSnapshotReader.profiles, [_profile]);
+      expect(
+        approvalController.approvals.single.requestId,
+        'approval-from-ssh-snapshot',
+      );
+      expect(approvalController.approvals.single.command, 'dart test');
+    },
+  );
+
   test('connect backfills tool user input from agent snapshot', () async {
     final approvalController = ApprovalStateController();
     final snapshotReader = _FakeAgentSnapshotReader(
@@ -878,14 +959,17 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     List<Object?>? connectOutcomes,
     List<Object?>? pingOutcomes,
     List<ThreadListReader>? threadListReaders,
+    List<AgentSnapshotReader?>? agentSnapshotReaders,
   }) : connectOutcomes = connectOutcomes ?? const [],
        pingOutcomes = pingOutcomes ?? const [],
-       threadListReaders = threadListReaders ?? const [];
+       threadListReaders = threadListReaders ?? const [],
+       agentSnapshotReaders = agentSnapshotReaders ?? const [];
 
   final bool failConnect;
   final List<Object?> connectOutcomes;
   final List<Object?> pingOutcomes;
   final List<ThreadListReader> threadListReaders;
+  final List<AgentSnapshotReader?> agentSnapshotReaders;
   final connectedProfiles = <SshProfile>[];
   final connections = <_FakeConnectionRecord>[];
   int connectCount = 0;
@@ -968,6 +1052,9 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       threadGoalRunner: const _FakeThreadGoalRunner(),
       threadReviewRunner: const _FakeThreadReviewRunner(),
       turnRunner: const _FakeTurnRunner(),
+      agentSnapshotReader: connectionIndex < agentSnapshotReaders.length
+          ? agentSnapshotReaders[connectionIndex]
+          : null,
       proxyConnection: AgentProxyConnection(
         input: const Stream<Uint8List>.empty(),
         output: StreamController<Uint8List>().sink,

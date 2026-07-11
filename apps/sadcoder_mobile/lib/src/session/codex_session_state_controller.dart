@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../accounts/account_logout_runner.dart';
 import '../accounts/account_snapshot_reader.dart';
+import '../agent/agent_snapshot.dart';
 import '../agent/agent_snapshot_reader.dart';
 import '../apps/app_list_reader.dart';
 import '../approvals/approval_state_controller.dart';
@@ -555,12 +556,16 @@ class CodexSessionStateController extends ChangeNotifier {
     CodexSessionConnectionHandle connection,
   ) async {
     final snapshotReader = _snapshotReader;
-    if (snapshotReader == null) {
-      return;
-    }
 
     try {
-      final snapshot = await snapshotReader.readSnapshot(profile);
+      final snapshot = await _readAgentSnapshot(
+        profile,
+        connection,
+        snapshotReader,
+      );
+      if (snapshot == null) {
+        return;
+      }
       if (!_isCurrentGeneration(generation) || _connection != connection) {
         return;
       }
@@ -576,6 +581,26 @@ class CodexSessionStateController extends ChangeNotifier {
     } on Object catch (_) {
       return;
     }
+  }
+
+  Future<AgentSnapshot?> _readAgentSnapshot(
+    SshProfile profile,
+    CodexSessionConnectionHandle connection,
+    AgentSnapshotReader? fallbackReader,
+  ) async {
+    final connectionReader = connection is AgentSnapshotConnectionHandle
+        ? (connection as AgentSnapshotConnectionHandle).agentSnapshotReader
+        : null;
+    if (connectionReader != null) {
+      try {
+        return await connectionReader.readSnapshot(profile);
+      } on Object {
+        if (fallbackReader == null) {
+          rethrow;
+        }
+      }
+    }
+    return fallbackReader?.readSnapshot(profile);
   }
 
   void _emitLiveEvent(CodexEvent event) {

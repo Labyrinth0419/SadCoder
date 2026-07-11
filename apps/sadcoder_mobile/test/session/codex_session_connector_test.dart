@@ -19,6 +19,9 @@ void main() {
 
     final connection = await connector.connect(_profile);
     addTearDown(connection.close);
+    final snapshotReader =
+        (connection as AgentSnapshotConnectionHandle).agentSnapshotReader!;
+    final snapshot = await snapshotReader.readSnapshot(_profile);
     await connection.modelListReader.listModels();
     await connection.permissionProfileListReader.listPermissionProfiles();
     await connection.skillListReader.listSkills();
@@ -61,6 +64,7 @@ void main() {
       'agent/hello',
       'initialize',
       'initialized',
+      'agent/snapshot',
       'model/list',
       'permissionProfile/list',
       'skills/list',
@@ -83,6 +87,7 @@ void main() {
       'turn/interrupt',
     ]);
     expect(connection.profile, _profile);
+    expect(snapshot.pendingApprovals.single.id, 'approval-proxy');
     final feedbackLog = connection.diagnosticLogs.lastWhere(
       (entry) => entry.redactedJson['method'] == 'feedback/upload',
     );
@@ -366,6 +371,17 @@ class _LineServerProxyConnector implements AgentProxyConnector {
     'hooks/list' => {'data': <Object?>[]},
     'app/list' => {'data': <Object?>[]},
     'mcpServer/oauth/login' => {'serverName': 'github'},
+    'agent/snapshot' => {
+      'schemaVersion': 1,
+      'pendingApprovals': [
+        {
+          'id': 'approval-proxy',
+          'method': 'item/commandExecution/requestApproval',
+          'params': {'command': 'cargo test'},
+        },
+      ],
+      'recentEvents': <Object?>[],
+    },
     'account/read' => {'account': null, 'requiresOpenaiAuth': false},
     'command/exec' => {'exitCode': 128, 'stdout': '', 'stderr': ''},
     'thread/turns/list' => {'data': <Object?>[]},

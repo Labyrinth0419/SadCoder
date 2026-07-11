@@ -755,7 +755,7 @@ App 内部存储使用加密数据库；导入/导出时明确提示敏感信息
 7. 重新 `initialize`。
 8. 对当前 thread 执行 `thread/resume` 或 `thread/read`。
 9. 使用 `thread/turns/list` / `thread/items/list` 回填丢失事件。
-10. 拉取 agent 缓存的 pending approvals 和最近事件。
+10. 优先通过 proxy 内的 `agent/snapshot` 拉取 agent 缓存的 pending approvals 和最近事件；旧版本或兼容路径才回落到独立 `sadcoder-agent snapshot --json`。
 11. 如果仍有 active turn，继续订阅事件；否则标记 idle。
 
 ### 8.4 手动连通性验证

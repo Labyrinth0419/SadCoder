@@ -1,5 +1,7 @@
 import '../agent/agent_remote_service.dart';
+import '../agent/agent_snapshot_reader.dart';
 import '../agent/agent_status.dart';
+import '../agent/codex_agent_snapshot_reader.dart';
 import '../accounts/account_logout_runner.dart';
 import '../background_terminals/codex_thread_background_terminal_runner.dart';
 import '../background_terminals/thread_background_terminal_runner.dart';
@@ -148,6 +150,10 @@ abstract interface class CodexSessionConnectionHandle {
   Future<void> close({bool notifyApprovalController = true});
 }
 
+abstract interface class AgentSnapshotConnectionHandle {
+  AgentSnapshotReader? get agentSnapshotReader;
+}
+
 abstract interface class ThreadShellCommandConnectionHandle {
   ThreadShellCommandRunner get threadShellCommandRunner;
 }
@@ -247,6 +253,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         threadGoalRunner: CodexThreadGoalRunner(session.client),
         threadReviewRunner: CodexThreadReviewRunner(session.client),
         turnRunner: CodexTurnRunner(session.client),
+        agentSnapshotReader: CodexAgentSnapshotReader(session.client),
         diagnosticLogBuffer: diagnosticLogBuffer,
       );
     } catch (_) {
@@ -304,6 +311,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
 class CodexSessionConnection
     implements
         CodexSessionConnectionHandle,
+        AgentSnapshotConnectionHandle,
         ThreadShellCommandConnectionHandle,
         CommandExecConnectionHandle {
   CodexSessionConnection({
@@ -341,6 +349,7 @@ class CodexSessionConnection
     required this.threadGoalRunner,
     required this.threadReviewRunner,
     required this.turnRunner,
+    this.agentSnapshotReader,
     required AgentProxyConnection proxyConnection,
     RedactingJsonRpcDiagnosticLogBuffer? diagnosticLogBuffer,
   }) : _proxyConnection = proxyConnection,
@@ -417,6 +426,8 @@ class CodexSessionConnection
   final ThreadReviewRunner threadReviewRunner;
   @override
   final TurnRunner turnRunner;
+  @override
+  final AgentSnapshotReader? agentSnapshotReader;
   @override
   List<JsonRpcDiagnosticLogEntry> get diagnosticLogs {
     return _diagnosticLogBuffer.snapshot();
