@@ -102,11 +102,55 @@ void main() {
     expect(fixture.threadDetailReader.threadIds, ['thr_selected']);
     expect(fixture.threadDetailReader.includeTurnsValues, [false]);
     expect(itemListReader.calls, [
-      (threadId: 'thr_selected', limit: 200, sortDirection: 'asc'),
+      (
+        threadId: 'thr_selected',
+        cursor: null,
+        limit: 200,
+        sortDirection: 'asc',
+      ),
     ]);
     expect(fixture.recoveredItems.single.threadId, 'thr_selected');
     expect(fixture.recoveredItems.single.items.single.id, 'item_recovered');
     expect(fixture.recoveredItems.single.items.single.turnId, 'turn_1');
+  });
+
+  test('backfills thread items across bounded pages', () async {
+    final itemListReader = _RecordingThreadItemListReader.pages([
+      ThreadItemsPage(
+        items: [_item('item_1', 'First page', turnId: 'turn_1')],
+        nextCursor: 'cursor_2',
+      ),
+      ThreadItemsPage(
+        items: [_item('item_2', 'Second page', turnId: 'turn_2')],
+      ),
+    ]);
+    final fixture = _Fixture(threadItemListReader: itemListReader);
+    addTearDown(fixture.dispose);
+    await fixture.threadDetailController.readThread('thr_selected');
+    fixture.threadDetailReader.clear();
+
+    fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
+    await _flushMicrotasks();
+
+    expect(itemListReader.calls, [
+      (
+        threadId: 'thr_selected',
+        cursor: null,
+        limit: 200,
+        sortDirection: 'asc',
+      ),
+      (
+        threadId: 'thr_selected',
+        cursor: 'cursor_2',
+        limit: 200,
+        sortDirection: 'asc',
+      ),
+    ]);
+    expect(fixture.recoveredItems, hasLength(1));
+    expect(fixture.recoveredItems.single.items.map((item) => item.id), [
+      'item_1',
+      'item_2',
+    ]);
   });
 
   test('falls back to full thread read when turns backfill fails', () async {
@@ -295,10 +339,16 @@ class _FailingThreadTurnListReader implements ThreadTurnListReader {
 }
 
 class _RecordingThreadItemListReader implements ThreadItemListReader {
-  _RecordingThreadItemListReader({required this.page});
+  _RecordingThreadItemListReader({required ThreadItemsPage page})
+    : pages = [page];
 
-  final ThreadItemsPage page;
-  final calls = <({String threadId, int? limit, String? sortDirection})>[];
+  _RecordingThreadItemListReader.pages(this.pages);
+
+  final List<ThreadItemsPage> pages;
+  final calls =
+      <
+        ({String threadId, String? cursor, int? limit, String? sortDirection})
+      >[];
 
   @override
   Future<ThreadItemsPage> listItems({
@@ -308,8 +358,17 @@ class _RecordingThreadItemListReader implements ThreadItemListReader {
     int? limit,
     String? sortDirection,
   }) async {
-    calls.add((threadId: threadId, limit: limit, sortDirection: sortDirection));
-    return page;
+    calls.add((
+      threadId: threadId,
+      cursor: cursor,
+      limit: limit,
+      sortDirection: sortDirection,
+    ));
+    final pageIndex = calls.length - 1;
+    if (pageIndex >= pages.length) {
+      return const ThreadItemsPage(items: []);
+    }
+    return pages[pageIndex];
   }
 }
 

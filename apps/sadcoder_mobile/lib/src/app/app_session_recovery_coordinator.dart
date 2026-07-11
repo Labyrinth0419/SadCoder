@@ -39,6 +39,7 @@ class AppSessionRecoveryCoordinator {
 
   static const _turnBackfillLimit = 50;
   static const _itemBackfillLimit = 200;
+  static const _itemBackfillMaxPages = 3;
 
   void handleSessionStatus(CodexSessionStatus status) {
     final becameConnected =
@@ -110,14 +111,28 @@ class AppSessionRecoveryCoordinator {
       return false;
     }
     try {
-      final page = await itemReader.listItems(
-        threadId: threadId,
-        limit: _itemBackfillLimit,
-        sortDirection: 'asc',
-      );
-      if (page.items.isNotEmpty &&
+      final items = <ThreadItemSummary>[];
+      String? cursor;
+      for (var pageIndex = 0; pageIndex < _itemBackfillMaxPages; pageIndex++) {
+        final page = await itemReader.listItems(
+          threadId: threadId,
+          cursor: cursor,
+          limit: _itemBackfillLimit,
+          sortDirection: 'asc',
+        );
+        if (_threadDetailController.selectedThreadId != threadId) {
+          return true;
+        }
+        items.addAll(page.items);
+        final nextCursor = _normalized(page.nextCursor);
+        if (page.items.isEmpty || nextCursor == null || nextCursor == cursor) {
+          break;
+        }
+        cursor = nextCursor;
+      }
+      if (items.isNotEmpty &&
           _threadDetailController.selectedThreadId == threadId) {
-        recoveryHandler(threadId: threadId, items: page.items);
+        recoveryHandler(threadId: threadId, items: items);
       }
       return true;
     } catch (_) {
