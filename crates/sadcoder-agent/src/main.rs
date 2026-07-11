@@ -142,6 +142,8 @@ enum AgentCommand {
     Configure {
         #[arg(long = "codex", value_name = "PATH")]
         codex: PathBuf,
+        #[arg(long = "codex-arg", value_name = "ARG", allow_hyphen_values = true)]
+        codex_args: Vec<String>,
         #[arg(long = "path-prepend", value_name = "PATH")]
         path_prepend: Vec<PathBuf>,
         #[arg(long)]
@@ -190,9 +192,10 @@ fn main() -> anyhow::Result<()> {
         }
         AgentCommand::Configure {
             codex,
+            codex_args,
             path_prepend,
             json,
-        } => configure_codex(codex, path_prepend, json),
+        } => configure_codex(codex, codex_args, path_prepend, json),
         AgentCommand::Service {
             resolved_codex_program,
             resolved_codex_args,
@@ -346,10 +349,11 @@ fn print_doctor(codex: &ResolvedCodexCommand, json_output: bool) -> anyhow::Resu
 
 fn configure_codex(
     codex: PathBuf,
+    codex_args: Vec<String>,
     path_prepend: Vec<PathBuf>,
     json_output: bool,
 ) -> anyhow::Result<()> {
-    let config = CodexCommandConfig::from_program(codex, path_prepend);
+    let config = CodexCommandConfig::from_program(codex, codex_args, path_prepend);
     let config_path = persist_codex_command(&config)?;
     let resolved = ResolvedCodexCommand {
         program: config.program,
@@ -1256,6 +1260,42 @@ mod tests {
                 .as_deref()
                 .is_some_and(|detail| detail.contains("fallback"))
         );
+    }
+
+    #[test]
+    fn configure_command_parses_codex_args() {
+        let cli = Cli::try_parse_from([
+            "sadcoder-agent",
+            "configure",
+            "--codex",
+            "node-bin/codex",
+            "--codex-arg",
+            "--profile",
+            "--codex-arg",
+            "mobile profile",
+            "--path-prepend",
+            "node-bin",
+            "--json",
+        ])
+        .expect("parse configure command");
+
+        match cli.command {
+            AgentCommand::Configure {
+                codex,
+                codex_args,
+                path_prepend,
+                json,
+            } => {
+                assert_eq!(codex, PathBuf::from("node-bin/codex"));
+                assert_eq!(
+                    codex_args,
+                    vec!["--profile".to_string(), "mobile profile".to_string()]
+                );
+                assert_eq!(path_prepend, vec![PathBuf::from("node-bin")]);
+                assert!(json);
+            }
+            command => panic!("expected configure command, got {command:?}"),
+        }
     }
 
     #[test]

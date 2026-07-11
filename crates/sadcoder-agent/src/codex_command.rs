@@ -62,7 +62,11 @@ pub(crate) struct CodexCommandConfig {
 }
 
 impl CodexCommandConfig {
-    pub(crate) fn from_program(program: PathBuf, path_prepend: Vec<PathBuf>) -> Self {
+    pub(crate) fn from_program(
+        program: PathBuf,
+        args: Vec<String>,
+        path_prepend: Vec<PathBuf>,
+    ) -> Self {
         let mut path_prepend = path_prepend;
         if let Some(parent) = program
             .parent()
@@ -73,7 +77,7 @@ impl CodexCommandConfig {
         dedupe_paths(&mut path_prepend);
         Self {
             program,
-            args: Vec::new(),
+            args,
             path_prepend,
         }
     }
@@ -451,6 +455,22 @@ mod tests {
         assert_eq!(
             codex.path_prepend,
             vec![PathBuf::from("/home/me/.nvm/versions/node/v24.14.1/bin")]
+        );
+    }
+
+    #[test]
+    fn config_from_program_preserves_args_and_prepends_program_parent() {
+        let config = CodexCommandConfig::from_program(
+            PathBuf::from("/opt/node/bin/codex"),
+            vec!["--profile".to_string(), "mobile".to_string()],
+            vec![PathBuf::from("/extra/bin"), PathBuf::from("/opt/node/bin")],
+        );
+
+        assert_eq!(config.program, PathBuf::from("/opt/node/bin/codex"));
+        assert_eq!(config.args, vec!["--profile", "mobile"]);
+        assert_eq!(
+            config.path_prepend,
+            vec![PathBuf::from("/opt/node/bin"), PathBuf::from("/extra/bin")]
         );
     }
 
