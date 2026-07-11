@@ -95,7 +95,8 @@ The resulting config is structured, for example:
   "codex": {
     "program": "/home/me/.nvm/versions/node/v24.14.1/bin/codex",
     "args": [],
-    "pathPrepend": ["/home/me/.nvm/versions/node/v24.14.1/bin"]
+    "pathPrepend": ["/home/me/.nvm/versions/node/v24.14.1/bin"],
+    "version": "codex-cli 0.143.0"
   }
 }
 ```

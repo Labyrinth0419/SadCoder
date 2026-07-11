@@ -353,17 +353,23 @@ fn configure_codex(
     path_prepend: Vec<PathBuf>,
     json_output: bool,
 ) -> anyhow::Result<()> {
-    let config = CodexCommandConfig::from_program(codex, codex_args, path_prepend);
-    let config_path = persist_codex_command(&config)?;
+    let mut config = CodexCommandConfig::from_program(codex, codex_args, path_prepend);
     let resolved = ResolvedCodexCommand {
-        program: config.program,
-        args: config.args.into_iter().map(Into::into).collect(),
-        path_prepend: config.path_prepend,
+        program: config.program.clone(),
+        args: config
+            .args
+            .iter()
+            .map(|arg| OsString::from(arg.as_str()))
+            .collect(),
+        path_prepend: config.path_prepend.clone(),
         source: CodexCommandSource::Config,
     };
+    let diagnostic = collect_codex_diagnostic(&resolved);
+    config.version.clone_from(&diagnostic.version);
+    let config_path = persist_codex_command(&config)?;
     let result = ConfigureResult {
         config_path: config_path.display().to_string(),
-        codex: collect_codex_diagnostic(&resolved),
+        codex: diagnostic,
     };
 
     if json_output {

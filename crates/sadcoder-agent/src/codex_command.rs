@@ -59,6 +59,8 @@ pub(crate) struct CodexCommandConfig {
     pub(crate) args: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) path_prepend: Vec<PathBuf>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) version: Option<String>,
 }
 
 impl CodexCommandConfig {
@@ -79,6 +81,7 @@ impl CodexCommandConfig {
             program,
             args,
             path_prepend,
+            version: None,
         }
     }
 }
@@ -162,10 +165,12 @@ pub(crate) fn resolve_codex_command(
     if let Some(discovered) = discover_codex_program() {
         let resolved =
             command_from_program(discovered, Vec::new(), CodexCommandSource::AutoDiscovered);
+        let version = probe_codex_version(&resolved).ok();
         let _ = persist_codex_command(&CodexCommandConfig {
             program: resolved.program.clone(),
             args: Vec::new(),
             path_prepend: resolved.path_prepend.clone(),
+            version,
         });
         return Ok(resolved);
     }
@@ -441,7 +446,8 @@ mod tests {
               "codex": {
                 "program": "/home/me/.nvm/versions/node/v24.14.1/bin/codex",
                 "args": [],
-                "pathPrepend": ["/home/me/.nvm/versions/node/v24.14.1/bin"]
+                "pathPrepend": ["/home/me/.nvm/versions/node/v24.14.1/bin"],
+                "version": "codex-cli 0.143.0"
               }
             }"#,
         )
@@ -456,6 +462,7 @@ mod tests {
             codex.path_prepend,
             vec![PathBuf::from("/home/me/.nvm/versions/node/v24.14.1/bin")]
         );
+        assert_eq!(codex.version.as_deref(), Some("codex-cli 0.143.0"));
     }
 
     #[test]
@@ -468,10 +475,26 @@ mod tests {
 
         assert_eq!(config.program, PathBuf::from("/opt/node/bin/codex"));
         assert_eq!(config.args, vec!["--profile", "mobile"]);
+        assert_eq!(config.version, None);
         assert_eq!(
             config.path_prepend,
             vec![PathBuf::from("/opt/node/bin"), PathBuf::from("/extra/bin")]
         );
+    }
+
+    #[test]
+    fn config_serializes_optional_codex_version_snapshot() {
+        let mut config = CodexCommandConfig::from_program(
+            PathBuf::from("/opt/node/bin/codex"),
+            Vec::new(),
+            Vec::new(),
+        );
+        let without_version = serde_json::to_value(&config).expect("serialize config");
+        assert!(without_version.get("version").is_none());
+
+        config.version = Some("codex-cli 0.143.0".to_string());
+        let with_version = serde_json::to_value(&config).expect("serialize config");
+        assert_eq!(with_version["version"], "codex-cli 0.143.0");
     }
 
     #[test]
