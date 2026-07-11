@@ -80,6 +80,11 @@ The agent resolves Codex in this order:
 4. inherited `PATH`
 5. automatic discovery of common install locations
 
+Automatic discovery only caches a candidate after the agent can run the same
+resolved command and recognize its `codex --version` output. Invalid wrappers,
+wrong Node runtimes, and unrelated programs named `codex` are skipped instead
+of being persisted.
+
 Persist a Codex command with:
 
 ```powershell

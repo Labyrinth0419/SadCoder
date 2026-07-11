@@ -162,15 +162,12 @@ pub(crate) fn resolve_codex_command(
         });
     }
 
-    if let Some(discovered) = discover_codex_program() {
-        let resolved =
-            command_from_program(discovered, Vec::new(), CodexCommandSource::AutoDiscovered);
-        let version = probe_codex_version(&resolved).ok();
+    if let Some((resolved, version)) = discover_codex_command() {
         let _ = persist_codex_command(&CodexCommandConfig {
             program: resolved.program.clone(),
             args: Vec::new(),
             path_prepend: resolved.path_prepend.clone(),
-            version,
+            version: Some(version),
         });
         return Ok(resolved);
     }
@@ -301,7 +298,7 @@ fn command_from_program(
     }
 }
 
-fn discover_codex_program() -> Option<PathBuf> {
+fn discover_codex_command() -> Option<(ResolvedCodexCommand, String)> {
     let mut dirs = Vec::new();
     dirs.extend(
         env::var_os("PATH")
@@ -310,7 +307,20 @@ fn discover_codex_program() -> Option<PathBuf> {
     );
     dirs.extend(common_codex_dirs());
     dedupe_paths(&mut dirs);
-    dirs.into_iter().find_map(|dir| find_codex_in_dir(&dir))
+    discover_codex_command_in_dirs(dirs)
+}
+
+fn discover_codex_command_in_dirs(
+    dirs: impl IntoIterator<Item = PathBuf>,
+) -> Option<(ResolvedCodexCommand, String)> {
+    dirs.into_iter()
+        .flat_map(|dir| find_codex_candidates_in_dir(&dir))
+        .find_map(|program| {
+            let resolved =
+                command_from_program(program, Vec::new(), CodexCommandSource::AutoDiscovered);
+            let version = probe_codex_version(&resolved).ok()?;
+            Some((resolved, version))
+        })
 }
 
 fn common_codex_dirs() -> Vec<PathBuf> {
@@ -350,11 +360,14 @@ fn nvm_node_bin_dirs(home: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
-fn find_codex_in_dir(dir: &Path) -> Option<PathBuf> {
-    candidate_names().into_iter().find_map(|name| {
-        let candidate = dir.join(name);
-        candidate.exists().then_some(candidate)
-    })
+fn find_codex_candidates_in_dir(dir: &Path) -> Vec<PathBuf> {
+    candidate_names()
+        .into_iter()
+        .filter_map(|name| {
+            let candidate = dir.join(name);
+            candidate.exists().then_some(candidate)
+        })
+        .collect()
 }
 
 fn candidate_names() -> Vec<&'static str> {
@@ -458,6 +471,8 @@ fn is_version_token(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::SystemTime;
+    use std::time::UNIX_EPOCH;
 
     #[test]
     fn command_prepends_configured_paths_to_inherited_path() {
@@ -578,5 +593,87 @@ mod tests {
         let failure = validate_codex_version_output("codex\n").expect_err("failure");
 
         assert_eq!(failure.kind, CodexProbeFailureKind::VersionOutputInvalid);
+    }
+
+    #[test]
+    fn discovery_skips_existing_candidates_with_invalid_version_output() {
+        let base = temp_dir("discovery-skips-invalid");
+        let invalid = base.join("invalid");
+        let valid = base.join("valid");
+        fs::create_dir_all(&invalid).expect("create invalid bin dir");
+        fs::create_dir_all(&valid).expect("create valid bin dir");
+        write_fake_codex(&invalid, "rustc 1.80.0");
+        write_fake_codex(&valid, "codex 1.2.3");
+
+        let (resolved, version) =
+            discover_codex_command_in_dirs([invalid.clone(), valid.clone()]).expect("discover");
+
+        assert_eq!(resolved.program, valid.join(candidate_names()[0]));
+        assert_eq!(version, "codex 1.2.3");
+
+        let _ = fs::remove_dir_all(base);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn discovery_skips_invalid_candidate_names_in_same_directory() {
+        let base = temp_dir("discovery-skips-invalid-candidate-names");
+        fs::create_dir_all(&base).expect("create bin dir");
+        write_fake_codex_named(&base, "codex.cmd", "rustc 1.80.0");
+        let valid = write_fake_codex_named(&base, "codex.bat", "codex 1.2.3");
+
+        let (resolved, version) = discover_codex_command_in_dirs([base.clone()]).expect("discover");
+
+        assert_eq!(resolved.program, valid);
+        assert_eq!(version, "codex 1.2.3");
+
+        let _ = fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn discovery_returns_none_when_candidates_do_not_probe_as_codex() {
+        let base = temp_dir("discovery-invalid-only");
+        fs::create_dir_all(&base).expect("create bin dir");
+        write_fake_codex(&base, "node v12.22.0");
+
+        let discovered = discover_codex_command_in_dirs([base.clone()]);
+
+        assert!(discovered.is_none());
+
+        let _ = fs::remove_dir_all(base);
+    }
+
+    fn temp_dir(name: &str) -> PathBuf {
+        env::temp_dir().join(format!(
+            "sadcoder-agent-{name}-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ))
+    }
+
+    fn write_fake_codex(dir: &Path, output: &str) -> PathBuf {
+        write_fake_codex_named(dir, candidate_names()[0], output)
+    }
+
+    fn write_fake_codex_named(dir: &Path, name: &str, output: &str) -> PathBuf {
+        let path = dir.join(name);
+        #[cfg(windows)]
+        {
+            fs::write(&path, format!("@echo off\r\necho {output}\r\n")).expect("write fake codex");
+        }
+        #[cfg(not(windows))]
+        {
+            use std::os::unix::fs::PermissionsExt;
+
+            fs::write(&path, format!("#!/bin/sh\nprintf '%s\\n' '{output}'\n"))
+                .expect("write fake codex");
+            let mut permissions = fs::metadata(&path).expect("metadata").permissions();
+            permissions.set_mode(0o755);
+            fs::set_permissions(&path, permissions).expect("set executable");
+        }
+        path
     }
 }

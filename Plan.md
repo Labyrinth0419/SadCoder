@@ -215,6 +215,8 @@ fallback 不满足“手机断线不影响任务继续执行”的生产硬约�
 
 fallback 的前置条件是 agent 已经用同一个 `ResolvedCodexCommand` 成功完成 Codex 版本/运行时 probe；如果 Codex 程序缺失、Node 运行时错误、权限错误或版本输出异常，`auto` 只能返回 unavailable 诊断，不能把 direct stdio 标成可用后端。
 
+自动发现 common install locations 时，agent 只能缓存已经通过同一套 `ResolvedCodexCommand` 版本/运行时 probe 的候选项；坏的 `codex` wrapper、错误 Node 运行时或非 Codex 同名程序必须被跳过，不能写入持久化配置。
+
 ### 4.4 Agent 内部设计
 
 ```text
