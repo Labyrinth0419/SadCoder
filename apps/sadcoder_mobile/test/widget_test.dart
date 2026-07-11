@@ -367,13 +367,21 @@ void main() {
     );
 
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
-    expect(
-      app.theme?.extension<SadCoderThemeColors>(),
-      SadCoderThemeColors.light,
+    final candyLightColors = SadCoderThemeColors.forPalette(
+      colorPalette: AppColorPalette.candy,
+      brightness: Brightness.light,
+    );
+    final candyDarkColors = SadCoderThemeColors.forPalette(
+      colorPalette: AppColorPalette.candy,
+      brightness: Brightness.dark,
     );
     expect(
-      app.darkTheme?.extension<SadCoderThemeColors>(),
-      SadCoderThemeColors.dark,
+      app.theme?.extension<SadCoderThemeColors>()?.codeKeyword,
+      candyLightColors.codeKeyword,
+    );
+    expect(
+      app.darkTheme?.extension<SadCoderThemeColors>()?.codeKeyword,
+      candyDarkColors.codeKeyword,
     );
     expect(app.themeMode, ThemeMode.dark);
     expect(

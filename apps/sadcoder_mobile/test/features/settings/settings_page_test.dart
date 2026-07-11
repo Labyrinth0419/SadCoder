@@ -3,6 +3,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
+import 'package:sadcoder_mobile/src/agent/agent_doctor.dart';
+import 'package:sadcoder_mobile/src/agent/agent_doctor_controller.dart';
+import 'package:sadcoder_mobile/src/agent/agent_doctor_reader.dart';
+import 'package:sadcoder_mobile/src/agent/agent_status.dart';
 import 'package:sadcoder_mobile/src/appearance/app_appearance_controller.dart';
 import 'package:sadcoder_mobile/src/background/background_connection_policy.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
@@ -15,6 +19,7 @@ import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/models/model_list_controller.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc_diagnostic_log.dart';
+import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 
 void main() {
   testWidgets('uses first-level settings sections with one detail group open', (
@@ -467,6 +472,90 @@ void main() {
     expect(preferences.keepConnectionDuringActiveTurn, false);
   });
 
+  testWidgets('refreshes and renders agent doctor diagnostics read-only', (
+    tester,
+  ) async {
+    final overrideController = CodexConfigOverrideController();
+    final doctorReader = _RecordingAgentDoctorReader(
+      result: const AgentDoctorResult(
+        configPath: '/home/tester/.config/sadcoder/agent.json',
+        codex: AgentCodexCommandDiagnostic(
+          program: '/home/tester/.nvm/versions/node/v24/bin/codex',
+          args: [],
+          pathPrepend: ['/home/tester/.nvm/versions/node/v24/bin'],
+          source: 'config',
+          available: true,
+          version: 'codex-cli 0.143.0',
+        ),
+        status: AgentStatus(
+          agentVersion: '0.2.0',
+          platformOs: 'linux',
+          platformArch: 'x86_64',
+          codexPath: '/home/tester/.nvm/versions/node/v24/bin/codex',
+          codexAvailable: true,
+          codexVersion: 'codex-cli 0.143.0',
+          backendKind: BackendKind.sadcoderAgentService,
+          backendState: BackendState.ready,
+          backendDetail: 'SadCoder service is listening',
+          reconnectCache: AgentReconnectCacheStatus(
+            statePath: '/home/tester/.sadcoder/agent-state.json',
+            pendingApprovals: 2,
+            recentEvents: 7,
+          ),
+        ),
+      ),
+    );
+    final doctorController = AgentDoctorController(
+      readerProvider: () => doctorReader,
+      profileProvider: () => _profile,
+    );
+    addTearDown(overrideController.dispose);
+    addTearDown(doctorController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      agentDoctorController: doctorController,
+    );
+    await _openSettingsSection(tester, 'diagnostics');
+
+    expect(find.text('Agent doctor'), findsOneWidget);
+    expect(
+      find.text('Connect to a host, then run agent doctor.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('settings-agent-doctor-refresh')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(doctorReader.profiles, [_profile]);
+    expect(find.text('Codex version: codex-cli 0.143.0'), findsOneWidget);
+    expect(
+      find.text('Codex program: /home/tester/.nvm/versions/node/v24/bin/codex'),
+      findsOneWidget,
+    );
+    expect(find.text('Codex source: config'), findsOneWidget);
+    expect(
+      find.text('Agent config: /home/tester/.config/sadcoder/agent.json'),
+      findsOneWidget,
+    );
+    expect(find.text('Backend: agent service / ready'), findsOneWidget);
+    expect(
+      find.text('Backend detail: SadCoder service is listening'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Reconnect cache: 2 pending approvals, 7 recent events'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('State path: /home/tester/.sadcoder/agent-state.json'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('confirms before copying diagnostic logs', (tester) async {
     final overrideController = CodexConfigOverrideController();
     final copied = <String>[];
@@ -626,6 +715,7 @@ Future<void> _pumpSettings(
   AccountSnapshotController? accountSnapshotController,
   ModelListController? modelListController,
   BackgroundConnectionPreferences? backgroundConnectionPreferences,
+  AgentDoctorController? agentDoctorController,
   DiagnosticLogExportController? diagnosticLogExportController,
 }) {
   return tester.pumpWidget(
@@ -645,12 +735,20 @@ Future<void> _pumpSettings(
           accountSnapshotController: accountSnapshotController,
           modelListController: modelListController,
           backgroundConnectionPreferences: backgroundConnectionPreferences,
+          agentDoctorController: agentDoctorController,
           diagnosticLogExportController: diagnosticLogExportController,
         ),
       ),
     ),
   );
 }
+
+const _profile = SshProfile(
+  id: 'local',
+  name: 'Local',
+  host: 'localhost',
+  username: 'tester',
+);
 
 Future<void> _openSettingsSection(WidgetTester tester, String section) async {
   final sectionFinder = find.byKey(ValueKey('settings-section-$section'));
@@ -724,5 +822,18 @@ class _RecordingModelListReader implements ModelListReader {
   }) async {
     calls++;
     return page;
+  }
+}
+
+class _RecordingAgentDoctorReader implements AgentDoctorReader {
+  _RecordingAgentDoctorReader({required this.result});
+
+  final AgentDoctorResult result;
+  final List<SshProfile> profiles = [];
+
+  @override
+  Future<AgentDoctorResult> readDoctor(SshProfile profile) async {
+    profiles.add(profile);
+    return result;
   }
 }

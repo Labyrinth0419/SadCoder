@@ -177,6 +177,72 @@ void main() {
     expect(status.backendDetail, 'daemon stopped');
   });
 
+  test('readDoctor parses sadcoder-agent doctor JSON', () async {
+    final runner = _FakeRunner(
+      result: const RemoteCommandResult(
+        exitCode: 0,
+        stdout: '''
+{
+  "configPath": "/home/tester/.config/sadcoder/agent.json",
+  "codex": {
+    "program": "/home/tester/.nvm/versions/node/v24/bin/codex",
+    "args": ["--profile", "mobile"],
+    "pathPrepend": ["/home/tester/.nvm/versions/node/v24/bin"],
+    "source": "config",
+    "available": true,
+    "version": "codex-cli 0.143.0",
+    "failure": null
+  },
+  "status": {
+    "agentVersion": "0.2.0",
+    "platformOs": "linux",
+    "platformArch": "x86_64",
+    "codexPath": "/home/tester/.nvm/versions/node/v24/bin/codex",
+    "codexAvailable": true,
+    "codexVersion": "codex-cli 0.143.0",
+    "backend": {
+      "kind": "sadcoder-agent-service",
+      "state": "ready",
+      "detail": "SadCoder service is listening"
+    },
+    "reconnectCache": {
+      "statePath": "/home/tester/.sadcoder/agent-state.json",
+      "schemaVersion": 1,
+      "pendingApprovals": 1,
+      "recentEvents": 4,
+      "loadError": null
+    }
+  }
+}
+''',
+        stderr: '',
+      ),
+    );
+    final service = AgentRemoteService(runner);
+
+    final doctor = await service.readDoctor(_profile);
+
+    expect(runner.lastCommand, 'sadcoder-agent doctor --json');
+    expect(runner.lastTimeout, const Duration(seconds: 20));
+    expect(doctor.configPath, '/home/tester/.config/sadcoder/agent.json');
+    expect(
+      doctor.codex.program,
+      '/home/tester/.nvm/versions/node/v24/bin/codex',
+    );
+    expect(doctor.codex.args, ['--profile', 'mobile']);
+    expect(doctor.codex.pathPrepend, [
+      '/home/tester/.nvm/versions/node/v24/bin',
+    ]);
+    expect(doctor.codex.source, 'config');
+    expect(doctor.codex.available, true);
+    expect(doctor.codex.version, 'codex-cli 0.143.0');
+    expect(doctor.codex.failure, isNull);
+    expect(doctor.status.backendKind, BackendKind.sadcoderAgentService);
+    expect(doctor.status.backendState, BackendState.ready);
+    expect(doctor.status.reconnectCache.pendingApprovals, 1);
+    expect(doctor.status.reconnectCache.recentEvents, 4);
+  });
+
   test('readStatus throws on failed command', () async {
     final service = AgentRemoteService(
       _FakeRunner(

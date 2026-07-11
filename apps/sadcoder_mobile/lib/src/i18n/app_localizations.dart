@@ -139,6 +139,9 @@ class AppLocalizations {
   String get backendDaemon => _text('backendDaemon');
   String get backendStdioFallback => _text('backendStdioFallback');
   String get backendUnknown => _text('backendUnknown');
+  String get backendReady => _text('backendReady');
+  String get backendNotStarted => _text('backendNotStarted');
+  String get backendUnavailable => _text('backendUnavailable');
   String reconnectCacheSummary(int pendingApprovals, int recentEvents) =>
       _text('reconnectCacheSummary')
           .replaceAll('{pendingApprovals}', formatNumber(pendingApprovals))
@@ -458,6 +461,15 @@ class AppLocalizations {
       _text('backgroundConnectionKeepActiveTurnBody');
   String get diagnosticLogs => _text('diagnosticLogs');
   String get diagnosticLogsBody => _text('diagnosticLogsBody');
+  String get agentDoctor => _text('agentDoctor');
+  String get agentDoctorBody => _text('agentDoctorBody');
+  String get refreshAgentDoctor => _text('refreshAgentDoctor');
+  String get agentDoctorUnavailable => _text('agentDoctorUnavailable');
+  String get agentDoctorLoadFailed => _text('agentDoctorLoadFailed');
+  String get agentConfigPath => _text('agentConfigPath');
+  String get codexProgram => _text('codexProgram');
+  String get codexSource => _text('codexSource');
+  String get backendDetail => _text('backendDetail');
   String get copyDiagnosticLogs => _text('copyDiagnosticLogs');
   String get copyingDiagnosticLogs => _text('copyingDiagnosticLogs');
   String get exportDiagnosticLogs => _text('exportDiagnosticLogs');
@@ -1022,6 +1034,9 @@ const _values = <String, Map<String, String>>{
     'backendDaemon': 'legacy daemon',
     'backendStdioFallback': 'stdio fallback',
     'backendUnknown': 'unknown',
+    'backendReady': 'ready',
+    'backendNotStarted': 'not started',
+    'backendUnavailable': 'unavailable',
     'reconnectCacheSummary':
         'Reconnect cache: {pendingApprovals} pending approvals, {recentEvents} recent events',
     'statePath': 'State path: {path}',
@@ -1299,6 +1314,16 @@ const _values = <String, Map<String, String>>{
     'diagnosticLogs': 'Diagnostic logs',
     'diagnosticLogsBody':
         'Redacted JSON-RPC messages from the current connection.',
+    'agentDoctor': 'Agent doctor',
+    'agentDoctorBody':
+        'Non-mutating Codex, backend, and reconnect-cache diagnostics from sadcoder-agent.',
+    'refreshAgentDoctor': 'Run agent doctor',
+    'agentDoctorUnavailable': 'Connect to a host, then run agent doctor.',
+    'agentDoctorLoadFailed': 'Failed to run agent doctor',
+    'agentConfigPath': 'Agent config',
+    'codexProgram': 'Codex program',
+    'codexSource': 'Codex source',
+    'backendDetail': 'Backend detail',
     'copyDiagnosticLogs': 'Copy logs',
     'copyingDiagnosticLogs': 'Copying logs',
     'exportDiagnosticLogs': 'Export logs',
@@ -1713,6 +1738,9 @@ const _values = <String, Map<String, String>>{
     'backendDaemon': '旧 daemon',
     'backendStdioFallback': 'stdio fallback',
     'backendUnknown': '未知',
+    'backendReady': '就绪',
+    'backendNotStarted': '未启动',
+    'backendUnavailable': '不可用',
     'reconnectCacheSummary':
         '重连缓存：{pendingApprovals} 个待审批，{recentEvents} 个最近事件',
     'statePath': '状态路径：{path}',
@@ -1971,6 +1999,15 @@ const _values = <String, Map<String, String>>{
         '开启后，App 进入后台时会尽量继续观察 active turn。关闭后会断开观察连接，下次连接时回填状态。',
     'diagnosticLogs': '诊断日志',
     'diagnosticLogsBody': '当前连接中已脱敏的 JSON-RPC 消息。',
+    'agentDoctor': 'Agent 诊断',
+    'agentDoctorBody': '从 sadcoder-agent 非破坏性读取 Codex、backend 和重连缓存诊断。',
+    'refreshAgentDoctor': '运行 agent 诊断',
+    'agentDoctorUnavailable': '连接主机后运行 agent 诊断。',
+    'agentDoctorLoadFailed': '运行 agent 诊断失败',
+    'agentConfigPath': 'Agent 配置',
+    'codexProgram': 'Codex 程序',
+    'codexSource': 'Codex 来源',
+    'backendDetail': 'Backend 详情',
     'copyDiagnosticLogs': '复制日志',
     'copyingDiagnosticLogs': '正在复制日志',
     'exportDiagnosticLogs': '导出日志',

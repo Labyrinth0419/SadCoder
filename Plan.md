@@ -645,7 +645,7 @@ Codex CLI 子命令与 App 覆盖方式：
 | `mcp` | `mcpServer*` + `config/*`，必要时 SSH fallback |
 | `plugin` | `plugin/*` + `marketplace/*` |
 | `app-server daemon` | 不作为生产依赖；SadCoder 使用 `sadcoder-agent service/proxy`，必要时 direct stdio fallback |
-| `doctor` | SSH command fallback，后续解析结构化输出 |
+| `doctor` | `sadcoder-agent doctor --json` 结构化诊断；Settings Diagnostics 卡片显示 Codex/backend/reconnect cache 摘要 |
 | `update` | SSH command fallback 或 agent-managed update policy |
 | `sandbox` | 主要通过 permission profile/sandboxPolicy；调试命令走 SSH fallback |
 | `apply` | 优先用 app-server 文件变更事件；必要时 SSH fallback |
@@ -774,7 +774,7 @@ App 内部存储使用加密数据库；导入/导出时明确提示敏感信息
 11. `model/list`。
 12. `thread/list limit=1`。
 
-`sadcoder-agent doctor --json` 是非破坏性组合诊断入口，应同时返回 Codex 命令解析/版本/失败原因、agent status、backend readiness 和 reconnect cache 状态，便于 App 或用户在不启动新 backend 的情况下排查环境问题。
+`sadcoder-agent doctor --json` 是非破坏性组合诊断入口，应同时返回 Codex 命令解析/版本/失败原因、agent status、backend readiness 和 reconnect cache 状态。App 通过 SSH 读取该 JSON，并在 Settings -> Diagnostics 中用结构化卡片展示，不直接在 App 侧重新执行 Codex 探测。
 
 每一阶段都要给出明确错误和建议，例如：
 
