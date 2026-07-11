@@ -33,6 +33,7 @@ use std::thread;
 
 mod agent_logs;
 mod agent_rpc;
+mod agent_schema;
 mod app_server_socket;
 mod codex_command;
 mod service;
@@ -44,6 +45,9 @@ use agent_logs::DEFAULT_LOG_TAIL_BYTES;
 use agent_logs::collect_agent_logs;
 use agent_logs::collect_agent_logs_from_params;
 use agent_rpc::AgentRpcMethod;
+use agent_schema::AgentSchemaOptions;
+use agent_schema::collect_agent_schema;
+use agent_schema::collect_agent_schema_from_params;
 use codex_command::CodexCommandConfig;
 use codex_command::CodexCommandSource;
 use codex_command::CodexProbeFailure;
@@ -145,6 +149,15 @@ enum AgentCommand {
         #[arg(long = "tail-bytes", default_value_t = DEFAULT_LOG_TAIL_BYTES)]
         tail_bytes: u64,
     },
+    /// Generate or summarize the cached Codex app-server JSON Schema bundle.
+    Schema {
+        #[arg(long)]
+        json: bool,
+        #[arg(long)]
+        refresh: bool,
+        #[arg(long)]
+        experimental: bool,
+    },
     /// Diagnose the resolved Codex executable and runtime environment.
     Doctor {
         #[arg(long)]
@@ -200,6 +213,22 @@ fn main() -> anyhow::Result<()> {
         AgentCommand::Snapshot { json } => print_snapshot(cli.state_path.as_deref(), json),
         AgentCommand::Logs { json, tail_bytes } => {
             print_logs(cli.state_path.as_deref(), json, tail_bytes)
+        }
+        AgentCommand::Schema {
+            json,
+            refresh,
+            experimental,
+        } => {
+            let codex = resolve_codex_command(cli_codex_program)?;
+            print_schema(
+                &codex,
+                cli.state_path.as_deref(),
+                AgentSchemaOptions {
+                    refresh,
+                    experimental,
+                },
+                json,
+            )
         }
         AgentCommand::Doctor { json } => {
             let codex = resolve_codex_command(cli_codex_program)?;
@@ -553,6 +582,37 @@ fn print_logs(state_path: Option<&Path>, json_output: bool, tail_bytes: u64) -> 
                     println!();
                 }
             }
+        }
+    }
+    Ok(())
+}
+
+fn print_schema(
+    codex: &ResolvedCodexCommand,
+    state_path: Option<&Path>,
+    options: AgentSchemaOptions,
+    json_output: bool,
+) -> anyhow::Result<()> {
+    let state_path = resolve_state_path(state_path);
+    let result = collect_agent_schema(codex, &state_path, options)?;
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&result)?);
+    } else {
+        println!(
+            "app-server schema: {} file(s), {} bytes{}",
+            result.file_count,
+            result.total_bytes,
+            if result.generated { " (refreshed)" } else { "" }
+        );
+        if let Some(version) = &result.codex_version {
+            println!("codex version: {version}");
+        }
+        if let Some(digest) = &result.digest {
+            println!("digest: {digest}");
+        }
+        println!("cache: {}", result.cache_dir);
+        if let Some(bundle_path) = &result.bundle_path {
+            println!("bundle: {bundle_path}");
         }
     }
     Ok(())
@@ -1178,6 +1238,13 @@ fn handle_agent_request(
             .map(AgentStateCache::into_snapshot)
             .and_then(|snapshot| serde_json::to_value(snapshot).map_err(Into::into))
             .map_err(|error| error.to_string()),
+        AgentRpcMethod::Schema => collect_agent_schema_from_params(
+            &context.codex,
+            &context.state_path,
+            request.params.as_ref(),
+        )
+        .and_then(|schema| serde_json::to_value(schema).map_err(Into::into))
+        .map_err(|error| error.to_string()),
         AgentRpcMethod::SlashCommands => load_slash_command_manifest()
             .and_then(|manifest| serde_json::to_value(manifest).map_err(Into::into))
             .map_err(|error| error.to_string()),
@@ -1517,6 +1584,31 @@ mod tests {
     }
 
     #[test]
+    fn schema_command_parses_refresh_and_experimental_flags() {
+        let cli = Cli::try_parse_from([
+            "sadcoder-agent",
+            "schema",
+            "--refresh",
+            "--experimental",
+            "--json",
+        ])
+        .expect("parse schema command");
+
+        match cli.command {
+            AgentCommand::Schema {
+                json,
+                refresh,
+                experimental,
+            } => {
+                assert!(json);
+                assert!(refresh);
+                assert!(experimental);
+            }
+            command => panic!("expected schema command, got {command:?}"),
+        }
+    }
+
+    #[test]
     fn hidden_service_command_parses_resolved_codex_snapshot() {
         let cli = Cli::try_parse_from([
             "sadcoder-agent",
@@ -1729,6 +1821,50 @@ mod tests {
             response["result"]["pendingApprovals"][0]["method"],
             "item/commandExecution/requestApproval"
         );
+    }
+
+    #[test]
+    fn local_proxy_handles_agent_schema_from_cache_file() {
+        let path = std::env::temp_dir().join(format!(
+            "sadcoder-agent-rpc-schema-{}-{}/agent-state.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        let schema_dir = path
+            .parent()
+            .expect("state parent")
+            .join("app-server-schema")
+            .join("json");
+        std::fs::create_dir_all(schema_dir.join("v2")).expect("create schema cache");
+        std::fs::write(
+            schema_dir.join("codex_app_server_protocol.schemas.json"),
+            br#"{"schemaVersion":1}"#,
+        )
+        .expect("write schema bundle");
+        std::fs::write(schema_dir.join("v2").join("ClientRequest.json"), b"{}")
+            .expect("write schema file");
+        std::fs::write(
+            schema_dir.join("sadcoder-schema-cache.json"),
+            br#"{"schemaVersion":1,"source":"codex app-server generate-json-schema","experimental":false,"codexVersion":"codex-cli 1.2.3","generatedAtUnixMs":9}"#,
+        )
+        .expect("write metadata");
+        let context = test_proxy_context(path.clone());
+
+        let response =
+            local_response_from_client_line(&request_line("agent/schema", None), &context)
+                .expect("local response");
+        let response = response_json(response);
+        let _ = std::fs::remove_dir_all(path.parent().expect("state parent"));
+
+        assert_eq!(response["id"], 7);
+        assert_eq!(response["result"]["schemaVersion"], 1);
+        assert_eq!(response["result"]["generated"], false);
+        assert_eq!(response["result"]["codexVersion"], "codex-cli 1.2.3");
+        assert_eq!(response["result"]["fileCount"], 2);
+        assert!(response["result"]["digest"].as_str().is_some());
     }
 
     #[test]

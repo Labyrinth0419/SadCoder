@@ -14,6 +14,7 @@ pub(crate) enum AgentRpcMethod {
     Health,
     Logs,
     Snapshot,
+    Schema,
     SlashCommands,
     RestartBackend,
     Ping,
@@ -26,6 +27,7 @@ impl AgentRpcMethod {
             "agent/health" | "agent/status" => Some(Self::Health),
             "agent/logs" => Some(Self::Logs),
             "agent/snapshot" => Some(Self::Snapshot),
+            "agent/schema" => Some(Self::Schema),
             "agent/slashCommands/list" => Some(Self::SlashCommands),
             "agent/restartBackend" => Some(Self::RestartBackend),
             "agent/ping" => Some(Self::Ping),
@@ -47,6 +49,7 @@ pub(crate) fn hello_result() -> Value {
             "logs": true,
             "restartBackend": true,
             "reconnectSnapshot": true,
+            "schema": true,
             "slashCommands": true,
             "workspaceFiles": true
         }
@@ -92,6 +95,7 @@ fn agent_methods() -> Vec<&'static str> {
         "agent/status",
         "agent/logs",
         "agent/snapshot",
+        "agent/schema",
         "agent/slashCommands/list",
         "agent/restartBackend",
         "agent/ping",
@@ -111,6 +115,7 @@ mod tests {
             ("agent/status", AgentRpcMethod::Health),
             ("agent/logs", AgentRpcMethod::Logs),
             ("agent/snapshot", AgentRpcMethod::Snapshot),
+            ("agent/schema", AgentRpcMethod::Schema),
             ("agent/slashCommands/list", AgentRpcMethod::SlashCommands),
             ("agent/restartBackend", AgentRpcMethod::RestartBackend),
             ("agent/ping", AgentRpcMethod::Ping),
@@ -126,6 +131,7 @@ mod tests {
 
         assert_eq!(result["capabilities"]["agentRpc"], true);
         assert_eq!(result["capabilities"]["logs"], true);
+        assert_eq!(result["capabilities"]["schema"], true);
         assert_eq!(result["capabilities"]["workspaceFiles"], true);
         assert!(
             result["methods"]

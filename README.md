@@ -25,6 +25,7 @@ boundary without reimplementing Codex semantics.
 cargo run -p sadcoder-agent -- status --json
 cargo run -p sadcoder-agent -- doctor --json
 cargo run -p sadcoder-agent -- probe --json
+cargo run -p sadcoder-agent -- schema --json
 cargo run -p sadcoder-agent -- slash-commands --json
 ```
 
@@ -72,6 +73,13 @@ prepared.
 agent status/backend/reconnect-cache shape used by `status --json`, so callers
 can troubleshoot Codex runtime, service readiness, and pending reconnect state
 from one non-mutating command.
+
+`schema --json` uses the same resolved Codex command to run
+`codex app-server generate-json-schema`, caches the generated JSON Schema bundle
+under the agent state directory, and returns file count, total bytes, digest,
+bundle path, and Codex version metadata. The proxy also exposes the same summary
+through `agent/schema`, with optional `refresh` and `experimental` booleans, so
+the mobile app does not need to locate or execute `codex` itself.
 
 ## Codex Command Configuration
 
