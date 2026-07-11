@@ -72,6 +72,14 @@ class ThreadItemCacheSnapshot {
       'cachedAtMs': cachedAtMs,
     };
   }
+
+  ThreadItemsPage toPage() {
+    return ThreadItemsPage(
+      items: items,
+      nextCursor: nextCursor,
+      backwardsCursor: backwardsCursor,
+    );
+  }
 }
 
 class SharedPreferencesThreadItemCacheStore implements ThreadItemCacheStore {

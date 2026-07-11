@@ -12,6 +12,7 @@ import '../session/codex_session_state_controller.dart';
 import '../session/host_session_manager.dart';
 import '../ssh/ssh_profile_store.dart';
 import '../threads/thread_cache_store.dart';
+import '../threads/thread_item_cache_store.dart';
 import '../theme/sadcoder_theme.dart';
 import 'app_shell.dart';
 
@@ -30,6 +31,7 @@ class SadCoderApp extends StatefulWidget {
     this.profileStore,
     this.slashCommandManifestReader,
     this.threadCacheStore,
+    this.threadItemCacheStore,
   });
 
   final Locale? locale;
@@ -44,6 +46,7 @@ class SadCoderApp extends StatefulWidget {
   final SshProfileStore? profileStore;
   final SlashCommandManifestReader? slashCommandManifestReader;
   final ThreadCacheStore? threadCacheStore;
+  final ThreadItemCacheStore? threadItemCacheStore;
 
   @override
   State<SadCoderApp> createState() => _SadCoderAppState();
@@ -117,6 +120,7 @@ class _SadCoderAppState extends State<SadCoderApp> {
             profileStore: widget.profileStore,
             slashCommandManifestReader: widget.slashCommandManifestReader,
             threadCacheStore: widget.threadCacheStore,
+            threadItemCacheStore: widget.threadItemCacheStore,
           ),
         );
       },

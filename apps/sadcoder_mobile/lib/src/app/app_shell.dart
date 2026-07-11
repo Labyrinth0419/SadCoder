@@ -37,6 +37,7 @@ import '../ssh/ssh_profile.dart';
 import '../ssh/ssh_profile_store.dart';
 import '../threads/thread_cache_store.dart';
 import '../threads/thread_detail_controller.dart';
+import '../threads/thread_item_cache_store.dart';
 import '../threads/thread_list_controller.dart';
 import '../turns/turn_controller.dart';
 import '../usage/account_usage_snapshot_controller.dart';
@@ -54,11 +55,13 @@ const _defaultAgentRemoteService = AgentRemoteService(
 
 CodexSessionStateController _createDefaultSessionController(
   ApprovalStateController approvalController,
+  ThreadItemCacheStore threadItemCacheStore,
 ) {
   return CodexSessionStateController(
     connector: _defaultSessionConnector,
     approvalController: approvalController,
     snapshotReader: _defaultAgentRemoteService,
+    threadItemCacheStore: threadItemCacheStore,
     heartbeatChannels: const [
       SessionHeartbeatChannel(
         runner: AgentPingSessionHeartbeatRunner(),
@@ -86,6 +89,7 @@ class AppShell extends StatefulWidget {
     this.profileStore,
     this.slashCommandManifestReader,
     this.threadCacheStore,
+    this.threadItemCacheStore,
   });
 
   final AppAppearanceController? appearanceController;
@@ -99,6 +103,7 @@ class AppShell extends StatefulWidget {
   final SshProfileStore? profileStore;
   final SlashCommandManifestReader? slashCommandManifestReader;
   final ThreadCacheStore? threadCacheStore;
+  final ThreadItemCacheStore? threadItemCacheStore;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -154,6 +159,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     return widget.threadCacheStore ?? const SharedPreferencesThreadCacheStore();
   }
 
+  ThreadItemCacheStore get _resolvedThreadItemCacheStore {
+    return widget.threadItemCacheStore ??
+        const SharedPreferencesThreadItemCacheStore();
+  }
+
   bool get _usesHostApprovalGroups =>
       _hostSessionManager != null && _hostSessionManager!.sessions.isNotEmpty;
 
@@ -186,7 +196,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             widget.backgroundConnectionKeeper ||
         oldWidget.slashCommandManifestReader !=
             widget.slashCommandManifestReader ||
-        oldWidget.threadCacheStore != widget.threadCacheStore) {
+        oldWidget.threadCacheStore != widget.threadCacheStore ||
+        oldWidget.threadItemCacheStore != widget.threadItemCacheStore) {
       _disposeOwnedControllers();
       _setControllers(
         approvalController: widget.approvalController,
@@ -285,14 +296,20 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _ownsSessionController = sessionController == null;
     _sessionController =
         sessionController ??
-        _createDefaultSessionController(_approvalController);
+        _createDefaultSessionController(
+          _approvalController,
+          _resolvedThreadItemCacheStore,
+        );
     _ownsHostSessionManager =
         sessionController == null && hostSessionManager == null;
     _hostSessionManager = sessionController == null
         ? hostSessionManager ??
               HostSessionManager(
                 controllerFactory: (approvalController) =>
-                    _createDefaultSessionController(approvalController),
+                    _createDefaultSessionController(
+                      approvalController,
+                      _resolvedThreadItemCacheStore,
+                    ),
               )
         : null;
     _hostSessionManager?.addListener(_handleHostSessionManagerChanged);

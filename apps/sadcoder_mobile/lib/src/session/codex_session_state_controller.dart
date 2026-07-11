@@ -33,7 +33,9 @@ import '../protocol/json_rpc_diagnostic_log.dart';
 import '../reviews/thread_review_runner.dart';
 import '../skills/skill_list_reader.dart';
 import '../ssh/ssh_profile.dart';
+import '../threads/cached_thread_item_list_reader.dart';
 import '../threads/thread_detail_reader.dart';
+import '../threads/thread_item_cache_store.dart';
 import '../threads/thread_item_list_reader.dart';
 import '../threads/thread_list_reader.dart';
 import '../threads/thread_mutation_runner.dart';
@@ -63,6 +65,7 @@ class CodexSessionStateController extends ChangeNotifier {
         const TimerReconnectDelayScheduler(),
     bool autoReconnect = true,
     AgentSnapshotReader? snapshotReader,
+    ThreadItemCacheStore? threadItemCacheStore,
     List<SessionHeartbeatChannel> heartbeatChannels = const [],
     SessionHeartbeatScheduler heartbeatScheduler =
         const TimerSessionHeartbeatScheduler(),
@@ -71,6 +74,7 @@ class CodexSessionStateController extends ChangeNotifier {
        _reconnectDelayScheduler = reconnectDelayScheduler,
        _autoReconnect = autoReconnect,
        _snapshotReader = snapshotReader,
+       _threadItemCacheStore = threadItemCacheStore,
        _heartbeatChannels = List.unmodifiable(heartbeatChannels),
        _heartbeatScheduler = heartbeatScheduler;
 
@@ -79,6 +83,7 @@ class CodexSessionStateController extends ChangeNotifier {
   final ReconnectDelayScheduler _reconnectDelayScheduler;
   final bool _autoReconnect;
   final AgentSnapshotReader? _snapshotReader;
+  final ThreadItemCacheStore? _threadItemCacheStore;
   final List<SessionHeartbeatChannel> _heartbeatChannels;
   final SessionHeartbeatScheduler _heartbeatScheduler;
   final ApprovalStateController approvalController;
@@ -112,8 +117,22 @@ class CodexSessionStateController extends ChangeNotifier {
   ThreadTurnListReader? get threadTurnListReader =>
       _connection?.threadTurnListReader;
 
-  ThreadItemListReader? get threadItemListReader =>
-      _connection?.threadItemListReader;
+  ThreadItemListReader? get threadItemListReader {
+    final reader = _connection?.threadItemListReader;
+    if (reader == null) {
+      return null;
+    }
+    final cacheStore = _threadItemCacheStore;
+    final profile = _profile;
+    if (cacheStore == null || profile == null) {
+      return reader;
+    }
+    return CachedThreadItemListReader(
+      profileId: _threadItemCacheProfileId(profile),
+      remoteReader: reader,
+      cacheStore: cacheStore,
+    );
+  }
 
   CodexConfigSnapshotReader? get configSnapshotReader =>
       _connection?.configSnapshotReader;
@@ -659,4 +678,16 @@ class CodexSessionStateController extends ChangeNotifier {
     _error = error;
     notifyListeners();
   }
+}
+
+String _threadItemCacheProfileId(SshProfile profile) {
+  final explicitId = profile.id.trim();
+  if (explicitId.isNotEmpty && explicitId != 'manual') {
+    return explicitId;
+  }
+  return sshProfileId(
+    host: profile.host,
+    port: profile.port,
+    username: profile.username,
+  );
 }

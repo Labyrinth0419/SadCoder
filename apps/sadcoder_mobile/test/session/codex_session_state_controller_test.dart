@@ -49,6 +49,7 @@ import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_proxy_connector.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
+import 'package:sadcoder_mobile/src/threads/thread_item_cache_store.dart';
 import 'package:sadcoder_mobile/src/threads/thread_item_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
@@ -108,6 +109,41 @@ void main() {
     expect(controller.threadReviewRunner, isNotNull);
     expect(connector.connectedProfiles, [_profile]);
     expect(approvalController.canRespond, true);
+  });
+
+  test('thread item reader caches pages per connected profile', () async {
+    final approvalController = ApprovalStateController();
+    final store = _RecordingThreadItemCacheStore();
+    final connector = _FakeSessionStarter(
+      threadItemListReaders: [
+        _FakeThreadItemListReader(
+          page: ThreadItemsPage(
+            items: [_item('item_1')],
+            nextCursor: 'older',
+            backwardsCursor: 'newer',
+          ),
+        ),
+      ],
+    );
+    final controller = CodexSessionStateController(
+      connector: connector,
+      approvalController: approvalController,
+      threadItemCacheStore: store,
+    );
+    addTearDown(controller.dispose);
+    addTearDown(approvalController.dispose);
+
+    await controller.connect(_profile);
+    final page = await controller.threadItemListReader!.listItems(
+      threadId: 'thr_1',
+    );
+
+    expect(page.items.single.id, 'item_1');
+    final snapshot = store.snapshots['local::thr_1'];
+    expect(snapshot, isNotNull);
+    expect(snapshot!.items.single.id, 'item_1');
+    expect(snapshot.nextCursor, 'older');
+    expect(snapshot.backwardsCursor, 'newer');
   });
 
   test('connect backfills pending approvals from agent snapshot', () async {
@@ -959,16 +995,19 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     List<Object?>? connectOutcomes,
     List<Object?>? pingOutcomes,
     List<ThreadListReader>? threadListReaders,
+    List<ThreadItemListReader>? threadItemListReaders,
     List<AgentSnapshotReader?>? agentSnapshotReaders,
   }) : connectOutcomes = connectOutcomes ?? const [],
        pingOutcomes = pingOutcomes ?? const [],
        threadListReaders = threadListReaders ?? const [],
+       threadItemListReaders = threadItemListReaders ?? const [],
        agentSnapshotReaders = agentSnapshotReaders ?? const [];
 
   final bool failConnect;
   final List<Object?> connectOutcomes;
   final List<Object?> pingOutcomes;
   final List<ThreadListReader> threadListReaders;
+  final List<ThreadItemListReader> threadItemListReaders;
   final List<AgentSnapshotReader?> agentSnapshotReaders;
   final connectedProfiles = <SshProfile>[];
   final connections = <_FakeConnectionRecord>[];
@@ -1022,7 +1061,9 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
           : const _FakeThreadListReader(),
       threadDetailReader: const _FakeThreadDetailReader(),
       threadTurnListReader: const _NoopThreadTurnListReader(),
-      threadItemListReader: const _NoopThreadItemListReader(),
+      threadItemListReader: connectionIndex < threadItemListReaders.length
+          ? threadItemListReaders[connectionIndex]
+          : const _NoopThreadItemListReader(),
       configSnapshotReader: const _FakeConfigSnapshotReader(),
       accountSnapshotReader: const _FakeAccountSnapshotReader(),
       accountLogoutRunner: const _FakeAccountLogoutRunner(),
@@ -1445,6 +1486,52 @@ class _NoopThreadItemListReader implements ThreadItemListReader {
   }) async {
     return const ThreadItemsPage(items: []);
   }
+}
+
+class _FakeThreadItemListReader implements ThreadItemListReader {
+  const _FakeThreadItemListReader({required this.page});
+
+  final ThreadItemsPage page;
+
+  @override
+  Future<ThreadItemsPage> listItems({
+    required String threadId,
+    String? turnId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+  }) async {
+    return page;
+  }
+}
+
+class _RecordingThreadItemCacheStore implements ThreadItemCacheStore {
+  final snapshots = <String, ThreadItemCacheSnapshot>{};
+
+  @override
+  Future<ThreadItemCacheSnapshot?> loadThreadItems({
+    required String profileId,
+    required String threadId,
+  }) async {
+    return snapshots['$profileId::$threadId'];
+  }
+
+  @override
+  Future<void> saveThreadItems({
+    required String profileId,
+    required String threadId,
+    required ThreadItemCacheSnapshot snapshot,
+  }) async {
+    snapshots['$profileId::$threadId'] = snapshot;
+  }
+}
+
+ThreadItemSummary _item(String id) {
+  return ThreadItemSummary.fromJson({
+    'id': id,
+    'type': 'agentMessage',
+    'text': 'Item $id',
+  });
 }
 
 class _FakeTurnRunner implements TurnRunner {
