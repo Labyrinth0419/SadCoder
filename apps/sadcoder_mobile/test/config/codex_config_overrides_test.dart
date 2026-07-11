@@ -149,4 +149,28 @@ void main() {
       'serviceTier': 'flex',
     });
   });
+
+  test('thread settings update params can clear blank override fields', () {
+    const overrides = CodexConfigOverrides(
+      model: '',
+      effort: ' ',
+      summary: '',
+      approvalPolicy: '',
+      permissionProfile: '',
+      cwd: '',
+      personality: '',
+      serviceTier: '',
+    );
+
+    expect(overrides.toThreadSettingsUpdateParams(includeClears: true), {
+      'model': null,
+      'effort': null,
+      'summary': null,
+      'approvalPolicy': null,
+      'permissions': null,
+      'cwd': null,
+      'personality': null,
+      'serviceTier': null,
+    });
+  });
 }

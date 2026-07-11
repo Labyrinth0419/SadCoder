@@ -335,6 +335,35 @@ void main() {
     });
   });
 
+  test(
+    'updateThreadSettings clears blank fields with nullable wire values',
+    () async {
+      final requests = <JsonRpcRequest>[];
+      final transport = MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        return {};
+      });
+
+      final client = CodexAppServerClient(transport);
+      await client.updateThreadSettings(
+        threadId: 'thr_1',
+        overrides: const CodexConfigOverrides(
+          model: 'gpt-5.4',
+          cwd: '',
+          serviceTier: '',
+        ),
+      );
+
+      expect(requests.single.method, 'thread/settings/update');
+      expect(requests.single.params, {
+        'threadId': 'thr_1',
+        'model': 'gpt-5.4',
+        'cwd': null,
+        'serviceTier': null,
+      });
+    },
+  );
+
   test('runThreadShellCommand calls thread/shellCommand', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {

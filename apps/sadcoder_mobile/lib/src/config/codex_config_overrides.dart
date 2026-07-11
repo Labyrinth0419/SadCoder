@@ -80,8 +80,35 @@ class CodexConfigOverrides {
     };
   }
 
-  Map<String, Object?> toThreadSettingsUpdateParams() {
-    return toTurnStartParams();
+  Map<String, Object?> toThreadSettingsUpdateParams({
+    bool includeClears = false,
+  }) {
+    final collaborationModeJson = collaborationMode?.toJson();
+    final hasCollaborationMode = collaborationModeJson != null;
+    return {
+      if (!hasCollaborationMode &&
+          _shouldIncludeUpdateString(model, includeClears))
+        'model': _updateStringValue(model),
+      if (!hasCollaborationMode &&
+          _shouldIncludeUpdateString(effort, includeClears))
+        'effort': _updateStringValue(effort),
+      if (_shouldIncludeUpdateString(summary, includeClears))
+        'summary': _updateStringValue(summary),
+      if (_shouldIncludeUpdateObject(approvalPolicy, includeClears))
+        'approvalPolicy': _updateObjectValue(approvalPolicy),
+      if (_shouldIncludeUpdateString(permissionProfile, includeClears))
+        'permissions': _updateStringValue(permissionProfile),
+      if (!_hasText(permissionProfile) &&
+          _shouldIncludeUpdateMap(sandboxPolicy, includeClears))
+        'sandboxPolicy': _updateMapValue(sandboxPolicy),
+      if (_shouldIncludeUpdateString(cwd, includeClears))
+        'cwd': _updateStringValue(cwd),
+      if (_shouldIncludeUpdateString(personality, includeClears))
+        'personality': _updateStringValue(personality),
+      if (_shouldIncludeUpdateString(serviceTier, includeClears))
+        'serviceTier': _updateStringValue(serviceTier),
+      if (hasCollaborationMode) 'collaborationMode': collaborationModeJson,
+    };
   }
 }
 
@@ -229,6 +256,54 @@ bool _hasObjectOverride(Object? value) {
 }
 
 bool _hasMap(Map<String, Object?>? value) => value != null && value.isNotEmpty;
+
+bool _shouldIncludeUpdateString(String? value, bool includeClears) {
+  if (value == null) {
+    return false;
+  }
+  return value.trim().isNotEmpty || includeClears;
+}
+
+String? _updateStringValue(String? value) {
+  if (!_hasText(value)) {
+    return null;
+  }
+  return value!.trim();
+}
+
+bool _shouldIncludeUpdateObject(Object? value, bool includeClears) {
+  if (value == null) {
+    return false;
+  }
+  return switch (value) {
+    String text => text.trim().isNotEmpty || includeClears,
+    Map map => map.isNotEmpty || includeClears,
+    _ => true,
+  };
+}
+
+Object? _updateObjectValue(Object? value) {
+  return switch (value) {
+    null => null,
+    String text => _hasText(text) ? text.trim() : null,
+    Map map => map.isEmpty ? null : value,
+    _ => value,
+  };
+}
+
+bool _shouldIncludeUpdateMap(Map<String, Object?>? value, bool includeClears) {
+  if (value == null) {
+    return false;
+  }
+  return value.isNotEmpty || includeClears;
+}
+
+Map<String, Object?>? _updateMapValue(Map<String, Object?>? value) {
+  if (value == null || value.isEmpty) {
+    return null;
+  }
+  return value;
+}
 
 CodexCollaborationModeOverride? _collaborationModeOverride(
   CodexCollaborationModeOverride? lowerPriority,

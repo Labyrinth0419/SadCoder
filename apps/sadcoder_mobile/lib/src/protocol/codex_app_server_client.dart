@@ -473,7 +473,7 @@ class CodexAppServerClient {
   }) {
     return _request('thread/settings/update', {
       'threadId': threadId,
-      ...overrides.toThreadSettingsUpdateParams(),
+      ...overrides.toThreadSettingsUpdateParams(includeClears: true),
     });
   }
 
