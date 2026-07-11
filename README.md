@@ -63,6 +63,48 @@ readiness and notes the stdio fallback path. `start --json` and `proxy` use the
 actual selected backend, falling back to stdio if the service cannot be
 prepared.
 
+## Codex Command Configuration
+
+The mobile app only needs to find `sadcoder-agent`. The agent is the source of
+truth for the Codex executable, runtime PATH, and version diagnostics.
+
+The agent resolves Codex in this order:
+
+1. `--codex-path` / `--codex-program`
+2. `SADCODER_CODEX_PATH`
+3. persisted agent config
+4. inherited `PATH`
+5. automatic discovery of common install locations
+
+Persist a Codex command with:
+
+```powershell
+sadcoder-agent configure --codex /home/me/.nvm/versions/node/v24.14.1/bin/codex --path-prepend /home/me/.nvm/versions/node/v24.14.1/bin --json
+```
+
+Wrapper arguments can be persisted with repeated `--codex-arg` flags:
+
+```powershell
+sadcoder-agent configure --codex /opt/codex-wrapper --codex-arg --profile --codex-arg mobile --path-prepend /opt/node/bin --json
+```
+
+The resulting config is structured, for example:
+
+```json
+{
+  "codex": {
+    "program": "/home/me/.nvm/versions/node/v24.14.1/bin/codex",
+    "args": [],
+    "pathPrepend": ["/home/me/.nvm/versions/node/v24.14.1/bin"]
+  }
+}
+```
+
+Config file locations:
+
+- Linux/macOS: `~/.config/sadcoder/agent.json`
+- Windows: `%LOCALAPPDATA%\SadCoder\agent.json`
+
 `slash-commands --json` prints the shared slash command manifest from
 `resources/slash_commands_manifest.json`. The manifest tracks the current Codex
 TUI slash command surface, aliases, availability rules, implementation phase,
