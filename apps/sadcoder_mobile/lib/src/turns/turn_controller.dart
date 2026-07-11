@@ -241,6 +241,24 @@ class TurnController extends ChangeNotifier {
     return true;
   }
 
+  bool restoreCachedActiveThread(String? threadId) {
+    final trimmedThreadId = threadId?.trim();
+    if (trimmedThreadId == null || trimmedThreadId.isEmpty) {
+      return false;
+    }
+    if (_activeThreadId == trimmedThreadId &&
+        _activeTurnId == null &&
+        _status == TurnControllerStatus.idle) {
+      return false;
+    }
+    _generation++;
+    _activeThreadId = trimmedThreadId;
+    _activeTurnId = null;
+    _lastTurn = null;
+    _setState(status: TurnControllerStatus.idle, error: null);
+    return true;
+  }
+
   bool trackStartedTurn({required String threadId, required TurnSummary turn}) {
     final trimmedThreadId = threadId.trim();
     if (trimmedThreadId.isEmpty || turn.id.isEmpty || isBusy) {

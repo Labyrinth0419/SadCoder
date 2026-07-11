@@ -72,6 +72,20 @@ void main() {
     expect(controller.detail, isNull);
     expect(controller.error, isNull);
   });
+
+  test('restoreCachedDetail restores loaded cached thread detail', () {
+    final controller = ThreadDetailController(readerProvider: () => null);
+    addTearDown(controller.dispose);
+    final detail = _detail('thr_cached');
+
+    controller.restoreCachedDetail(detail.thread);
+
+    expect(controller.status, ThreadDetailStatus.loaded);
+    expect(controller.selectedThreadId, 'thr_cached');
+    expect(controller.detail?.thread.id, 'thr_cached');
+    expect(controller.detail?.thread.turns.single.id, 'turn_1');
+    expect(controller.error, isNull);
+  });
 }
 
 ThreadDetail _detail(String threadId) {

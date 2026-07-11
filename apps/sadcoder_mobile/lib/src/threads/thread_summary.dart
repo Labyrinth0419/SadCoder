@@ -152,6 +152,15 @@ class ThreadSummary {
     return json;
   }
 
+  Map<String, Object?> toDetailJson() {
+    final json = <String, Object?>{
+      ...Map<String, Object?>.from(raw),
+      ...toSummaryJson(),
+    };
+    json['turns'] = [for (final turn in turns) turn.toJson()];
+    return json;
+  }
+
   final String id;
   final String sessionId;
   final String preview;
@@ -251,6 +260,29 @@ class TurnSummary {
   final int? durationMs;
   final String? errorMessage;
   final Map<String, Object?> raw;
+
+  Map<String, Object?> toJson() {
+    final json = <String, Object?>{
+      ...Map<String, Object?>.from(raw),
+      'id': id,
+      'status': status,
+      'itemsView': itemsView,
+      'items': [for (final item in items) Map<String, Object?>.from(item.raw)],
+    };
+    if (startedAtSeconds != null) {
+      json['startedAt'] = startedAtSeconds;
+    }
+    if (completedAtSeconds != null) {
+      json['completedAt'] = completedAtSeconds;
+    }
+    if (durationMs != null) {
+      json['durationMs'] = durationMs;
+    }
+    if (errorMessage != null) {
+      json['error'] = {'message': errorMessage};
+    }
+    return json;
+  }
 }
 
 class ThreadItemSummary {

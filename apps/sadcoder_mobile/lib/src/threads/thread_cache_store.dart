@@ -14,6 +14,7 @@ class ThreadCacheSnapshot {
   const ThreadCacheSnapshot({
     required this.threads,
     this.selectedThreadId,
+    this.selectedThread,
     required this.cachedAtMs,
   });
 
@@ -24,25 +25,34 @@ class ThreadCacheSnapshot {
           return thread.id.trim().isNotEmpty;
         })
         .toList(growable: false);
+    final selectedThread = _threadFromJson(json['selectedThread']);
 
     return ThreadCacheSnapshot(
       threads: List.unmodifiable(threads),
-      selectedThreadId: _stringValue(json['selectedThreadId']),
+      selectedThreadId:
+          _stringValue(json['selectedThreadId']) ?? selectedThread?.id,
+      selectedThread: selectedThread,
       cachedAtMs: _intValue(json['cachedAtMs']) ?? 0,
     );
   }
 
   final List<ThreadSummary> threads;
   final String? selectedThreadId;
+  final ThreadSummary? selectedThread;
   final int cachedAtMs;
 
-  bool get isEmpty => threads.isEmpty && selectedThreadId == null;
+  bool get isEmpty =>
+      threads.isEmpty && selectedThreadId == null && selectedThread == null;
 
   Map<String, Object?> toJson() {
+    final selectedThread = this.selectedThread;
     return {
       'schemaVersion': 1,
       'threads': [for (final thread in threads) thread.toSummaryJson()],
-      if (selectedThreadId != null) 'selectedThreadId': selectedThreadId,
+      if (selectedThreadId != null || selectedThread != null)
+        'selectedThreadId': selectedThread?.id ?? selectedThreadId,
+      if (selectedThread != null)
+        'selectedThread': selectedThread.toDetailJson(),
       'cachedAtMs': cachedAtMs,
     };
   }
@@ -127,6 +137,15 @@ String? _stringValue(Object? value) {
     return value.trim();
   }
   return null;
+}
+
+ThreadSummary? _threadFromJson(Object? value) {
+  final json = _stringKeyedMap(value);
+  if (json.isEmpty) {
+    return null;
+  }
+  final thread = ThreadSummary.fromJson(json);
+  return thread.id.trim().isEmpty ? null : thread;
 }
 
 int? _intValue(Object? value) {

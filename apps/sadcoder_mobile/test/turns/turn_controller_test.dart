@@ -208,6 +208,22 @@ void main() {
     expect(controller.activeTurnId, 'turn_1');
   });
 
+  test('restoreCachedActiveThread restores local context only', () {
+    final runner = _FakeTurnRunner();
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+
+    final restored = controller.restoreCachedActiveThread(' thr_cached ');
+
+    expect(restored, true);
+    expect(runner.startedThreads, 0);
+    expect(runner.resumedThreads, isEmpty);
+    expect(controller.status, TurnControllerStatus.idle);
+    expect(controller.activeThreadId, 'thr_cached');
+    expect(controller.activeTurnId, isNull);
+    expect(controller.lastTurn, isNull);
+  });
+
   test('trackStartedTurn records an externally started active turn', () {
     final runner = _FakeTurnRunner();
     final controller = TurnController(runnerProvider: () => runner);

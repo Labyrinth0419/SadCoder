@@ -985,7 +985,7 @@ MVP 可以简化为底部导航：
 - 已统一主机显示原则：保存主机和会话状态优先显示用户别名；无别名时显示 host/IP，不把 `user@host:port` 当作默认标题。
 - 已落地 Chat 顶栏主机选择器、Settings 二级菜单、candy/lagoon/ember palette 和斜杠命令高级可见性开关。
 - 已落地 per-host pending approval 聚合与动作路由：Approvals 页面展示所有已连接 host 的待审批项，审批响应回到所属 host 的 `ApprovalStateController`。
-- 已落地 per-host thread summary cache 持久化/恢复：每个 host 的最近线程列表与选中 threadId 通过 `ThreadCacheStore` 独立保存，重建 host UI state 时优先恢复缓存，再由远端权威 thread/detail 读取刷新。
+- 已落地 per-host thread summary/detail cache 持久化/恢复：每个 host 的最近线程列表、选中 threadId 和当前 thread detail 通过 `ThreadCacheStore` 独立保存，重建 host UI state 时优先恢复缓存，再由远端权威 thread/detail 读取刷新。
 - 后续仍需完整多 host 同时连接架构：`HostSessionManager` 已作为基础控制器引入，但更完整的 thread detail/item cache、断线事件回填和后台保活策略还需要继续拆分完善。
 
 ### 9.8 i18n

@@ -57,6 +57,33 @@ void main() {
     expect(idThread.title, 'thr_2');
   });
 
+  test('ThreadSummary detail JSON includes current backfilled turns', () {
+    final thread =
+        ThreadSummary.fromJson({
+          'id': 'thr_1',
+          'sessionId': 'sess_1',
+          'preview': 'Fix bug',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 1,
+          'turns': <Object?>[],
+        }).copyWith(
+          turns: [
+            TurnSummary.fromJson({
+              'id': 'turn_backfilled',
+              'status': 'completed',
+              'items': <Object?>[],
+            }),
+          ],
+        );
+
+    final json = thread.toDetailJson();
+    final turns = json['turns'] as List<Object?>;
+
+    expect((turns.single as Map<String, Object?>)['id'], 'turn_backfilled');
+  });
+
   test('ThreadDetail parses turns from thread/read response', () {
     final detail = ThreadDetail.fromJson({
       'thread': {

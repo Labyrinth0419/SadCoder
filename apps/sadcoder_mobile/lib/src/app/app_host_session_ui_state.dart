@@ -8,6 +8,7 @@ import '../session/codex_session_state_controller.dart';
 import '../threads/thread_cache_store.dart';
 import '../threads/thread_detail_controller.dart';
 import '../threads/thread_list_controller.dart';
+import '../threads/thread_summary.dart';
 import '../turns/turn_controller.dart';
 import 'app_session_recovery_coordinator.dart';
 
@@ -121,11 +122,17 @@ class AppHostSessionUiState {
           snapshot.threads.isNotEmpty) {
         threadListController.restoreCached(snapshot.threads);
       }
-      if (threadDetailController.selectedThreadId == null &&
-          snapshot.selectedThreadId != null) {
-        threadDetailController.restoreCachedSelection(
-          snapshot.selectedThreadId,
-        );
+      if (threadDetailController.selectedThreadId == null) {
+        final selectedThread = snapshot.selectedThread;
+        if (selectedThread != null) {
+          threadDetailController.restoreCachedDetail(selectedThread);
+          turnController.restoreCachedActiveThread(selectedThread.id);
+        } else if (snapshot.selectedThreadId != null) {
+          threadDetailController.restoreCachedSelection(
+            snapshot.selectedThreadId,
+          );
+          turnController.restoreCachedActiveThread(snapshot.selectedThreadId);
+        }
       }
     } finally {
       _restoringCachedThreadState = false;
@@ -184,11 +191,15 @@ class AppHostSessionUiState {
         threadListController.archived) {
       return;
     }
+    final selectedThread = _cachedSelectedThread();
+    final selectedThreadId =
+        _normalized(selectedThread?.id) ??
+        _normalized(threadDetailController.selectedThreadId) ??
+        _normalized(turnController.activeThreadId);
     final snapshot = ThreadCacheSnapshot(
       threads: threadListController.threads,
-      selectedThreadId:
-          _normalized(turnController.activeThreadId) ??
-          _normalized(threadDetailController.selectedThreadId),
+      selectedThreadId: selectedThreadId,
+      selectedThread: selectedThread,
       cachedAtMs: DateTime.now().millisecondsSinceEpoch,
     );
     if (snapshot.isEmpty) {
@@ -201,6 +212,20 @@ class AppHostSessionUiState {
     } on Object {
       // Thread cache is best-effort reconnect state; the live UI stays usable.
     }
+  }
+
+  ThreadSummary? _cachedSelectedThread() {
+    if (threadDetailController.status != ThreadDetailStatus.loaded) {
+      return null;
+    }
+    final detail = threadDetailController.detail;
+    final selectedThreadId = _normalized(
+      threadDetailController.selectedThreadId,
+    );
+    if (detail == null || selectedThreadId == null) {
+      return null;
+    }
+    return detail.thread.id == selectedThreadId ? detail.thread : null;
   }
 }
 

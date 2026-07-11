@@ -14,6 +14,7 @@ void main() {
       'profile-a': ThreadCacheSnapshot(
         threads: [_thread('thr_a', 'Host A task')],
         selectedThreadId: 'thr_a',
+        selectedThread: _threadWithTurn('thr_a', 'Host A task'),
         cachedAtMs: 1,
       ),
       'profile-b': ThreadCacheSnapshot(
@@ -29,6 +30,12 @@ void main() {
 
     expect(fixture.state.threadListController.threads.single.id, 'thr_a');
     expect(fixture.state.threadDetailController.selectedThreadId, 'thr_a');
+    expect(fixture.state.threadDetailController.detail?.thread.id, 'thr_a');
+    expect(
+      fixture.state.threadDetailController.detail?.thread.turns.single.id,
+      'turn_thr_a',
+    );
+    expect(fixture.state.turnController.activeThreadId, 'thr_a');
   });
 
   test(
@@ -41,12 +48,16 @@ void main() {
       fixture.state.threadListController.restoreCached([
         _thread('thr_saved', 'Saved task'),
       ]);
-      fixture.state.threadDetailController.restoreCachedSelection('thr_saved');
+      fixture.state.threadDetailController.restoreCachedDetail(
+        _threadWithTurn('thr_saved', 'Saved task'),
+      );
       await Future<void>.delayed(Duration.zero);
 
       final snapshot = store.snapshots['profile-a'];
       expect(snapshot?.threads.single.id, 'thr_saved');
       expect(snapshot?.selectedThreadId, 'thr_saved');
+      expect(snapshot?.selectedThread?.id, 'thr_saved');
+      expect(snapshot?.selectedThread?.turns.single.id, 'turn_thr_saved');
       expect(store.snapshots.keys, ['profile-a']);
     },
   );
@@ -120,5 +131,20 @@ ThreadSummary _thread(String id, String preview) {
     'status': 'idle',
     'cwd': '/repo',
     'updatedAt': 1,
+  });
+}
+
+ThreadSummary _threadWithTurn(String id, String preview) {
+  return ThreadSummary.fromJson({
+    'id': id,
+    'sessionId': 'sess_1',
+    'preview': preview,
+    'ephemeral': false,
+    'status': 'idle',
+    'cwd': '/repo',
+    'updatedAt': 1,
+    'turns': [
+      {'id': 'turn_$id', 'status': 'completed', 'items': <Object?>[]},
+    ],
   });
 }

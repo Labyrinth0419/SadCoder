@@ -7,25 +7,14 @@ void main() {
   test('persists thread summaries per profile without turn payloads', () async {
     SharedPreferences.setMockInitialValues({});
     const store = SharedPreferencesThreadCacheStore();
+    final selectedThread = _threadWithTurn('thr_local', 'Local task');
 
     await store.saveProfileCache(
       'local',
       ThreadCacheSnapshot(
-        threads: [
-          ThreadSummary.fromJson({
-            'id': 'thr_local',
-            'sessionId': 'sess_1',
-            'preview': 'Local task',
-            'ephemeral': false,
-            'status': 'idle',
-            'cwd': '/repo',
-            'updatedAt': 42,
-            'turns': [
-              {'id': 'turn_1', 'status': 'completed', 'items': <Object?>[]},
-            ],
-          }),
-        ],
+        threads: [selectedThread],
         selectedThreadId: 'thr_local',
+        selectedThread: selectedThread,
         cachedAtMs: 123,
       ),
     );
@@ -44,6 +33,8 @@ void main() {
     expect(local?.cachedAtMs, 123);
     expect(local?.threads.single.id, 'thr_local');
     expect(local?.threads.single.turns, isEmpty);
+    expect(local?.selectedThread?.id, 'thr_local');
+    expect(local?.selectedThread?.turns.single.id, 'turn_thr_local');
     expect(remote?.threads.single.id, 'thr_remote');
   });
 
@@ -67,5 +58,20 @@ ThreadSummary _thread(String id, String preview) {
     'status': 'idle',
     'cwd': '/repo',
     'updatedAt': 1,
+  });
+}
+
+ThreadSummary _threadWithTurn(String id, String preview) {
+  return ThreadSummary.fromJson({
+    'id': id,
+    'sessionId': 'sess_1',
+    'preview': preview,
+    'ephemeral': false,
+    'status': 'idle',
+    'cwd': '/repo',
+    'updatedAt': 42,
+    'turns': [
+      {'id': 'turn_$id', 'status': 'completed', 'items': <Object?>[]},
+    ],
   });
 }

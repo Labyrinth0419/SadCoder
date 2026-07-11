@@ -89,6 +89,17 @@ class ThreadDetailController extends ChangeNotifier {
     _setState(status: ThreadDetailStatus.idle, error: null);
   }
 
+  void restoreCachedDetail(ThreadSummary thread) {
+    final threadId = _normalized(thread.id);
+    if (threadId == null) {
+      return;
+    }
+    _generation++;
+    _selectedThreadId = threadId;
+    _detail = ThreadDetail(thread: thread);
+    _setState(status: ThreadDetailStatus.loaded, error: null);
+  }
+
   void _setState({required ThreadDetailStatus status, Object? error}) {
     _status = status;
     _error = error;
