@@ -74,6 +74,7 @@ class AppSessionRecoveryCoordinator {
     }
     try {
       final turns = <TurnSummary>[];
+      final seenTurnIds = <String>{};
       String? cursor;
       for (var pageIndex = 0; pageIndex < _turnBackfillMaxPages; pageIndex++) {
         final page = await turnListReader.listTurns(
@@ -86,7 +87,7 @@ class AppSessionRecoveryCoordinator {
         if (_threadDetailController.selectedThreadId != threadId) {
           return;
         }
-        turns.addAll(page.turns);
+        _appendUniqueTurns(turns, seenTurnIds, page.turns);
         final nextCursor = _normalized(page.nextCursor);
         if (page.turns.isEmpty || nextCursor == null || nextCursor == cursor) {
           break;
@@ -127,6 +128,7 @@ class AppSessionRecoveryCoordinator {
     }
     try {
       final items = <ThreadItemSummary>[];
+      final seenItemIds = <String>{};
       String? cursor;
       for (var pageIndex = 0; pageIndex < _itemBackfillMaxPages; pageIndex++) {
         final page = await itemReader.listItems(
@@ -138,7 +140,7 @@ class AppSessionRecoveryCoordinator {
         if (_threadDetailController.selectedThreadId != threadId) {
           return true;
         }
-        items.addAll(page.items);
+        _appendUniqueItems(items, seenItemIds, page.items);
         final nextCursor = _normalized(page.nextCursor);
         if (page.items.isEmpty || nextCursor == null || nextCursor == cursor) {
           break;
@@ -158,6 +160,34 @@ class AppSessionRecoveryCoordinator {
   String? _threadIdToRecover() {
     return _normalized(_turnController.activeThreadId) ??
         _normalized(_threadDetailController.selectedThreadId);
+  }
+}
+
+void _appendUniqueTurns(
+  List<TurnSummary> target,
+  Set<String> seenIds,
+  List<TurnSummary> turns,
+) {
+  for (final turn in turns) {
+    final id = _normalized(turn.id);
+    if (id != null && !seenIds.add(id)) {
+      continue;
+    }
+    target.add(turn);
+  }
+}
+
+void _appendUniqueItems(
+  List<ThreadItemSummary> target,
+  Set<String> seenIds,
+  List<ThreadItemSummary> items,
+) {
+  for (final item in items) {
+    final id = _normalized(item.id);
+    if (id != null && !seenIds.add(id)) {
+      continue;
+    }
+    target.add(item);
   }
 }
 

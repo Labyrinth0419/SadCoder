@@ -125,6 +125,39 @@ void main() {
     );
   });
 
+  test('deduplicates paged turn backfill by id', () async {
+    final turnListReader = _RecordingThreadTurnListReader.pages([
+      ThreadTurnsPage(
+        turns: [
+          _turn('turn_newest', 'completed', 'newest'),
+          _turn('turn_overlap', 'completed', 'newer overlap'),
+        ],
+        nextCursor: 'older_turns',
+      ),
+      ThreadTurnsPage(
+        turns: [
+          _turn('turn_overlap', 'completed', 'older overlap'),
+          _turn('turn_oldest', 'completed', 'oldest'),
+        ],
+      ),
+    ]);
+    final fixture = _Fixture(threadTurnListReader: turnListReader);
+    addTearDown(fixture.dispose);
+    await fixture.threadDetailController.readThread('thr_selected');
+    fixture.threadDetailReader.clear();
+
+    fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
+    await _flushMicrotasks();
+
+    final turns = fixture.threadDetailController.detail?.turns ?? const [];
+    expect(turns.map((turn) => turn.id), [
+      'turn_oldest',
+      'turn_overlap',
+      'turn_newest',
+    ]);
+    expect(turns[1].items.single.text, 'newer overlap');
+  });
+
   test('backfills thread items when turn list reader is unavailable', () async {
     final itemListReader = _RecordingThreadItemListReader(
       page: ThreadItemsPage(
@@ -191,6 +224,35 @@ void main() {
       'item_1',
       'item_2',
     ]);
+  });
+
+  test('deduplicates paged item backfill by id', () async {
+    final itemListReader = _RecordingThreadItemListReader.pages([
+      ThreadItemsPage(
+        items: [
+          _item('item_1', 'First page', turnId: 'turn_1'),
+          _item('item_overlap', 'Newer overlap', turnId: 'turn_1'),
+        ],
+        nextCursor: 'cursor_2',
+      ),
+      ThreadItemsPage(
+        items: [
+          _item('item_overlap', 'Older overlap', turnId: 'turn_1'),
+          _item('item_2', 'Second page', turnId: 'turn_2'),
+        ],
+      ),
+    ]);
+    final fixture = _Fixture(threadItemListReader: itemListReader);
+    addTearDown(fixture.dispose);
+    await fixture.threadDetailController.readThread('thr_selected');
+    fixture.threadDetailReader.clear();
+
+    fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
+    await _flushMicrotasks();
+
+    final items = fixture.recoveredItems.single.items;
+    expect(items.map((item) => item.id), ['item_1', 'item_overlap', 'item_2']);
+    expect(items[1].text, 'Newer overlap');
   });
 
   test('falls back to full thread read when turns backfill fails', () async {
