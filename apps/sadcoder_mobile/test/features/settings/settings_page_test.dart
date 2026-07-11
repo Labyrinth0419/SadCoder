@@ -123,7 +123,7 @@ void main() {
 
     await _pumpSettings(tester, controller);
 
-    expect(find.textContaining('server default'), findsNWidgets(5));
+    expect(find.textContaining('server default'), findsNWidgets(7));
 
     await tester.enterText(
       find.byKey(const ValueKey('settings-model-override')),
@@ -145,7 +145,15 @@ void main() {
       find.byKey(const ValueKey('settings-service-tier-override')),
       'priority',
     );
-    await tester.drag(find.byType(ListView).last, const Offset(0, -360));
+    await tester.enterText(
+      find.byKey(const ValueKey('settings-approval-policy-override')),
+      'on-request',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('settings-permission-profile-override')),
+      'trusted-workspace',
+    );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -720));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Apply overrides'));
     await tester.pumpAndSettle();
@@ -156,16 +164,18 @@ void main() {
       'cwd': '/repo',
       'personality': 'concise',
       'serviceTier': 'priority',
+      'approvalPolicy': 'on-request',
+      'permissions': 'trusted-workspace',
     });
-    expect(find.textContaining('app default'), findsNWidgets(5));
+    expect(find.textContaining('app default'), findsNWidgets(7));
 
-    await tester.drag(find.byType(ListView).last, const Offset(0, -360));
+    await tester.drag(find.byType(ListView).last, const Offset(0, -720));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Clear overrides'));
     await tester.pumpAndSettle();
 
     expect(controller.layers.appDefault.toTurnStartParams(), isEmpty);
-    expect(find.textContaining('server default'), findsNWidgets(5));
+    expect(find.textContaining('server default'), findsNWidgets(7));
   });
 
   testWidgets('refreshes and renders server config snapshot read-only', (

@@ -1071,6 +1071,8 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
   late final TextEditingController _cwdController;
   late final TextEditingController _personalityController;
   late final TextEditingController _serviceTierController;
+  late final TextEditingController _approvalPolicyController;
+  late final TextEditingController _permissionProfileController;
 
   @override
   void initState() {
@@ -1085,6 +1087,12 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
     _serviceTierController = TextEditingController(
       text: appDefault.serviceTier ?? '',
     );
+    _approvalPolicyController = TextEditingController(
+      text: _stringOverrideValue(appDefault.approvalPolicy) ?? '',
+    );
+    _permissionProfileController = TextEditingController(
+      text: appDefault.permissionProfile ?? '',
+    );
   }
 
   @override
@@ -1094,6 +1102,8 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
     _cwdController.dispose();
     _personalityController.dispose();
     _serviceTierController.dispose();
+    _approvalPolicyController.dispose();
+    _permissionProfileController.dispose();
     super.dispose();
   }
 
@@ -1192,6 +1202,34 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                _SourceLine(
+                  label: l10n.approvalPolicy,
+                  source: widget.controller.sourceFor('approvalPolicy'),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  key: const ValueKey('settings-approval-policy-override'),
+                  controller: _approvalPolicyController,
+                  decoration: InputDecoration(
+                    labelText: l10n.approvalPolicy,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _SourceLine(
+                  label: l10n.permissionProfile,
+                  source: widget.controller.sourceFor('permissionProfile'),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  key: const ValueKey('settings-permission-profile-override'),
+                  controller: _permissionProfileController,
+                  decoration: InputDecoration(
+                    labelText: l10n.permissionProfile,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 OverflowBar(
                   alignment: MainAxisAlignment.end,
                   spacing: 8,
@@ -1225,6 +1263,8 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
         cwd: _cwdController.text,
         personality: _personalityController.text,
         serviceTier: _serviceTierController.text,
+        approvalPolicy: _stringOverrideValue(_approvalPolicyController.text),
+        permissionProfile: _permissionProfileController.text,
       ),
     );
   }
@@ -1235,8 +1275,17 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
     _cwdController.clear();
     _personalityController.clear();
     _serviceTierController.clear();
+    _approvalPolicyController.clear();
+    _permissionProfileController.clear();
     widget.controller.setAppDefault(CodexConfigOverrides.empty);
   }
+}
+
+String? _stringOverrideValue(Object? value) {
+  if (value is String && value.trim().isNotEmpty) {
+    return value.trim();
+  }
+  return null;
 }
 
 class _SourceLine extends StatelessWidget {
