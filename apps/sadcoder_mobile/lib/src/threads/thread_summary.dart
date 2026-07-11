@@ -363,6 +363,47 @@ class ThreadItemSummary {
   final String? activityKind;
   final List<ThreadFileChangeSummary> fileChanges;
   final Map<String, Object?> raw;
+
+  Map<String, Object?> toJson() {
+    final json = <String, Object?>{
+      ...Map<String, Object?>.from(raw),
+      'id': id,
+      'type': type,
+    };
+    _putString(json, 'text', text);
+    _putString(json, 'aggregatedOutput', output);
+    _putString(json, 'command', command);
+    _putString(json, 'cwd', cwd);
+    _putString(json, 'status', status);
+    _putString(json, 'server', server);
+    _putString(json, 'tool', tool);
+    _putString(json, 'senderThreadId', senderThreadId);
+    if (receiverThreadIds.isNotEmpty) {
+      json['receiverThreadIds'] = receiverThreadIds;
+    }
+    _putString(json, 'prompt', prompt);
+    _putString(json, 'model', model);
+    _putString(json, 'reasoningEffort', reasoningEffort);
+    if (agentStates.isNotEmpty) {
+      json['agentsStates'] = {
+        for (final entry in agentStates.entries)
+          entry.key: entry.value.toJson(),
+      };
+    }
+    _putString(json, 'agentThreadId', agentThreadId);
+    _putString(json, 'agentPath', agentPath);
+    _putString(json, 'kind', activityKind);
+    if (exitCode != null) {
+      json['exitCode'] = exitCode;
+    }
+    if (durationMs != null) {
+      json['durationMs'] = durationMs;
+    }
+    if (fileChanges.isNotEmpty) {
+      json['changes'] = [for (final change in fileChanges) change.toJson()];
+    }
+    return json;
+  }
 }
 
 class CollabAgentStateSummary {
@@ -377,6 +418,11 @@ class CollabAgentStateSummary {
 
   final String status;
   final String? message;
+
+  Map<String, Object?> toJson() => {
+    'status': status,
+    if (message != null) 'message': message,
+  };
 }
 
 class ThreadFileChangeSummary {
@@ -400,6 +446,15 @@ class ThreadFileChangeSummary {
   final String kind;
   final String diff;
   final Map<String, Object?> raw;
+
+  Map<String, Object?> toJson() {
+    return {
+      ...Map<String, Object?>.from(raw),
+      'path': path,
+      'kind': kind,
+      'diff': diff,
+    };
+  }
 }
 
 Map<String, Object?> _stringKeyedMap(Object? value) {
@@ -425,6 +480,12 @@ List<Map<String, Object?>> _listOfMaps(Object? value) {
 }
 
 String? _stringValue(Object? value) => value is String ? value : null;
+
+void _putString(Map<String, Object?> json, String key, String? value) {
+  if (value != null) {
+    json[key] = value;
+  }
+}
 
 bool? _boolValue(Object? value) => value is bool ? value : null;
 

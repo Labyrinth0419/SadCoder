@@ -216,6 +216,7 @@ class LocalDataSchema {
       requiresExportRedaction: true,
       columns: [
         LocalDataColumn(name: 'item_id', type: 'TEXT', primaryKey: true),
+        LocalDataColumn(name: 'profile_id', type: 'TEXT', nullable: true),
         LocalDataColumn(name: 'thread_id', type: 'TEXT'),
         LocalDataColumn(name: 'turn_id', type: 'TEXT', nullable: true),
         LocalDataColumn(name: 'item_type', type: 'TEXT'),
@@ -234,6 +235,11 @@ class LocalDataSchema {
         LocalDataColumn(name: 'cached_at_ms', type: 'INTEGER'),
       ],
       indexes: [
+        LocalDataIndex(
+          name: 'idx_item_cache_profile_thread',
+          tableName: 'item_cache',
+          columns: ['profile_id', 'thread_id', 'cached_at_ms'],
+        ),
         LocalDataIndex(
           name: 'idx_item_cache_thread',
           tableName: 'item_cache',

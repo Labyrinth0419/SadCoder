@@ -276,4 +276,29 @@ void main() {
     expect(activity.agentPath, 'agents/build');
     expect(activity.text, 'started agents/build');
   });
+
+  test('ThreadItemSummary JSON includes parsed item fields', () {
+    final item = ThreadItemSummary.fromJson({
+      'id': 'item_cmd',
+      'type': 'commandExecution',
+      'command': 'cargo test',
+      'cwd': '/repo',
+      'status': 'completed',
+      'exitCode': 0,
+      'durationMs': 120,
+      'aggregatedOutput': 'ok',
+    });
+
+    expect(item.toJson(), {
+      'id': 'item_cmd',
+      'type': 'commandExecution',
+      'text': '',
+      'aggregatedOutput': 'ok',
+      'command': 'cargo test',
+      'cwd': '/repo',
+      'status': 'completed',
+      'exitCode': 0,
+      'durationMs': 120,
+    });
+  });
 }

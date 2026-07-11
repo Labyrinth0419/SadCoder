@@ -155,6 +155,13 @@ void main() {
         'ON thread_cache (profile_id, updated_at_ms);',
       ),
     );
+    expect(
+      statements,
+      contains(
+        'CREATE INDEX IF NOT EXISTS idx_item_cache_profile_thread '
+        'ON item_cache (profile_id, thread_id, cached_at_ms);',
+      ),
+    );
     expect(statements.length, greaterThan(LocalDataSchema.tables.length));
   });
 

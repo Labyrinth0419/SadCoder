@@ -1,0 +1,90 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sadcoder_mobile/src/threads/thread_item_cache_store.dart';
+import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
+
+void main() {
+  test('persists thread items per profile and thread', () async {
+    SharedPreferences.setMockInitialValues({});
+    const store = SharedPreferencesThreadItemCacheStore();
+
+    await store.saveThreadItems(
+      profileId: 'local',
+      threadId: 'thr_1',
+      snapshot: ThreadItemCacheSnapshot(
+        threadId: 'thr_1',
+        items: [_item('item_local', 'Local item')],
+        nextCursor: 'older',
+        backwardsCursor: 'newer',
+        cachedAtMs: 123,
+      ),
+    );
+    await store.saveThreadItems(
+      profileId: 'remote',
+      threadId: 'thr_1',
+      snapshot: ThreadItemCacheSnapshot(
+        threadId: 'thr_1',
+        items: [_item('item_remote', 'Remote item')],
+        cachedAtMs: 456,
+      ),
+    );
+
+    final local = await store.loadThreadItems(
+      profileId: 'local',
+      threadId: 'thr_1',
+    );
+    final remote = await store.loadThreadItems(
+      profileId: 'remote',
+      threadId: 'thr_1',
+    );
+
+    expect(local?.items.single.id, 'item_local');
+    expect(local?.items.single.text, 'Local item');
+    expect(local?.nextCursor, 'older');
+    expect(local?.backwardsCursor, 'newer');
+    expect(local?.cachedAtMs, 123);
+    expect(remote?.items.single.id, 'item_remote');
+  });
+
+  test('snapshot from page preserves pagination metadata', () {
+    final snapshot = ThreadItemCacheSnapshot.fromPage(
+      threadId: ' thr_1 ',
+      page: ThreadItemsPage(
+        items: [_item('item_1', 'Recovered')],
+        nextCursor: 'next',
+        backwardsCursor: 'back',
+      ),
+      cachedAtMs: 789,
+    );
+
+    expect(snapshot.threadId, 'thr_1');
+    expect(snapshot.items.single.id, 'item_1');
+    expect(snapshot.nextCursor, 'next');
+    expect(snapshot.backwardsCursor, 'back');
+    expect(snapshot.cachedAtMs, 789);
+  });
+
+  test('ignores missing, malformed, and empty cache payloads', () async {
+    SharedPreferences.setMockInitialValues({
+      'threads.itemCache.v1.bG9jYWwKdGhyXzE=': 'not json',
+    });
+    const store = SharedPreferencesThreadItemCacheStore();
+
+    expect(
+      await store.loadThreadItems(profileId: 'missing', threadId: 'thr_1'),
+      isNull,
+    );
+    expect(
+      await store.loadThreadItems(profileId: 'local', threadId: 'thr_1'),
+      isNull,
+    );
+  });
+}
+
+ThreadItemSummary _item(String id, String text) {
+  return ThreadItemSummary.fromJson({
+    'id': id,
+    'type': 'agentMessage',
+    'text': text,
+  });
+}
