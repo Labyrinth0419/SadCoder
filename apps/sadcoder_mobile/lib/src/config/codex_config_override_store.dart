@@ -73,9 +73,9 @@ class PersistedCodexConfigOverrideController
 
   @override
   void setAppDefault(CodexConfigOverrides overrides) {
-    final previous = layers.appDefault.toTurnStartParams();
+    final previous = _overridesToJson(layers.appDefault);
     super.setAppDefault(overrides);
-    if (!_mapsEqual(previous, layers.appDefault.toTurnStartParams())) {
+    if (!_mapsEqual(previous, _overridesToJson(layers.appDefault))) {
       _persist();
     }
   }
@@ -92,7 +92,30 @@ class PersistedCodexConfigOverrideController
 }
 
 Map<String, Object?> _overridesToJson(CodexConfigOverrides overrides) {
-  return overrides.toTurnStartParams();
+  final json = <String, Object?>{};
+  _putString(json, 'model', overrides.model);
+  _putString(json, 'effort', overrides.effort);
+  _putString(json, 'summary', overrides.summary);
+  if (_hasObjectValue(overrides.approvalPolicy)) {
+    json['approvalPolicy'] = overrides.approvalPolicy;
+  }
+  final permissionProfile = _stringValue(overrides.permissionProfile);
+  if (permissionProfile != null) {
+    json['permissionProfile'] = permissionProfile;
+  } else {
+    final sandboxPolicy = _optionalStringKeyedMap(overrides.sandboxPolicy);
+    if (sandboxPolicy != null) {
+      json['sandboxPolicy'] = sandboxPolicy;
+    }
+  }
+  _putString(json, 'cwd', overrides.cwd);
+  _putString(json, 'personality', overrides.personality);
+  _putString(json, 'serviceTier', overrides.serviceTier);
+  final collaborationMode = overrides.collaborationMode?.toJson();
+  if (collaborationMode != null) {
+    json['collaborationMode'] = collaborationMode;
+  }
+  return json;
 }
 
 CodexConfigOverrides _overridesFromJson(Map<String, Object?> json) {
@@ -102,7 +125,9 @@ CodexConfigOverrides _overridesFromJson(Map<String, Object?> json) {
     summary: _stringValue(json['summary']),
     approvalPolicy: json['approvalPolicy'],
     sandboxPolicy: _optionalStringKeyedMap(json['sandboxPolicy']),
-    permissionProfile: _stringValue(json['permissions']),
+    permissionProfile:
+        _stringValue(json['permissionProfile']) ??
+        _stringValue(json['permissions']),
     cwd: _stringValue(json['cwd']),
     personality: _stringValue(json['personality']),
     serviceTier: _stringValue(json['serviceTier']),
@@ -132,6 +157,13 @@ CodexCollaborationModeOverride? _collaborationModeFromJson(
   );
 }
 
+void _putString(Map<String, Object?> json, String key, String? value) {
+  final normalized = _stringValue(value);
+  if (normalized != null) {
+    json[key] = normalized;
+  }
+}
+
 Map<String, Object?> _stringKeyedMap(Object? value) {
   if (value is Map<String, Object?>) {
     return value;
@@ -152,6 +184,15 @@ String? _stringValue(Object? value) {
     return value.trim();
   }
   return null;
+}
+
+bool _hasObjectValue(Object? value) {
+  return switch (value) {
+    null => false,
+    String text => _stringValue(text) != null,
+    Map map => map.isNotEmpty,
+    _ => true,
+  };
 }
 
 bool _mapsEqual(Map<String, Object?> left, Map<String, Object?> right) {
