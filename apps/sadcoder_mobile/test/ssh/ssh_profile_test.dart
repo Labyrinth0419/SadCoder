@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 
 void main() {
-  test('displayName prefers alias and falls back to endpoint', () {
+  test('displayName prefers alias and falls back to host', () {
     const aliased = SshProfile(
       id: 'dev',
       name: 'Dev box',
@@ -18,6 +18,6 @@ void main() {
     );
 
     expect(aliased.displayName, 'Dev box');
-    expect(unnamed.displayName, 'bob@192.0.2.11:2200');
+    expect(unnamed.displayName, '192.0.2.11');
   });
 }

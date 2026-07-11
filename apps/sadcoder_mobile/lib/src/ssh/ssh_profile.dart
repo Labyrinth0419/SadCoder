@@ -47,7 +47,11 @@ class SshProfile {
 
   String get displayName {
     final trimmedName = name.trim();
-    return trimmedName.isEmpty ? endpoint : trimmedName;
+    if (trimmedName.isNotEmpty) {
+      return trimmedName;
+    }
+    final trimmedHost = host.trim();
+    return trimmedHost.isEmpty ? endpoint : trimmedHost;
   }
 
   SshProfile copyWith({

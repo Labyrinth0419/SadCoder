@@ -979,6 +979,13 @@ MVP 可以简化为底部导航：
 - Appearance 增加更多配色方案：保留系统/light/dark，新增 candy 等高辨识度 palette；代码块、diff、terminal output 仍使用语义色而不是简单整体换色。
 - 多连接架构需要独立设计 `HostSessionManager` 或等价控制器：每个 host 维护独立 `CodexSessionStateController`、thread cache、approval 归属和后台保活策略。
 
+当前实现状态：
+
+- 已落地本地多 SSH profile 保存、按 host 分组折叠、保存项删除、OpenSSH config 导入、私钥文件导入、RSA / ED25519 密钥生成和 public key 复制/导出；私钥走 secure profile store 持久化，不放普通 cache。
+- 已统一主机显示原则：保存主机和会话状态优先显示用户别名；无别名时显示 host/IP，不把 `user@host:port` 当作默认标题。
+- 已落地 Chat 顶栏主机选择器、Settings 二级菜单、candy/lagoon/ember palette 和斜杠命令高级可见性开关。
+- 后续仍需完整多 host 同时连接架构：`HostSessionManager` 已作为基础控制器引入，但 per-host thread cache、approval 归属和后台保活策略还需要继续拆分完善。
+
 ### 9.8 i18n
 
 首版语言：
