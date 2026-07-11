@@ -44,6 +44,7 @@ use codex_command::CodexCommandConfig;
 use codex_command::CodexCommandSource;
 use codex_command::CodexProbeFailure;
 use codex_command::ResolvedCodexCommand;
+use codex_command::agent_config_path;
 use codex_command::persist_codex_command;
 use codex_command::probe_codex_version;
 use codex_command::resolve_codex_command;
@@ -188,7 +189,7 @@ fn main() -> anyhow::Result<()> {
         AgentCommand::Snapshot { json } => print_snapshot(cli.state_path.as_deref(), json),
         AgentCommand::Doctor { json } => {
             let codex = resolve_codex_command(cli_codex_program)?;
-            print_doctor(&codex, json)
+            print_doctor(&codex, cli.backend, cli.state_path.as_deref(), json)
         }
         AgentCommand::Configure {
             codex,
@@ -334,7 +335,9 @@ struct CodexCommandFailureDiagnostic {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct DoctorResult {
+    config_path: String,
     codex: CodexCommandDiagnostic,
+    status: AgentStatus,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -344,17 +347,50 @@ struct ConfigureResult {
     codex: CodexCommandDiagnostic,
 }
 
-fn print_doctor(codex: &ResolvedCodexCommand, json_output: bool) -> anyhow::Result<()> {
-    let result = DoctorResult {
-        codex: collect_codex_diagnostic(codex),
-    };
+fn print_doctor(
+    codex: &ResolvedCodexCommand,
+    backend_mode: BackendMode,
+    state_path: Option<&Path>,
+    json_output: bool,
+) -> anyhow::Result<()> {
+    let state_path = resolve_state_path(state_path);
+    let result = collect_doctor_result(codex, backend_mode, &state_path);
 
     if json_output {
         println!("{}", serde_json::to_string_pretty(&result)?);
     } else {
+        println!("agent config: {}", result.config_path);
         print_codex_diagnostic(&result.codex);
+        println!(
+            "backend: {:?} {:?}",
+            result.status.backend.kind, result.status.backend.state
+        );
+        if let Some(detail) = &result.status.backend.detail {
+            println!("backend detail: {detail}");
+        }
+        println!(
+            "reconnect cache: {} pending approvals, {} recent events ({})",
+            result.status.reconnect_cache.pending_approvals,
+            result.status.reconnect_cache.recent_events,
+            result.status.reconnect_cache.state_path
+        );
+        if let Some(load_error) = &result.status.reconnect_cache.load_error {
+            println!("reconnect cache load error: {load_error}");
+        }
     }
     Ok(())
+}
+
+fn collect_doctor_result(
+    codex: &ResolvedCodexCommand,
+    backend_mode: BackendMode,
+    state_path: &Path,
+) -> DoctorResult {
+    DoctorResult {
+        config_path: agent_config_path().display().to_string(),
+        codex: collect_codex_diagnostic(codex),
+        status: collect_status(codex, backend_mode, state_path),
+    }
 }
 
 fn configure_codex(
@@ -1269,6 +1305,49 @@ mod tests {
         assert_eq!(status.reconnect_cache.pending_approvals, 1);
         assert_eq!(status.reconnect_cache.recent_events, 1);
         assert_eq!(status.reconnect_cache.load_error, None);
+    }
+
+    #[test]
+    fn doctor_result_combines_codex_backend_and_reconnect_diagnostics() {
+        let path = std::env::temp_dir().join(format!(
+            "sadcoder-agent-doctor-test-{}-{}.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        let mut cache = AgentStateCache::empty();
+        cache
+            .snapshot
+            .pending_approvals
+            .push(sadcoder_protocol::AgentCachedServerRequest {
+                id: json!("approval-1"),
+                method: "item/commandExecution/requestApproval".to_string(),
+                params: Some(json!({ "command": "cargo test" })),
+            });
+        cache.save(&path).expect("save cache");
+
+        let codex = missing_configured_codex();
+        let result = collect_doctor_result(&codex, BackendMode::Auto, &path);
+        let encoded = serde_json::to_value(&result).expect("serialize doctor result");
+        let _ = std::fs::remove_file(&path);
+
+        assert!(result.config_path.ends_with("agent.json"));
+        assert!(!result.codex.available);
+        assert_eq!(
+            result.codex.failure.as_ref().map(|failure| failure.kind),
+            Some("configured-path-missing")
+        );
+        assert!(!result.status.codex_available);
+        assert_eq!(result.status.backend.kind, BackendKind::Unknown);
+        assert_eq!(result.status.backend.state, BackendState::Unavailable);
+        assert_eq!(result.status.reconnect_cache.pending_approvals, 1);
+        assert!(encoded["configPath"].is_string());
+        assert_eq!(encoded["codex"]["available"], false);
+        assert_eq!(encoded["status"]["codexAvailable"], false);
+        assert_eq!(encoded["status"]["backend"]["kind"], "unknown");
+        assert_eq!(encoded["status"]["reconnectCache"]["pendingApprovals"], 1);
     }
 
     #[test]

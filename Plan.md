@@ -774,6 +774,8 @@ App 内部存储使用加密数据库；导入/导出时明确提示敏感信息
 11. `model/list`。
 12. `thread/list limit=1`。
 
+`sadcoder-agent doctor --json` 是非破坏性组合诊断入口，应同时返回 Codex 命令解析/版本/失败原因、agent status、backend readiness 和 reconnect cache 状态，便于 App 或用户在不启动新 backend 的情况下排查环境问题。
+
 每一阶段都要给出明确错误和建议，例如：
 
 - Codex 未安装。

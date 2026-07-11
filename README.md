@@ -23,6 +23,7 @@ boundary without reimplementing Codex semantics.
 
 ```powershell
 cargo run -p sadcoder-agent -- status --json
+cargo run -p sadcoder-agent -- doctor --json
 cargo run -p sadcoder-agent -- probe --json
 cargo run -p sadcoder-agent -- slash-commands --json
 ```
@@ -66,6 +67,11 @@ Backend selection is controlled by `--backend` or `SADCODER_BACKEND`:
 readiness and notes the stdio fallback path. `start --json` and `proxy` use the
 actual selected backend, falling back to stdio if the service cannot be
 prepared.
+
+`doctor --json` combines the resolved Codex command diagnostic with the same
+agent status/backend/reconnect-cache shape used by `status --json`, so callers
+can troubleshoot Codex runtime, service readiness, and pending reconnect state
+from one non-mutating command.
 
 ## Codex Command Configuration
 
