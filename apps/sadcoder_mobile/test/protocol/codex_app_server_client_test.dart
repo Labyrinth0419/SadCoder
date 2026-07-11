@@ -597,6 +597,8 @@ void main() {
     await client.agentHello();
     await client.agentHealth();
     await client.agentLogs(tailBytes: 8192);
+    await client.agentSchema();
+    await client.agentSchema(refresh: true, experimental: true);
     await client.agentSnapshot();
     await client.agentSlashCommandsList();
     await client.agentRestartBackend();
@@ -606,6 +608,8 @@ void main() {
       'agent/hello',
       'agent/health',
       'agent/logs',
+      'agent/schema',
+      'agent/schema',
       'agent/snapshot',
       'agent/slashCommands/list',
       'agent/restartBackend',
@@ -615,6 +619,8 @@ void main() {
       null,
       null,
       {'tailBytes': 8192},
+      null,
+      {'refresh': true, 'experimental': true},
       null,
       null,
       null,

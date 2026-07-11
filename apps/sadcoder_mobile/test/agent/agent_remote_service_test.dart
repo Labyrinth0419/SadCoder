@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/agent/agent_codex_configure.dart';
 import 'package:sadcoder_mobile/src/agent/agent_remote_service.dart';
+import 'package:sadcoder_mobile/src/agent/agent_schema.dart';
 import 'package:sadcoder_mobile/src/agent/agent_status.dart';
 import 'package:sadcoder_mobile/src/ssh/remote_command_runner.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
@@ -288,6 +289,94 @@ void main() {
     expect(logs.logs.single.truncated, true);
     expect(logs.logs.single.content, 'last line\n');
     expect(logs.logs.single.error, isNull);
+  });
+
+  test('readSchema parses cached app-server schema diagnostics', () async {
+    final runner = _FakeRunner(
+      result: const RemoteCommandResult(
+        exitCode: 0,
+        stdout: '''
+{
+  "schemaVersion": 1,
+  "source": "codex app-server generate-json-schema",
+  "experimental": true,
+  "generated": true,
+  "cacheDir": "/home/tester/.sadcoder/app-server-schema/json-experimental",
+  "metadataPath": "/home/tester/.sadcoder/app-server-schema/json-experimental/sadcoder-schema-cache.json",
+  "codexVersion": "codex-cli 1.2.3",
+  "generatedAtUnixMs": 9,
+  "bundlePath": "/home/tester/.sadcoder/app-server-schema/json-experimental/codex_app_server_protocol.schemas.json",
+  "fileCount": 2,
+  "totalBytes": 128,
+  "digest": "0123456789abcdef",
+  "files": [
+    {
+      "path": "codex_app_server_protocol.schemas.json",
+      "sizeBytes": 64,
+      "modifiedAtUnixMs": 9,
+      "digest": "abcdef0123456789"
+    }
+  ]
+}
+''',
+        stderr: '',
+      ),
+    );
+    final service = AgentRemoteService(runner);
+
+    final schema = await service.readSchema(
+      _profile,
+      refresh: true,
+      experimental: true,
+    );
+
+    expect(
+      runner.lastCommand,
+      'sadcoder-agent schema --refresh --experimental --json',
+    );
+    expect(runner.lastTimeout, const Duration(seconds: 60));
+    expect(schema, isA<AgentSchemaResult>());
+    expect(schema.experimental, true);
+    expect(schema.generated, true);
+    expect(schema.codexVersion, 'codex-cli 1.2.3');
+    expect(schema.fileCount, 2);
+    expect(schema.totalBytes, 128);
+    expect(schema.digest, '0123456789abcdef');
+    expect(schema.files.single.path, 'codex_app_server_protocol.schemas.json');
+    expect(schema.files.single.sizeBytes, 64);
+  });
+
+  test('readSchema omits refresh flags by default', () async {
+    final runner = _FakeRunner(
+      result: const RemoteCommandResult(
+        exitCode: 0,
+        stdout: '''
+{
+  "schemaVersion": 1,
+  "source": "codex app-server generate-json-schema",
+  "experimental": false,
+  "generated": false,
+  "cacheDir": "/home/tester/.sadcoder/app-server-schema/json",
+  "metadataPath": "/home/tester/.sadcoder/app-server-schema/json/sadcoder-schema-cache.json",
+  "fileCount": 1,
+  "totalBytes": 64,
+  "files": [
+    {
+      "path": "codex_app_server_protocol.schemas.json",
+      "sizeBytes": 64,
+      "digest": "abcdef0123456789"
+    }
+  ]
+}
+''',
+        stderr: '',
+      ),
+    );
+    final service = AgentRemoteService(runner);
+
+    await service.readSchema(_profile);
+
+    expect(runner.lastCommand, 'sadcoder-agent schema --json');
   });
 
   test('configureCodex assembles the agent configure command', () async {

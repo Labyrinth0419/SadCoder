@@ -7,6 +7,7 @@ import '../agent/agent_codex_configure_controller.dart';
 import '../agent/agent_doctor_controller.dart';
 import '../agent/agent_logs_controller.dart';
 import '../agent/agent_remote_service.dart';
+import '../agent/agent_schema_controller.dart';
 import '../appearance/app_appearance_controller.dart';
 import '../approvals/approval_state_controller.dart';
 import '../background/background_connection_policy.dart';
@@ -113,6 +114,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late AgentCodexConfigureController _agentCodexConfigureController;
   late AgentDoctorController _agentDoctorController;
   late AgentLogsController _agentLogsController;
+  late AgentSchemaController _agentSchemaController;
   late McpServerStatusController _mcpServerStatusController;
   late ModelListController _modelListController;
   late PermissionProfileListController _permissionProfileListController;
@@ -316,6 +318,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       readerProvider: () => _defaultAgentRemoteService,
       profileProvider: () => _sessionController.profile,
     );
+    _agentSchemaController = AgentSchemaController(
+      readerProvider: () => _defaultAgentRemoteService,
+      profileProvider: () => _sessionController.profile,
+    );
     _mcpServerStatusController = McpServerStatusController(
       readerProvider: () => _sessionController.mcpServerStatusReader,
     );
@@ -343,6 +349,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _agentCodexConfigureController.dispose();
     _agentDoctorController.dispose();
     _agentLogsController.dispose();
+    _agentSchemaController.dispose();
     _mcpServerStatusController.dispose();
     _modelListController.dispose();
     _permissionProfileListController.dispose();
@@ -462,6 +469,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         agentCodexConfigureController: _agentCodexConfigureController,
         agentDoctorController: _agentDoctorController,
         agentLogsController: _agentLogsController,
+        agentSchemaController: _agentSchemaController,
         diagnosticLogExportController: _diagnosticLogExportController,
       ),
       _ => HostsPage(

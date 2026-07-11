@@ -7,6 +7,8 @@ import '../../agent/agent_doctor.dart';
 import '../../agent/agent_doctor_controller.dart';
 import '../../agent/agent_logs.dart';
 import '../../agent/agent_logs_controller.dart';
+import '../../agent/agent_schema.dart';
+import '../../agent/agent_schema_controller.dart';
 import '../../agent/agent_status.dart';
 import '../../appearance/app_appearance_controller.dart';
 import '../../background/background_connection_policy.dart';
@@ -33,6 +35,7 @@ class SettingsPage extends StatefulWidget {
     this.agentDoctorController,
     this.agentCodexConfigureController,
     this.agentLogsController,
+    this.agentSchemaController,
     this.diagnosticLogExportController,
   });
 
@@ -45,6 +48,7 @@ class SettingsPage extends StatefulWidget {
   final AgentDoctorController? agentDoctorController;
   final AgentCodexConfigureController? agentCodexConfigureController;
   final AgentLogsController? agentLogsController;
+  final AgentSchemaController? agentSchemaController;
   final DiagnosticLogExportController? diagnosticLogExportController;
 
   @override
@@ -203,6 +207,7 @@ class _SettingsPageState extends State<SettingsPage> {
         if (widget.agentDoctorController == null &&
             widget.agentCodexConfigureController == null &&
             widget.agentLogsController == null &&
+            widget.agentSchemaController == null &&
             widget.diagnosticLogExportController == null)
           _SettingsUnavailableCard(
             icon: Icons.article_outlined,
@@ -216,6 +221,8 @@ class _SettingsPageState extends State<SettingsPage> {
               controller: widget.agentCodexConfigureController!,
               doctorController: widget.agentDoctorController,
             ),
+          if (widget.agentSchemaController != null)
+            _AgentSchemaSettingsCard(controller: widget.agentSchemaController!),
           if (widget.agentLogsController != null)
             _AgentLogsSettingsCard(controller: widget.agentLogsController!),
           if (widget.diagnosticLogExportController != null)
@@ -924,6 +931,223 @@ String _backendStateLabel(AppLocalizations l10n, BackendState state) {
     BackendState.notStarted => l10n.backendNotStarted,
     BackendState.unavailable => l10n.backendUnavailable,
   };
+}
+
+class _AgentSchemaSettingsCard extends StatefulWidget {
+  const _AgentSchemaSettingsCard({required this.controller});
+
+  final AgentSchemaController controller;
+
+  @override
+  State<_AgentSchemaSettingsCard> createState() =>
+      _AgentSchemaSettingsCardState();
+}
+
+class _AgentSchemaSettingsCardState extends State<_AgentSchemaSettingsCard> {
+  bool _experimental = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.controller,
+      builder: (context, _) => _AgentSchemaSettingsContent(
+        controller: widget.controller,
+        experimental: _experimental,
+        onExperimentalChanged: (value) => setState(() {
+          _experimental = value;
+        }),
+      ),
+    );
+  }
+}
+
+class _AgentSchemaSettingsContent extends StatelessWidget {
+  const _AgentSchemaSettingsContent({
+    required this.controller,
+    required this.experimental,
+    required this.onExperimentalChanged,
+  });
+
+  final AgentSchemaController controller;
+  final bool experimental;
+  final ValueChanged<bool> onExperimentalChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final isLoading = controller.status == AgentSchemaStatus.loading;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.schema_outlined),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.agentSchema,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(l10n.agentSchemaBody),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  key: const ValueKey('settings-agent-schema-refresh'),
+                  onPressed: isLoading
+                      ? null
+                      : () => controller.refresh(experimental: experimental),
+                  icon: const Icon(Icons.refresh),
+                  tooltip: l10n.refreshAgentSchema,
+                ),
+                IconButton(
+                  key: const ValueKey('settings-agent-schema-regenerate'),
+                  onPressed: isLoading
+                      ? null
+                      : () => controller.refresh(
+                          refreshCache: true,
+                          experimental: experimental,
+                        ),
+                  icon: const Icon(Icons.cached_outlined),
+                  tooltip: l10n.regenerateAgentSchema,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SegmentedButton<bool>(
+                key: const ValueKey('settings-agent-schema-mode'),
+                showSelectedIcon: false,
+                segments: [
+                  ButtonSegment(
+                    value: false,
+                    icon: const Icon(Icons.article_outlined),
+                    label: Text(l10n.agentSchemaStable),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    icon: const Icon(Icons.science_outlined),
+                    label: Text(l10n.agentSchemaExperimental),
+                  ),
+                ],
+                selected: {experimental},
+                onSelectionChanged: isLoading
+                    ? null
+                    : (selection) => onExperimentalChanged(selection.single),
+              ),
+            ),
+            const SizedBox(height: 12),
+            switch (controller.status) {
+              AgentSchemaStatus.idle => Text(l10n.agentSchemaUnavailable),
+              AgentSchemaStatus.loading => const LinearProgressIndicator(),
+              AgentSchemaStatus.failed => Text(
+                controller.error?.toString() ?? l10n.agentSchemaLoadFailed,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              AgentSchemaStatus.loaded when controller.result == null => Text(
+                l10n.agentSchemaUnavailable,
+              ),
+              AgentSchemaStatus.loaded => _LoadedAgentSchema(
+                result: controller.result!,
+              ),
+            },
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadedAgentSchema extends StatelessWidget {
+  const _LoadedAgentSchema({required this.result});
+
+  final AgentSchemaResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final generatedAt = result.generatedAt;
+    final visibleFiles = result.files.take(5).toList(growable: false);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          result.generated ? l10n.agentSchemaGenerated : l10n.agentSchemaCached,
+        ),
+        _SettingsValueLine(
+          label: l10n.agentSchemaMode,
+          value: result.experimental
+              ? l10n.agentSchemaExperimental
+              : l10n.agentSchemaStable,
+        ),
+        _SettingsValueLine(label: l10n.agentSchemaSource, value: result.source),
+        if (result.codexVersion != null)
+          _SettingsValueLine(
+            label: l10n.codexVersion,
+            value: result.codexVersion!,
+          ),
+        _SettingsValueLine(
+          label: l10n.agentSchemaFiles,
+          value: l10n.agentSchemaFilesSummary(
+            result.fileCount,
+            l10n.formatFileSize(result.totalBytes),
+          ),
+        ),
+        if (generatedAt != null)
+          _SettingsValueLine(
+            label: l10n.agentSchemaGeneratedAt,
+            value: l10n.formatDateTime(generatedAt),
+          ),
+        if (result.digest != null)
+          _SettingsValueLine(
+            label: l10n.agentSchemaDigest,
+            value: result.digest!,
+          ),
+        if (result.bundlePath != null)
+          _SettingsValueLine(
+            label: l10n.agentSchemaBundle,
+            value: result.bundlePath!,
+          ),
+        if (result.cacheDir.trim().isNotEmpty)
+          _SettingsValueLine(
+            label: l10n.agentSchemaCache,
+            value: result.cacheDir,
+          ),
+        if (result.metadataPath.trim().isNotEmpty)
+          _SettingsValueLine(
+            label: l10n.agentSchemaMetadata,
+            value: result.metadataPath,
+          ),
+        const SizedBox(height: 8),
+        if (result.files.isEmpty)
+          Text(l10n.agentSchemaEmpty)
+        else ...[
+          for (final file in visibleFiles)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                '${file.path} (${l10n.formatFileSize(file.sizeBytes)})',
+              ),
+            ),
+          if (result.files.length > visibleFiles.length)
+            Text(
+              l10n.agentSchemaMoreFiles(
+                result.files.length - visibleFiles.length,
+              ),
+            ),
+        ],
+      ],
+    );
+  }
 }
 
 class _AgentLogsSettingsCard extends StatelessWidget {

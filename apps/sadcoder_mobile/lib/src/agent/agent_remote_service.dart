@@ -10,6 +10,8 @@ import 'agent_doctor.dart';
 import 'agent_doctor_reader.dart';
 import 'agent_logs.dart';
 import 'agent_logs_reader.dart';
+import 'agent_schema.dart';
+import 'agent_schema_reader.dart';
 import 'agent_snapshot.dart';
 import 'agent_snapshot_reader.dart';
 import 'agent_status.dart';
@@ -29,6 +31,7 @@ class AgentRemoteService
         AgentCodexConfigureRunner,
         AgentDoctorReader,
         AgentLogsReader,
+        AgentSchemaReader,
         AgentSnapshotReader,
         SlashCommandManifestReader {
   const AgentRemoteService(this._runner);
@@ -93,6 +96,26 @@ class AgentRemoteService
       timeout: const Duration(seconds: 20),
     );
     return AgentLogsResult.fromJson(json);
+  }
+
+  @override
+  Future<AgentSchemaResult> readSchema(
+    SshProfile profile, {
+    bool refresh = false,
+    bool experimental = false,
+  }) async {
+    final json = await _readJsonObjectCommand(
+      profile,
+      _buildSchemaCommand(
+        profile,
+        refresh: refresh,
+        experimental: experimental,
+      ),
+      failurePrefix: 'Agent schema',
+      invalidJsonMessage: 'Agent schema did not return a JSON object.',
+      timeout: const Duration(seconds: 60),
+    );
+    return AgentSchemaResult.fromJson(json);
   }
 
   @override
@@ -193,6 +216,21 @@ String _buildLogsCommand(SshProfile profile, {int? tailBytes}) {
       '--tail-bytes',
       tailBytes.toString(),
     ],
+    '--json',
+  ];
+  return parts.join(' ');
+}
+
+String _buildSchemaCommand(
+  SshProfile profile, {
+  required bool refresh,
+  required bool experimental,
+}) {
+  final parts = <String>[
+    profile.agentCommand,
+    'schema',
+    if (refresh) '--refresh',
+    if (experimental) '--experimental',
     '--json',
   ];
   return parts.join(' ');

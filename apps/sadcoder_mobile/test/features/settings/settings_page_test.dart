@@ -12,6 +12,9 @@ import 'package:sadcoder_mobile/src/agent/agent_doctor_reader.dart';
 import 'package:sadcoder_mobile/src/agent/agent_logs.dart';
 import 'package:sadcoder_mobile/src/agent/agent_logs_controller.dart';
 import 'package:sadcoder_mobile/src/agent/agent_logs_reader.dart';
+import 'package:sadcoder_mobile/src/agent/agent_schema.dart';
+import 'package:sadcoder_mobile/src/agent/agent_schema_controller.dart';
+import 'package:sadcoder_mobile/src/agent/agent_schema_reader.dart';
 import 'package:sadcoder_mobile/src/agent/agent_status.dart';
 import 'package:sadcoder_mobile/src/appearance/app_appearance_controller.dart';
 import 'package:sadcoder_mobile/src/background/background_connection_policy.dart';
@@ -752,6 +755,89 @@ void main() {
     expect(find.textContaining('last line'), findsOneWidget);
   });
 
+  testWidgets('refreshes and renders app-server schema diagnostics read-only', (
+    tester,
+  ) async {
+    final overrideController = CodexConfigOverrideController();
+    final schemaReader = _RecordingAgentSchemaReader(
+      result: const AgentSchemaResult(
+        schemaVersion: 1,
+        source: 'codex app-server generate-json-schema',
+        experimental: false,
+        generated: false,
+        cacheDir: '/home/tester/.sadcoder/app-server-schema/json',
+        metadataPath:
+            '/home/tester/.sadcoder/app-server-schema/json/sadcoder-schema-cache.json',
+        codexVersion: 'codex-cli 1.2.3',
+        generatedAtUnixMs: 9,
+        bundlePath:
+            '/home/tester/.sadcoder/app-server-schema/json/codex_app_server_protocol.schemas.json',
+        fileCount: 2,
+        totalBytes: 128,
+        digest: '0123456789abcdef',
+        files: [
+          AgentSchemaFile(
+            path: 'codex_app_server_protocol.schemas.json',
+            sizeBytes: 64,
+            digest: 'abcdef0123456789',
+          ),
+          AgentSchemaFile(
+            path: 'v2/ClientRequest.json',
+            sizeBytes: 64,
+            digest: 'fedcba9876543210',
+          ),
+        ],
+      ),
+    );
+    final schemaController = AgentSchemaController(
+      readerProvider: () => schemaReader,
+      profileProvider: () => _profile,
+    );
+    addTearDown(overrideController.dispose);
+    addTearDown(schemaController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      agentSchemaController: schemaController,
+    );
+    await _openSettingsSection(tester, 'diagnostics');
+
+    expect(find.text('App-server schema'), findsOneWidget);
+    expect(
+      find.text('Connect to a host, then refresh schema diagnostics.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('settings-agent-schema-refresh')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(schemaReader.profiles, [_profile]);
+    expect(schemaReader.refreshValues, [false]);
+    expect(schemaReader.experimentalValues, [false]);
+    expect(find.text('Read existing schema cache.'), findsOneWidget);
+    expect(find.text('Schema mode: Stable'), findsOneWidget);
+    expect(find.text('Codex version: codex-cli 1.2.3'), findsOneWidget);
+    expect(find.text('Schema files: 2 files, 128 B'), findsOneWidget);
+    expect(find.text('Schema digest: 0123456789abcdef'), findsOneWidget);
+    expect(
+      find.text('codex_app_server_protocol.schemas.json (64 B)'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Experimental'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-agent-schema-regenerate')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(schemaReader.refreshValues, [false, true]);
+    expect(schemaReader.experimentalValues, [false, true]);
+  });
+
   testWidgets('confirms before copying diagnostic logs', (tester) async {
     final overrideController = CodexConfigOverrideController();
     final copied = <String>[];
@@ -914,6 +1000,7 @@ Future<void> _pumpSettings(
   AgentDoctorController? agentDoctorController,
   AgentCodexConfigureController? agentCodexConfigureController,
   AgentLogsController? agentLogsController,
+  AgentSchemaController? agentSchemaController,
   DiagnosticLogExportController? diagnosticLogExportController,
 }) {
   return tester.pumpWidget(
@@ -936,6 +1023,7 @@ Future<void> _pumpSettings(
           agentDoctorController: agentDoctorController,
           agentCodexConfigureController: agentCodexConfigureController,
           agentLogsController: agentLogsController,
+          agentSchemaController: agentSchemaController,
           diagnosticLogExportController: diagnosticLogExportController,
         ),
       ),
@@ -1049,6 +1137,27 @@ class _RecordingAgentLogsReader implements AgentLogsReader {
   Future<AgentLogsResult> readLogs(SshProfile profile, {int? tailBytes}) async {
     profiles.add(profile);
     tailBytesValues.add(tailBytes);
+    return result;
+  }
+}
+
+class _RecordingAgentSchemaReader implements AgentSchemaReader {
+  _RecordingAgentSchemaReader({required this.result});
+
+  final AgentSchemaResult result;
+  final List<SshProfile> profiles = [];
+  final List<bool> refreshValues = [];
+  final List<bool> experimentalValues = [];
+
+  @override
+  Future<AgentSchemaResult> readSchema(
+    SshProfile profile, {
+    bool refresh = false,
+    bool experimental = false,
+  }) async {
+    profiles.add(profile);
+    refreshValues.add(refresh);
+    experimentalValues.add(experimental);
     return result;
   }
 }

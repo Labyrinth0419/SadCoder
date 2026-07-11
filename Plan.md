@@ -355,7 +355,7 @@ agent 负责：
 5. `model/list`
 6. `config/read`
 7. `account/read`
-8. 可选：通过 `sadcoder-agent schema --json` 或 `agent/schema` 生成/读取服务器 app-server JSON Schema cache；App 不直接依赖交互式 shell 环境，也不自行执行 `codex`。
+8. 可选：通过 `sadcoder-agent schema --json` 或 `agent/schema` 生成/读取服务器 app-server JSON Schema cache；App 设置诊断页展示缓存模式、Codex 版本、digest、bundle/cache 路径和文件摘要，且不直接依赖交互式 shell 环境，也不自行执行 `codex`。
 
 客户端内置一个“最低支持 Codex 版本”，低于该版本只允许 stdio 调试或提示升级。
 
@@ -647,7 +647,7 @@ Codex CLI 子命令与 App 覆盖方式：
 | `plugin` | `plugin/*` + `marketplace/*` |
 | `app-server daemon` | 不作为生产依赖；SadCoder 使用 `sadcoder-agent service/proxy`，必要时 direct stdio fallback |
 | `doctor` | `sadcoder-agent doctor --json` 结构化诊断；Settings Diagnostics 卡片显示 Codex/backend/reconnect cache 摘要 |
-| `app-server generate-json-schema` | `sadcoder-agent schema --json` / `agent/schema` 统一生成和缓存 schema 摘要，供 App 做版本/能力适配 |
+| `app-server generate-json-schema` | `sadcoder-agent schema --json` / `agent/schema` 统一生成和缓存 schema 摘要；Settings Diagnostics 展示缓存状态、digest 和文件摘要，供 App 做版本/能力适配 |
 | `configure` | `sadcoder-agent configure --json` 结构化持久化 Codex program / args / PATH prepend；Settings Diagnostics 卡片提供保存入口 |
 | `update` | SSH command fallback 或 agent-managed update policy |
 | `sandbox` | 主要通过 permission profile/sandboxPolicy；调试命令走 SSH fallback |
