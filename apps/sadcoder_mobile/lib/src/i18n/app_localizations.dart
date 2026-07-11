@@ -393,6 +393,7 @@ class AppLocalizations {
   String get modelProvider => _text('modelProvider');
   String get effortOverride => _text('effortOverride');
   String get personalityOverride => _text('personalityOverride');
+  String get serviceTierOverride => _text('serviceTierOverride');
   String get collaborationModeOverride => _text('collaborationModeOverride');
   String get approvalPolicy => _text('approvalPolicy');
   String get permissionProfile => _text('permissionProfile');
@@ -1224,6 +1225,7 @@ const _values = <String, Map<String, String>>{
     'modelProvider': 'Model provider',
     'effortOverride': 'Reasoning effort',
     'personalityOverride': 'Personality',
+    'serviceTierOverride': 'Service tier',
     'collaborationModeOverride': 'Collaboration mode',
     'approvalPolicy': 'Approval policy',
     'permissionProfile': 'Permission profile',
@@ -1902,6 +1904,7 @@ const _values = <String, Map<String, String>>{
     'modelProvider': '模型提供方',
     'effortOverride': '推理强度',
     'personalityOverride': '协作风格',
+    'serviceTierOverride': '服务档位',
     'collaborationModeOverride': '协作模式',
     'approvalPolicy': '审批策略',
     'permissionProfile': '权限配置',

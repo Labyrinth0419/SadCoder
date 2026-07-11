@@ -1069,6 +1069,8 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
   late final TextEditingController _modelController;
   late final TextEditingController _effortController;
   late final TextEditingController _cwdController;
+  late final TextEditingController _personalityController;
+  late final TextEditingController _serviceTierController;
 
   @override
   void initState() {
@@ -1077,6 +1079,12 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
     _modelController = TextEditingController(text: appDefault.model ?? '');
     _effortController = TextEditingController(text: appDefault.effort ?? '');
     _cwdController = TextEditingController(text: appDefault.cwd ?? '');
+    _personalityController = TextEditingController(
+      text: appDefault.personality ?? '',
+    );
+    _serviceTierController = TextEditingController(
+      text: appDefault.serviceTier ?? '',
+    );
   }
 
   @override
@@ -1084,6 +1092,8 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
     _modelController.dispose();
     _effortController.dispose();
     _cwdController.dispose();
+    _personalityController.dispose();
+    _serviceTierController.dispose();
     super.dispose();
   }
 
@@ -1154,6 +1164,34 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                _SourceLine(
+                  label: l10n.personalityOverride,
+                  source: widget.controller.sourceFor('personality'),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  key: const ValueKey('settings-personality-override'),
+                  controller: _personalityController,
+                  decoration: InputDecoration(
+                    labelText: l10n.personalityOverride,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _SourceLine(
+                  label: l10n.serviceTierOverride,
+                  source: widget.controller.sourceFor('serviceTier'),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  key: const ValueKey('settings-service-tier-override'),
+                  controller: _serviceTierController,
+                  decoration: InputDecoration(
+                    labelText: l10n.serviceTierOverride,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 OverflowBar(
                   alignment: MainAxisAlignment.end,
                   spacing: 8,
@@ -1185,6 +1223,8 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
         model: _modelController.text,
         effort: _effortController.text,
         cwd: _cwdController.text,
+        personality: _personalityController.text,
+        serviceTier: _serviceTierController.text,
       ),
     );
   }
@@ -1193,6 +1233,8 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
     _modelController.clear();
     _effortController.clear();
     _cwdController.clear();
+    _personalityController.clear();
+    _serviceTierController.clear();
     widget.controller.setAppDefault(CodexConfigOverrides.empty);
   }
 }

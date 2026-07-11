@@ -123,7 +123,7 @@ void main() {
 
     await _pumpSettings(tester, controller);
 
-    expect(find.textContaining('server default'), findsNWidgets(3));
+    expect(find.textContaining('server default'), findsNWidgets(5));
 
     await tester.enterText(
       find.byKey(const ValueKey('settings-model-override')),
@@ -137,6 +137,16 @@ void main() {
       find.byKey(const ValueKey('settings-cwd-override')),
       '/repo',
     );
+    await tester.enterText(
+      find.byKey(const ValueKey('settings-personality-override')),
+      'concise',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('settings-service-tier-override')),
+      'priority',
+    );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -360));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Apply overrides'));
     await tester.pumpAndSettle();
 
@@ -144,14 +154,18 @@ void main() {
       'model': 'gpt-5-codex',
       'effort': 'high',
       'cwd': '/repo',
+      'personality': 'concise',
+      'serviceTier': 'priority',
     });
-    expect(find.textContaining('app default'), findsNWidgets(3));
+    expect(find.textContaining('app default'), findsNWidgets(5));
 
+    await tester.drag(find.byType(ListView).last, const Offset(0, -360));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Clear overrides'));
     await tester.pumpAndSettle();
 
     expect(controller.layers.appDefault.toTurnStartParams(), isEmpty);
-    expect(find.textContaining('server default'), findsNWidgets(3));
+    expect(find.textContaining('server default'), findsNWidgets(5));
   });
 
   testWidgets('refreshes and renders server config snapshot read-only', (
