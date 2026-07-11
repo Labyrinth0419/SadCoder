@@ -796,6 +796,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(mutationRunner.updatedThreadSettings, hasLength(2));
+    expect(
+      mutationRunner.updatedThreadSettings.last.threadId,
+      turnController.activeThreadId,
+    );
+    expect(
+      mutationRunner.updatedThreadSettings.last.overrides
+          .toThreadSettingsUpdateParams(includeClears: true),
+      {'serviceTier': null},
+    );
     expect(overrideController.layers.session.toTurnStartParams(), isEmpty);
     expect(find.textContaining('Model: gpt-5 / app default'), findsWidgets);
   });

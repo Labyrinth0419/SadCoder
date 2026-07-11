@@ -336,7 +336,7 @@ void main() {
   });
 
   test(
-    'updateThreadSettings clears blank fields with nullable wire values',
+    'updateThreadSettings preserves explicit null service tier clears',
     () async {
       final requests = <JsonRpcRequest>[];
       final transport = MemoryJsonRpcTransport((request) {
@@ -358,7 +358,6 @@ void main() {
       expect(requests.single.params, {
         'threadId': 'thr_1',
         'model': 'gpt-5.4',
-        'cwd': null,
         'serviceTier': null,
       });
     },

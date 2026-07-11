@@ -386,6 +386,7 @@ agent 负责：
 - 只有用户进入“服务器 Codex 配置编辑”并明确确认时，才允许调用 `config/value/write` 或 `config/batchWrite` 修改服务器配置。
 - 修改服务器配置前必须展示 diff/摘要，并提示这会影响服务器上所有 Codex 客户端，而不只是 SadCoder。
 - App 必须提供“清除本次覆盖”“清除会话覆盖”“恢复服务器默认配置”的入口。
+- `thread/settings/update` 的清理语义必须按字段处理：当前上游只有 `serviceTier` 这种 double-option 字段能用显式 `null` 清除；普通 `Option<T>` 字段的 `null` 与省略等价，不能被 App 当作“恢复服务器默认”。对这些字段，App 需要发送已知 baseline 值、保留为本地覆盖语义，或等待上游提供显式清除能力。
 
 典型覆盖项：
 
@@ -1059,6 +1060,7 @@ MVP 可以简化为底部导航：
 - 验证未设置覆盖时，`thread/start` / `turn/start` 不发送覆盖字段，沿用服务器 Codex 配置。
 - 验证本次 turn、本会话、App 默认覆盖的优先级正确。
 - 验证普通覆盖不会调用 `config/value/write` 或 `config/batchWrite`。
+- 验证清除会话覆盖时只对上游支持显式清除的字段发送 `null`，例如 `serviceTier`；普通 `Option<T>` 字段不得用 `null` 伪装成恢复服务器默认。
 - 验证当前 Codex 斜杠命令 manifest 覆盖 `/model`、`/ide`、`/permissions`、`/keymap`、`/vim`、`/setup-default-sandbox`、`/sandbox-add-read-dir`、`/experimental`、`/approve`、`/memories`、`/skills`、`/import`、`/hooks`、`/review`、`/rename`、`/new`、`/archive`、`/delete`、`/resume`、`/fork`、`/app`、`/init`、`/compact`、`/plan`、`/goal`、`/agent`、`/side`、`/btw`、`/copy`、`/raw`、`/diff`、`/mention`、`/status`、`/usage`、`/debug-config`、`/title`、`/statusline`、`/theme`、`/pets`、`/mcp`、`/apps`、`/plugins`、`/logout`、`/quit`、`/exit`、`/feedback`、`/rollout`、`/ps`、`/stop`、`/clear`、`/personality`、`/test-approval`、`/subagents`、`/debug-m-drop`、`/debug-m-update`。
 - 验证别名 `/clean -> /stop`、`/pet -> /pets`、`/approve -> AutoReview`、`/subagents -> MultiAgents`。
 - 验证 active turn 中不可用的斜杠命令被禁用，不会触发隐式 `turn/interrupt`。

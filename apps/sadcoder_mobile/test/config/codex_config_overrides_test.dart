@@ -150,7 +150,7 @@ void main() {
     });
   });
 
-  test('thread settings update params can clear blank override fields', () {
+  test('thread settings update params only clears supported blank fields', () {
     const overrides = CodexConfigOverrides(
       model: '',
       effort: ' ',
@@ -163,14 +163,34 @@ void main() {
     );
 
     expect(overrides.toThreadSettingsUpdateParams(includeClears: true), {
-      'model': null,
-      'effort': null,
-      'summary': null,
-      'approvalPolicy': null,
-      'permissions': null,
-      'cwd': null,
-      'personality': null,
       'serviceTier': null,
     });
   });
+
+  test(
+    'remote clearing overrides only include explicit service tier clear',
+    () {
+      const overrides = CodexConfigOverrides(
+        model: 'gpt-5-codex',
+        effort: 'high',
+        summary: 'detailed',
+        approvalPolicy: 'on-request',
+        permissionProfile: ':workspace',
+        cwd: '/repo',
+        personality: 'pragmatic',
+        serviceTier: 'priority',
+        collaborationMode: CodexCollaborationModeOverride(
+          mode: 'plan',
+          model: 'gpt-5-codex',
+        ),
+      );
+
+      expect(
+        overrides.toRemoteClearingOverrides().toThreadSettingsUpdateParams(
+          includeClears: true,
+        ),
+        {'serviceTier': null},
+      );
+    },
+  );
 }

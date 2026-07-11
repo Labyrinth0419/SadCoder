@@ -29,7 +29,7 @@ class SessionOverrideControls extends StatelessWidget {
   }
 }
 
-class _SessionOverrideBar extends StatelessWidget {
+class _SessionOverrideBar extends StatefulWidget {
   const _SessionOverrideBar({
     required this.controller,
     this.onApplySessionOverrides,
@@ -40,8 +40,16 @@ class _SessionOverrideBar extends StatelessWidget {
   onApplySessionOverrides;
 
   @override
+  State<_SessionOverrideBar> createState() => _SessionOverrideBarState();
+}
+
+class _SessionOverrideBarState extends State<_SessionOverrideBar> {
+  bool _isClearing = false;
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final controller = widget.controller;
     final layers = controller.layers;
     final sessionDefault = layers.appDefault.merge(layers.session);
     final hasSessionOverrides = layers.session.toTurnStartParams().isNotEmpty;
@@ -133,7 +141,7 @@ class _SessionOverrideBar extends StatelessWidget {
             ),
             IconButton(
               key: const ValueKey('chat-session-overrides-clear'),
-              onPressed: hasSessionOverrides ? controller.clearSession : null,
+              onPressed: hasSessionOverrides && !_isClearing ? _clear : null,
               icon: const Icon(Icons.restore),
               tooltip: l10n.clearSessionOverrides,
             ),
@@ -158,9 +166,32 @@ class _SessionOverrideBar extends StatelessWidget {
       isScrollControlled: true,
       builder: (context) => _SessionOverrideSheet(
         controller: controller,
-        onApplySessionOverrides: onApplySessionOverrides,
+        onApplySessionOverrides: widget.onApplySessionOverrides,
       ),
     );
+  }
+
+  Future<void> _clear() async {
+    final clearingOverrides = widget.controller.layers.session
+        .toRemoteClearingOverrides();
+    setState(() => _isClearing = true);
+    try {
+      await _applyRemoteClearingOverrides(
+        clearingOverrides,
+        widget.onApplySessionOverrides,
+      );
+      widget.controller.clearSession();
+      if (!mounted) {
+        return;
+      }
+      setState(() => _isClearing = false);
+    } on Object catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _isClearing = false);
+      _showThreadSettingsUpdateFailure(context, error);
+    }
   }
 
   CodexConfigOverrideSource _sessionSourceFor(
@@ -292,7 +323,7 @@ class _SessionOverrideSheetState extends State<_SessionOverrideSheet> {
               children: [
                 TextButton.icon(
                   key: const ValueKey('chat-session-overrides-sheet-clear'),
-                  onPressed: _clear,
+                  onPressed: _isApplying ? null : _clear,
                   icon: const Icon(Icons.restore),
                   label: Text(l10n.clearSessionOverrides),
                 ),
@@ -342,8 +373,47 @@ class _SessionOverrideSheetState extends State<_SessionOverrideSheet> {
     }
   }
 
-  void _clear() {
-    widget.controller.clearSession();
-    Navigator.of(context).pop();
+  Future<void> _clear() async {
+    final clearingOverrides = widget.controller.layers.session
+        .toRemoteClearingOverrides();
+    setState(() => _isApplying = true);
+    try {
+      await _applyRemoteClearingOverrides(
+        clearingOverrides,
+        widget.onApplySessionOverrides,
+      );
+      widget.controller.clearSession();
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop();
+    } on Object catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _isApplying = false);
+      _showThreadSettingsUpdateFailure(context, error);
+    }
   }
+}
+
+Future<void> _applyRemoteClearingOverrides(
+  CodexConfigOverrides clearingOverrides,
+  Future<void> Function(CodexConfigOverrides overrides)? applyToSession,
+) async {
+  if (applyToSession == null ||
+      clearingOverrides
+          .toThreadSettingsUpdateParams(includeClears: true)
+          .isEmpty) {
+    return;
+  }
+  await applyToSession(clearingOverrides);
+}
+
+void _showThreadSettingsUpdateFailure(BuildContext context, Object error) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('${context.l10n.threadSettingsUpdateFailed}: $error'),
+    ),
+  );
 }

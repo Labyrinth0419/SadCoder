@@ -85,30 +85,36 @@ class CodexConfigOverrides {
   }) {
     final collaborationModeJson = collaborationMode?.toJson();
     final hasCollaborationMode = collaborationModeJson != null;
+    // app-server currently preserves explicit null only for double-option
+    // serviceTier. Plain Option fields treat null the same as omission.
     return {
       if (!hasCollaborationMode &&
-          _shouldIncludeUpdateString(model, includeClears))
+          _shouldIncludeUpdateString(model, includeClears: false))
         'model': _updateStringValue(model),
       if (!hasCollaborationMode &&
-          _shouldIncludeUpdateString(effort, includeClears))
+          _shouldIncludeUpdateString(effort, includeClears: false))
         'effort': _updateStringValue(effort),
-      if (_shouldIncludeUpdateString(summary, includeClears))
+      if (_shouldIncludeUpdateString(summary, includeClears: false))
         'summary': _updateStringValue(summary),
-      if (_shouldIncludeUpdateObject(approvalPolicy, includeClears))
+      if (_shouldIncludeUpdateObject(approvalPolicy, includeClears: false))
         'approvalPolicy': _updateObjectValue(approvalPolicy),
-      if (_shouldIncludeUpdateString(permissionProfile, includeClears))
+      if (_shouldIncludeUpdateString(permissionProfile, includeClears: false))
         'permissions': _updateStringValue(permissionProfile),
       if (!_hasText(permissionProfile) &&
-          _shouldIncludeUpdateMap(sandboxPolicy, includeClears))
+          _shouldIncludeUpdateMap(sandboxPolicy, includeClears: false))
         'sandboxPolicy': _updateMapValue(sandboxPolicy),
-      if (_shouldIncludeUpdateString(cwd, includeClears))
+      if (_shouldIncludeUpdateString(cwd, includeClears: false))
         'cwd': _updateStringValue(cwd),
-      if (_shouldIncludeUpdateString(personality, includeClears))
+      if (_shouldIncludeUpdateString(personality, includeClears: false))
         'personality': _updateStringValue(personality),
-      if (_shouldIncludeUpdateString(serviceTier, includeClears))
+      if (_shouldIncludeUpdateString(serviceTier, includeClears: includeClears))
         'serviceTier': _updateStringValue(serviceTier),
       if (hasCollaborationMode) 'collaborationMode': collaborationModeJson,
     };
+  }
+
+  CodexConfigOverrides toRemoteClearingOverrides() {
+    return CodexConfigOverrides(serviceTier: _hasText(serviceTier) ? '' : null);
   }
 }
 
@@ -257,7 +263,7 @@ bool _hasObjectOverride(Object? value) {
 
 bool _hasMap(Map<String, Object?>? value) => value != null && value.isNotEmpty;
 
-bool _shouldIncludeUpdateString(String? value, bool includeClears) {
+bool _shouldIncludeUpdateString(String? value, {required bool includeClears}) {
   if (value == null) {
     return false;
   }
@@ -271,7 +277,7 @@ String? _updateStringValue(String? value) {
   return value!.trim();
 }
 
-bool _shouldIncludeUpdateObject(Object? value, bool includeClears) {
+bool _shouldIncludeUpdateObject(Object? value, {required bool includeClears}) {
   if (value == null) {
     return false;
   }
@@ -291,7 +297,10 @@ Object? _updateObjectValue(Object? value) {
   };
 }
 
-bool _shouldIncludeUpdateMap(Map<String, Object?>? value, bool includeClears) {
+bool _shouldIncludeUpdateMap(
+  Map<String, Object?>? value, {
+  required bool includeClears,
+}) {
   if (value == null) {
     return false;
   }
