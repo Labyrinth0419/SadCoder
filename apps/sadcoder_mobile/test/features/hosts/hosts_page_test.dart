@@ -795,6 +795,8 @@ secret-key-material
     expect(find.text('Prod'), findsWidgets);
     expect(find.text('srv.dev:22'), findsNothing);
     expect(find.text('prod.dev:2200'), findsNothing);
+    expect(find.textContaining('alice@srv.dev:22'), findsNothing);
+    expect(find.textContaining('root@prod.dev:2200'), findsNothing);
     expect(
       find.byKey(const ValueKey('saved-host-profile-alice@srv.dev:22')),
       findsOneWidget,
@@ -804,6 +806,9 @@ secret-key-material
       findsOneWidget,
     );
     expect(find.text('Dev Bob'), findsOneWidget);
+    expect(find.text('alice | Password'), findsOneWidget);
+    expect(find.text('bob | Private key'), findsOneWidget);
+    expect(find.text('root | Password'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('saved-host-status-alice@srv.dev:22')),
       findsOneWidget,
@@ -843,6 +848,27 @@ secret-key-material
       'bob',
     );
     expect(find.byKey(const ValueKey('private-key-field')), findsOneWidget);
+  });
+
+  testWidgets('saved SSH profiles without aliases display the host only', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    const profile = SshProfile(
+      id: 'alice@192.0.2.10:22',
+      name: '',
+      host: '192.0.2.10',
+      username: 'alice',
+    );
+    final store = _FakeProfileStore(initialProfiles: [profile]);
+
+    await _pumpHostsPage(tester, runner, profileStore: store);
+    await tester.pumpAndSettle();
+
+    expect(find.text('192.0.2.10'), findsWidgets);
+    expect(find.text('1 profiles'), findsOneWidget);
+    expect(find.text('alice | Password'), findsOneWidget);
+    expect(find.textContaining('alice@192.0.2.10:22'), findsNothing);
   });
 
   testWidgets('deletes a saved SSH profile after confirmation', (tester) async {

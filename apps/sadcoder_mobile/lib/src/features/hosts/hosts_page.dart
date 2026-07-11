@@ -850,7 +850,12 @@ Map<String, List<SshProfile>> _groupProfilesByHost(List<SshProfile> profiles) {
 }
 
 String _profileTitle(SshProfile profile) {
-  return profile.displayName;
+  final alias = profile.name.trim();
+  if (alias.isNotEmpty && alias != profile.host.trim()) {
+    return alias;
+  }
+  final host = profile.host.trim();
+  return host.isEmpty ? profile.displayName : host;
 }
 
 String _hostGroupTitle(List<SshProfile> profiles, String fallback) {
@@ -862,11 +867,18 @@ String _hostGroupTitle(List<SshProfile> profiles, String fallback) {
     }
   }
   if (aliases.isEmpty) {
-    return fallback;
+    final host = profiles.isEmpty ? '' : profiles.first.host.trim();
+    return host.isEmpty ? fallback : host;
   }
   final visibleAliases = aliases.take(2).join(', ');
   final remaining = aliases.length - 2;
   return remaining > 0 ? '$visibleAliases, +$remaining' : visibleAliases;
+}
+
+String _profileSubtitle(AppLocalizations l10n, SshProfile profile) {
+  final username = profile.username.trim();
+  final auth = _authLabel(l10n, profile.authType);
+  return username.isEmpty ? auth : '$username | $auth';
 }
 
 String _safeFileNamePart(String value) {
@@ -929,9 +941,7 @@ class _SavedHostProfilesPanel extends StatelessWidget {
               initiallyExpanded: !collapsedHosts.contains(entry.key),
               leading: const Icon(Icons.dns_outlined),
               title: Text(_hostGroupTitle(entry.value, entry.key)),
-              subtitle: Text(
-                '${entry.key} | ${l10n.savedHostProfileCount(entry.value.length)}',
-              ),
+              subtitle: Text(l10n.savedHostProfileCount(entry.value.length)),
               onExpansionChanged: (expanded) =>
                   onHostExpandedChanged(entry.key, expanded),
               children: [
@@ -971,9 +981,7 @@ class _SavedHostProfileTile extends StatelessWidget {
       key: ValueKey('saved-host-profile-${profile.id}'),
       leading: Icon(_authIcon(profile.authType)),
       title: Text(_profileTitle(profile)),
-      subtitle: Text(
-        '${profile.endpoint} | ${_authLabel(l10n, profile.authType)}',
-      ),
+      subtitle: Text(_profileSubtitle(l10n, profile)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
