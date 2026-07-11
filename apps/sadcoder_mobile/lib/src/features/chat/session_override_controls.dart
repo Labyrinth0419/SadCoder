@@ -119,6 +119,12 @@ class _SessionOverrideBar extends StatelessWidget {
                           value: sessionDefault.personality,
                           source: _sessionSourceFor(layers, 'personality'),
                         ),
+                        const SizedBox(width: 8),
+                        ConfigOverrideSourceChip(
+                          label: l10n.serviceTierOverride,
+                          value: sessionDefault.serviceTier,
+                          source: _sessionSourceFor(layers, 'serviceTier'),
+                        ),
                       ],
                     ),
                   ),
@@ -204,6 +210,8 @@ class _SessionOverrideSheetState extends State<_SessionOverrideSheet> {
   late final TextEditingController _modelController;
   late final TextEditingController _effortController;
   late final TextEditingController _cwdController;
+  late final TextEditingController _personalityController;
+  late final TextEditingController _serviceTierController;
   bool _isApplying = false;
 
   @override
@@ -213,6 +221,12 @@ class _SessionOverrideSheetState extends State<_SessionOverrideSheet> {
     _modelController = TextEditingController(text: session.model ?? '');
     _effortController = TextEditingController(text: session.effort ?? '');
     _cwdController = TextEditingController(text: session.cwd ?? '');
+    _personalityController = TextEditingController(
+      text: session.personality ?? '',
+    );
+    _serviceTierController = TextEditingController(
+      text: session.serviceTier ?? '',
+    );
   }
 
   @override
@@ -220,6 +234,8 @@ class _SessionOverrideSheetState extends State<_SessionOverrideSheet> {
     _modelController.dispose();
     _effortController.dispose();
     _cwdController.dispose();
+    _personalityController.dispose();
+    _serviceTierController.dispose();
     super.dispose();
   }
 
@@ -228,7 +244,7 @@ class _SessionOverrideSheetState extends State<_SessionOverrideSheet> {
     final l10n = context.l10n;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -255,6 +271,18 @@ class _SessionOverrideSheetState extends State<_SessionOverrideSheet> {
               keyValue: 'chat-session-cwd-override',
               controller: _cwdController,
               label: l10n.cwdOverride,
+            ),
+            const SizedBox(height: 12),
+            ConfigOverrideField(
+              keyValue: 'chat-session-personality-override',
+              controller: _personalityController,
+              label: l10n.personalityOverride,
+            ),
+            const SizedBox(height: 12),
+            ConfigOverrideField(
+              keyValue: 'chat-session-service-tier-override',
+              controller: _serviceTierController,
+              label: l10n.serviceTierOverride,
             ),
             const SizedBox(height: 16),
             OverflowBar(
@@ -287,6 +315,8 @@ class _SessionOverrideSheetState extends State<_SessionOverrideSheet> {
       model: _modelController.text,
       effort: _effortController.text,
       cwd: _cwdController.text,
+      personality: _personalityController.text,
+      serviceTier: _serviceTierController.text,
     );
     setState(() => _isApplying = true);
     try {

@@ -637,6 +637,18 @@ void main() {
       find.byKey(const ValueKey('chat-turn-cwd-override')),
       '/repo',
     );
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-turn-personality-override')),
+      'concise',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-turn-service-tier-override')),
+      'priority',
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('chat-turn-overrides-apply')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('chat-turn-overrides-apply')));
     await tester.pumpAndSettle();
 
@@ -657,6 +669,8 @@ void main() {
       'model': 'gpt-5-codex',
       'effort': 'high',
       'cwd': '/repo',
+      'personality': 'concise',
+      'serviceTier': 'priority',
     });
     expect(overrideController.layers.turn.toTurnStartParams(), isEmpty);
     expect(find.textContaining('Model: gpt-5 / app default'), findsWidgets);
@@ -719,6 +733,18 @@ void main() {
       find.byKey(const ValueKey('chat-session-cwd-override')),
       '/repo',
     );
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-session-personality-override')),
+      'pragmatic',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-session-service-tier-override')),
+      'priority',
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('chat-session-overrides-apply')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey('chat-session-overrides-apply')),
     );
@@ -731,7 +757,12 @@ void main() {
     expect(
       mutationRunner.updatedThreadSettings.single.overrides
           .toThreadSettingsUpdateParams(),
-      {'model': 'gpt-5-codex', 'cwd': '/repo'},
+      {
+        'model': 'gpt-5-codex',
+        'cwd': '/repo',
+        'personality': 'pragmatic',
+        'serviceTier': 'priority',
+      },
     );
     expect(
       find.textContaining('Model: gpt-5-codex / session override'),
@@ -750,10 +781,14 @@ void main() {
       'model': 'gpt-5-codex',
       'effort': 'medium',
       'cwd': '/repo',
+      'personality': 'pragmatic',
+      'serviceTier': 'priority',
     });
     expect(overrideController.layers.session.toTurnStartParams(), {
       'model': 'gpt-5-codex',
       'cwd': '/repo',
+      'personality': 'pragmatic',
+      'serviceTier': 'priority',
     });
 
     await tester.tap(

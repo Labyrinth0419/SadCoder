@@ -102,6 +102,12 @@ class _TurnOverrideBar extends StatelessWidget {
                           value: controller.layers.resolve().personality,
                           source: controller.sourceFor('personality'),
                         ),
+                        const SizedBox(width: 8),
+                        ConfigOverrideSourceChip(
+                          label: l10n.serviceTierOverride,
+                          value: controller.layers.resolve().serviceTier,
+                          source: controller.sourceFor('serviceTier'),
+                        ),
                       ],
                     ),
                   ),
@@ -151,6 +157,8 @@ class _TurnOverrideSheetState extends State<_TurnOverrideSheet> {
   late final TextEditingController _modelController;
   late final TextEditingController _effortController;
   late final TextEditingController _cwdController;
+  late final TextEditingController _personalityController;
+  late final TextEditingController _serviceTierController;
 
   @override
   void initState() {
@@ -159,6 +167,12 @@ class _TurnOverrideSheetState extends State<_TurnOverrideSheet> {
     _modelController = TextEditingController(text: turn.model ?? '');
     _effortController = TextEditingController(text: turn.effort ?? '');
     _cwdController = TextEditingController(text: turn.cwd ?? '');
+    _personalityController = TextEditingController(
+      text: turn.personality ?? '',
+    );
+    _serviceTierController = TextEditingController(
+      text: turn.serviceTier ?? '',
+    );
   }
 
   @override
@@ -166,6 +180,8 @@ class _TurnOverrideSheetState extends State<_TurnOverrideSheet> {
     _modelController.dispose();
     _effortController.dispose();
     _cwdController.dispose();
+    _personalityController.dispose();
+    _serviceTierController.dispose();
     super.dispose();
   }
 
@@ -174,7 +190,7 @@ class _TurnOverrideSheetState extends State<_TurnOverrideSheet> {
     final l10n = context.l10n;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -201,6 +217,18 @@ class _TurnOverrideSheetState extends State<_TurnOverrideSheet> {
               keyValue: 'chat-turn-cwd-override',
               controller: _cwdController,
               label: l10n.cwdOverride,
+            ),
+            const SizedBox(height: 12),
+            ConfigOverrideField(
+              keyValue: 'chat-turn-personality-override',
+              controller: _personalityController,
+              label: l10n.personalityOverride,
+            ),
+            const SizedBox(height: 12),
+            ConfigOverrideField(
+              keyValue: 'chat-turn-service-tier-override',
+              controller: _serviceTierController,
+              label: l10n.serviceTierOverride,
             ),
             const SizedBox(height: 16),
             OverflowBar(
@@ -234,6 +262,8 @@ class _TurnOverrideSheetState extends State<_TurnOverrideSheet> {
         model: _modelController.text,
         effort: _effortController.text,
         cwd: _cwdController.text,
+        personality: _personalityController.text,
+        serviceTier: _serviceTierController.text,
       ),
     );
     Navigator.of(context).pop();
