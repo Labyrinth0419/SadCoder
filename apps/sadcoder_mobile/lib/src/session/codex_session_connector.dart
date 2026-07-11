@@ -280,6 +280,13 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
   }
 
   String _backendNotReadyMessage(AgentStatus status) {
+    if (!status.codexAvailable) {
+      final failure = status.codexFailure?.message.trim();
+      if (failure != null && failure.isNotEmpty) {
+        return 'Codex is unavailable: $failure';
+      }
+      return 'Codex is unavailable: ${status.codexPath}';
+    }
     final detail = status.backendDetail;
     if (detail == null || detail.trim().isEmpty) {
       return 'Codex backend is ${status.backendState.name}';

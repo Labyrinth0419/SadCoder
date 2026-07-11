@@ -177,7 +177,16 @@ void main() {
       statusReader: const _FakeStatusReader(_unavailableStatus),
     );
 
-    await expectLater(connector.connect(_profile), throwsA(isA<StateError>()));
+    await expectLater(
+      connector.connect(_profile),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('Codex is unavailable: runtime-not-found: node 12'),
+        ),
+      ),
+    );
 
     expect(proxyConnector.connectCount, 0);
     expect(proxyConnector.methods, isEmpty);
@@ -219,6 +228,7 @@ const _unavailableStatus = AgentStatus(
   platformArch: 'x86_64',
   codexPath: 'codex',
   codexAvailable: false,
+  codexFailure: AgentCodexFailure(kind: 'runtime-not-found', detail: 'node 12'),
   backendKind: BackendKind.unknown,
   backendState: BackendState.unavailable,
   backendDetail: 'codex missing',
