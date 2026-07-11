@@ -3,6 +3,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
+import 'package:sadcoder_mobile/src/agent/agent_codex_configure.dart';
+import 'package:sadcoder_mobile/src/agent/agent_codex_configure_controller.dart';
+import 'package:sadcoder_mobile/src/agent/agent_codex_configure_runner.dart';
 import 'package:sadcoder_mobile/src/agent/agent_doctor.dart';
 import 'package:sadcoder_mobile/src/agent/agent_doctor_controller.dart';
 import 'package:sadcoder_mobile/src/agent/agent_doctor_reader.dart';
@@ -556,6 +559,140 @@ void main() {
     );
   });
 
+  testWidgets('configures persistent agent Codex launch settings', (
+    tester,
+  ) async {
+    final overrideController = CodexConfigOverrideController();
+    final doctorReader = _RecordingAgentDoctorReader(
+      result: const AgentDoctorResult(
+        configPath: '/home/tester/.config/sadcoder/agent.json',
+        codex: AgentCodexCommandDiagnostic(
+          program: '/home/tester/.nvm/versions/node/v24/bin/codex',
+          args: ['--profile', 'mobile'],
+          pathPrepend: ['/home/tester/.nvm/versions/node/v24/bin'],
+          source: 'config',
+          available: true,
+          version: 'codex-cli 0.143.0',
+        ),
+        status: AgentStatus(
+          agentVersion: '0.2.0',
+          platformOs: 'linux',
+          platformArch: 'x86_64',
+          codexPath: '/home/tester/.nvm/versions/node/v24/bin/codex',
+          codexAvailable: true,
+          codexVersion: 'codex-cli 0.143.0',
+          backendKind: BackendKind.sadcoderAgentService,
+          backendState: BackendState.ready,
+        ),
+      ),
+    );
+    final doctorController = AgentDoctorController(
+      readerProvider: () => doctorReader,
+      profileProvider: () => _profile,
+    );
+    final configureRunner = _RecordingAgentCodexConfigureRunner(
+      result: const AgentCodexConfigureResult(
+        configPath: '/home/tester/.config/sadcoder/agent.json',
+        codex: AgentCodexCommandDiagnostic(
+          program: '/home/tester/.nvm/versions/node/v24/bin/codex',
+          args: ['--profile', 'mobile'],
+          pathPrepend: ['/home/tester/.nvm/versions/node/v24/bin'],
+          source: 'config',
+          available: true,
+          version: 'codex-cli 0.143.0',
+        ),
+      ),
+    );
+    final configureController = AgentCodexConfigureController(
+      runnerProvider: () => configureRunner,
+      profileProvider: () => _profile,
+    );
+    addTearDown(overrideController.dispose);
+    addTearDown(doctorController.dispose);
+    addTearDown(configureController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      agentDoctorController: doctorController,
+      agentCodexConfigureController: configureController,
+    );
+    await _openSettingsSection(tester, 'diagnostics');
+
+    expect(
+      find.byKey(const ValueKey('settings-agent-codex-configure-fill-doctor')),
+      findsNothing,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('settings-agent-doctor-refresh')),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('settings-agent-codex-configure-fill-doctor')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-agent-codex-configure-fill-doctor')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const ValueKey('settings-agent-codex-program')),
+          )
+          .controller
+          ?.text,
+      '/home/tester/.nvm/versions/node/v24/bin/codex',
+    );
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const ValueKey('settings-agent-codex-args')),
+          )
+          .controller
+          ?.text,
+      '--profile\nmobile',
+    );
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const ValueKey('settings-agent-codex-path-prepend')),
+          )
+          .controller
+          ?.text,
+      '/home/tester/.nvm/versions/node/v24/bin',
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-agent-codex-configure-save')),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-agent-codex-configure-save')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(configureRunner.profiles, [_profile]);
+    expect(
+      configureRunner.requests.single.program,
+      '/home/tester/.nvm/versions/node/v24/bin/codex',
+    );
+    expect(configureRunner.requests.single.args, ['--profile', 'mobile']);
+    expect(configureRunner.requests.single.pathPrepend, [
+      '/home/tester/.nvm/versions/node/v24/bin',
+    ]);
+    expect(doctorReader.profiles, [_profile, _profile]);
+    expect(
+      find.text('Agent config: /home/tester/.config/sadcoder/agent.json'),
+      findsWidgets,
+    );
+    expect(find.text('Codex version: codex-cli 0.143.0'), findsWidgets);
+  });
+
   testWidgets('confirms before copying diagnostic logs', (tester) async {
     final overrideController = CodexConfigOverrideController();
     final copied = <String>[];
@@ -716,6 +853,7 @@ Future<void> _pumpSettings(
   ModelListController? modelListController,
   BackgroundConnectionPreferences? backgroundConnectionPreferences,
   AgentDoctorController? agentDoctorController,
+  AgentCodexConfigureController? agentCodexConfigureController,
   DiagnosticLogExportController? diagnosticLogExportController,
 }) {
   return tester.pumpWidget(
@@ -736,6 +874,7 @@ Future<void> _pumpSettings(
           modelListController: modelListController,
           backgroundConnectionPreferences: backgroundConnectionPreferences,
           agentDoctorController: agentDoctorController,
+          agentCodexConfigureController: agentCodexConfigureController,
           diagnosticLogExportController: diagnosticLogExportController,
         ),
       ),
@@ -834,6 +973,24 @@ class _RecordingAgentDoctorReader implements AgentDoctorReader {
   @override
   Future<AgentDoctorResult> readDoctor(SshProfile profile) async {
     profiles.add(profile);
+    return result;
+  }
+}
+
+class _RecordingAgentCodexConfigureRunner implements AgentCodexConfigureRunner {
+  _RecordingAgentCodexConfigureRunner({required this.result});
+
+  final AgentCodexConfigureResult result;
+  final List<SshProfile> profiles = [];
+  final List<AgentCodexConfigureRequest> requests = [];
+
+  @override
+  Future<AgentCodexConfigureResult> configureCodex(
+    SshProfile profile,
+    AgentCodexConfigureRequest request,
+  ) async {
+    profiles.add(profile);
+    requests.add(request);
     return result;
   }
 }

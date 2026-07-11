@@ -11,6 +11,7 @@ Current M0 scope:
 - Remote agent status service for `sadcoder-agent status --json`.
 - Remote agent doctor service and Settings Diagnostics card for
   `sadcoder-agent doctor --json`.
+- Remote agent Codex configuration form for `sadcoder-agent configure --json`.
 - Remote slash command manifest service for `sadcoder-agent slash-commands --json`.
 - JSON-RPC transport abstraction.
 - Line-delimited JSON-RPC stream transport for app-server stdio.

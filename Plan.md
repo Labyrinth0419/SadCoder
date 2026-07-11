@@ -203,7 +203,7 @@ sadcoder-agent start
 sadcoder-agent proxy
 ```
 
-`sadcoder-agent start` 负责启动或复用长期 service；service 再启动并持有 `codex app-server --listen unix://...` 或平台等价本地监听。`sadcoder-agent proxy` 只连接本地 service socket，因此手机 SSH channel 断开不会终止 app-server。
+`sadcoder-agent start` 负责启动或复用长期 service；service 再启动并持有 `codex app-server --listen unix://...` 或平台等价本地监听。`sadcoder-agent configure` 负责持久化 Codex program、args 和 PATH prepend，供后续 `status` / `doctor` / `start` / `proxy` 统一复用同一份解析结果。`sadcoder-agent proxy` 只连接本地 service socket，因此手机 SSH channel 断开不会终止 app-server。
 
 direct stdio fallback 只用于调试或 service 启动失败后的临时降级：
 
@@ -646,6 +646,7 @@ Codex CLI 子命令与 App 覆盖方式：
 | `plugin` | `plugin/*` + `marketplace/*` |
 | `app-server daemon` | 不作为生产依赖；SadCoder 使用 `sadcoder-agent service/proxy`，必要时 direct stdio fallback |
 | `doctor` | `sadcoder-agent doctor --json` 结构化诊断；Settings Diagnostics 卡片显示 Codex/backend/reconnect cache 摘要 |
+| `configure` | `sadcoder-agent configure --json` 结构化持久化 Codex program / args / PATH prepend；Settings Diagnostics 卡片提供保存入口 |
 | `update` | SSH command fallback 或 agent-managed update policy |
 | `sandbox` | 主要通过 permission profile/sandboxPolicy；调试命令走 SSH fallback |
 | `apply` | 优先用 app-server 文件变更事件；必要时 SSH fallback |

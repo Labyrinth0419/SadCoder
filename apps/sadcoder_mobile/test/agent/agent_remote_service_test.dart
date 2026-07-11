@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/agent/agent_codex_configure.dart';
 import 'package:sadcoder_mobile/src/agent/agent_remote_service.dart';
 import 'package:sadcoder_mobile/src/agent/agent_status.dart';
 import 'package:sadcoder_mobile/src/ssh/remote_command_runner.dart';
@@ -243,6 +244,62 @@ void main() {
     expect(doctor.status.reconnectCache.recentEvents, 4);
   });
 
+  test('configureCodex assembles the agent configure command', () async {
+    final runner = _FakeRunner(
+      result: const RemoteCommandResult(
+        exitCode: 0,
+        stdout: '''
+{
+  "configPath": "/home/tester/.config/sadcoder/agent.json",
+  "codex": {
+    "program": "/home/tester/.nvm/versions/node/v24/bin/codex",
+    "args": ["--profile", "mobile"],
+    "pathPrepend": ["/home/tester/.nvm/versions/node/v24/bin"],
+    "source": "config",
+    "available": true,
+    "version": "codex-cli 0.143.0",
+    "failure": null
+  }
+}
+''',
+        stderr: '',
+      ),
+    );
+    final service = AgentRemoteService(runner);
+
+    final result = await service.configureCodex(
+      _profile,
+      const AgentCodexConfigureRequest(
+        program: '/home/tester/.nvm/versions/node/v24/bin/codex',
+        args: ['--profile', 'mobile'],
+        pathPrepend: ['/home/tester/.nvm/versions/node/v24/bin'],
+      ),
+    );
+
+    expect(
+      runner.lastCommand,
+      "sadcoder-agent configure --codex '/home/tester/.nvm/versions/node/v24/bin/codex' --codex-arg '--profile' --codex-arg 'mobile' --path-prepend '/home/tester/.nvm/versions/node/v24/bin' --json",
+    );
+    expect(result.configPath, '/home/tester/.config/sadcoder/agent.json');
+    expect(result.codex.available, true);
+    expect(result.codex.version, 'codex-cli 0.143.0');
+  });
+
+  test('configureCodex rejects single quotes in remote arguments', () async {
+    final service = AgentRemoteService(_FakeRunner(result: _emptyResult));
+
+    await expectLater(
+      service.configureCodex(
+        _profile,
+        const AgentCodexConfigureRequest(
+          program: "/home/tester/.nvm/versions/node/v24/bin/codex",
+          args: ["--profile", "mo'bile"],
+        ),
+      ),
+      throwsA(isA<RemoteCommandException>()),
+    );
+  });
+
   test('readStatus throws on failed command', () async {
     final service = AgentRemoteService(
       _FakeRunner(
@@ -419,3 +476,10 @@ class _FakeRunner implements RemoteCommandRunner {
     return result;
   }
 }
+
+const _emptyResult = RemoteCommandResult(
+  exitCode: 0,
+  stdout:
+      '{"configPath":"","codex":{"program":"codex","args":[],"pathPrepend":[],"source":"unknown","available":false},"status":{"agentVersion":"unknown","platformOs":"unknown","platformArch":"unknown","codexPath":"codex","codexAvailable":false,"backend":{"kind":"unknown","state":"unavailable"}}}',
+  stderr: '',
+);

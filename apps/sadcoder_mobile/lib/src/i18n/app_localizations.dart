@@ -466,6 +466,15 @@ class AppLocalizations {
   String get refreshAgentDoctor => _text('refreshAgentDoctor');
   String get agentDoctorUnavailable => _text('agentDoctorUnavailable');
   String get agentDoctorLoadFailed => _text('agentDoctorLoadFailed');
+  String get agentCodexConfigure => _text('agentCodexConfigure');
+  String get agentCodexConfigureBody => _text('agentCodexConfigureBody');
+  String get codexArguments => _text('codexArguments');
+  String get codexPathPrepend => _text('codexPathPrepend');
+  String get fillFromAgentDoctor => _text('fillFromAgentDoctor');
+  String get saveAgentCodexConfig => _text('saveAgentCodexConfig');
+  String get savingAgentCodexConfig => _text('savingAgentCodexConfig');
+  String get agentCodexConfigureFailed => _text('agentCodexConfigureFailed');
+  String get codexProgramRequired => _text('codexProgramRequired');
   String get agentConfigPath => _text('agentConfigPath');
   String get codexProgram => _text('codexProgram');
   String get codexSource => _text('codexSource');
@@ -1320,6 +1329,16 @@ const _values = <String, Map<String, String>>{
     'refreshAgentDoctor': 'Run agent doctor',
     'agentDoctorUnavailable': 'Connect to a host, then run agent doctor.',
     'agentDoctorLoadFailed': 'Failed to run agent doctor',
+    'agentCodexConfigure': 'Codex configuration',
+    'agentCodexConfigureBody':
+        'Persist the Codex program and PATH prepends used by sadcoder-agent.',
+    'codexArguments': 'Codex arguments',
+    'codexPathPrepend': 'PATH prepend',
+    'fillFromAgentDoctor': 'Fill from doctor',
+    'saveAgentCodexConfig': 'Save config',
+    'savingAgentCodexConfig': 'Saving config',
+    'agentCodexConfigureFailed': 'Failed to save Codex config',
+    'codexProgramRequired': 'Codex program is required.',
     'agentConfigPath': 'Agent config',
     'codexProgram': 'Codex program',
     'codexSource': 'Codex source',
@@ -2004,6 +2023,15 @@ const _values = <String, Map<String, String>>{
     'refreshAgentDoctor': '运行 agent 诊断',
     'agentDoctorUnavailable': '连接主机后运行 agent 诊断。',
     'agentDoctorLoadFailed': '运行 agent 诊断失败',
+    'agentCodexConfigure': 'Codex 配置',
+    'agentCodexConfigureBody': '持久化 sadcoder-agent 使用的 Codex 程序和 PATH 前置项。',
+    'codexArguments': 'Codex 参数',
+    'codexPathPrepend': 'PATH 前置',
+    'fillFromAgentDoctor': '填入诊断结果',
+    'saveAgentCodexConfig': '保存配置',
+    'savingAgentCodexConfig': '正在保存配置',
+    'agentCodexConfigureFailed': '保存 Codex 配置失败',
+    'codexProgramRequired': '请填写 Codex 程序。',
     'agentConfigPath': 'Agent 配置',
     'codexProgram': 'Codex 程序',
     'codexSource': 'Codex 来源',

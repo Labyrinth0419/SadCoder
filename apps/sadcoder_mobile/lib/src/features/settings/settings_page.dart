@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../accounts/account_snapshot_controller.dart';
+import '../../agent/agent_codex_configure.dart';
+import '../../agent/agent_codex_configure_controller.dart';
 import '../../agent/agent_doctor.dart';
 import '../../agent/agent_doctor_controller.dart';
 import '../../agent/agent_status.dart';
@@ -27,6 +29,7 @@ class SettingsPage extends StatefulWidget {
     this.modelListController,
     this.backgroundConnectionPreferences,
     this.agentDoctorController,
+    this.agentCodexConfigureController,
     this.diagnosticLogExportController,
   });
 
@@ -37,6 +40,7 @@ class SettingsPage extends StatefulWidget {
   final ModelListController? modelListController;
   final BackgroundConnectionPreferences? backgroundConnectionPreferences;
   final AgentDoctorController? agentDoctorController;
+  final AgentCodexConfigureController? agentCodexConfigureController;
   final DiagnosticLogExportController? diagnosticLogExportController;
 
   @override
@@ -193,6 +197,7 @@ class _SettingsPageState extends State<SettingsPage> {
       ],
       _SettingsSection.diagnostics => [
         if (widget.agentDoctorController == null &&
+            widget.agentCodexConfigureController == null &&
             widget.diagnosticLogExportController == null)
           _SettingsUnavailableCard(
             icon: Icons.article_outlined,
@@ -201,6 +206,11 @@ class _SettingsPageState extends State<SettingsPage> {
         else ...[
           if (widget.agentDoctorController != null)
             _AgentDoctorSettingsCard(controller: widget.agentDoctorController!),
+          if (widget.agentCodexConfigureController != null)
+            _AgentCodexConfigureCard(
+              controller: widget.agentCodexConfigureController!,
+              doctorController: widget.agentDoctorController,
+            ),
           if (widget.diagnosticLogExportController != null)
             _DiagnosticLogExportCard(
               controller: widget.diagnosticLogExportController!,
@@ -685,6 +695,204 @@ class _LoadedAgentDoctor extends StatelessWidget {
       ],
     );
   }
+}
+
+class _AgentCodexConfigureCard extends StatefulWidget {
+  const _AgentCodexConfigureCard({
+    required this.controller,
+    required this.doctorController,
+  });
+
+  final AgentCodexConfigureController controller;
+  final AgentDoctorController? doctorController;
+
+  @override
+  State<_AgentCodexConfigureCard> createState() =>
+      _AgentCodexConfigureCardState();
+}
+
+class _AgentCodexConfigureCardState extends State<_AgentCodexConfigureCard> {
+  late final TextEditingController _programController;
+  late final TextEditingController _argsController;
+  late final TextEditingController _pathPrependController;
+
+  @override
+  void initState() {
+    super.initState();
+    _programController = TextEditingController();
+    _argsController = TextEditingController();
+    _pathPrependController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _programController.dispose();
+    _argsController.dispose();
+    _pathPrependController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.doctorController ?? widget.controller,
+      builder: (context, _) => AnimatedBuilder(
+        animation: widget.controller,
+        builder: (context, _) => _buildCard(context),
+      ),
+    );
+  }
+
+  Widget _buildCard(BuildContext context) {
+    final l10n = context.l10n;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.tune_outlined),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.agentCodexConfigure,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(l10n.agentCodexConfigureBody),
+                    ],
+                  ),
+                ),
+                if (widget.doctorController?.result?.codex != null)
+                  TextButton.icon(
+                    key: const ValueKey(
+                      'settings-agent-codex-configure-fill-doctor',
+                    ),
+                    onPressed: _fillFromDoctor,
+                    icon: const Icon(Icons.output_outlined),
+                    label: Text(l10n.fillFromAgentDoctor),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (widget.controller.status == AgentCodexConfigureStatus.saving)
+              const LinearProgressIndicator(),
+            if (widget.controller.status == AgentCodexConfigureStatus.failed)
+              Text(
+                widget.controller.error?.toString() ??
+                    l10n.agentCodexConfigureFailed,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            if (widget.controller.status == AgentCodexConfigureStatus.saved &&
+                widget.controller.result != null) ...[
+              _SettingsValueLine(
+                label: l10n.agentConfigPath,
+                value: widget.controller.result!.configPath,
+              ),
+              _SettingsValueLine(
+                label: l10n.codexVersion,
+                value: _codexDoctorSummary(widget.controller.result!.codex),
+              ),
+            ],
+            const SizedBox(height: 12),
+            TextField(
+              key: const ValueKey('settings-agent-codex-program'),
+              controller: _programController,
+              decoration: InputDecoration(
+                labelText: l10n.codexProgram,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const ValueKey('settings-agent-codex-args'),
+              controller: _argsController,
+              maxLines: 4,
+              decoration: InputDecoration(
+                labelText: l10n.codexArguments,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const ValueKey('settings-agent-codex-path-prepend'),
+              controller: _pathPrependController,
+              maxLines: 4,
+              decoration: InputDecoration(
+                labelText: l10n.codexPathPrepend,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                key: const ValueKey('settings-agent-codex-configure-save'),
+                onPressed:
+                    widget.controller.status == AgentCodexConfigureStatus.saving
+                    ? null
+                    : _save,
+                icon: const Icon(Icons.save_outlined),
+                label: Text(
+                  widget.controller.status == AgentCodexConfigureStatus.saving
+                      ? l10n.savingAgentCodexConfig
+                      : l10n.saveAgentCodexConfig,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _fillFromDoctor() {
+    final codex = widget.doctorController?.result?.codex;
+    if (codex == null) {
+      return;
+    }
+    setState(() {
+      _programController.text = codex.program;
+      _argsController.text = codex.args.join('\n');
+      _pathPrependController.text = codex.pathPrepend.join('\n');
+    });
+  }
+
+  Future<void> _save() async {
+    final l10n = context.l10n;
+    final program = _programController.text.trim();
+    if (program.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.codexProgramRequired)));
+      return;
+    }
+    final result = await widget.controller.configure(
+      AgentCodexConfigureRequest(
+        program: program,
+        args: _lines(_argsController.text),
+        pathPrepend: _lines(_pathPrependController.text),
+      ),
+    );
+    if (!mounted || result == null) {
+      return;
+    }
+    await widget.doctorController?.refresh();
+  }
+}
+
+List<String> _lines(String text) {
+  return text
+      .split(RegExp(r'\r?\n'))
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .toList(growable: false);
 }
 
 String _codexDoctorSummary(AgentCodexCommandDiagnostic codex) {

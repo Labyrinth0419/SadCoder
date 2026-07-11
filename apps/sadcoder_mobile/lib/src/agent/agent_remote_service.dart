@@ -4,6 +4,8 @@ import '../commands/slash_command_manifest_reader.dart';
 import '../commands/slash_command_registry.dart';
 import '../ssh/remote_command_runner.dart';
 import '../ssh/ssh_profile.dart';
+import 'agent_codex_configure.dart';
+import 'agent_codex_configure_runner.dart';
 import 'agent_doctor.dart';
 import 'agent_doctor_reader.dart';
 import 'agent_snapshot.dart';
@@ -22,6 +24,7 @@ class AgentRemoteService
     implements
         AgentStatusReader,
         AgentStartRunner,
+        AgentCodexConfigureRunner,
         AgentDoctorReader,
         AgentSnapshotReader,
         SlashCommandManifestReader {
@@ -78,6 +81,22 @@ class AgentRemoteService
   }
 
   @override
+  Future<AgentCodexConfigureResult> configureCodex(
+    SshProfile profile,
+    AgentCodexConfigureRequest request,
+  ) async {
+    final command = _buildConfigureCodexCommand(profile, request);
+    final json = await _readJsonObjectCommand(
+      profile,
+      command,
+      failurePrefix: 'Agent Codex configure',
+      invalidJsonMessage: 'Agent Codex configure did not return a JSON object.',
+      timeout: const Duration(seconds: 20),
+    );
+    return AgentCodexConfigureResult.fromJson(json);
+  }
+
+  @override
   Future<SlashCommandManifest> readSlashCommands(SshProfile profile) async {
     final decoded = await _readJsonObjectCommand(
       profile,
@@ -126,4 +145,36 @@ class AgentRemoteService
     }
     throw RemoteCommandException(invalidJsonMessage);
   }
+}
+
+String _buildConfigureCodexCommand(
+  SshProfile profile,
+  AgentCodexConfigureRequest request,
+) {
+  final program = request.program.trim();
+  if (program.isEmpty) {
+    throw const RemoteCommandException('Codex program is required.');
+  }
+
+  final parts = <String>[
+    profile.agentCommand,
+    'configure',
+    '--codex',
+    _shellSingleQuoted(program),
+    for (final arg in request.args.map((value) => value.trim()))
+      if (arg.isNotEmpty) ...['--codex-arg', _shellSingleQuoted(arg)],
+    for (final path in request.pathPrepend.map((value) => value.trim()))
+      if (path.isNotEmpty) ...['--path-prepend', _shellSingleQuoted(path)],
+    '--json',
+  ];
+  return parts.join(' ');
+}
+
+String _shellSingleQuoted(String value) {
+  if (value.contains("'")) {
+    throw const RemoteCommandException(
+      'Remote command arguments containing single quotes are not supported.',
+    );
+  }
+  return "'$value'";
 }

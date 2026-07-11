@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../accounts/account_snapshot_controller.dart';
+import '../agent/agent_codex_configure_controller.dart';
 import '../agent/agent_doctor_controller.dart';
 import '../agent/agent_remote_service.dart';
 import '../appearance/app_appearance_controller.dart';
@@ -108,6 +109,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late CodexConfigSnapshotController _configSnapshotController;
   late AccountSnapshotController _accountSnapshotController;
   late AccountUsageSnapshotController _accountUsageSnapshotController;
+  late AgentCodexConfigureController _agentCodexConfigureController;
   late AgentDoctorController _agentDoctorController;
   late McpServerStatusController _mcpServerStatusController;
   late ModelListController _modelListController;
@@ -300,6 +302,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _accountUsageSnapshotController = AccountUsageSnapshotController(
       readerProvider: () => _sessionController.accountUsageSnapshotReader,
     );
+    _agentCodexConfigureController = AgentCodexConfigureController(
+      runnerProvider: () => _defaultAgentRemoteService,
+      profileProvider: () => _sessionController.profile,
+    );
     _agentDoctorController = AgentDoctorController(
       readerProvider: () => _defaultAgentRemoteService,
       profileProvider: () => _sessionController.profile,
@@ -328,6 +334,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _configSnapshotController.dispose();
     _accountSnapshotController.dispose();
     _accountUsageSnapshotController.dispose();
+    _agentCodexConfigureController.dispose();
     _agentDoctorController.dispose();
     _mcpServerStatusController.dispose();
     _modelListController.dispose();
@@ -445,6 +452,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         accountSnapshotController: _accountSnapshotController,
         modelListController: _modelListController,
         backgroundConnectionPreferences: _backgroundConnectionPreferences,
+        agentCodexConfigureController: _agentCodexConfigureController,
         agentDoctorController: _agentDoctorController,
         diagnosticLogExportController: _diagnosticLogExportController,
       ),
