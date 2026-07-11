@@ -587,10 +587,10 @@ Codex 高级会话：
 
 文件与命令：
 
-- `fs/readDirectory`
-- `fs/readFile`
-- `fs/writeFile`
-- `fs/watch`
+- `workspace/directoryList`
+- `workspace/fileStat`
+- `workspace/fileRead`
+- `fs/writeFile` / `fs/watch` 留作后续受控编辑与监听设计，不进入只读文件浏览 MVP。
 - `fuzzyFileSearch/*`
 - `thread/shellCommand`
 - `command/exec` PTY streaming。
@@ -952,6 +952,13 @@ MVP 可以简化为底部导航：
 - 文件读取支持分段加载，测试覆盖 `nextOffset`、`hasMore`、编码边界和错误状态。
 - 不出现任何写文件入口；只读查看不会触发 server turn、不会修改工作区。
 - Files toolbar 不暴露 terminal/shell command 入口，避免把只读浏览和命令执行混在同一模块里。
+
+当前实现状态：
+
+- 已落地 `features/files` 独立模块，包含目录树、文件预览、Markdown render/raw 切换、代码高亮、远端文件搜索入口和只读 toolbar。
+- 已落地 `workspace/directoryList`、`workspace/fileStat`、`workspace/fileRead` 的 agent RPC，并保留旧 `fs/*` 只读方法作为客户端兼容 fallback。
+- 已覆盖路径归一化、拒绝 `..` / 绝对 child path、符号链接祖先拒绝、二进制文件拒绝、UTF-8 range 边界、后续 chunk 失败重试和大 Markdown raw 保护。
+- 仍待后续单独设计：受控编辑、写文件、目录监听、diff 审批和冲突检测；这些能力不得混入只读 Files 页面。
 
 ### 9.7 深色模式
 
