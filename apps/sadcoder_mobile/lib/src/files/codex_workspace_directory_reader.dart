@@ -97,19 +97,17 @@ class CodexWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
     final entries = <WorkspaceDirectoryEntry>[];
     for (final rawEntry in rawEntries) {
       final map = _objectMap(rawEntry);
-      final name =
-          _stringValue(map['fileName'] ?? map['file_name'] ?? map['name']) ??
-          _nameFromPath(_stringValue(map['path']));
-      if (name == null) {
+      final childPath = _entryPathFromMap(map, parentPath);
+      if (childPath == null) {
         continue;
       }
+      final name = childPath.relativePath.split('/').last;
       final hidden =
           _optionalBool(map['isHidden'] ?? map['is_hidden']) ??
           WorkspacePath.isHiddenName(name);
       if (hidden && !includeHidden) {
         continue;
       }
-      final childPath = parentPath.child(name);
       entries.add(
         WorkspaceDirectoryEntry(
           root: childPath.root,
@@ -130,6 +128,81 @@ class CodexWorkspaceDirectoryReader implements WorkspaceDirectoryReader {
     }
     return entries;
   }
+}
+
+WorkspacePath? _entryPathFromMap(
+  Map<String, Object?> map,
+  WorkspacePath parentPath,
+) {
+  final rawPath = _stringValue(map['path']);
+  if (rawPath != null) {
+    final rootRelativePath = WorkspacePath.fromRoot(parentPath.root, rawPath);
+    if (rootRelativePath.relativePath.isEmpty) {
+      throw const WorkspaceFileException(
+        WorkspaceFileFailureCode.pathOutsideRoot,
+        'Workspace path is outside the workspace root.',
+        detail: 'Directory entry path must name a child entry.',
+      );
+    }
+    final rawName = _entryNameFromMap(map);
+    if (_parentPath(rootRelativePath.relativePath) == parentPath.relativePath) {
+      if (rawName != null && rawName != _basename(rootRelativePath)) {
+        throw const WorkspaceFileException(
+          WorkspaceFileFailureCode.pathOutsideRoot,
+          'Workspace path is outside the workspace root.',
+          detail: 'Directory entry name does not match its path.',
+        );
+      }
+      return rootRelativePath;
+    }
+
+    if (!_isSinglePathSegment(rawPath)) {
+      throw const WorkspaceFileException(
+        WorkspaceFileFailureCode.pathOutsideRoot,
+        'Workspace path is outside the workspace root.',
+        detail: 'Directory entry path does not belong to the listed directory.',
+      );
+    }
+    final localChildPath = parentPath.child(rawPath);
+    if (rawName != null && rawName != _basename(localChildPath)) {
+      throw const WorkspaceFileException(
+        WorkspaceFileFailureCode.pathOutsideRoot,
+        'Workspace path is outside the workspace root.',
+        detail: 'Directory entry name does not match its path.',
+      );
+    }
+    return localChildPath;
+  }
+
+  final name = _entryNameFromMap(map);
+  if (name == null) {
+    return null;
+  }
+  return parentPath.child(name);
+}
+
+String _basename(WorkspacePath path) => path.relativePath.split('/').last;
+
+bool _isSinglePathSegment(String path) {
+  final trimmed = path.trim();
+  return trimmed.isNotEmpty &&
+      trimmed != '.' &&
+      trimmed != '..' &&
+      !trimmed.contains('/') &&
+      !trimmed.contains(r'\') &&
+      !trimmed.contains('\u0000');
+}
+
+String? _entryNameFromMap(Map<String, Object?> map) {
+  return _stringValue(map['fileName'] ?? map['file_name'] ?? map['name']);
+}
+
+String _parentPath(String relativePath) {
+  final lastSeparator = relativePath.lastIndexOf('/');
+  if (lastSeparator == -1) {
+    return '';
+  }
+  return relativePath.substring(0, lastSeparator);
 }
 
 int _compareEntries(
@@ -185,15 +258,6 @@ String? _stringValue(Object? value) {
     return value.trim();
   }
   return null;
-}
-
-String? _nameFromPath(String? path) {
-  if (path == null) {
-    return null;
-  }
-  final normalized = path.replaceAll('\\', '/');
-  final segments = normalized.split('/').where((segment) => segment.isNotEmpty);
-  return segments.isEmpty ? null : segments.last;
 }
 
 int? _intValue(Object? value) {

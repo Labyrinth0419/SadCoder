@@ -111,6 +111,86 @@ void main() {
     expect(page.entries.single.isHidden, true);
   });
 
+  test(
+    'listDirectory validates server entry paths against the listed parent',
+    () async {
+      final client = CodexAppServerClient(
+        MemoryJsonRpcTransport((request) {
+          switch (request.method) {
+            case 'workspace/fileStat':
+              return {'type': 'directory', 'isSymlink': false};
+            case 'workspace/directoryList':
+              return {
+                'entries': [
+                  {'path': 'lib/main.dart', 'type': 'file'},
+                  {
+                    'path': 'helper.dart',
+                    'name': 'helper.dart',
+                    'type': 'file',
+                  },
+                ],
+              };
+            default:
+              throw StateError('unexpected method ${request.method}');
+          }
+        }),
+      );
+      final reader = CodexWorkspaceDirectoryReader(client);
+
+      final page = await reader.listDirectory(root: '/repo', path: 'lib');
+
+      expect(page.entries.map((entry) => entry.name), [
+        'helper.dart',
+        'main.dart',
+      ]);
+      expect(page.entries.map((entry) => entry.path), [
+        'lib/helper.dart',
+        'lib/main.dart',
+      ]);
+    },
+  );
+
+  test('listDirectory rejects unsafe server entry paths', () async {
+    Future<void> expectRejectedEntry(Map<String, Object?> entry) async {
+      final client = CodexAppServerClient(
+        MemoryJsonRpcTransport((request) {
+          switch (request.method) {
+            case 'workspace/fileStat':
+              return {'type': 'directory', 'isSymlink': false};
+            case 'workspace/directoryList':
+              return {
+                'entries': [entry],
+              };
+            default:
+              throw StateError('unexpected method ${request.method}');
+          }
+        }),
+      );
+      final reader = CodexWorkspaceDirectoryReader(client);
+
+      await expectLater(
+        reader.listDirectory(root: '/repo', path: 'lib'),
+        throwsA(
+          isA<WorkspaceFileException>().having(
+            (error) => error.code,
+            'code',
+            WorkspaceFileFailureCode.pathOutsideRoot,
+          ),
+        ),
+      );
+    }
+
+    await expectRejectedEntry({'path': '../secret.txt', 'type': 'file'});
+    await expectRejectedEntry({'path': '.', 'type': 'directory'});
+    await expectRejectedEntry({'path': '/tmp/secret.txt', 'type': 'file'});
+    await expectRejectedEntry({'path': 'other/main.dart', 'type': 'file'});
+    await expectRejectedEntry({
+      'path': 'lib/main.dart',
+      'name': 'renamed.dart',
+      'type': 'file',
+    });
+  });
+
   test('listDirectory preserves symlink metadata', () async {
     final client = CodexAppServerClient(
       MemoryJsonRpcTransport((request) {
