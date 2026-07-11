@@ -38,6 +38,7 @@ class AppSessionRecoveryCoordinator {
   CodexSessionStatus? _lastStatus;
 
   static const _turnBackfillLimit = 50;
+  static const _turnBackfillMaxPages = 3;
   static const _itemBackfillLimit = 200;
   static const _itemBackfillMaxPages = 3;
 
@@ -72,15 +73,29 @@ class AppSessionRecoveryCoordinator {
       return;
     }
     try {
-      final page = await turnListReader.listTurns(
-        threadId: threadId,
-        limit: _turnBackfillLimit,
-        sortDirection: 'desc',
-        itemsView: 'full',
-      );
+      final turns = <TurnSummary>[];
+      String? cursor;
+      for (var pageIndex = 0; pageIndex < _turnBackfillMaxPages; pageIndex++) {
+        final page = await turnListReader.listTurns(
+          threadId: threadId,
+          cursor: cursor,
+          limit: _turnBackfillLimit,
+          sortDirection: 'desc',
+          itemsView: 'full',
+        );
+        if (_threadDetailController.selectedThreadId != threadId) {
+          return;
+        }
+        turns.addAll(page.turns);
+        final nextCursor = _normalized(page.nextCursor);
+        if (page.turns.isEmpty || nextCursor == null || nextCursor == cursor) {
+          break;
+        }
+        cursor = nextCursor;
+      }
       _threadDetailController.backfillTurns(
         threadId: threadId,
-        turns: page.turns.reversed.toList(growable: false),
+        turns: turns.reversed.toList(growable: false),
       );
     } catch (_) {
       if (_threadDetailController.selectedThreadId == threadId) {

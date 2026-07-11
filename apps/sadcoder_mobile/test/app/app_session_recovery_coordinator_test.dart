@@ -52,8 +52,6 @@ void main() {
             _turn('turn_newer', 'completed', 'newer'),
             _turn('turn_older', 'completed', 'older'),
           ],
-          nextCursor: 'older_cursor',
-          backwardsCursor: 'newer_cursor',
         ),
       );
       final fixture = _Fixture(threadTurnListReader: turnListReader);
@@ -69,6 +67,7 @@ void main() {
       expect(turnListReader.calls, [
         (
           threadId: 'thr_selected',
+          cursor: null,
           limit: 50,
           sortDirection: 'desc',
           itemsView: 'full',
@@ -84,6 +83,47 @@ void main() {
       );
     },
   );
+
+  test('backfills recent turns across bounded pages', () async {
+    final turnListReader = _RecordingThreadTurnListReader.pages([
+      ThreadTurnsPage(
+        turns: [
+          _turn('turn_newest', 'completed', 'newest'),
+          _turn('turn_middle', 'completed', 'middle'),
+        ],
+        nextCursor: 'older_turns',
+      ),
+      ThreadTurnsPage(turns: [_turn('turn_oldest', 'completed', 'oldest')]),
+    ]);
+    final fixture = _Fixture(threadTurnListReader: turnListReader);
+    addTearDown(fixture.dispose);
+    await fixture.threadDetailController.readThread('thr_selected');
+    fixture.threadDetailReader.clear();
+
+    fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
+    await _flushMicrotasks();
+
+    expect(turnListReader.calls, [
+      (
+        threadId: 'thr_selected',
+        cursor: null,
+        limit: 50,
+        sortDirection: 'desc',
+        itemsView: 'full',
+      ),
+      (
+        threadId: 'thr_selected',
+        cursor: 'older_turns',
+        limit: 50,
+        sortDirection: 'desc',
+        itemsView: 'full',
+      ),
+    ]);
+    expect(
+      fixture.threadDetailController.detail?.turns.map((turn) => turn.id),
+      ['turn_oldest', 'turn_middle', 'turn_newest'],
+    );
+  });
 
   test('backfills thread items when turn list reader is unavailable', () async {
     final itemListReader = _RecordingThreadItemListReader(
@@ -294,13 +334,17 @@ class _RecordingThreadDetailReader implements ThreadDetailReader {
 }
 
 class _RecordingThreadTurnListReader implements ThreadTurnListReader {
-  _RecordingThreadTurnListReader({required this.page});
+  _RecordingThreadTurnListReader({required ThreadTurnsPage page})
+    : pages = [page];
 
-  final ThreadTurnsPage page;
+  _RecordingThreadTurnListReader.pages(this.pages);
+
+  final List<ThreadTurnsPage> pages;
   final calls =
       <
         ({
           String threadId,
+          String? cursor,
           int? limit,
           String? sortDirection,
           String? itemsView,
@@ -317,11 +361,16 @@ class _RecordingThreadTurnListReader implements ThreadTurnListReader {
   }) async {
     calls.add((
       threadId: threadId,
+      cursor: cursor,
       limit: limit,
       sortDirection: sortDirection,
       itemsView: itemsView,
     ));
-    return page;
+    final pageIndex = calls.length - 1;
+    if (pageIndex >= pages.length) {
+      return const ThreadTurnsPage(turns: []);
+    }
+    return pages[pageIndex];
   }
 }
 
