@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/events/guardian_assessment_event.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_server_client.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
 import 'package:sadcoder_mobile/src/threads/codex_thread_mutation_runner.dart';
@@ -113,6 +114,34 @@ void main() {
 
     expect(requests.single.method, 'thread/compact/start');
     expect(requests.single.params, {'threadId': 'thr_1'});
+  });
+
+  test('approveGuardianDeniedAction forwards the guardian event', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
+    final runner = CodexThreadMutationRunner(CodexAppServerClient(transport));
+    const event = GuardianAssessmentEvent(
+      id: 'review_1',
+      threadId: 'thr_1',
+      turnId: 'turn_1',
+      startedAtMs: 1000,
+      status: 'denied',
+      action: {
+        'type': 'command',
+        'source': 'shell',
+        'command': 'rm -rf /tmp/test',
+        'cwd': '/repo',
+      },
+    );
+
+    await runner.approveGuardianDeniedAction(threadId: 'thr_1', event: event);
+
+    expect(requests.single.method, 'thread/approveGuardianDeniedAction');
+    expect(requests.single.params?['threadId'], 'thr_1');
+    expect((requests.single.params?['event'] as Map)['id'], 'review_1');
   });
 
   test('unarchiveThread returns the restored thread', () async {

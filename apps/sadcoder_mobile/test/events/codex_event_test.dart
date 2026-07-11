@@ -134,6 +134,60 @@ void main() {
     expect(progress.delta, 'searching');
   });
 
+  test('maps auto-review completed notifications to guardian assessments', () {
+    final event = CodexEvent.fromNotification({
+      'method': 'item/autoApprovalReview/completed',
+      'params': {
+        'threadId': 'thr_1',
+        'turnId': 'turn_1',
+        'startedAtMs': 1000,
+        'completedAtMs': 1042,
+        'reviewId': 'review_1',
+        'targetItemId': 'item_1',
+        'decisionSource': 'agent',
+        'review': {
+          'status': 'denied',
+          'riskLevel': 'high',
+          'userAuthorization': 'low',
+          'rationale': 'too risky',
+        },
+        'action': {
+          'type': 'mcpToolCall',
+          'server': 'github',
+          'toolName': 'create_issue',
+          'connectorId': 'conn_1',
+          'connectorName': 'GitHub',
+          'toolTitle': 'Create issue',
+        },
+      },
+    });
+
+    expect(event.kind, CodexEventKind.autoApprovalReviewCompleted);
+    expect(event.threadId, 'thr_1');
+    expect(event.turnId, 'turn_1');
+    expect(event.itemId, 'item_1');
+    expect(event.guardianAssessment?.toJson(), {
+      'id': 'review_1',
+      'target_item_id': 'item_1',
+      'turn_id': 'turn_1',
+      'started_at_ms': 1000,
+      'completed_at_ms': 1042,
+      'status': 'denied',
+      'risk_level': 'high',
+      'user_authorization': 'low',
+      'rationale': 'too risky',
+      'decision_source': 'agent',
+      'action': {
+        'type': 'mcp_tool_call',
+        'server': 'github',
+        'tool_name': 'create_issue',
+        'connector_id': 'conn_1',
+        'connector_name': 'GitHub',
+        'tool_title': 'Create issue',
+      },
+    });
+  });
+
   test('preserves unknown notifications without throwing', () {
     final event = CodexEvent.fromNotification({
       'method': 'future/event',

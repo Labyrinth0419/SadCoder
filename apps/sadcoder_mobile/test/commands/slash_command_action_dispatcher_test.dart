@@ -942,6 +942,47 @@ void main() {
     expect(result.command?.command, 'review');
   });
 
+  test(
+    '/approve delegates to the injected auto-review approval action',
+    () async {
+      var approvals = 0;
+      final dispatcher = SlashCommandActionDispatcher(
+        approveRecentAutoReviewDenial: () async {
+          approvals++;
+          return SlashCommandCallbackResult.executed;
+        },
+      );
+
+      final result = await dispatcher.dispatch(
+        registry.parseComposerText('/approve'),
+        hasActiveTurn: true,
+      );
+
+      expect(approvals, 1);
+      expect(result.outcome, SlashCommandActionOutcome.executed);
+      expect(result.effect, SlashCommandActionEffect.approveAutoReviewDenial);
+    },
+  );
+
+  test('/approve rejects unsupported inline arguments', () async {
+    var approvals = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      approveRecentAutoReviewDenial: () async {
+        approvals++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/approve review_1'),
+      hasActiveTurn: false,
+    );
+
+    expect(approvals, 0);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'approve');
+  });
+
   test('/ps lists background terminals during an active turn', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(
@@ -1565,7 +1606,7 @@ void main() {
         hasActiveTurn: false,
       );
       final unsupported = await dispatcher.dispatch(
-        registry.parseComposerText('/approve'),
+        registry.parseComposerText('/setup-default-sandbox'),
         hasActiveTurn: false,
       );
       final platformOnly = await dispatcher.dispatch(
@@ -1580,7 +1621,7 @@ void main() {
       expect(unknown.outcome, SlashCommandActionOutcome.unknown);
       expect(unknown.rawCommand, 'does-not-exist');
       expect(unsupported.outcome, SlashCommandActionOutcome.unsupported);
-      expect(unsupported.command?.command, 'approve');
+      expect(unsupported.command?.command, 'setup-default-sandbox');
       expect(platformOnly.outcome, SlashCommandActionOutcome.unsupported);
       expect(
         platformOnly.command?.mappingType,

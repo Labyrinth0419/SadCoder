@@ -17,6 +17,8 @@ typedef SlashCommandShowDebugConfig =
 typedef SlashCommandShowDiff = FutureOr<String?> Function(String arguments);
 typedef SlashCommandHandleGoal = FutureOr<String?> Function(String arguments);
 typedef SlashCommandHandleReview = FutureOr<String?> Function(String arguments);
+typedef SlashCommandApproveRecentAutoReviewDenial =
+    Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandShowBackgroundTerminals =
     FutureOr<String?> Function(String arguments);
 typedef SlashCommandCleanBackgroundTerminals =
@@ -101,6 +103,7 @@ enum SlashCommandActionEffect {
   deleteThread,
   logout,
   feedback,
+  approveAutoReviewDenial,
   theme,
   titleDisplay,
   statusLineDisplay,
@@ -232,6 +235,7 @@ class SlashCommandActionDispatcher {
     this.showDiff,
     this.handleGoal,
     this.handleReview,
+    this.approveRecentAutoReviewDenial,
     this.showBackgroundTerminals,
     this.cleanBackgroundTerminals,
     this.toggleRawTranscript,
@@ -276,6 +280,8 @@ class SlashCommandActionDispatcher {
   final SlashCommandShowDiff? showDiff;
   final SlashCommandHandleGoal? handleGoal;
   final SlashCommandHandleReview? handleReview;
+  final SlashCommandApproveRecentAutoReviewDenial?
+  approveRecentAutoReviewDenial;
   final SlashCommandShowBackgroundTerminals? showBackgroundTerminals;
   final SlashCommandCleanBackgroundTerminals? cleanBackgroundTerminals;
   final SlashCommandToggleRawTranscript? toggleRawTranscript;
@@ -403,6 +409,8 @@ class SlashCommandActionDispatcher {
         return _showAgentTopology(parsed, subagentsOnly: true);
       case 'review':
         return _handleReview(parsed);
+      case 'approve':
+        return _approveRecentAutoReviewDenial(parsed);
       case 'ps':
         return _showBackgroundTerminals(parsed);
       case 'stop':
@@ -681,6 +689,23 @@ class SlashCommandActionDispatcher {
       parsed,
       action: handleReview,
       effect: SlashCommandActionEffect.review,
+    );
+  }
+
+  Future<SlashCommandActionResult> _approveRecentAutoReviewDenial(
+    SlashCommandParseResult parsed,
+  ) async {
+    if (parsed.arguments.trim().isNotEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    return _callbackAction(
+      parsed,
+      action: approveRecentAutoReviewDenial,
+      effect: SlashCommandActionEffect.approveAutoReviewDenial,
     );
   }
 

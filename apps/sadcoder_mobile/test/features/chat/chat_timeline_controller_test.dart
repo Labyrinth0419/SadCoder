@@ -313,6 +313,64 @@ void main() {
     expect(controller.turns.single.items.single.text, 'streamed');
     expect(completed?.threadId, 'thr_1');
   });
+
+  test('auto-review denials are cached without timeline items', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.ingest(_autoReviewCompleted(reviewId: 'review_approved'));
+    controller.ingest(
+      _autoReviewCompleted(reviewId: 'review_1', status: 'denied'),
+    );
+    controller.ingest(
+      _autoReviewCompleted(
+        threadId: 'thr_2',
+        turnId: 'turn_2',
+        reviewId: 'review_2',
+        status: 'denied',
+      ),
+    );
+
+    expect(controller.turns, isEmpty);
+    expect(controller.recentAutoReviewDenials.map((event) => event.id), [
+      'review_2',
+      'review_1',
+    ]);
+    expect(controller.latestAutoReviewDenial()?.id, 'review_2');
+    expect(
+      controller.latestAutoReviewDenial(threadId: 'thr_1')?.id,
+      'review_1',
+    );
+    expect(
+      controller.latestAutoReviewDenial(threadId: 'thr_2')?.id,
+      'review_2',
+    );
+  });
+
+  test('auto-review denial cache replaces duplicates and keeps latest ten', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    for (var index = 0; index < 12; index++) {
+      controller.ingest(
+        _autoReviewCompleted(reviewId: 'review_$index', status: 'denied'),
+      );
+    }
+    controller.ingest(
+      _autoReviewCompleted(reviewId: 'review_8', status: 'denied'),
+    );
+
+    expect(controller.recentAutoReviewDenials, hasLength(10));
+    expect(controller.recentAutoReviewDenials.first.id, 'review_8');
+    expect(
+      controller.recentAutoReviewDenials.map((event) => event.id),
+      isNot(contains('review_0')),
+    );
+    expect(
+      controller.recentAutoReviewDenials.map((event) => event.id),
+      isNot(contains('review_1')),
+    );
+  });
 }
 
 CodexEvent _turnStarted({String threadId = 'thr_1', String turnId = 'turn_1'}) {
@@ -380,6 +438,38 @@ CodexEvent _commandDelta(String itemId, String delta) {
       'turnId': 'turn_1',
       'itemId': itemId,
       'delta': delta,
+    },
+  });
+}
+
+CodexEvent _autoReviewCompleted({
+  String threadId = 'thr_1',
+  String turnId = 'turn_1',
+  required String reviewId,
+  String status = 'approved',
+}) {
+  return CodexEvent.fromNotification({
+    'method': 'item/autoApprovalReview/completed',
+    'params': {
+      'threadId': threadId,
+      'turnId': turnId,
+      'startedAtMs': 1000,
+      'completedAtMs': 1042,
+      'reviewId': reviewId,
+      'targetItemId': 'item_$reviewId',
+      'decisionSource': 'agent',
+      'review': {
+        'status': status,
+        'riskLevel': 'high',
+        'userAuthorization': 'low',
+        'rationale': 'too risky',
+      },
+      'action': {
+        'type': 'command',
+        'source': 'shell',
+        'command': 'rm -rf /tmp/test',
+        'cwd': '/repo',
+      },
     },
   });
 }

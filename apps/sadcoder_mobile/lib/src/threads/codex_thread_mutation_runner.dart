@@ -1,3 +1,4 @@
+import '../events/guardian_assessment_event.dart';
 import '../protocol/codex_app_server_client.dart';
 import 'side_conversation.dart';
 import 'thread_mutation_runner.dart';
@@ -72,6 +73,14 @@ class CodexThreadMutationRunner implements ThreadMutationRunner {
   @override
   Future<void> compactThread({required String threadId}) async {
     await _client.compactThread(threadId: threadId);
+  }
+
+  @override
+  Future<void> approveGuardianDeniedAction({
+    required String threadId,
+    required GuardianAssessmentEvent event,
+  }) async {
+    await _client.approveGuardianDeniedAction(threadId: threadId, event: event);
   }
 
   @override

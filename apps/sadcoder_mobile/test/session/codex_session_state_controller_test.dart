@@ -20,6 +20,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/diffs/git_diff_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
+import 'package:sadcoder_mobile/src/events/guardian_assessment_event.dart';
 import 'package:sadcoder_mobile/src/feedback/feedback_upload_runner.dart';
 import 'package:sadcoder_mobile/src/files/file_search_reader.dart';
 import 'package:sadcoder_mobile/src/files/workspace_directory_reader.dart';
@@ -1475,6 +1476,12 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
 
   @override
   Future<void> compactThread({required String threadId}) async {}
+
+  @override
+  Future<void> approveGuardianDeniedAction({
+    required String threadId,
+    required GuardianAssessmentEvent event,
+  }) async {}
 
   @override
   Future<void> setThreadName({

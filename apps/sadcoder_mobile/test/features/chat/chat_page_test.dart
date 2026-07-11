@@ -21,6 +21,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_snapshot_controller.dart
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/diffs/git_diff_reader.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
+import 'package:sadcoder_mobile/src/events/guardian_assessment_event.dart';
 import 'package:sadcoder_mobile/src/feedback/feedback_upload_runner.dart';
 import 'package:sadcoder_mobile/src/files/file_search_reader.dart';
 import 'package:sadcoder_mobile/src/files/workspace_directory_reader.dart';
@@ -824,7 +825,7 @@ void main() {
     ]);
   });
 
-  testWidgets('unsupported slash commands report explicit unsupported state', (
+  testWidgets('/approve reports unavailable without a recent denial', (
     tester,
   ) async {
     final harness = await _pumpConnectedChatPage(tester);
@@ -832,14 +833,77 @@ void main() {
     await _submitComposerText(tester, '/approve');
 
     expect(harness.turnRunner.startedTurns, isEmpty);
-    expect(
-      find.text(
-        '/approve is registered but not available: mobile app-server handler is not wired yet. '
-        'Planned path: auto-review retry approval. '
-        'Risk: medium.',
+    expect(find.text('/approve is unavailable right now.'), findsOneWidget);
+  });
+
+  testWidgets('/approve approves the latest auto-review denial', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final mutationRunner = _FakeThreadMutationRunner();
+    final timelineController = ChatTimelineController();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
       ),
-      findsOneWidget,
+      turnRunner: turnRunner,
+      threadMutationRunner: mutationRunner,
     );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    addTearDown(timelineController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await turnController.resumeThread('thr_active');
+    timelineController.ingest(
+      _autoReviewCompletedNotification(
+        threadId: 'thr_other',
+        turnId: 'turn_other',
+        reviewId: 'review_other',
+        status: 'denied',
+      ),
+    );
+    timelineController.ingest(
+      _autoReviewCompletedNotification(
+        threadId: 'thr_active',
+        reviewId: 'review_1',
+        status: 'denied',
+      ),
+    );
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      timelineController: timelineController,
+    );
+
+    await _submitComposerText(tester, '/approve');
+
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(mutationRunner.approvedGuardianDenials, hasLength(1));
+    expect(
+      mutationRunner.approvedGuardianDenials.single.threadId,
+      'thr_active',
+    );
+    expect(mutationRunner.approvedGuardianDenials.single.event.id, 'review_1');
+    expect(
+      timelineController.latestAutoReviewDenial(threadId: 'thr_active'),
+      isNull,
+    );
+    expect(
+      timelineController.latestAutoReviewDenial(threadId: 'thr_other')?.id,
+      'review_other',
+    );
+    expect(find.text('Approved a recent auto-review denial.'), findsOneWidget);
   });
 
   testWidgets('platform-only slash commands explain visibility state', (
@@ -6538,6 +6602,38 @@ Future<void> _submitComposerText(WidgetTester tester, String text) async {
   await tester.pumpAndSettle();
 }
 
+CodexEvent _autoReviewCompletedNotification({
+  String threadId = 'thr_active',
+  String turnId = 'turn_1',
+  required String reviewId,
+  String status = 'approved',
+}) {
+  return CodexEvent.fromNotification({
+    'method': 'item/autoApprovalReview/completed',
+    'params': {
+      'threadId': threadId,
+      'turnId': turnId,
+      'startedAtMs': 1000,
+      'completedAtMs': 1042,
+      'reviewId': reviewId,
+      'targetItemId': 'item_$reviewId',
+      'decisionSource': 'agent',
+      'review': {
+        'status': status,
+        'riskLevel': 'high',
+        'userAuthorization': 'low',
+        'rationale': 'too risky',
+      },
+      'action': {
+        'type': 'command',
+        'source': 'shell',
+        'command': 'rm -rf /tmp/test',
+        'cwd': '/repo',
+      },
+    },
+  });
+}
+
 class _ConnectedChatHarness {
   const _ConnectedChatHarness({required this.turnRunner});
 
@@ -7872,6 +7968,8 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
   final rewoundThreads = <({String threadId, String lastTurnId})>[];
   final sideStartedThreads = <String>[];
   final compactedThreads = <String>[];
+  final approvedGuardianDenials =
+      <({String threadId, GuardianAssessmentEvent event})>[];
   final renamedThreads = <({String threadId, String name})>[];
   final archivedThreads = <String>[];
   final unarchivedThreads = <String>[];
@@ -7917,6 +8015,14 @@ class _FakeThreadMutationRunner implements ThreadMutationRunner {
   @override
   Future<void> compactThread({required String threadId}) async {
     compactedThreads.add(threadId);
+  }
+
+  @override
+  Future<void> approveGuardianDeniedAction({
+    required String threadId,
+    required GuardianAssessmentEvent event,
+  }) async {
+    approvedGuardianDenials.add((threadId: threadId, event: event));
   }
 
   @override
@@ -7973,6 +8079,12 @@ class _NoopThreadMutationRunner implements ThreadMutationRunner {
 
   @override
   Future<void> compactThread({required String threadId}) async {}
+
+  @override
+  Future<void> approveGuardianDeniedAction({
+    required String threadId,
+    required GuardianAssessmentEvent event,
+  }) async {}
 
   @override
   Future<void> setThreadName({

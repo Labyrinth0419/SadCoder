@@ -1,4 +1,5 @@
 import '../threads/thread_summary.dart';
+import 'guardian_assessment_event.dart';
 
 enum CodexEventKind {
   threadStarted,
@@ -17,6 +18,8 @@ enum CodexEventKind {
   fileChangePatchUpdated,
   mcpToolCallProgress,
   planDelta,
+  autoApprovalReviewStarted,
+  autoApprovalReviewCompleted,
   unknown,
 }
 
@@ -35,6 +38,7 @@ class CodexEvent {
     this.turn,
     this.item,
     this.fileChanges,
+    this.guardianAssessment,
   });
 
   factory CodexEvent.fromNotification(Map<String, Object?> notification) {
@@ -132,6 +136,18 @@ class CodexEvent {
         notification,
         params,
       ),
+      'item/autoApprovalReview/started' => _guardianAssessmentEvent(
+        CodexEventKind.autoApprovalReviewStarted,
+        method,
+        notification,
+        params,
+      ),
+      'item/autoApprovalReview/completed' => _guardianAssessmentEvent(
+        CodexEventKind.autoApprovalReviewCompleted,
+        method,
+        notification,
+        params,
+      ),
       _ => CodexEvent(
         kind: CodexEventKind.unknown,
         method: method,
@@ -152,6 +168,7 @@ class CodexEvent {
   final TurnSummary? turn;
   final Map<String, Object?>? item;
   final List<ThreadFileChangeSummary>? fileChanges;
+  final GuardianAssessmentEvent? guardianAssessment;
   final Map<String, Object?> raw;
 
   static CodexEvent _threadStarted(
@@ -269,6 +286,26 @@ class CodexEvent {
       fileChanges: _listOfMaps(
         params['changes'],
       ).map(ThreadFileChangeSummary.fromJson).toList(growable: false),
+    );
+  }
+
+  static CodexEvent _guardianAssessmentEvent(
+    CodexEventKind kind,
+    String method,
+    Map<String, Object?> raw,
+    Map<String, Object?> params,
+  ) {
+    final assessment = GuardianAssessmentEvent.fromAutoReviewNotification(
+      params,
+    );
+    return CodexEvent(
+      kind: kind,
+      method: method,
+      raw: Map.unmodifiable(raw),
+      threadId: assessment.threadId,
+      turnId: assessment.turnId,
+      itemId: assessment.targetItemId,
+      guardianAssessment: assessment,
     );
   }
 }

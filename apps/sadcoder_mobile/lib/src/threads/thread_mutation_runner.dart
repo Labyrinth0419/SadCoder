@@ -1,3 +1,4 @@
+import '../events/guardian_assessment_event.dart';
 import 'thread_summary.dart';
 
 abstract interface class ThreadMutationRunner {
@@ -17,6 +18,11 @@ abstract interface class ThreadMutationRunner {
   Future<ThreadSummary> startSideConversation({required String threadId});
 
   Future<void> compactThread({required String threadId});
+
+  Future<void> approveGuardianDeniedAction({
+    required String threadId,
+    required GuardianAssessmentEvent event,
+  });
 
   Future<void> setThreadName({required String threadId, required String name});
 

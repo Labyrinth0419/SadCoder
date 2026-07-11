@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../events/codex_event.dart';
+import '../../events/guardian_assessment_event.dart';
 import '../../threads/thread_summary.dart';
 
 typedef TurnCompletedHandler =
@@ -14,6 +15,8 @@ class ChatTimelineController extends ChangeNotifier {
 
   final TurnCompletedHandler? _onTurnCompleted;
   final List<ChatTimelineTurn> _turns = [];
+  final RecentAutoReviewDenials _recentAutoReviewDenials =
+      RecentAutoReviewDenials();
   String? _selectedThreadId;
   Stream<CodexEvent>? _attachedEvents;
   StreamSubscription<CodexEvent>? _subscription;
@@ -21,6 +24,19 @@ class ChatTimelineController extends ChangeNotifier {
   List<ChatTimelineTurn> get turns => List.unmodifiable(_turns);
 
   String? get selectedThreadId => _selectedThreadId;
+
+  List<GuardianAssessmentEvent> get recentAutoReviewDenials =>
+      _recentAutoReviewDenials.entries;
+
+  GuardianAssessmentEvent? latestAutoReviewDenial({String? threadId}) {
+    return _recentAutoReviewDenials.latest(threadId: threadId);
+  }
+
+  void removeAutoReviewDenial(String id) {
+    if (_recentAutoReviewDenials.remove(id)) {
+      notifyListeners();
+    }
+  }
 
   String? lastAssistantMessageMarkdown() {
     for (final turn in _turns.reversed) {
@@ -47,6 +63,7 @@ class ChatTimelineController extends ChangeNotifier {
   }
 
   void ingest(CodexEvent event) {
+    _ingestGuardianAssessment(event);
     _handleTurnCompletion(event);
     if (!_acceptsEvent(event)) {
       return;
@@ -72,6 +89,9 @@ class ChatTimelineController extends ChangeNotifier {
         _appendDelta(event, fallbackType: 'mcpToolCall');
       case CodexEventKind.planDelta:
         _appendDelta(event, fallbackType: 'plan');
+      case CodexEventKind.autoApprovalReviewStarted ||
+          CodexEventKind.autoApprovalReviewCompleted:
+        return;
       case CodexEventKind.threadStarted ||
           CodexEventKind.threadArchived ||
           CodexEventKind.threadUnarchived ||
@@ -138,6 +158,7 @@ class ChatTimelineController extends ChangeNotifier {
   void clear() {
     _selectedThreadId = null;
     _turns.clear();
+    _recentAutoReviewDenials.clear();
     notifyListeners();
   }
 
@@ -194,6 +215,21 @@ class ChatTimelineController extends ChangeNotifier {
     final turn = event.turn;
     if (threadId != null && turn != null) {
       _onTurnCompleted?.call(threadId: threadId, turn: turn);
+    }
+  }
+
+  void _ingestGuardianAssessment(CodexEvent event) {
+    final assessment = event.guardianAssessment;
+    if (assessment == null ||
+        event.kind != CodexEventKind.autoApprovalReviewCompleted) {
+      return;
+    }
+    final before = _recentAutoReviewDenials.entries.length;
+    _recentAutoReviewDenials.ingest(assessment);
+    if (_recentAutoReviewDenials.entries.length != before ||
+        _recentAutoReviewDenials.latest(threadId: assessment.threadId)?.id ==
+            assessment.id) {
+      notifyListeners();
     }
   }
 

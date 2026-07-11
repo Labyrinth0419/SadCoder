@@ -659,6 +659,7 @@ class _ChatPageState extends State<ChatPage> {
           showDiff: _buildDiffSummary,
           handleGoal: _handleGoalCommand,
           handleReview: _handleReviewCommand,
+          approveRecentAutoReviewDenial: _approveRecentAutoReviewDenial,
           showBackgroundTerminals: _buildBackgroundTerminalsSummary,
           cleanBackgroundTerminals: _cleanBackgroundTerminals,
           toggleRawTranscript: _toggleRawTranscript,
@@ -1128,6 +1129,26 @@ class _ChatPageState extends State<ChatPage> {
       target: command.target,
       delivery: command.delivery,
     );
+  }
+
+  Future<SlashCommandCallbackResult> _approveRecentAutoReviewDenial() async {
+    final runner = widget.sessionController?.threadMutationRunner;
+    final timelineController = widget.timelineController;
+    final threadId = _currentThreadId();
+    if (runner == null || timelineController == null || threadId == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    final denial = timelineController.latestAutoReviewDenial(
+      threadId: threadId,
+    );
+    if (denial == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    await runner.approveGuardianDeniedAction(threadId: threadId, event: denial);
+    timelineController.removeAutoReviewDenial(denial.id);
+    return SlashCommandCallbackResult.executed;
   }
 
   Future<String?> _buildBackgroundTerminalsSummary(String arguments) async {
@@ -2066,6 +2087,8 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.deleteThread => l10n.slashCommandDeletedThread,
         SlashCommandActionEffect.logout => l10n.slashCommandLoggedOut,
         SlashCommandActionEffect.feedback => l10n.slashCommandFeedbackSubmitted,
+        SlashCommandActionEffect.approveAutoReviewDenial =>
+          l10n.slashCommandAutoReviewApproved,
         SlashCommandActionEffect.theme => l10n.slashCommandThemeUpdated,
         SlashCommandActionEffect.titleDisplay =>
           l10n.slashCommandTitleDisplayUpdated,

@@ -1,4 +1,5 @@
 import '../config/codex_config_overrides.dart';
+import '../events/guardian_assessment_event.dart';
 import '../turns/turn_text_element.dart';
 import 'json_rpc.dart';
 
@@ -485,6 +486,16 @@ class CodexAppServerClient {
     required String threadId,
   }) {
     return _request('thread/backgroundTerminals/clean', {'threadId': threadId});
+  }
+
+  Future<Map<String, Object?>> approveGuardianDeniedAction({
+    required String threadId,
+    required GuardianAssessmentEvent event,
+  }) {
+    return _request('thread/approveGuardianDeniedAction', {
+      'threadId': threadId,
+      'event': event.toJson(),
+    });
   }
 
   Future<Map<String, Object?>> listSkills({

@@ -273,6 +273,8 @@ class AppLocalizations {
   String get slashCommandLoggedOut => _text('slashCommandLoggedOut');
   String get slashCommandFeedbackSubmitted =>
       _text('slashCommandFeedbackSubmitted');
+  String get slashCommandAutoReviewApproved =>
+      _text('slashCommandAutoReviewApproved');
   String get slashCommandThemeUpdated => _text('slashCommandThemeUpdated');
   String get slashCommandTitleDisplayUpdated =>
       _text('slashCommandTitleDisplayUpdated');
@@ -1131,6 +1133,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandDeletedThread': 'Deleted thread.',
     'slashCommandLoggedOut': 'Signed out of Codex account.',
     'slashCommandFeedbackSubmitted': 'Feedback submitted.',
+    'slashCommandAutoReviewApproved': 'Approved a recent auto-review denial.',
     'slashCommandThemeUpdated': 'Theme updated.',
     'slashCommandTitleDisplayUpdated': 'Title display updated.',
     'slashCommandStatusLineDisplayUpdated': 'Status line display updated.',
@@ -1816,6 +1819,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandDeletedThread': '已删除会话。',
     'slashCommandLoggedOut': '已退出服务器 Codex 账户。',
     'slashCommandFeedbackSubmitted': '已提交反馈。',
+    'slashCommandAutoReviewApproved': '已审批最近一条自动复审拒绝。',
     'slashCommandThemeUpdated': '已更新主题。',
     'slashCommandTitleDisplayUpdated': '已更新标题显示。',
     'slashCommandStatusLineDisplayUpdated': '已更新状态栏显示。',

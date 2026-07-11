@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
+import 'package:sadcoder_mobile/src/events/guardian_assessment_event.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_server_client.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
 import 'package:sadcoder_mobile/src/threads/side_conversation.dart';
@@ -599,5 +600,58 @@ void main() {
       'limit': 25,
     });
     expect(requests[1].params, {'threadId': 'thr_1'});
+  });
+
+  test('approveGuardianDeniedAction sends serialized guardian event', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
+    final client = CodexAppServerClient(transport);
+    const event = GuardianAssessmentEvent(
+      id: 'review_1',
+      threadId: 'thr_1',
+      turnId: 'turn_1',
+      targetItemId: 'item_1',
+      startedAtMs: 1000,
+      completedAtMs: 1042,
+      status: 'denied',
+      riskLevel: 'high',
+      userAuthorization: 'low',
+      rationale: 'too risky',
+      decisionSource: 'agent',
+      action: {
+        'type': 'command',
+        'source': 'shell',
+        'command': 'rm -rf /tmp/test',
+        'cwd': '/repo',
+      },
+    );
+
+    await client.approveGuardianDeniedAction(threadId: 'thr_1', event: event);
+
+    expect(requests.single.method, 'thread/approveGuardianDeniedAction');
+    expect(requests.single.params, {
+      'threadId': 'thr_1',
+      'event': {
+        'id': 'review_1',
+        'target_item_id': 'item_1',
+        'turn_id': 'turn_1',
+        'started_at_ms': 1000,
+        'completed_at_ms': 1042,
+        'status': 'denied',
+        'risk_level': 'high',
+        'user_authorization': 'low',
+        'rationale': 'too risky',
+        'decision_source': 'agent',
+        'action': {
+          'type': 'command',
+          'source': 'shell',
+          'command': 'rm -rf /tmp/test',
+          'cwd': '/repo',
+        },
+      },
+    });
   });
 }
