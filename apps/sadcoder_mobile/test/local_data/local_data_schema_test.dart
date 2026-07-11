@@ -148,6 +148,13 @@ void main() {
         'ON known_hosts (host, port, key_type);',
       ),
     );
+    expect(
+      statements,
+      contains(
+        'CREATE INDEX IF NOT EXISTS idx_thread_cache_profile '
+        'ON thread_cache (profile_id, updated_at_ms);',
+      ),
+    );
     expect(statements.length, greaterThan(LocalDataSchema.tables.length));
   });
 

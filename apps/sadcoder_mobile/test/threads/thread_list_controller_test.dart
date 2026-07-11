@@ -75,6 +75,54 @@ void main() {
     expect(controller.status, ThreadListStatus.failed);
     expect(controller.error, isA<StateError>());
   });
+
+  test('refresh tracks archived view state', () async {
+    final reader = _FakeThreadListReader(
+      page: ThreadListPage(threads: [_thread('thr_archived')]),
+    );
+    final controller = ThreadListController(readerProvider: () => reader);
+    addTearDown(controller.dispose);
+
+    await controller.refresh(archived: true);
+
+    expect(controller.status, ThreadListStatus.loaded);
+    expect(controller.archived, true);
+  });
+
+  test('restoreCached loads active cached threads and filters empty ids', () {
+    final controller = ThreadListController(readerProvider: () => null);
+    addTearDown(controller.dispose);
+
+    final restored = controller.restoreCached([
+      _thread('thr_cached'),
+      ThreadSummary.fromJson({
+        'id': '',
+        'sessionId': 'sess_1',
+        'preview': 'Invalid',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+      }),
+    ]);
+
+    expect(restored, true);
+    expect(controller.status, ThreadListStatus.loaded);
+    expect(controller.archived, false);
+    expect(controller.threads.map((thread) => thread.id), ['thr_cached']);
+  });
+}
+
+ThreadSummary _thread(String id) {
+  return ThreadSummary.fromJson({
+    'id': id,
+    'sessionId': 'sess_1',
+    'preview': 'Fix bug',
+    'ephemeral': false,
+    'status': 'idle',
+    'cwd': '/repo',
+    'updatedAt': 1,
+  });
 }
 
 class _FakeThreadListReader implements ThreadListReader {

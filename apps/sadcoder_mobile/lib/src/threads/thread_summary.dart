@@ -126,6 +126,32 @@ class ThreadSummary {
     return ThreadSummary.fromJson(_stringKeyedMap(json['thread']));
   }
 
+  Map<String, Object?> toSummaryJson() {
+    final json = <String, Object?>{
+      'id': id,
+      'sessionId': sessionId,
+      'preview': preview,
+      'ephemeral': ephemeral,
+      'status': status,
+      'cwd': cwd,
+      'updatedAt': updatedAtSeconds,
+    };
+    void putString(String key, String? value) {
+      final trimmed = value?.trim();
+      if (trimmed != null && trimmed.isNotEmpty) {
+        json[key] = trimmed;
+      }
+    }
+
+    putString('name', name);
+    putString('parentThreadId', parentThreadId);
+    putString('ancestorThreadId', ancestorThreadId);
+    putString('forkedFromId', forkedFromId);
+    putString('agentNickname', agentNickname);
+    putString('agentRole', agentRole);
+    return json;
+  }
+
   final String id;
   final String sessionId;
   final String preview;

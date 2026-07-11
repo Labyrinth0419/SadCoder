@@ -35,6 +35,7 @@ import '../ssh/dart_ssh_proxy_connector.dart';
 import '../ssh/dart_ssh_remote_command_runner.dart';
 import '../ssh/ssh_profile.dart';
 import '../ssh/ssh_profile_store.dart';
+import '../threads/thread_cache_store.dart';
 import '../threads/thread_detail_controller.dart';
 import '../threads/thread_list_controller.dart';
 import '../turns/turn_controller.dart';
@@ -84,6 +85,7 @@ class AppShell extends StatefulWidget {
     this.backgroundNotificationRouter,
     this.profileStore,
     this.slashCommandManifestReader,
+    this.threadCacheStore,
   });
 
   final AppAppearanceController? appearanceController;
@@ -96,6 +98,7 @@ class AppShell extends StatefulWidget {
   final BackgroundNotificationRouter? backgroundNotificationRouter;
   final SshProfileStore? profileStore;
   final SlashCommandManifestReader? slashCommandManifestReader;
+  final ThreadCacheStore? threadCacheStore;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -147,6 +150,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     return _defaultAgentRemoteService;
   }
 
+  ThreadCacheStore get _resolvedThreadCacheStore {
+    return widget.threadCacheStore ?? const SharedPreferencesThreadCacheStore();
+  }
+
   bool get _usesHostApprovalGroups =>
       _hostSessionManager != null && _hostSessionManager!.sessions.isNotEmpty;
 
@@ -178,7 +185,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         oldWidget.backgroundConnectionKeeper !=
             widget.backgroundConnectionKeeper ||
         oldWidget.slashCommandManifestReader !=
-            widget.slashCommandManifestReader) {
+            widget.slashCommandManifestReader ||
+        oldWidget.threadCacheStore != widget.threadCacheStore) {
       _disposeOwnedControllers();
       _setControllers(
         approvalController: widget.approvalController,
@@ -298,6 +306,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _activeUiState = AppHostSessionUiState(
       sessionController: _sessionController,
       configOverrideController: _configOverrideController,
+      threadCacheProfileId: _threadCacheProfileIdForSession(_sessionController),
+      threadCacheStore: _resolvedThreadCacheStore,
       fallbackSlashCommandManifestReader: _resolvedSlashCommandManifestReader,
     );
     _configSnapshotController = CodexConfigSnapshotController(
@@ -606,6 +616,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       () => AppHostSessionUiState(
         sessionController: entry.sessionController,
         configOverrideController: _configOverrideController,
+        threadCacheProfileId: entry.profileId,
+        threadCacheStore: _resolvedThreadCacheStore,
         fallbackSlashCommandManifestReader: _resolvedSlashCommandManifestReader,
       ),
     );
@@ -650,4 +662,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         ),
     ];
   }
+}
+
+String? _threadCacheProfileIdForSession(
+  CodexSessionStateController sessionController,
+) {
+  final profile = sessionController.profile;
+  return profile == null ? null : hostSessionProfileId(profile);
 }

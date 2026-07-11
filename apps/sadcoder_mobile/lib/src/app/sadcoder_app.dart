@@ -11,6 +11,7 @@ import '../i18n/app_localizations.dart';
 import '../session/codex_session_state_controller.dart';
 import '../session/host_session_manager.dart';
 import '../ssh/ssh_profile_store.dart';
+import '../threads/thread_cache_store.dart';
 import '../theme/sadcoder_theme.dart';
 import 'app_shell.dart';
 
@@ -28,6 +29,7 @@ class SadCoderApp extends StatefulWidget {
     this.backgroundNotificationRouter,
     this.profileStore,
     this.slashCommandManifestReader,
+    this.threadCacheStore,
   });
 
   final Locale? locale;
@@ -41,6 +43,7 @@ class SadCoderApp extends StatefulWidget {
   final BackgroundNotificationRouter? backgroundNotificationRouter;
   final SshProfileStore? profileStore;
   final SlashCommandManifestReader? slashCommandManifestReader;
+  final ThreadCacheStore? threadCacheStore;
 
   @override
   State<SadCoderApp> createState() => _SadCoderAppState();
@@ -113,6 +116,7 @@ class _SadCoderAppState extends State<SadCoderApp> {
             backgroundNotificationRouter: widget.backgroundNotificationRouter,
             profileStore: widget.profileStore,
             slashCommandManifestReader: widget.slashCommandManifestReader,
+            threadCacheStore: widget.threadCacheStore,
           ),
         );
       },

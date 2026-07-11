@@ -60,6 +60,18 @@ void main() {
     expect(controller.detail, isNull);
     expect(controller.error, isNull);
   });
+
+  test('restoreCachedSelection restores selection without cached detail', () {
+    final controller = ThreadDetailController(readerProvider: () => null);
+    addTearDown(controller.dispose);
+
+    controller.restoreCachedSelection(' thr_cached ');
+
+    expect(controller.status, ThreadDetailStatus.idle);
+    expect(controller.selectedThreadId, 'thr_cached');
+    expect(controller.detail, isNull);
+    expect(controller.error, isNull);
+  });
 }
 
 ThreadDetail _detail(String threadId) {

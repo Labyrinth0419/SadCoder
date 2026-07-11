@@ -76,9 +76,27 @@ class ThreadDetailController extends ChangeNotifier {
     _setState(status: ThreadDetailStatus.idle, error: null);
   }
 
+  void restoreCachedSelection(String? threadId) {
+    final normalized = _normalized(threadId);
+    if (normalized == _selectedThreadId &&
+        _detail == null &&
+        _status == ThreadDetailStatus.idle) {
+      return;
+    }
+    _generation++;
+    _selectedThreadId = normalized;
+    _detail = null;
+    _setState(status: ThreadDetailStatus.idle, error: null);
+  }
+
   void _setState({required ThreadDetailStatus status, Object? error}) {
     _status = status;
     _error = error;
     notifyListeners();
   }
+}
+
+String? _normalized(String? value) {
+  final trimmed = value?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
 }

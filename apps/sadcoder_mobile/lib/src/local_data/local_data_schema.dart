@@ -197,6 +197,11 @@ class LocalDataSchema {
       ],
       indexes: [
         LocalDataIndex(
+          name: 'idx_thread_cache_profile',
+          tableName: 'thread_cache',
+          columns: ['profile_id', 'updated_at_ms'],
+        ),
+        LocalDataIndex(
           name: 'idx_thread_cache_updated',
           tableName: 'thread_cache',
           columns: ['updated_at_ms'],
