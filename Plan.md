@@ -9,7 +9,7 @@ SadCoder 的目标不是在手机上“模拟一个终端”，而是让移动 A
 1. App 端兼顾 Android 和 iOS；Android 是主要发布目标，iOS 用户可以自行编译安装。
 2. 服务端兼顾 Linux 和 Windows；为跨平台保活与生命周期管理，引入 `sadcoder-agent` 作为轻量 Rust 常驻层。
 3. Codex 业务协议仍以官方 `app-server` JSON-RPC 为核心；`sadcoder-agent` 负责启动、持有、代理和恢复 app-server 连接。
-4. Linux 可使用官方 `codex app-server daemon/proxy` 作为快路径；Windows 使用 `sadcoder-agent` 管理 `codex app-server --listen stdio://` 或本地监听。
+4. Linux/Windows 统一由 `sadcoder-agent service` 管理长期 app-server；调试或 service 启动失败时才使用 direct stdio fallback，不依赖官方 standalone daemon。
 5. SSH 只做认证、加密、远程命令启动和字节传输，不做业务协议。
 
 一句话架构：
@@ -34,8 +34,8 @@ Android/iOS App
 - 核心模型是 `Thread -> Turn -> Item`。
 - 覆盖会话、流式输出、审批、文件、命令、模型、账号、配置、MCP、插件、技能、Hook、Review、Goal、历史、归档、删除等能力。
 - 它可以生成 TypeScript/JSON Schema：`codex app-server generate-ts` 与 `generate-json-schema`，适合客户端按 Codex 版本做能力适配。
-- `codex app-server daemon` 是官方为远程/移动客户端准备的生命周期管理层，Unix-only，能启动常驻 app-server 并返回 socket path、版本等机器可读 JSON；这可以作为 Linux 快路径，但不能覆盖 Windows。
-- `codex app-server proxy` 可以把 Unix socket 上的 app-server 连接代理到 stdin/stdout；代理流承载 WebSocket HTTP Upgrade 和 WebSocket frame。
+- `codex app-server daemon/proxy` 是官方 Unix-only 生命周期管理层，但 npm/NVM 版 CLI 可能暴露命令却要求 installer-managed standalone 路径；SadCoder 不把它作为生产依赖。
+- SadCoder 生产路径改为 `sadcoder-agent service/proxy`：service 长期持有 `codex app-server --listen unix://...`，proxy 只连接本地 service socket；官方 daemon 仅作为兼容/诊断背景。
 - TUI 斜杠命令集中定义在 `refs/codex/codex-rs/tui/src/slash_command.rs`，包含命令名、别名、描述、是否支持 inline args、active turn 中是否可用、平台/调试可见性等规则；SadCoder 需要把这些规则转成移动端命令面板和结构化调用。
 
 因此，第一性原理上不应该抓取 TUI 屏幕或模拟按键，也不应该先自造一套 Codex 协议。最稳的语义边界是 app-server。
@@ -54,7 +54,7 @@ Android/iOS App
 
 - Codex 的 app-server 是主协议。
 - 移动 App 应该渲染 app-server 的结构化 item/event，而不是渲染 ANSI 终端。
-- 移动端断线不能杀掉服务器上的 Codex，因此生产模式必须有服务端常驻层；Linux 可以用官方 app-server daemon，Windows 需要 `sadcoder-agent` 来持有 Codex app-server 子进程。
+- 移动端断线不能杀掉服务器上的 Codex，因此生产模式必须有服务端常驻层；Linux/Windows 都由 `sadcoder-agent service` 持有 Codex app-server 子进程。
 - Happy 的“移动端 session state + event mapper + approval handler”值得借鉴，但通信路径要改成 SSH 直连。
 
 ## 2. 第一性原理
@@ -117,7 +117,7 @@ sadcoder-agent proxy
 `sadcoder-agent` 的职责：
 
 - 在 Linux 和 Windows 上统一管理 Codex app-server 生命周期。
-- 检测 `codex --version`、登录状态、配置路径、平台能力。
+- 解析结构化 Codex 启动配置，执行版本/运行时诊断，返回登录状态、配置路径、平台能力。
 - 启动并持有 `codex app-server`，避免移动端 SSH 断开时直接杀掉 Codex。
 - 对移动端暴露稳定的 stdio proxy：App 通过 SSH 执行 `sadcoder-agent proxy`，后续发 app-server JSON-RPC。
 - 缓冲关键事件和 pending approval，支持移动端断线后恢复。
@@ -125,10 +125,10 @@ sadcoder-agent proxy
 
 平台实现：
 
-- Linux：优先使用官方 `codex app-server daemon/proxy` 作为 backend；如果 daemon 不可用，则由 `sadcoder-agent` 自己持有 `codex app-server --listen stdio://`。
-- Windows：官方 app-server daemon 不可用，`sadcoder-agent` 作为常驻服务/计划任务/用户后台进程，管理 `codex app-server` 子进程，并通过 named pipe 或 localhost control channel 给 `proxy` 连接。
+- Linux：`sadcoder-agent service` 独立于 SSH channel 启动并长期持有 `codex app-server --listen unix://...`；`proxy` 只连接 service socket，direct stdio 仅作为调试/降级 fallback。
+- Windows：`sadcoder-agent service` 使用用户级后台进程/计划任务等方式管理 `codex app-server` 子进程，并通过 named pipe 或 localhost control channel 给 `proxy` 连接。
 
-这比完全依赖官方 daemon 多一个 SadCoder 二进制，但换来 Windows/Linux 一致的保活、诊断、重连和能力探测。Codex 本体仍然不 fork，仍然安装官方 `codex`。
+这比完全依赖官方 daemon 多一个 SadCoder 二进制，但换来 Windows/Linux 一致的保活、诊断、重连和能力探测。Codex 本体仍然不 fork，仍然安装官方 `codex`，但 Codex 路径、Node/PATH 运行时和版本检测都由 agent 统一解析。
 
 ## 4. 推荐架构
 
@@ -138,11 +138,11 @@ sadcoder-agent proxy
 
 1. App 读取用户配置的 SSH profile。
 2. 建立 SSH 连接并完成 host key 校验。
-3. 执行 `codex --version`，确认 Codex 可用。
-4. 执行 `sadcoder-agent status --json`，确认 agent、Codex、app-server backend 可用。
-5. 如未运行，执行 `sadcoder-agent start` 或提示用户安装/启动服务。
+3. 检查远端 shell 可以执行非交互命令。
+4. 执行 `sadcoder-agent status --json`，从 agent status 获取 Codex path、availability、version、backend 状态。
+5. 如 service 未运行，执行 `sadcoder-agent start`；若 start 失败且是调试/降级场景，agent 可返回 direct stdio fallback。
 6. 新开一个 SSH exec channel，执行 `sadcoder-agent proxy`。
-7. App 在该 channel 上发送 app-server JSON-RPC；agent 做 id 重写、转发、事件缓存和恢复。
+7. App 在该 channel 上发送 app-server JSON-RPC；agent 连接本地 service socket 或 fallback app-server，并做 id 重写、转发、事件缓存和恢复。
 8. App 发送 `initialize`，随后发送 `initialized` notification。
 9. 后续 Codex 功能都优先走 app-server JSON-RPC；agent 自身能力走 `agent/*` RPC。
 
@@ -163,7 +163,7 @@ Compose UI
 
 - 手机断线不会直接杀掉 agent-managed app-server。
 - 可以重连后重新 `initialize`，再 `thread/resume` 或 `thread/read` 回填状态。
-- Linux 能复用 Codex 官方 daemon；Windows 也有一致的服务端生命周期。
+- Linux/Windows 使用一致的 SadCoder service 生命周期，不需要 App 理解 Codex、Node、PATH 或 shell profile 差异。
 - App 不需要为 Windows/Linux 分别理解不同 Codex 启动细节。
 
 限制：
@@ -194,18 +194,24 @@ App 通过 SSH exec channel 的 stdin/stdout 直接收发 newline-delimited JSON
 - 不适合长任务、弱网、后台运行。
 - 不满足“手机断线不影响任务继续执行”的硬约束，不允许作为生产默认模式。
 
-### 4.3 Linux 快路径：官方 daemon/proxy
+### 4.3 统一 service backend 与 direct stdio fallback
 
-在 Linux 上，`sadcoder-agent` 可以选择不自己持有 app-server，而是调用官方生命周期：
+生产默认 backend 是 SadCoder 自己的 service：
 
 ```sh
-codex app-server daemon start
-codex app-server proxy
+sadcoder-agent start
+sadcoder-agent proxy
 ```
 
-这样能减少 agent 的进程管理复杂度，并贴近 Codex 官方远程控制设计。
+`sadcoder-agent start` 负责启动或复用长期 service；service 再启动并持有 `codex app-server --listen unix://...` 或平台等价本地监听。`sadcoder-agent proxy` 只连接本地 service socket，因此手机 SSH channel 断开不会终止 app-server。
 
-但对 App 来说仍建议统一连接 `sadcoder-agent proxy`，由 agent 决定 backend 是官方 daemon 还是自持 app-server。这样 UI 和协议层不需要区分 Windows/Linux。
+direct stdio fallback 只用于调试或 service 启动失败后的临时降级：
+
+```sh
+codex app-server --listen stdio://
+```
+
+fallback 不满足“手机断线不影响任务继续执行”的生产硬约束，UI 必须明确标识风险。官方 `codex app-server daemon/proxy` 不作为 SadCoder 生产依赖，避免 npm/NVM CLI 与 standalone daemon 路径要求不一致。
 
 ### 4.4 Agent 内部设计
 
@@ -339,13 +345,13 @@ agent 负责：
 每次连接后执行：
 
 1. `sadcoder-agent status --json`
-2. `codex --version`
-3. agent backend 探测：Linux 官方 daemon / agent 自持 stdio / Windows service。
+2. 从 `AgentStatus` 读取 `codexPath`、`codexAvailable`、`codexVersion`、`backend`，Codex 版本检测不由 App 另跑一套 `codex --version`。
+3. agent backend 探测：SadCoder service / direct stdio fallback / 平台本地监听状态。
 4. `initialize`
 5. `model/list`
 6. `config/read`
 7. `account/read`
-8. 可选：`codex app-server generate-json-schema --out <tmp>`，用于调试或缓存服务器 schema。
+8. 可选：通过 agent 诊断命令生成或缓存服务器 schema；App 不直接依赖交互式 shell 环境。
 
 客户端内置一个“最低支持 Codex 版本”，低于该版本只允许 stdio 调试或提示升级。
 
@@ -414,7 +420,7 @@ UI 必须清楚标识每个生效值来自哪里：`服务器默认`、`App 默�
 - 斜杠命令是命令，不是普通聊天文本。输入框以 `/` 开头时进入命令解析流程，除非用户明确选择“作为普通文本发送”。
 - App 内置 `SlashCommandRegistry`，字段包括：command、aliases、description、supportsInlineArgs、availableDuringTask、availableInSideConversation、platformVisibility、featureFlag、mappingType、mappingTarget、phase、riskLevel。
 - `sadcoder-agent` 暴露 `agent/slashCommands/list`，返回当前 Codex 版本对应的 manifest。MVP 可以先由 SadCoder 根据 Codex 源码版本维护 manifest；后续若 Codex app-server 暴露官方 slash manifest，则切到官方来源。
-- App 启动时比较 `codex --version`、app-server schema 和本地 manifest 版本。发现未知斜杠命令时，在高级面板显示“当前 App 未识别”，允许 raw RPC/SSH fallback，但不静默吞掉。
+- App 启动时比较 `AgentStatus.codexVersion`、app-server schema 和本地 manifest 版本。发现未知斜杠命令时，在高级面板显示“当前 App 未识别”，允许 raw RPC/SSH fallback，但不静默吞掉。
 - inline args 命令必须提供参数解析或表单：`/review`、`/rename`、`/plan`、`/goal`、`/ide`、`/keymap`、`/mcp`、`/raw`、`/usage`、`/pets`、`/side`、`/btw`、`/resume`、`/sandbox-add-read-dir`。
 - 命令可用性必须跟随 active turn 状态。Codex 标记为 active task 不可用的命令，App 禁用或提示原因，不能通过隐式 interrupt 绕过。
 - 断线生命周期约束同样适用于斜杠命令：`/quit`、`/exit` 只关闭 App/当前代理连接，不停止服务器任务；`/stop` 只对应后台 terminal/process 停止语义，不等价于 `turn/interrupt`；只有用户明确点击“中断/停止本轮”才发送 `turn/interrupt`。
@@ -633,7 +639,7 @@ Codex CLI 子命令与 App 覆盖方式：
 | `resume/fork/archive/delete/unarchive` | `thread/*` |
 | `mcp` | `mcpServer*` + `config/*`，必要时 SSH fallback |
 | `plugin` | `plugin/*` + `marketplace/*` |
-| `app-server daemon` | Linux backend 由 `sadcoder-agent` 调用；必要时 SSH lifecycle fallback |
+| `app-server daemon` | 不作为生产依赖；SadCoder 使用 `sadcoder-agent service/proxy`，必要时 direct stdio fallback |
 | `doctor` | SSH command fallback，后续解析结构化输出 |
 | `update` | SSH command fallback 或 agent-managed update policy |
 | `sandbox` | 主要通过 permission profile/sandboxPolicy；调试命令走 SSH fallback |
@@ -659,7 +665,7 @@ Codex CLI 子命令与 App 覆盖方式：
 - default remote cwd
 - codex path：默认 `codex`
 - CODEX_HOME：可选
-- connection mode：agent proxy / linux daemon backend / stdio debug
+- connection mode：agent service proxy / direct stdio debug fallback
 
 高级字段：
 
@@ -755,8 +761,8 @@ App 内部存储使用加密数据库；导入/导出时明确提示敏感信息
 3. Host key 校验。
 4. Auth 成功。
 5. 远端 shell 可执行。
-6. `codex --version`。
-7. `sadcoder-agent status --json`。
+6. `sadcoder-agent status --json` 可执行，并返回 Codex path/availability/version/backend。
+7. 必要时 `sadcoder-agent start` 可启动 service 或明确返回 fallback/失败原因。
 8. `sadcoder-agent proxy` 可连接。
 9. JSON-RPC `initialize` 成功。
 10. `account/read`。
@@ -769,7 +775,7 @@ App 内部存储使用加密数据库；导入/导出时明确提示敏感信息
 - Codex 版本过低。
 - agent 未安装或未运行。
 - Windows service/计划任务未启动。
-- Linux 官方 daemon 不可用，agent fallback 失败。
+- SadCoder service 不可用，agent fallback 失败。
 - ChatGPT/API key 未登录。
 - 权限不足或 cwd 不存在。
 
@@ -1040,8 +1046,8 @@ MVP 可以简化为底部导航：
 
 - 安装 Codex CLI。
 - 安装或启动 `sadcoder-agent`。
-- Linux backend 覆盖官方 `codex app-server daemon/proxy`。
-- Windows backend 覆盖 agent 自持 `codex app-server`。
+- Linux backend 覆盖 `sadcoder-agent service/proxy` 与 direct stdio fallback。
+- Windows backend 覆盖 `sadcoder-agent service/proxy` 与 direct stdio fallback。
 - 通过 `sadcoder-agent proxy` 完成 initialize。
 - 执行 thread start/resume/list。
 - 模拟 item streaming。
@@ -1102,8 +1108,8 @@ MVP 可以简化为底部导航：
 - Dart/Flutter 命令行或最小 App 原型。
 - SSH 连接 Linux 与 Windows 远端。
 - `sadcoder-agent status/start/proxy`。
-- Linux backend 覆盖官方 daemon 快路径。
-- Windows backend 覆盖 agent 自持 app-server。
+- Linux backend 覆盖 SadCoder service 后端和 direct stdio fallback。
+- Windows backend 覆盖 SadCoder service 后端和 direct stdio fallback。
 - `initialize`、`thread/list`、`model/list`。
 
 ### M1：移动端 MVP
@@ -1187,17 +1193,17 @@ MVP 可以简化为底部导航：
 - agent RPC 限定在 `agent/*` 命名空间。
 - 做 Linux/Windows CI 和集成测试。
 
-### 14.2 Codex app-server daemon 仍是 experimental
+### 14.2 Codex app-server daemon 只作为兼容背景
 
 风险：
 
-- Linux 快路径依赖的官方 daemon/proxy 协议可能变化。
+- 官方 daemon/proxy 协议可能变化，但 SadCoder 生产路径不依赖它。
 
 对策：
 
 - 做版本探测。
-- 保留 stdio debug fallback。
-- agent 支持绕过官方 daemon，自持 app-server。
+- 保留 direct stdio debug fallback。
+- agent 支持 service/proxy 与 direct stdio fallback，避免把官方 daemon 作为唯一依赖。
 - 客户端 JSON-RPC 通用化，不把所有 method 写死。
 - 建立 Codex 版本兼容矩阵。
 
@@ -1238,7 +1244,7 @@ MVP 可以简化为底部导航：
 
 对策：
 
-- agent-managed app-server 保持服务端进程。
+- agent-managed service/app-server 保持服务端进程。
 - 重连后用 `thread/read`、`thread/turns/list`、`thread/items/list` 回填。
 - 本地 event cursor 记录最后已见 turn/item。
 - UI 明确区分“手机已断开/未实时观察”和“服务器任务已中断/已完成”。
@@ -1267,7 +1273,7 @@ MVP 可以简化为底部导航：
 ## 15. 需要定夺的问题
 
 1. 首版服务器是否同时支持 Linux 和 Windows？
-   - 推荐：是。为此把 `sadcoder-agent` 提升为生产路径；Linux 官方 daemon 只是 backend 快路径。
+   - 推荐：是。为此把 `sadcoder-agent` 提升为生产路径；SadCoder service 统一承接 Linux/Windows。
 
 2. 是否接受服务器除官方 `codex` 外再安装一个 `sadcoder-agent`？
    - 推荐：接受。否则 Windows 上很难可靠保活；`sadcoder-agent` 保持薄层，不 fork Codex。
@@ -1292,7 +1298,7 @@ MVP 可以简化为底部导航：
 - 通信：SSH + `sadcoder-agent proxy`。
 - 协议：Codex app-server JSON-RPC。
 - 服务端：Windows/Linux 安装官方 `codex` + `sadcoder-agent`。
-- 模式：生产默认 agent-proxy；Linux 可用官方 daemon backend；调试 fallback 为 direct stdio。
+- 模式：生产默认 agent-proxy；SadCoder service 作为长期 backend；调试 fallback 为 direct stdio。
 - 功能优先级：任务不断线执行、连接可靠性、线程/turn、流式 item、审批、重连、基础配置。
 
 暂不采用：
