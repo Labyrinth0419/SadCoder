@@ -191,6 +191,28 @@ void main() {
     expect(proxyConnector.connectCount, 0);
     expect(proxyConnector.methods, isEmpty);
   });
+
+  test('connect rejects ready backend when Codex is unavailable', () async {
+    final proxyConnector = _LineServerProxyConnector();
+    final connector = CodexSessionConnector(
+      proxyConnector: proxyConnector,
+      statusReader: const _FakeStatusReader(_unavailableReadyStatus),
+    );
+
+    await expectLater(
+      connector.connect(_profile),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('Codex is unavailable: configured-path-missing'),
+        ),
+      ),
+    );
+
+    expect(proxyConnector.connectCount, 0);
+    expect(proxyConnector.methods, isEmpty);
+  });
 }
 
 const _profile = SshProfile(
@@ -232,6 +254,21 @@ const _unavailableStatus = AgentStatus(
   backendKind: BackendKind.unknown,
   backendState: BackendState.unavailable,
   backendDetail: 'codex missing',
+);
+
+const _unavailableReadyStatus = AgentStatus(
+  agentVersion: '0.1.0',
+  platformOs: 'linux',
+  platformArch: 'x86_64',
+  codexPath: '/missing/codex',
+  codexAvailable: false,
+  codexFailure: AgentCodexFailure(
+    kind: 'configured-path-missing',
+    detail: '/missing/codex does not exist',
+  ),
+  backendKind: BackendKind.codexAppServerStdio,
+  backendState: BackendState.ready,
+  backendDetail: 'legacy fallback status',
 );
 
 class _FakeStatusReader implements AgentStatusReader {

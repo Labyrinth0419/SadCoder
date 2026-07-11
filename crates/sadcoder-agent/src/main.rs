@@ -245,6 +245,16 @@ fn print_start(
     json: bool,
 ) -> anyhow::Result<()> {
     let state_path = resolve_state_path(state_path);
+    if let Err(failure) = probe_codex_version(codex) {
+        let status = collect_status_with_backend(
+            codex,
+            backend_mode,
+            &state_path,
+            Some(unavailable_backend_status(&failure)),
+        );
+        print_agent_status(&status, json);
+        return Ok(());
+    }
     let backend = start_backend(codex, backend_mode, &state_path)?;
     let status =
         collect_status_with_backend(codex, backend_mode, &state_path, Some(backend.status));
@@ -537,11 +547,7 @@ fn collect_backend_status(
     service_paths: &AgentServicePaths,
 ) -> BackendStatus {
     if let Some(failure) = codex_failure {
-        return BackendStatus {
-            kind: BackendKind::Unknown,
-            state: BackendState::Unavailable,
-            detail: Some(failure.message()),
-        };
+        return unavailable_backend_status(failure);
     }
 
     match backend_mode {
@@ -552,6 +558,14 @@ fn collect_backend_status(
         BackendMode::Daemon => stdio_backend_status(
             "compat daemon mode uses direct stdio fallback; official Codex daemon is not used",
         ),
+    }
+}
+
+fn unavailable_backend_status(failure: &CodexProbeFailure) -> BackendStatus {
+    BackendStatus {
+        kind: BackendKind::Unknown,
+        state: BackendState::Unavailable,
+        detail: Some(failure.message()),
     }
 }
 
@@ -627,6 +641,10 @@ fn start_backend(
     backend_mode: BackendMode,
     state_path: &Path,
 ) -> anyhow::Result<ResolvedBackend> {
+    if let Err(failure) = probe_codex_version(codex) {
+        anyhow::bail!(failure.message());
+    }
+
     match select_backend(backend_mode) {
         Ok(SelectedBackend::Service) => {
             let service_paths = resolve_service_paths(state_path);
@@ -1132,6 +1150,33 @@ mod tests {
         }
     }
 
+    fn available_codex_version_command() -> ResolvedCodexCommand {
+        #[cfg(windows)]
+        let (program, args) = (
+            PathBuf::from("cmd"),
+            vec![
+                OsString::from("/D"),
+                OsString::from("/C"),
+                OsString::from("echo codex 1.2.3"),
+            ],
+        );
+        #[cfg(not(windows))]
+        let (program, args) = (
+            PathBuf::from("sh"),
+            vec![
+                OsString::from("-c"),
+                OsString::from("printf 'codex 1.2.3\\n'"),
+            ],
+        );
+
+        ResolvedCodexCommand {
+            program,
+            args,
+            path_prepend: Vec::new(),
+            source: CodexCommandSource::Path,
+        }
+    }
+
     fn test_proxy_context(state_path: PathBuf) -> AgentProxyContext {
         AgentProxyContext {
             codex: missing_configured_codex(),
@@ -1244,7 +1289,7 @@ mod tests {
 
     #[test]
     fn auto_backend_falls_back_to_stdio_when_service_start_fails() {
-        let base = std::env::temp_dir().join(format!(
+        let blocked_base = std::env::temp_dir().join(format!(
             "sadcoder-agent-auto-backend-fallback-test-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
@@ -1252,9 +1297,15 @@ mod tests {
                 .expect("time")
                 .as_nanos()
         ));
-        let state_path = base.join("agent-state.json");
-        let backend = start_backend(&missing_configured_codex(), BackendMode::Auto, &state_path)
-            .expect("auto backend should fall back");
+        std::fs::write(&blocked_base, b"not a directory").expect("write blocked service base");
+        let state_path = blocked_base.join("agent-state.json");
+        let backend = start_backend(
+            &available_codex_version_command(),
+            BackendMode::Auto,
+            &state_path,
+        )
+        .expect("auto backend should fall back");
+        let _ = std::fs::remove_file(&blocked_base);
 
         assert_eq!(backend.selection, SelectedBackend::Stdio);
         assert_eq!(backend.status.kind, BackendKind::CodexAppServerStdio);
@@ -1266,6 +1317,23 @@ mod tests {
                 .as_deref()
                 .is_some_and(|detail| detail.contains("fallback"))
         );
+    }
+
+    #[test]
+    fn auto_backend_does_not_fallback_when_codex_is_unavailable() {
+        let base = std::env::temp_dir().join(format!(
+            "sadcoder-agent-auto-backend-no-fallback-test-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        let state_path = base.join("agent-state.json");
+        let error = start_backend(&missing_configured_codex(), BackendMode::Auto, &state_path)
+            .expect_err("unavailable Codex should not fall back");
+
+        assert!(error.to_string().contains("configured-path-missing"));
     }
 
     #[test]

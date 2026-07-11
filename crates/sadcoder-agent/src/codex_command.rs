@@ -231,16 +231,18 @@ pub(crate) fn probe_codex_version(
         });
     }
 
-    if !stdout.is_empty() {
-        Ok(stdout)
+    let version_output = if !stdout.is_empty() {
+        stdout
     } else if !stderr.is_empty() {
-        Ok(stderr)
+        stderr
     } else {
-        Err(CodexProbeFailure {
+        return Err(CodexProbeFailure {
             kind: CodexProbeFailureKind::VersionOutputInvalid,
             detail: "codex --version produced no output".to_string(),
-        })
-    }
+        });
+    };
+
+    validate_codex_version_output(&version_output)
 }
 
 pub(crate) fn agent_config_path() -> PathBuf {
@@ -417,6 +419,42 @@ fn classify_non_zero_output(detail: &str) -> CodexProbeFailureKind {
     }
 }
 
+fn validate_codex_version_output(output: &str) -> Result<String, CodexProbeFailure> {
+    let output = output.trim();
+    let mut parts = output.split_whitespace();
+    let command_name = parts.next();
+    let version = parts.next();
+    if command_name.is_some_and(is_codex_version_command_name)
+        && version.is_some_and(is_version_token)
+    {
+        return Ok(output.to_string());
+    }
+
+    Err(CodexProbeFailure {
+        kind: CodexProbeFailureKind::VersionOutputInvalid,
+        detail: format!("codex --version output was not recognized: {output}"),
+    })
+}
+
+fn is_codex_version_command_name(value: &str) -> bool {
+    matches!(value, "codex" | "codex-cli" | "@openai/codex")
+}
+
+fn is_version_token(value: &str) -> bool {
+    let without_prerelease = value.split_once('-').map_or(value, |(core, _)| core);
+    let core = without_prerelease
+        .split_once('+')
+        .map_or(without_prerelease, |(core, _)| core);
+    let mut parts = core.split('.');
+    let Some(first) = parts.next() else {
+        return false;
+    };
+    !first.is_empty()
+        && std::iter::once(first)
+            .chain(parts)
+            .all(|part| !part.is_empty() && part.chars().all(|ch| ch.is_ascii_digit()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -509,5 +547,36 @@ mod tests {
         let failure = probe_codex_version(&codex).expect_err("failure");
 
         assert_eq!(failure.kind, CodexProbeFailureKind::ConfiguredPathMissing);
+    }
+
+    #[test]
+    fn codex_version_output_accepts_current_and_legacy_names() {
+        assert_eq!(
+            validate_codex_version_output("codex 1.2.3\n").expect("version"),
+            "codex 1.2.3"
+        );
+        assert_eq!(
+            validate_codex_version_output("codex-cli 0.143.0-beta.1\n").expect("version"),
+            "codex-cli 0.143.0-beta.1"
+        );
+        assert_eq!(
+            validate_codex_version_output("@openai/codex 0.143.0+build.5\n").expect("version"),
+            "@openai/codex 0.143.0+build.5"
+        );
+    }
+
+    #[test]
+    fn non_codex_version_output_reports_invalid_version() {
+        let failure = validate_codex_version_output("rustc 1.80.0\n").expect_err("failure");
+
+        assert_eq!(failure.kind, CodexProbeFailureKind::VersionOutputInvalid);
+        assert!(failure.detail.contains("rustc 1.80.0"));
+    }
+
+    #[test]
+    fn malformed_codex_version_output_reports_invalid_version() {
+        let failure = validate_codex_version_output("codex\n").expect_err("failure");
+
+        assert_eq!(failure.kind, CodexProbeFailureKind::VersionOutputInvalid);
     }
 }

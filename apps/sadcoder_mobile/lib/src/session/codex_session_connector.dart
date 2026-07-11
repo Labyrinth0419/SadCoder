@@ -263,6 +263,9 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
     }
 
     final status = await statusReader.readStatus(profile);
+    if (!status.codexAvailable) {
+      throw StateError(_backendNotReadyMessage(status));
+    }
     if (status.backendState == BackendState.ready) {
       return;
     }
@@ -270,6 +273,9 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
     final startRunner = _startRunner;
     if (status.backendState == BackendState.notStarted && startRunner != null) {
       final started = await startRunner.start(profile);
+      if (!started.codexAvailable) {
+        throw StateError(_backendNotReadyMessage(started));
+      }
       if (started.backendState == BackendState.ready) {
         return;
       }

@@ -52,6 +52,10 @@ Backend selection is controlled by `--backend` or `SADCODER_BACKEND`:
 - `auto` uses the SadCoder service backend when it can be prepared and falls
   back to stdio when the service path is unavailable; it does not call the
   official Codex app-server daemon.
+- `auto` only falls back after the resolved Codex command passes the agent's
+  version/runtime probe. Missing Codex binaries, Node runtime errors,
+  permission failures, or malformed version output are reported as unavailable
+  instead of a ready stdio backend.
 - `stdio` forces the direct stdio debug path; SSH disconnect can end that
   app-server process.
 - `daemon` is accepted for compatibility, but falls back to stdio because
