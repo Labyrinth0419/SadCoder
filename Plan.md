@@ -953,7 +953,7 @@ MVP 可以简化为底部导航：
 
 - SSH 主机管理支持多台主机：本地保存多 profile，按 host 分组折叠展示；后续升级为多 host 同时连接和 per-host session/thread 列表。
 - SSH 主机管理补文件导入和密钥管理：支持从文件导入 OpenSSH config 与私钥；支持 App 内生成 RSA / ED25519 密钥对并导出/复制 public key；导入或生成的私钥必须进入 durable credential store（Android Keystore / iOS Keychain），不得归入可被“清缓存”删除的普通 cache。
-- Chat 顶栏右上角提供当前连接主机选择器和电源按钮：主机选择切换当前 session 上下文，电源按钮用于连接/断开当前主机，不直接中断 active turn。
+- Chat 顶栏右上角提供当前连接主机选择器：主机选择切换当前 session 上下文；连接/断开操作保留在 Hosts 页面或 `/quit` 等明确命令入口，且不直接中断 active turn。
 - Settings 页面改为多级菜单，最多二级：一级为 Account、Models、Permissions、Appearance、SSH、Diagnostics 等分组；二级进入具体设置页，避免单页继续膨胀。
 - Appearance 增加更多配色方案：保留系统/light/dark，新增 candy 等高辨识度 palette；代码块、diff、terminal output 仍使用语义色而不是简单整体换色。
 - 多连接架构需要独立设计 `HostSessionManager` 或等价控制器：每个 host 维护独立 `CodexSessionStateController`、thread cache、approval 归属和后台保活策略。
