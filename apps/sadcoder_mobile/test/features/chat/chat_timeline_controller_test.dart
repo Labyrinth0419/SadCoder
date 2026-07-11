@@ -246,13 +246,36 @@ void main() {
 
     controller.ingest(
       CodexEvent.fromNotification({
-        'method': 'item/reasoning/textDelta',
+        'method': 'item/reasoning/summaryTextDelta',
         'params': {
           'threadId': 'thr_1',
           'turnId': 'turn_1',
           'itemId': 'reason_1',
-          'delta': 'thinking',
-          'contentIndex': 0,
+          'delta': 'first thought',
+          'summaryIndex': 0,
+        },
+      }),
+    );
+    controller.ingest(
+      CodexEvent.fromNotification({
+        'method': 'item/reasoning/summaryPartAdded',
+        'params': {
+          'threadId': 'thr_1',
+          'turnId': 'turn_1',
+          'itemId': 'reason_1',
+          'summaryIndex': 1,
+        },
+      }),
+    );
+    controller.ingest(
+      CodexEvent.fromNotification({
+        'method': 'item/reasoning/summaryTextDelta',
+        'params': {
+          'threadId': 'thr_1',
+          'turnId': 'turn_1',
+          'itemId': 'reason_1',
+          'delta': 'second thought',
+          'summaryIndex': 1,
         },
       }),
     );
@@ -287,7 +310,7 @@ void main() {
       'fileChange',
       'mcpToolCall',
     ]);
-    expect(items[0].text, 'thinking');
+    expect(items[0].text, 'first thought\n\nsecond thought');
     expect(items[1].fileChanges.single.path, 'lib/main.dart');
     expect(items[2].text, 'searching');
   });

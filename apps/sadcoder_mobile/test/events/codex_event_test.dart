@@ -104,6 +104,15 @@ void main() {
         'summaryIndex': 0,
       },
     });
+    final reasoningSectionBreak = CodexEvent.fromNotification({
+      'method': 'item/reasoning/summaryPartAdded',
+      'params': {
+        'threadId': 'thr_1',
+        'turnId': 'turn_1',
+        'itemId': 'reason_1',
+        'summaryIndex': 1,
+      },
+    });
     final patch = CodexEvent.fromNotification({
       'method': 'item/fileChange/patchUpdated',
       'params': {
@@ -128,6 +137,9 @@ void main() {
     expect(reasoning.kind, CodexEventKind.reasoningDelta);
     expect(reasoning.itemId, 'reason_1');
     expect(reasoning.delta, 'thinking');
+    expect(reasoningSectionBreak.kind, CodexEventKind.reasoningSectionBreak);
+    expect(reasoningSectionBreak.itemId, 'reason_1');
+    expect(reasoningSectionBreak.delta, isNull);
     expect(patch.kind, CodexEventKind.fileChangePatchUpdated);
     expect(patch.fileChanges?.single.path, 'lib/main.dart');
     expect(progress.kind, CodexEventKind.mcpToolCallProgress);

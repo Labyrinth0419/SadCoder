@@ -81,6 +81,8 @@ class ChatTimelineController extends ChangeNotifier {
         _appendDelta(event, fallbackType: 'commandExecution', asOutput: true);
       case CodexEventKind.reasoningDelta:
         _appendDelta(event, fallbackType: 'reasoning');
+      case CodexEventKind.reasoningSectionBreak:
+        _appendReasoningSectionBreak(event);
       case CodexEventKind.fileChangeOutputDelta:
         _appendDelta(event, fallbackType: 'fileChange', asOutput: true);
       case CodexEventKind.fileChangePatchUpdated:
@@ -289,6 +291,37 @@ class ChatTimelineController extends ChangeNotifier {
             : existing.output,
       );
     }
+    _turns[turnIndex] = turn.copyWith(items: items);
+  }
+
+  void _appendReasoningSectionBreak(CodexEvent event) {
+    final turnId = event.turnId;
+    if (turnId == null || turnId.isEmpty) {
+      return;
+    }
+    final turnIndex = _turns.indexWhere((turn) => turn.turnId == turnId);
+    if (turnIndex == -1) {
+      return;
+    }
+    final itemId = event.itemId;
+    if (itemId == null || itemId.isEmpty) {
+      return;
+    }
+    final turn = _turns[turnIndex];
+    final items = List<ChatTimelineItem>.from(turn.items);
+    final itemIndex = items.indexWhere((item) => item.itemId == itemId);
+    if (itemIndex == -1) {
+      return;
+    }
+    final existing = items[itemIndex];
+    if (existing.text.trim().isEmpty || existing.text.endsWith('\n\n')) {
+      return;
+    }
+    items[itemIndex] = existing.copyWith(
+      text: existing.text.endsWith('\n')
+          ? '${existing.text}\n'
+          : '${existing.text}\n\n',
+    );
     _turns[turnIndex] = turn.copyWith(items: items);
   }
 

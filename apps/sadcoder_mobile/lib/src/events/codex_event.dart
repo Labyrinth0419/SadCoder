@@ -14,6 +14,7 @@ enum CodexEventKind {
   agentMessageDelta,
   commandExecutionOutputDelta,
   reasoningDelta,
+  reasoningSectionBreak,
   fileChangeOutputDelta,
   fileChangePatchUpdated,
   mcpToolCallProgress,
@@ -109,6 +110,11 @@ class CodexEvent {
       'item/reasoning/summaryTextDelta' ||
       'item/reasoning/textDelta' => _deltaEvent(
         CodexEventKind.reasoningDelta,
+        method,
+        notification,
+        params,
+      ),
+      'item/reasoning/summaryPartAdded' => _reasoningSectionBreakEvent(
         method,
         notification,
         params,
@@ -251,6 +257,21 @@ class CodexEvent {
       turnId: _stringValue(params['turnId']),
       itemId: _stringValue(params['itemId']),
       delta: _stringValue(params['delta']),
+    );
+  }
+
+  static CodexEvent _reasoningSectionBreakEvent(
+    String method,
+    Map<String, Object?> raw,
+    Map<String, Object?> params,
+  ) {
+    return CodexEvent(
+      kind: CodexEventKind.reasoningSectionBreak,
+      method: method,
+      raw: Map.unmodifiable(raw),
+      threadId: _stringValue(params['threadId']),
+      turnId: _stringValue(params['turnId']),
+      itemId: _stringValue(params['itemId']),
     );
   }
 
