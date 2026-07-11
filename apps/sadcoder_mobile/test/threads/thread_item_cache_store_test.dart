@@ -13,7 +13,7 @@ void main() {
       threadId: 'thr_1',
       snapshot: ThreadItemCacheSnapshot(
         threadId: 'thr_1',
-        items: [_item('item_local', 'Local item')],
+        items: [_item('item_local', 'Local item', turnId: 'turn_local')],
         nextCursor: 'older',
         backwardsCursor: 'newer',
         cachedAtMs: 123,
@@ -40,6 +40,7 @@ void main() {
 
     expect(local?.items.single.id, 'item_local');
     expect(local?.items.single.text, 'Local item');
+    expect(local?.items.single.turnId, 'turn_local');
     expect(local?.nextCursor, 'older');
     expect(local?.backwardsCursor, 'newer');
     expect(local?.cachedAtMs, 123);
@@ -81,10 +82,14 @@ void main() {
   });
 }
 
-ThreadItemSummary _item(String id, String text) {
-  return ThreadItemSummary.fromJson({
+ThreadItemSummary _item(String id, String text, {String? turnId}) {
+  final json = <String, Object?>{
     'id': id,
     'type': 'agentMessage',
     'text': text,
-  });
+  };
+  if (turnId != null) {
+    json['turnId'] = turnId;
+  }
+  return ThreadItemSummary.fromJson(json);
 }

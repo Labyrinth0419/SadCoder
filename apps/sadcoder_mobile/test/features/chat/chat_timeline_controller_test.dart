@@ -240,6 +240,72 @@ void main() {
     expect(controller.turns.single.items.single.text, 'current changes');
   });
 
+  test('restoreCachedItems groups cached items by turn id', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.restoreCachedItems(
+      threadId: 'thr_1',
+      items: [
+        _threadItem('item_1', 'first', turnId: 'turn_1'),
+        _threadItem('item_2', 'second', turnId: 'turn_1'),
+        _threadItem('item_3', 'third', turnId: 'turn_2'),
+      ],
+    );
+
+    expect(controller.selectedThreadId, 'thr_1');
+    expect(controller.turns.map((turn) => turn.turnId), ['turn_1', 'turn_2']);
+    expect(controller.turns.first.items.map((item) => item.text), [
+      'first',
+      'second',
+    ]);
+    expect(controller.turns.last.items.single.text, 'third');
+  });
+
+  test('restoreCachedItems deduplicates items without turn ids', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Fix bug',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': [
+          {
+            'id': 'turn_1',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': [
+              {'id': 'item_agent', 'type': 'agentMessage', 'text': 'Done'},
+            ],
+          },
+        ],
+      }),
+    );
+
+    controller.restoreCachedItems(
+      threadId: 'thr_1',
+      items: [
+        _threadItem('item_agent', 'Done plus cached'),
+        _threadItem('item_new', 'Recovered without turn id'),
+      ],
+    );
+
+    expect(controller.turns, hasLength(2));
+    expect(controller.turns.first.turnId, 'turn_1');
+    expect(controller.turns.first.items.single.text, 'Done plus cached');
+    expect(controller.turns.last.turnId, 'cached_items');
+    expect(
+      controller.turns.last.items.single.text,
+      'Recovered without turn id',
+    );
+  });
+
   test('ingest maps reasoning file changes and MCP progress into timeline', () {
     final controller = ChatTimelineController();
     addTearDown(controller.dispose);
@@ -394,6 +460,18 @@ void main() {
       isNot(contains('review_1')),
     );
   });
+}
+
+ThreadItemSummary _threadItem(String id, String text, {String? turnId}) {
+  final json = <String, Object?>{
+    'id': id,
+    'type': 'agentMessage',
+    'text': text,
+  };
+  if (turnId != null) {
+    json['turnId'] = turnId;
+  }
+  return ThreadItemSummary.fromJson(json);
 }
 
 CodexEvent _turnStarted({String threadId = 'thr_1', String turnId = 'turn_1'}) {

@@ -6,6 +6,7 @@ import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/threads/thread_cache_store.dart';
+import 'package:sadcoder_mobile/src/threads/thread_item_cache_store.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 
 void main() {
@@ -61,12 +62,48 @@ void main() {
       expect(store.snapshots.keys, ['profile-a']);
     },
   );
+
+  test('restores cached selected thread items into timeline', () async {
+    final threadStore = _MemoryThreadCacheStore({
+      'profile-a': ThreadCacheSnapshot(
+        threads: [_thread('thr_a', 'Host A task')],
+        selectedThreadId: 'thr_a',
+        cachedAtMs: 1,
+      ),
+    });
+    final itemStore = _MemoryThreadItemCacheStore({
+      'profile-a::thr_a': ThreadItemCacheSnapshot(
+        threadId: 'thr_a',
+        items: [_item('item_cached', 'Cached answer', turnId: 'turn_cached')],
+        cachedAtMs: 2,
+      ),
+    });
+    final fixture = _UiStateFixture(
+      profileId: 'profile-a',
+      store: threadStore,
+      itemStore: itemStore,
+    );
+    addTearDown(fixture.dispose);
+
+    await fixture.state.restoreCachedThreadState();
+
+    expect(fixture.state.threadDetailController.selectedThreadId, 'thr_a');
+    expect(fixture.state.timelineController.selectedThreadId, 'thr_a');
+    expect(fixture.state.timelineController.turns.single.turnId, 'turn_cached');
+    expect(
+      fixture.state.timelineController.turns.single.items.single.text,
+      'Cached answer',
+    );
+  });
 }
 
 class _UiStateFixture {
-  _UiStateFixture({required String profileId, required ThreadCacheStore store})
-    : approvalController = ApprovalStateController(),
-      configOverrideController = CodexConfigOverrideController() {
+  _UiStateFixture({
+    required String profileId,
+    required ThreadCacheStore store,
+    ThreadItemCacheStore? itemStore,
+  }) : approvalController = ApprovalStateController(),
+       configOverrideController = CodexConfigOverrideController() {
     sessionController = CodexSessionStateController(
       connector: _NeverConnectStarter(),
       approvalController: approvalController,
@@ -76,6 +113,7 @@ class _UiStateFixture {
       configOverrideController: configOverrideController,
       threadCacheProfileId: profileId,
       threadCacheStore: store,
+      threadItemCacheStore: itemStore,
     );
   }
 
@@ -109,6 +147,30 @@ class _MemoryThreadCacheStore implements ThreadCacheStore {
     ThreadCacheSnapshot snapshot,
   ) async {
     snapshots[profileId] = snapshot;
+  }
+}
+
+class _MemoryThreadItemCacheStore implements ThreadItemCacheStore {
+  _MemoryThreadItemCacheStore([Map<String, ThreadItemCacheSnapshot>? initial])
+    : snapshots = Map.of(initial ?? const {});
+
+  final Map<String, ThreadItemCacheSnapshot> snapshots;
+
+  @override
+  Future<ThreadItemCacheSnapshot?> loadThreadItems({
+    required String profileId,
+    required String threadId,
+  }) async {
+    return snapshots['$profileId::$threadId'];
+  }
+
+  @override
+  Future<void> saveThreadItems({
+    required String profileId,
+    required String threadId,
+    required ThreadItemCacheSnapshot snapshot,
+  }) async {
+    snapshots['$profileId::$threadId'] = snapshot;
   }
 }
 
@@ -147,4 +209,16 @@ ThreadSummary _threadWithTurn(String id, String preview) {
       {'id': 'turn_$id', 'status': 'completed', 'items': <Object?>[]},
     ],
   });
+}
+
+ThreadItemSummary _item(String id, String text, {String? turnId}) {
+  final json = <String, Object?>{
+    'id': id,
+    'type': 'agentMessage',
+    'text': text,
+  };
+  if (turnId != null) {
+    json['turnId'] = turnId;
+  }
+  return ThreadItemSummary.fromJson(json);
 }

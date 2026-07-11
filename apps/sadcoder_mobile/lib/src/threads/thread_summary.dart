@@ -298,6 +298,7 @@ class ThreadItemSummary {
     this.durationMs,
     this.server,
     this.tool,
+    this.turnId,
     this.senderThreadId,
     this.receiverThreadIds = const [],
     this.prompt,
@@ -325,6 +326,7 @@ class ThreadItemSummary {
       durationMs: _intValue(json['durationMs']),
       server: _stringValue(json['server']),
       tool: _stringValue(json['tool']),
+      turnId: _stringValue(json['turnId']),
       senderThreadId: _stringValue(json['senderThreadId']),
       receiverThreadIds: _listOfStrings(json['receiverThreadIds']),
       prompt: _stringValue(json['prompt']),
@@ -352,6 +354,7 @@ class ThreadItemSummary {
   final int? durationMs;
   final String? server;
   final String? tool;
+  final String? turnId;
   final String? senderThreadId;
   final List<String> receiverThreadIds;
   final String? prompt;
@@ -377,6 +380,7 @@ class ThreadItemSummary {
     _putString(json, 'status', status);
     _putString(json, 'server', server);
     _putString(json, 'tool', tool);
+    _putString(json, 'turnId', turnId);
     _putString(json, 'senderThreadId', senderThreadId);
     if (receiverThreadIds.isNotEmpty) {
       json['receiverThreadIds'] = receiverThreadIds;

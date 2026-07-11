@@ -158,6 +158,37 @@ class ChatTimelineController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void restoreCachedItems({
+    required String threadId,
+    required List<ThreadItemSummary> items,
+  }) {
+    final normalizedThreadId = threadId.trim();
+    if (normalizedThreadId.isEmpty || items.isEmpty) {
+      return;
+    }
+    final selectedChanged = _selectedThreadId != normalizedThreadId;
+    if (selectedChanged) {
+      _turns.clear();
+    }
+    _selectedThreadId = normalizedThreadId;
+    var changed = selectedChanged;
+    for (final item in items) {
+      if (item.id.trim().isEmpty) {
+        continue;
+      }
+      changed =
+          _mergeCachedItem(
+            threadId: normalizedThreadId,
+            turnId: item.turnId,
+            item: item,
+          ) ||
+          changed;
+    }
+    if (changed) {
+      notifyListeners();
+    }
+  }
+
   void clear() {
     _selectedThreadId = null;
     _turns.clear();
@@ -199,6 +230,72 @@ class ChatTimelineController extends ChangeNotifier {
       return;
     }
     _turns[index] = _turns[index].mergeLive(next);
+  }
+
+  bool _mergeCachedItem({
+    required String threadId,
+    required String? turnId,
+    required ThreadItemSummary item,
+  }) {
+    final timelineItem = ChatTimelineItem.fromThreadItem(item);
+    final normalizedTurnId = _normalized(turnId);
+    if (normalizedTurnId != null) {
+      return _mergeCachedItemIntoTurn(
+        threadId: threadId,
+        turnId: normalizedTurnId,
+        item: timelineItem,
+      );
+    }
+
+    for (var turnIndex = 0; turnIndex < _turns.length; turnIndex++) {
+      final itemIndex = _turns[turnIndex].items.indexWhere(
+        (existing) => existing.itemId == item.id,
+      );
+      if (itemIndex == -1) {
+        continue;
+      }
+      final items = List<ChatTimelineItem>.from(_turns[turnIndex].items);
+      items[itemIndex] = timelineItem.mergeLive(items[itemIndex]);
+      _turns[turnIndex] = _turns[turnIndex].copyWith(items: items);
+      return true;
+    }
+
+    return _mergeCachedItemIntoTurn(
+      threadId: threadId,
+      turnId: _cachedItemsTurnId,
+      item: timelineItem,
+    );
+  }
+
+  bool _mergeCachedItemIntoTurn({
+    required String threadId,
+    required String turnId,
+    required ChatTimelineItem item,
+  }) {
+    var turnIndex = _turns.indexWhere((turn) => turn.turnId == turnId);
+    if (turnIndex == -1) {
+      _turns.add(
+        ChatTimelineTurn(
+          threadId: threadId,
+          turnId: turnId,
+          status: 'unknown',
+          items: const [],
+        ),
+      );
+      turnIndex = _turns.length - 1;
+    }
+    final turn = _turns[turnIndex];
+    final items = List<ChatTimelineItem>.from(turn.items);
+    final itemIndex = items.indexWhere(
+      (existing) => existing.itemId == item.itemId,
+    );
+    if (itemIndex == -1) {
+      items.add(item);
+    } else {
+      items[itemIndex] = item.mergeLive(items[itemIndex]);
+    }
+    _turns[turnIndex] = turn.copyWith(items: items);
+    return true;
   }
 
   bool _acceptsEvent(CodexEvent event) {
@@ -378,6 +475,8 @@ class ChatTimelineController extends ChangeNotifier {
     return index;
   }
 }
+
+const _cachedItemsTurnId = 'cached_items';
 
 class ChatTimelineTurn {
   const ChatTimelineTurn({
@@ -592,4 +691,9 @@ String _mergeText(String snapshotText, String liveText) {
     return snapshotText;
   }
   return snapshotText;
+}
+
+String? _normalized(String? value) {
+  final trimmed = value?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
 }

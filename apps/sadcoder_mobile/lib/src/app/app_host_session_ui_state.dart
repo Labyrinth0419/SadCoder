@@ -7,6 +7,7 @@ import '../features/chat/chat_timeline_controller.dart';
 import '../session/codex_session_state_controller.dart';
 import '../threads/thread_cache_store.dart';
 import '../threads/thread_detail_controller.dart';
+import '../threads/thread_item_cache_store.dart';
 import '../threads/thread_list_controller.dart';
 import '../threads/thread_summary.dart';
 import '../turns/turn_controller.dart';
@@ -18,6 +19,7 @@ class AppHostSessionUiState {
     required CodexConfigOverrideController configOverrideController,
     this.threadCacheProfileId,
     this.threadCacheStore,
+    this.threadItemCacheStore,
     SlashCommandManifestReader? fallbackSlashCommandManifestReader,
   }) {
     threadListController = ThreadListController(
@@ -57,6 +59,7 @@ class AppHostSessionUiState {
   final CodexSessionStateController sessionController;
   final String? threadCacheProfileId;
   final ThreadCacheStore? threadCacheStore;
+  final ThreadItemCacheStore? threadItemCacheStore;
   late final ThreadListController threadListController;
   late final ThreadDetailController threadDetailController;
   late final TurnController turnController;
@@ -123,20 +126,49 @@ class AppHostSessionUiState {
         threadListController.restoreCached(snapshot.threads);
       }
       if (threadDetailController.selectedThreadId == null) {
+        String? restoredThreadId;
         final selectedThread = snapshot.selectedThread;
         if (selectedThread != null) {
           threadDetailController.restoreCachedDetail(selectedThread);
           turnController.restoreCachedActiveThread(selectedThread.id);
+          restoredThreadId = selectedThread.id;
         } else if (snapshot.selectedThreadId != null) {
           threadDetailController.restoreCachedSelection(
             snapshot.selectedThreadId,
           );
           turnController.restoreCachedActiveThread(snapshot.selectedThreadId);
+          restoredThreadId = snapshot.selectedThreadId;
         }
+        await _restoreCachedThreadItems(
+          profileId: profileId,
+          threadId: restoredThreadId,
+        );
       }
     } finally {
       _restoringCachedThreadState = false;
     }
+  }
+
+  Future<void> _restoreCachedThreadItems({
+    required String profileId,
+    required String? threadId,
+  }) async {
+    final store = threadItemCacheStore;
+    final normalizedThreadId = _normalized(threadId);
+    if (store == null || normalizedThreadId == null) {
+      return;
+    }
+    final snapshot = await store.loadThreadItems(
+      profileId: profileId,
+      threadId: normalizedThreadId,
+    );
+    if (_disposed || snapshot == null || snapshot.isEmpty) {
+      return;
+    }
+    timelineController.restoreCachedItems(
+      threadId: normalizedThreadId,
+      items: snapshot.items,
+    );
   }
 
   void dispose() {

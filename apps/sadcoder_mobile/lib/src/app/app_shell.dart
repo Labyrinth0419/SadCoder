@@ -325,6 +325,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       configOverrideController: _configOverrideController,
       threadCacheProfileId: _threadCacheProfileIdForSession(_sessionController),
       threadCacheStore: _resolvedThreadCacheStore,
+      threadItemCacheStore: _resolvedThreadItemCacheStore,
       fallbackSlashCommandManifestReader: _resolvedSlashCommandManifestReader,
     );
     _configSnapshotController = CodexConfigSnapshotController(
@@ -635,6 +636,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         configOverrideController: _configOverrideController,
         threadCacheProfileId: entry.profileId,
         threadCacheStore: _resolvedThreadCacheStore,
+        threadItemCacheStore: _resolvedThreadItemCacheStore,
         fallbackSlashCommandManifestReader: _resolvedSlashCommandManifestReader,
       ),
     );
