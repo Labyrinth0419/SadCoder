@@ -904,6 +904,11 @@ MVP 可以简化为底部导航：
 - 对当前平台不可用的命令默认隐藏；高级设置可显示“不可用命令”用于诊断。
 - i18n 中保留原始 command 名，不翻译 `/model` 等命令本身，只翻译说明和错误。
 
+当前实现状态：
+
+- 已落地 `SlashCommandRegistry`、命令解析、unknown slash 不默认作为普通 prompt 发送、移动端 `/quit`/`/exit` 仅断开 App/proxy 语义、以及命令面板高级可见性开关。
+- 已落地与 `refs/codex/codex-rs/tui/src/slash_command.rs` 的防漂移测试：自动校验命令名、展示顺序、alias、inline args、side conversation 可用性和 active turn 可用性；SadCoder 自有扩展 `/duplicate`、`/rewind`、`/plugins` 的差异需要显式白名单。
+
 ### 9.6 工作区文件浏览与只读查看
 
 工作区文件浏览是 `/mention`、`/ide`、代码审查、diff 查看和后续受控编辑能力的基础能力。它不应该继续塞进 `ChatPage` 内部，而应该作为独立的 `features/files` 模块建设。

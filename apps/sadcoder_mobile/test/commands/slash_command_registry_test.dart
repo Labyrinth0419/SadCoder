@@ -77,9 +77,8 @@ void main() {
       return;
     }
 
-    final codexCommands = _parseCodexSlashCommands(
-      sourceFile.readAsStringSync(),
-    );
+    final source = sourceFile.readAsStringSync();
+    final codexCommands = _parseCodexSlashCommands(source);
     final builtInCommands = builtInSlashCommands
         .map((command) => command.command)
         .toList(growable: false);
@@ -121,6 +120,51 @@ void main() {
             'SadCoder slash manifest is missing aliases for /${command.command}.',
       );
     }
+
+    expect(
+      builtInSlashCommands
+          .where((command) => command.supportsInlineArgs)
+          .map((command) => command.command)
+          .toSet(),
+      _withSadCoderExtensions(
+        _commandNamesForVariants(
+          codexCommands,
+          _parseCodexMatchesFunction(source, 'supports_inline_args'),
+        ),
+        _sadCoderInlineArgsExtensions,
+      ),
+      reason:
+          'SadCoder slash manifest inline-argument flags drifted from refs/codex.',
+    );
+
+    expect(
+      builtInSlashCommands
+          .where((command) => command.availableInSideConversation)
+          .map((command) => command.command)
+          .toSet(),
+      _commandNamesForVariants(
+        codexCommands,
+        _parseCodexMatchesFunction(source, 'available_in_side_conversation'),
+      ),
+      reason:
+          'SadCoder slash manifest side-conversation flags drifted from refs/codex.',
+    );
+
+    expect(
+      builtInSlashCommands
+          .where((command) => !command.availableDuringTask)
+          .map((command) => command.command)
+          .toSet(),
+      _withSadCoderExtensions(
+        _commandNamesForVariants(
+          codexCommands,
+          _parseCodexAvailableDuringTaskFalseVariants(source),
+        ),
+        _sadCoderActiveTaskDisabledExtensions,
+      ),
+      reason:
+          'SadCoder slash manifest active-task availability drifted from refs/codex.',
+    );
 
     expect(
       [
@@ -285,6 +329,8 @@ void main() {
 }
 
 const _sadCoderSlashCommandExtensions = {'duplicate', 'rewind'};
+const _sadCoderInlineArgsExtensions = {'plugins', 'rewind'};
+const _sadCoderActiveTaskDisabledExtensions = {'duplicate', 'rewind'};
 
 List<_CodexSlashCommand> _parseCodexSlashCommands(String source) {
   final enumMatch = RegExp(
@@ -327,7 +373,7 @@ List<_CodexSlashCommand> _parseCodexSlashCommands(String source) {
         toString ??
         (serializes.isNotEmpty ? serializes.first : _kebabCase(variant));
     commands.add(
-      _CodexSlashCommand(command, [
+      _CodexSlashCommand(variant, command, [
         for (final alias in serializes)
           if (alias != command) alias,
       ]),
@@ -335,6 +381,77 @@ List<_CodexSlashCommand> _parseCodexSlashCommands(String source) {
     attributes.clear();
   }
   return commands;
+}
+
+Set<String> _parseCodexMatchesFunction(String source, String methodName) {
+  final match = RegExp(
+    'pub fn $methodName\\(self\\)[\\s\\S]*?matches!\\(\\s*self,([\\s\\S]*?)\\n\\s*\\)',
+  ).firstMatch(source);
+  if (match == null) {
+    throw FormatException(
+      'Codex SlashCommand method was not found: $methodName',
+    );
+  }
+  return _variantNames(match.group(1)!);
+}
+
+Set<String> _parseCodexAvailableDuringTaskFalseVariants(String source) {
+  final match = RegExp(
+    r'pub fn available_during_task\(self\)[\s\S]*?match self \{([\s\S]*?)\n\s*\}',
+  ).firstMatch(source);
+  if (match == null) {
+    throw const FormatException(
+      'Codex SlashCommand available_during_task method was not found',
+    );
+  }
+
+  final falseVariants = <String>{};
+  final arm = StringBuffer();
+  for (final rawLine in match.group(1)!.split('\n')) {
+    final line = rawLine.trim();
+    if (line.isEmpty) {
+      continue;
+    }
+    arm.writeln(line);
+    if (!line.contains('=>')) {
+      continue;
+    }
+    final armText = arm.toString();
+    if (armText.contains('=> false')) {
+      falseVariants.addAll(_variantNames(armText));
+    }
+    arm.clear();
+  }
+  return falseVariants;
+}
+
+Set<String> _variantNames(String source) {
+  return {
+    for (final match in RegExp(
+      r'SlashCommand::([A-Za-z][A-Za-z0-9]*)',
+    ).allMatches(source))
+      match.group(1)!,
+  };
+}
+
+Set<String> _commandNamesForVariants(
+  List<_CodexSlashCommand> commands,
+  Set<String> variants,
+) {
+  final byVariant = {
+    for (final command in commands) command.variant: command.command,
+  };
+  return {
+    for (final variant in variants)
+      if (byVariant[variant] != null) byVariant[variant]!,
+  };
+}
+
+Set<String> _withSadCoderExtensions(
+  Set<String> codexCommands,
+  Set<String> sadCoderExtensions,
+) {
+  return {...codexCommands, ...sadCoderExtensions};
 }
 
 String _kebabCase(String value) {
@@ -351,8 +468,9 @@ String _kebabCase(String value) {
 }
 
 class _CodexSlashCommand {
-  const _CodexSlashCommand(this.command, this.aliases);
+  const _CodexSlashCommand(this.variant, this.command, this.aliases);
 
+  final String variant;
   final String command;
   final List<String> aliases;
 }
