@@ -989,6 +989,7 @@ MVP 可以简化为底部导航：
 - 已落地 per-host thread item cache reader、timeline 恢复和 reconnect fallback：`ThreadItemCacheStore` 按 profile/thread 隔离保存 item summaries 和分页游标，`local_data` schema 已补 `item_cache.profile_id` 与 profile/thread 索引；`CodexSessionStateController.threadItemListReader` 已通过缓存 decorator 保存/回退 canonical thread item 读取，host UI state 恢复选中 thread 时会从 item cache 回填 timeline；重连时 `thread/turns/list(itemsView: full)` 会有界分页回填当前 thread，若 turn list 不可用或失败，会尝试 `thread/items/list` 有界分页回填 timeline；turn/item 分页边界按 id 去重，优先保留新页数据。
 - 已落地 timeline 本地 event cursor 快照基础：`ChatTimelineController.cursor` 可从当前 selected thread 的 turns/items 派生已见 turnId/itemId、lastTurnId 和 lastItemId，供后续持久化 cursor、断线增量回填和 agent delivered cursor 对接。
 - 已落地 per-host timeline cursor 持久化基础：`ThreadTimelineCursorStore` 按 profile/thread 保存已见 turnId/itemId、lastTurnId/lastItemId，并由 `AppHostSessionUiState` 监听 timeline 变化进行 best-effort 写入；后续 reconnect 可基于该持久化 cursor 对接 agent delivered cursor 和增量回填。
+- 已落地 cursor-aware reconnect backfill 基础：`AppSessionRecoveryCoordinator` 可读取 host/thread 持久化 timeline cursor，turn 分页回填遇到 lastTurnId 会保留边界 turn 后停止继续翻旧页；item fallback 遇到 lastItemId 后从边界 item 开始恢复并继续读取后续页，边界缺失时回退为旧的 bounded page 行为。
 - 已落地后台 active-turn retention 的上下文刷新：App 后台且 active turn 仍需保活时，如果 host/thread/turn context 变化，会释放旧 foreground retention 并用新 context 重新 retain，避免 Android 通知和保活上下文停留在旧 turn。
 - 后续仍需完整多 host 同时连接架构：`HostSessionManager` 已作为基础控制器引入，但完整后台保活策略、断线期间事件 cursor/分页增量回填和更完整的 reconnect turn/item reconciliation 还需要继续拆分完善。
 

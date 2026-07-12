@@ -54,6 +54,7 @@ class AppHostSessionUiState {
       threadItemListReaderProvider: () =>
           sessionController.threadItemListReader,
       threadItemRecoveryHandler: timelineController.restoreThreadItems,
+      threadTimelineCursorProvider: _loadTimelineCursor,
     );
     threadListController.addListener(_handleThreadListChanged);
     threadDetailController.addListener(_handleThreadDetailChanged);
@@ -177,6 +178,29 @@ class AppHostSessionUiState {
       threadId: normalizedThreadId,
       items: snapshot.items,
     );
+  }
+
+  Future<ThreadTimelineCursorSnapshot?> _loadTimelineCursor(
+    String threadId,
+  ) async {
+    final store = threadTimelineCursorStore;
+    final profileId = _normalized(threadCacheProfileId);
+    final normalizedThreadId = _normalized(threadId);
+    if (store == null || profileId == null || normalizedThreadId == null) {
+      return null;
+    }
+    try {
+      final snapshot = await store.loadThreadCursor(
+        profileId: profileId,
+        threadId: normalizedThreadId,
+      );
+      if (_disposed) {
+        return null;
+      }
+      return snapshot;
+    } catch (_) {
+      return null;
+    }
   }
 
   void dispose() {
