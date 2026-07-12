@@ -103,7 +103,9 @@ void main() {
     expect(find.text('Probe passed'), findsOneWidget);
     expect(find.text('Backend: stdio fallback'), findsOneWidget);
     expect(
-      find.text('Reconnect cache: 1 pending approvals, 7 recent events'),
+      find.text(
+        'Reconnect cache: 1 pending approvals, 7 recent events - Delivered cursor: event-7',
+      ),
       findsOneWidget,
     );
     expect(
@@ -1314,6 +1316,7 @@ const _readyStatus = AgentStatus(
     schemaVersion: 1,
     pendingApprovals: 1,
     recentEvents: 7,
+    deliveredCursor: 'event-7',
   ),
 );
 

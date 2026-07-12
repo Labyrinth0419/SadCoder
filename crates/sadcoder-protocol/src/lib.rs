@@ -141,6 +141,12 @@ pub struct AgentReconnectCacheStatus {
     pub schema_version: u32,
     pub pending_approvals: usize,
     pub recent_events: usize,
+    #[serde(
+        default,
+        alias = "delivered_cursor",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub delivered_cursor: Option<String>,
     pub load_error: Option<String>,
 }
 
@@ -274,6 +280,7 @@ mod tests {
                 schema_version: 1,
                 pending_approvals: 2,
                 recent_events: 10,
+                delivered_cursor: Some("42".to_string()),
                 load_error: None,
             },
         };
@@ -289,6 +296,7 @@ mod tests {
             "/tmp/sadcoder-agent-state.json"
         );
         assert_eq!(encoded["reconnectCache"]["pendingApprovals"], 2);
+        assert_eq!(encoded["reconnectCache"]["deliveredCursor"], "42");
     }
 
     #[test]
@@ -314,6 +322,7 @@ mod tests {
                 schema_version: 1,
                 pending_approvals: 0,
                 recent_events: 0,
+                delivered_cursor: None,
                 load_error: None,
             },
         };
@@ -323,6 +332,35 @@ mod tests {
         assert_eq!(encoded["codexAvailable"], false);
         assert_eq!(encoded["codexFailure"]["kind"], "runtime-not-found");
         assert_eq!(encoded["codexFailure"]["detail"], "node: SyntaxError");
+    }
+
+    #[test]
+    fn agent_status_accepts_snake_case_reconnect_delivered_cursor() {
+        let status: AgentStatus = serde_json::from_value(serde_json::json!({
+            "agentVersion": "0.1.0",
+            "platformOs": "linux",
+            "platformArch": "x86_64",
+            "codexPath": "codex",
+            "codexAvailable": true,
+            "backend": {
+                "kind": "codex-app-server-stdio",
+                "state": "ready"
+            },
+            "reconnectCache": {
+                "statePath": "/tmp/state.json",
+                "schemaVersion": 1,
+                "pendingApprovals": 0,
+                "recentEvents": 1,
+                "delivered_cursor": "event-9",
+                "loadError": null
+            }
+        }))
+        .expect("deserialize status");
+
+        assert_eq!(
+            status.reconnect_cache.delivered_cursor.as_deref(),
+            Some("event-9")
+        );
     }
 
     #[test]

@@ -510,6 +510,7 @@ void main() {
             statePath: '/home/tester/.sadcoder/agent-state.json',
             pendingApprovals: 2,
             recentEvents: 7,
+            deliveredCursor: 'event-7',
           ),
         ),
       ),
@@ -559,6 +560,7 @@ void main() {
       find.text('Reconnect cache: 2 pending approvals, 7 recent events'),
       findsOneWidget,
     );
+    expect(find.text('Delivered cursor: event-7'), findsOneWidget);
     expect(
       find.text('State path: /home/tester/.sadcoder/agent-state.json'),
       findsOneWidget,

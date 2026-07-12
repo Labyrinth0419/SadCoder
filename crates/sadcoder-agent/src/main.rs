@@ -678,6 +678,7 @@ fn collect_reconnect_cache_status(state_path: &Path) -> AgentReconnectCacheStatu
                 schema_version: snapshot.schema_version,
                 pending_approvals: snapshot.pending_approvals.len(),
                 recent_events: snapshot.recent_events.len(),
+                delivered_cursor: snapshot.delivered_cursor,
                 load_error: None,
             }
         }
@@ -686,6 +687,7 @@ fn collect_reconnect_cache_status(state_path: &Path) -> AgentReconnectCacheStatu
             schema_version: 1,
             pending_approvals: 0,
             recent_events: 0,
+            delivered_cursor: None,
             load_error: Some(error.to_string()),
         },
     }
@@ -1469,6 +1471,7 @@ mod tests {
                 params: None,
                 cursor: Some("1".to_string()),
             });
+        cache.snapshot.delivered_cursor = Some("1".to_string());
 
         cache.save(&path).expect("save cache");
         let codex = missing_configured_codex();
@@ -1482,6 +1485,10 @@ mod tests {
         assert_eq!(status.reconnect_cache.schema_version, 1);
         assert_eq!(status.reconnect_cache.pending_approvals, 1);
         assert_eq!(status.reconnect_cache.recent_events, 1);
+        assert_eq!(
+            status.reconnect_cache.delivered_cursor.as_deref(),
+            Some("1")
+        );
         assert_eq!(status.reconnect_cache.load_error, None);
     }
 

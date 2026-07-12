@@ -1782,10 +1782,15 @@ class _ProbeResultPanel extends StatelessWidget {
 
   String _reconnectCacheSummary(AppLocalizations l10n, AgentStatus status) {
     final cache = status.reconnectCache;
-    return l10n.reconnectCacheSummary(
+    final summary = l10n.reconnectCacheSummary(
       cache.pendingApprovals,
       cache.recentEvents,
     );
+    final deliveredCursor = cache.deliveredCursor;
+    if (deliveredCursor == null) {
+      return summary;
+    }
+    return '$summary - ${l10n.reconnectCacheDeliveredCursor(deliveredCursor)}';
   }
 }
 

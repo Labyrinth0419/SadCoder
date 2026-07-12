@@ -699,6 +699,12 @@ class _LoadedAgentDoctor extends StatelessWidget {
             status.reconnectCache.recentEvents,
           ),
         ),
+        if (status.reconnectCache.deliveredCursor != null)
+          Text(
+            l10n.reconnectCacheDeliveredCursor(
+              status.reconnectCache.deliveredCursor!,
+            ),
+          ),
         if (status.reconnectCache.statePath.trim().isNotEmpty)
           Text(l10n.statePath(status.reconnectCache.statePath)),
         if (status.reconnectCache.loadError != null)

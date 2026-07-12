@@ -146,6 +146,8 @@ class AppLocalizations {
       _text('reconnectCacheSummary')
           .replaceAll('{pendingApprovals}', formatNumber(pendingApprovals))
           .replaceAll('{recentEvents}', formatNumber(recentEvents));
+  String reconnectCacheDeliveredCursor(String cursor) =>
+      _text('reconnectCacheDeliveredCursor').replaceAll('{cursor}', cursor);
   String statePath(String path) =>
       _text('statePath').replaceAll('{path}', path);
   String reconnectCacheLoadError(String error) =>
@@ -1090,6 +1092,7 @@ const _values = <String, Map<String, String>>{
     'backendUnavailable': 'unavailable',
     'reconnectCacheSummary':
         'Reconnect cache: {pendingApprovals} pending approvals, {recentEvents} recent events',
+    'reconnectCacheDeliveredCursor': 'Delivered cursor: {cursor}',
     'statePath': 'State path: {path}',
     'reconnectCacheLoadError': 'Reconnect cache load error: {error}',
     'connect': 'Connect',
@@ -1841,6 +1844,7 @@ const _values = <String, Map<String, String>>{
     'backendUnavailable': '不可用',
     'reconnectCacheSummary':
         '重连缓存：{pendingApprovals} 个待审批，{recentEvents} 个最近事件',
+    'reconnectCacheDeliveredCursor': '已投递 cursor：{cursor}',
     'statePath': '状态路径：{path}',
     'reconnectCacheLoadError': '重连缓存读取失败：{error}',
     'connect': '连接',
