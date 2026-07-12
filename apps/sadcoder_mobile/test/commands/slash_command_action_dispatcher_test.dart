@@ -351,6 +351,64 @@ void main() {
     },
   );
 
+  test('/experimental returns the injected experimental summary', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      showExperimental: (argument) {
+        arguments.add(argument);
+        return 'Experimental features\nApp-server experimental API: enabled';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/experimental'),
+      hasActiveTurn: false,
+    );
+
+    expect(arguments, ['']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.experimental);
+    expect(result.message, contains('App-server experimental API'));
+  });
+
+  test('/experimental rejects unsupported inline arguments', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      showExperimental: (arguments) {
+        calls++;
+        return arguments.trim().isEmpty ? 'Experimental features' : null;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/experimental enable'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, 1);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'experimental');
+  });
+
+  test('/experimental is unavailable during an active turn', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      showExperimental: (_) {
+        calls++;
+        return 'Experimental features';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/experimental'),
+      hasActiveTurn: true,
+    );
+
+    expect(calls, 0);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'experimental');
+  });
+
   test('/rollout returns the injected rollout summary', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

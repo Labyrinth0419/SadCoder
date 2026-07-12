@@ -46,6 +46,7 @@ import 'chat_background_terminal_summary.dart';
 import 'chat_debug_config_summary.dart';
 import 'chat_display_settings_sheets.dart';
 import 'chat_diff_summary.dart';
+import 'chat_experimental_summary.dart';
 import 'chat_hooks_summary.dart';
 import 'chat_plugins_summary.dart';
 import 'chat_skills_summary.dart';
@@ -684,6 +685,7 @@ class _ChatPageState extends State<ChatPage> {
           showHooks: _buildHooksSummary,
           showApps: _buildAppsSummary,
           showDebugConfig: _buildDebugConfigSummary,
+          showExperimental: _buildExperimentalSummary,
           showRollout: _buildRolloutSummary,
           testApproval: _testApprovalRequest,
           showDiff: _buildDiffSummary,
@@ -960,6 +962,20 @@ class _ChatPageState extends State<ChatPage> {
       await controller.refresh(cwd: cwds.isEmpty ? null : cwds.first);
     }
     return buildDebugConfigSummary(l10n: l10n, controller: controller);
+  }
+
+  Future<String?> _buildExperimentalSummary(String arguments) async {
+    if (arguments.trim().isNotEmpty) {
+      return null;
+    }
+
+    final l10n = context.l10n;
+    final controller = widget.configSnapshotController;
+    if (controller != null) {
+      final cwds = _currentWorkspaceCwds();
+      await controller.refresh(cwd: cwds.isEmpty ? null : cwds.first);
+    }
+    return buildExperimentalSummary(l10n: l10n, controller: controller);
   }
 
   Future<String?> _buildRolloutSummary(String arguments) async {
@@ -2176,6 +2192,9 @@ class _ChatPageState extends State<ChatPage> {
           result.slash,
         ),
         SlashCommandActionEffect.debugConfig => l10n.slashCommandExecuted(
+          result.slash,
+        ),
+        SlashCommandActionEffect.experimental => l10n.slashCommandExecuted(
           result.slash,
         ),
         SlashCommandActionEffect.rollout => l10n.slashCommandExecuted(

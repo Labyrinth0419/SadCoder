@@ -14,6 +14,8 @@ typedef SlashCommandShowHooks = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowApps = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowDebugConfig =
     FutureOr<String?> Function(String arguments);
+typedef SlashCommandShowExperimental =
+    FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowRollout = FutureOr<String?> Function(String arguments);
 typedef SlashCommandTestApproval = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowDiff = FutureOr<String?> Function(String arguments);
@@ -88,6 +90,7 @@ enum SlashCommandActionEffect {
   hooks,
   apps,
   debugConfig,
+  experimental,
   rollout,
   testApproval,
   diff,
@@ -236,6 +239,7 @@ class SlashCommandActionDispatcher {
     this.showHooks,
     this.showApps,
     this.showDebugConfig,
+    this.showExperimental,
     this.showRollout,
     this.testApproval,
     this.showDiff,
@@ -283,6 +287,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandShowHooks? showHooks;
   final SlashCommandShowApps? showApps;
   final SlashCommandShowDebugConfig? showDebugConfig;
+  final SlashCommandShowExperimental? showExperimental;
   final SlashCommandShowRollout? showRollout;
   final SlashCommandTestApproval? testApproval;
   final SlashCommandShowDiff? showDiff;
@@ -407,6 +412,8 @@ class SlashCommandActionDispatcher {
         return _showApps(parsed);
       case 'debug-config':
         return _showDebugConfig(parsed);
+      case 'experimental':
+        return _showExperimental(parsed);
       case 'rollout':
         return _showRollout(parsed);
       case 'test-approval':
@@ -671,6 +678,16 @@ class SlashCommandActionDispatcher {
       parsed,
       action: showDebugConfig,
       effect: SlashCommandActionEffect.debugConfig,
+    );
+  }
+
+  Future<SlashCommandActionResult> _showExperimental(
+    SlashCommandParseResult parsed,
+  ) async {
+    return _showMessageWithArguments(
+      parsed,
+      action: showExperimental,
+      effect: SlashCommandActionEffect.experimental,
     );
   }
 

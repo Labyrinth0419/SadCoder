@@ -788,6 +788,13 @@ class AppLocalizations {
   String get debugConfigOrigins => _text('debugConfigOrigins');
   String get debugConfigLayerConfig => _text('debugConfigLayerConfig');
   String get debugConfigLayerMetadata => _text('debugConfigLayerMetadata');
+  String get experimentalTitle => _text('experimentalTitle');
+  String get experimentalUnavailable => _text('experimentalUnavailable');
+  String get experimentalLoadFailed => _text('experimentalLoadFailed');
+  String get experimentalNoSnapshot => _text('experimentalNoSnapshot');
+  String get experimentalApiCapability => _text('experimentalApiCapability');
+  String get experimentalConfigValues => _text('experimentalConfigValues');
+  String get experimentalNoConfigValues => _text('experimentalNoConfigValues');
   String get lifetimeTokens => _text('lifetimeTokens');
   String get peakDailyTokens => _text('peakDailyTokens');
   String get currentStreakDays => _text('currentStreakDays');
@@ -1713,6 +1720,13 @@ const _values = <String, Map<String, String>>{
     'debugConfigOrigins': 'Origins',
     'debugConfigLayerConfig': 'config',
     'debugConfigLayerMetadata': 'metadata',
+    'experimentalTitle': 'Experimental features',
+    'experimentalUnavailable': 'Connect to a host, then run /experimental.',
+    'experimentalLoadFailed': 'Failed to load experimental config',
+    'experimentalNoSnapshot': 'No config snapshot loaded.',
+    'experimentalApiCapability': 'App-server experimental API',
+    'experimentalConfigValues': 'Experimental config values',
+    'experimentalNoConfigValues': 'No experimental config values found.',
     'lifetimeTokens': 'Lifetime tokens',
     'peakDailyTokens': 'Peak daily tokens',
     'currentStreakDays': 'Current streak',
@@ -2474,6 +2488,13 @@ const _values = <String, Map<String, String>>{
     'debugConfigOrigins': '来源',
     'debugConfigLayerConfig': '配置',
     'debugConfigLayerMetadata': '元数据',
+    'experimentalTitle': '实验功能',
+    'experimentalUnavailable': '连接主机后运行 /experimental。',
+    'experimentalLoadFailed': '实验功能配置加载失败',
+    'experimentalNoSnapshot': '尚未加载配置快照。',
+    'experimentalApiCapability': 'App-server 实验 API',
+    'experimentalConfigValues': '实验配置值',
+    'experimentalNoConfigValues': '未找到实验配置值。',
     'lifetimeTokens': '累计 token',
     'peakDailyTokens': '单日峰值 token',
     'currentStreakDays': '当前连续天数',

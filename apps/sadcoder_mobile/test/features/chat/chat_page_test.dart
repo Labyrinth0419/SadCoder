@@ -2328,6 +2328,119 @@ void main() {
     );
   });
 
+  testWidgets('/experimental refreshes config and shows experimental values', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final configReader = _RecordingConfigSnapshotReader(
+      snapshot: CodexConfigSnapshot.fromJson({
+        'config': {
+          'experimental_thread_config_endpoint': 'http://127.0.0.1:9911',
+          'features': {'agentGraph': true},
+          'model': 'gpt-5-codex',
+        },
+        'origins': {
+          'experimental_thread_config_endpoint': {
+            'name': {'type': 'user', 'file': '~/.codex/config.toml'},
+          },
+          'features': {
+            'name': {'type': 'project', 'dot_codex_folder': '/repo/.codex'},
+          },
+        },
+        'layers': <Object?>[],
+      }),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(thread: _thread('thr_selected')),
+      ),
+    );
+    final configSnapshotController = CodexConfigSnapshotController(
+      readerProvider: () => configReader,
+    );
+    addTearDown(configSnapshotController.dispose);
+    addTearDown(detailController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_selected');
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+      configSnapshotController: configSnapshotController,
+    );
+
+    await _submitComposerText(tester, '/experimental');
+
+    expect(configReader.cwdValues, ['/repo']);
+    expect(find.textContaining('Experimental features'), findsOneWidget);
+    expect(
+      find.textContaining('App-server experimental API: enabled'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining(
+        'experimental_thread_config_endpoint: http://127.0.0.1:9911',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('features: {"agentGraph":true}'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('model: gpt-5-codex'), findsNothing);
+  });
+
+  testWidgets('/experimental unsupported arguments do not refresh', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final configReader = _RecordingConfigSnapshotReader(
+      snapshot: const CodexConfigSnapshot(config: {}, origins: {}, layers: []),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final configSnapshotController = CodexConfigSnapshotController(
+      readerProvider: () => configReader,
+    );
+    addTearDown(configSnapshotController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      configSnapshotController: configSnapshotController,
+    );
+
+    await _submitComposerText(tester, '/experimental enable');
+
+    expect(configReader.cwdValues, isEmpty);
+    expect(
+      find.text('/experimental is unavailable right now.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('/diff renders selected workspace git diff', (tester) async {
     final approvalController = ApprovalStateController();
     final diffReader = _RecordingGitDiffReader(
