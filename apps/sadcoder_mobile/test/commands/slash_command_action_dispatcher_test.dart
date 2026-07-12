@@ -1681,11 +1681,26 @@ void main() {
 
   test('side conversations reject commands unavailable in side mode', () async {
     var forks = 0;
+    var sideConversations = 0;
+    var renames = 0;
+    var reviews = 0;
     var statuses = 0;
     final dispatcher = SlashCommandActionDispatcher(
       forkThread: () async {
         forks++;
         return SlashCommandCallbackResult.executed;
+      },
+      startSideConversation: (_, {required bool btw}) async {
+        sideConversations++;
+        return SlashCommandCallbackResult.executed;
+      },
+      renameThread: (_) async {
+        renames++;
+        return true;
+      },
+      handleReview: (_) async {
+        reviews++;
+        return 'Review summary';
       },
       showStatus: () {
         statuses++;
@@ -1698,6 +1713,21 @@ void main() {
       hasActiveTurn: false,
       isSideConversation: true,
     );
+    final side = await dispatcher.dispatch(
+      registry.parseComposerText('/side nested'),
+      hasActiveTurn: false,
+      isSideConversation: true,
+    );
+    final rename = await dispatcher.dispatch(
+      registry.parseComposerText('/rename nested'),
+      hasActiveTurn: false,
+      isSideConversation: true,
+    );
+    final review = await dispatcher.dispatch(
+      registry.parseComposerText('/review'),
+      hasActiveTurn: false,
+      isSideConversation: true,
+    );
     final status = await dispatcher.dispatch(
       registry.parseComposerText('/status'),
       hasActiveTurn: false,
@@ -1706,10 +1736,19 @@ void main() {
 
     expect(fork.outcome, SlashCommandActionOutcome.unavailable);
     expect(fork.command?.command, 'fork');
+    expect(side.outcome, SlashCommandActionOutcome.unavailable);
+    expect(side.command?.command, 'side');
+    expect(rename.outcome, SlashCommandActionOutcome.unavailable);
+    expect(rename.command?.command, 'rename');
+    expect(review.outcome, SlashCommandActionOutcome.unavailable);
+    expect(review.command?.command, 'review');
     expect(status.outcome, SlashCommandActionOutcome.executed);
     expect(status.effect, SlashCommandActionEffect.status);
     expect(status.message, 'Status summary');
     expect(forks, 0);
+    expect(sideConversations, 0);
+    expect(renames, 0);
+    expect(reviews, 0);
     expect(statuses, 1);
   });
 

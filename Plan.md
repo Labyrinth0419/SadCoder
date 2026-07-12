@@ -1156,6 +1156,8 @@ MVP 可以简化为底部导航：
 - 验证 unknown slash command 被显示为未支持或需要 raw fallback，不会静默作为普通 prompt 发送。
 - 验证 `/side`、`/btw` 创建 ephemeral fork 时不会 interrupt main thread，side 返回/丢弃不会影响 main thread active turn。
 - 验证 side thread 注入 boundary prompt，side 内不允许再次 `/side`，不允许 rename/review 等不适合 side 的命令。
+  - 已补充 runner 层覆盖：`startSideConversation` 使用 `thread/fork ephemeral=true` + developer instructions，并通过 `thread/inject_items` 注入 side boundary prompt，注入失败时 best-effort 删除 side thread。
+  - 已补充 dispatcher 层覆盖：side conversation 模式下 `/fork`、嵌套 `/side`、`/rename`、`/review` 均返回 unavailable 且不调用对应 handler；`/status` 等允许命令仍可执行。
 - 验证 `/agent`、`/subagents` 的只读拓扑可以从 `parentThreadId`、`ancestorThreadId`、`CollabAgentToolCall`、`SubAgentActivity` 回填，并正确区分 running、closed、errored 状态。
   - 已补充 Chat widget 层覆盖：`/agent` 拓扑弹层同时展示 running/closed/errored agent runtime status，且状态色用于区分运行、关闭和错误的子 agent 条目。
   - 已补充 Chat widget 层覆盖：`/subagents` 弹层只展示子 agent 条目，并验证显式 parent/ancestor 子线程和当前 thread 中 `CollabAgentToolCall` / `SubAgentActivity` 回填的子 agent 会同时展示 status、role、agent path、parent 和 ancestor 信息，切换子 agent thread 不启动新 turn。
