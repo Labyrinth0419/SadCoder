@@ -30,6 +30,23 @@ void main() {
     },
   );
 
+  test('candy color scheme uses bespoke candy tones', () {
+    final scheme = sadCoderColorScheme(
+      colorPalette: AppColorPalette.candy,
+      brightness: Brightness.light,
+    );
+    final nativeSeed = ColorScheme.fromSeed(
+      seedColor: AppColorPalette.candy.seedColor,
+      brightness: Brightness.light,
+    );
+
+    expect(scheme.primary, const Color(0xFFA91F6B));
+    expect(scheme.primaryContainer, const Color(0xFFFFD6E8));
+    expect(scheme.secondaryContainer, const Color(0xFFC8FFFB));
+    expect(scheme.tertiaryContainer, const Color(0xFFF1D9FF));
+    expect(scheme.primary, isNot(nativeSeed.primary));
+  });
+
   test('dark palette semantic colors keep code roles distinct', () {
     final ember = SadCoderThemeColors.forPalette(
       colorPalette: AppColorPalette.ember,

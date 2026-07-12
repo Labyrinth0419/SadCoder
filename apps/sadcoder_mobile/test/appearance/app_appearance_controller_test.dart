@@ -26,6 +26,16 @@ void main() {
     expect(AppColorPalette.parse('unknown'), isNull);
   });
 
+  test('candy palette exposes explicit pastel swatches', () {
+    expect(AppColorPalette.candy.seedColor, const Color(0xFFFF77AE));
+    expect(AppColorPalette.candy.swatchColors, const [
+      Color(0xFFFF77AE),
+      Color(0xFFA7F3F0),
+      Color(0xFFCDB4DB),
+      Color(0xFFFFF6A6),
+    ]);
+  });
+
   test('controller notifies when theme changes', () {
     final controller = AppAppearanceController();
     addTearDown(controller.dispose);
