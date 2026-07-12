@@ -616,7 +616,7 @@ void main() {
   });
 
   test(
-    'connection loss reconnects with backoff without clearing approvals',
+    'connection loss reconnects without clearing approvals or interrupting turns',
     () async {
       final approvalController = ApprovalStateController(
         initialApprovals: const [
@@ -653,6 +653,10 @@ void main() {
       expect(scheduler.delays, [const Duration(milliseconds: 1)]);
       expect(approvalController.approvals.single.requestId, 'approval-1');
       expect(approvalController.canRespond, false);
+      expect(
+        connector.connections.first.requestMethods,
+        isNot(contains('turn/interrupt')),
+      );
 
       scheduler.completeNext();
       await _flushMicrotasks();
@@ -662,8 +666,24 @@ void main() {
       expect(connector.closeCount, 1);
       expect(approvalController.approvals.single.requestId, 'approval-1');
       expect(approvalController.canRespond, true);
+      expect(
+        connector.connections
+            .expand((connection) => connection.requestMethods)
+            .toList(),
+        isNot(contains('turn/interrupt')),
+      );
       expect(statuses, contains(CodexSessionStatus.reconnecting));
       expect(statuses, isNot(contains(CodexSessionStatus.disconnecting)));
+
+      await controller.turnRunner!.interruptTurn(
+        threadId: 'thr_1',
+        turnId: 'turn_1',
+      );
+
+      expect(
+        connector.connections.last.requestMethods,
+        contains('turn/interrupt'),
+      );
     },
   );
 
@@ -1217,6 +1237,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     connections.add(record);
     final session = CodexAppSession(
       MemoryJsonRpcTransport((request) async {
+        record.requestMethods.add(request.method);
         if (request.method == 'agent/restartBackend') {
           record.restartBackendCount++;
           return {'reconnectRequired': true};
@@ -1278,7 +1299,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
           const _FakeThreadBackgroundTerminalRunner(),
       threadGoalRunner: const _FakeThreadGoalRunner(),
       threadReviewRunner: const _FakeThreadReviewRunner(),
-      turnRunner: const _FakeTurnRunner(),
+      turnRunner: _FakeTurnRunner(record),
       agentSnapshotReader: connectionIndex < agentSnapshotReaders.length
           ? agentSnapshotReaders[connectionIndex]
           : null,
@@ -1721,7 +1742,9 @@ ThreadItemSummary _item(String id) {
 }
 
 class _FakeTurnRunner implements TurnRunner {
-  const _FakeTurnRunner();
+  const _FakeTurnRunner([this.record]);
+
+  final _FakeConnectionRecord? record;
 
   @override
   Future<ThreadSummary> startThread() async => ThreadSummary.fromJson({
@@ -1763,7 +1786,9 @@ class _FakeTurnRunner implements TurnRunner {
   Future<void> interruptTurn({
     required String threadId,
     required String turnId,
-  }) async {}
+  }) async {
+    record?.requestMethods.add('turn/interrupt');
+  }
 }
 
 class _FakeThreadMutationRunner implements ThreadMutationRunner {
@@ -2005,6 +2030,7 @@ class _PendingAgentSnapshotReader implements AgentSnapshotReader {
 
 class _FakeConnectionRecord {
   final _doneCompleter = Completer<void>();
+  final requestMethods = <String>[];
   bool closed = false;
   int agentPingCount = 0;
   int restartBackendCount = 0;
