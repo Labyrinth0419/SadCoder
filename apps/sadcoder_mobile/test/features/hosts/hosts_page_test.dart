@@ -105,7 +105,7 @@ void main() {
     expect(runner.lastProfile?.password, 'secret');
     expect(runner.lastProfile?.agentCommand, 'sadcoder-agent');
     expect(find.text('Probe passed'), findsOneWidget);
-    expect(find.text('Backend: stdio fallback'), findsOneWidget);
+    expect(find.text('Backend: stdio fallback / ready'), findsOneWidget);
     expect(
       find.text(
         'Reconnect cache: 1 pending approvals, 7 recent events, 3 threads - Delivered cursor: event-7',
@@ -178,7 +178,7 @@ void main() {
       find.text('Codex status failure: runtime-not-found: node: SyntaxError'),
       findsOneWidget,
     );
-    expect(find.text('Backend: unknown'), findsOneWidget);
+    expect(find.text('Backend: unknown / unavailable'), findsOneWidget);
   });
 
   testWidgets('validates required host fields before probing', (tester) async {

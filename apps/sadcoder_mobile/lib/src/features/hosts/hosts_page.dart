@@ -1815,7 +1815,12 @@ class _ProbeResultPanel extends StatelessWidget {
       BackendKind.codexAppServerStdio => l10n.backendStdioFallback,
       BackendKind.unknown => l10n.backendUnknown,
     };
-    return '${l10n.backend}: $kind';
+    final state = switch (status.backendState) {
+      BackendState.ready => l10n.backendReady,
+      BackendState.notStarted => l10n.backendNotStarted,
+      BackendState.unavailable => l10n.backendUnavailable,
+    };
+    return '${l10n.backend}: $kind / $state';
   }
 
   String _agentStatusSummary(AgentStatus status) {
