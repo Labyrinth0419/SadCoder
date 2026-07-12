@@ -88,6 +88,27 @@ void main() {
     },
   );
 
+  test(
+    'retained connection loss while backgrounded resumes on foreground',
+    () async {
+      final fixture = _Fixture(activeTurnId: 'turn_1');
+      addTearDown(fixture.dispose);
+
+      await fixture.coordinator.handleLifecycleState(AppLifecycleState.paused);
+      fixture.connected.value = false;
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(fixture.recordingKeeper.retentions.single.released, true);
+      expect(fixture.disconnects, 0);
+
+      await fixture.coordinator.handleLifecycleState(AppLifecycleState.resumed);
+
+      expect(fixture.resumes, 1);
+      expect(fixture.connected.value, true);
+    },
+  );
+
   test('retention failure disconnects observation', () async {
     final fixture = _Fixture(
       activeTurnId: 'turn_1',

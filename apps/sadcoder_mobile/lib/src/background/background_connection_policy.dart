@@ -185,7 +185,11 @@ class AppLifecycleConnectionCoordinator {
 
   Future<void> _applyBackgroundPolicy() async {
     if (!_isConnected()) {
+      final hadRetention = _retention != null;
       await _releaseRetention();
+      if (hadRetention) {
+        _disconnectedForBackground = true;
+      }
       return;
     }
 
