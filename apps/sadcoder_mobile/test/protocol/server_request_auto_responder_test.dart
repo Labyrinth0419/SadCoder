@@ -55,6 +55,7 @@ void main() {
 
       const methods = [
         dynamicToolCallMethod,
+        chatgptAuthTokensRefreshMethod,
         attestationGenerateMethod,
         legacyApplyPatchApprovalMethod,
         legacyExecCommandApprovalMethod,

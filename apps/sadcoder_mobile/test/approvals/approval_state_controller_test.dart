@@ -108,6 +108,11 @@ void main() {
         method: dynamicToolCallMethod,
         params: {'threadId': 'thr_1'},
       ),
+      JsonRpcServerRequest(
+        id: 'auth-refresh-1',
+        method: chatgptAuthTokensRefreshMethod,
+        params: {'reason': 'unauthorized'},
+      ),
     ]);
     expect(controller.approvals, isEmpty);
     expect(notifications, 0);
@@ -124,8 +129,13 @@ void main() {
           method: dynamicToolCallMethod,
           params: {'threadId': 'thr_1'},
         ),
+        JsonRpcServerRequest(
+          id: 'auth-refresh-1',
+          method: chatgptAuthTokensRefreshMethod,
+          params: {'reason': 'unauthorized'},
+        ),
       ],
-      pruneRequestIds: const {'time-1', 'tool-1'},
+      pruneRequestIds: const {'time-1', 'tool-1', 'auth-refresh-1'},
     );
     expect(controller.approvals, isEmpty);
     expect(notifications, 0);

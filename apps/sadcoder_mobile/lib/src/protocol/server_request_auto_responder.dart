@@ -4,6 +4,7 @@ import 'json_rpc.dart';
 
 const currentTimeReadMethod = 'currentTime/read';
 const dynamicToolCallMethod = 'item/tool/call';
+const chatgptAuthTokensRefreshMethod = 'account/chatgptAuthTokens/refresh';
 const attestationGenerateMethod = 'attestation/generate';
 const legacyApplyPatchApprovalMethod = 'applyPatchApproval';
 const legacyExecCommandApprovalMethod = 'execCommandApproval';
@@ -85,6 +86,8 @@ int _defaultCurrentUnixTimeProvider() {
 const _unsupportedServerRequestMessages = {
   dynamicToolCallMethod:
       'Dynamic tool calls are not available in SadCoder mobile yet.',
+  chatgptAuthTokensRefreshMethod:
+      'ChatGPT token refresh is not available in SadCoder mobile.',
   attestationGenerateMethod:
       'Attestation generation is not available in SadCoder mobile.',
   legacyApplyPatchApprovalMethod:

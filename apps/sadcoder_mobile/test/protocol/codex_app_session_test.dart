@@ -127,9 +127,9 @@ void main() {
 
       transport.emitServerRequest(
         const JsonRpcServerRequest(
-          id: 'tool-1',
-          method: dynamicToolCallMethod,
-          params: {'threadId': 'thr_1'},
+          id: 'auth-refresh-1',
+          method: chatgptAuthTokensRefreshMethod,
+          params: {'reason': 'unauthorized', 'previousAccountId': 'acct_1'},
         ),
       );
       await Future<void>.delayed(Duration.zero);
@@ -138,11 +138,13 @@ void main() {
       expect(transport.responses, hasLength(1));
       expect(transport.responses.single.toJson(), {
         'jsonrpc': '2.0',
-        'id': 'tool-1',
+        'id': 'auth-refresh-1',
         'error': {
           'code': unsupportedServerRequestErrorCode,
-          'message': unsupportedServerRequestMessage(dynamicToolCallMethod),
-          'data': {'method': dynamicToolCallMethod},
+          'message': unsupportedServerRequestMessage(
+            chatgptAuthTokensRefreshMethod,
+          ),
+          'data': {'method': chatgptAuthTokensRefreshMethod},
         },
       });
     },
