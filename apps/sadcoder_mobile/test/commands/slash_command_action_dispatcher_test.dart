@@ -392,6 +392,47 @@ void main() {
     expect(result.command?.command, 'rollout');
   });
 
+  test('/test-approval queues the injected approval request', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      testApproval: (argument) {
+        arguments.add(argument);
+        return 'Test approval request queued.';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/test-approval'),
+      hasActiveTurn: true,
+    );
+
+    expect(arguments, ['']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.testApproval);
+    expect(result.message, 'Test approval request queued.');
+  });
+
+  test('/test-approval rejects unsupported inline arguments', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      testApproval: (arguments) {
+        calls++;
+        return arguments.trim().isEmpty
+            ? 'Test approval request queued.'
+            : null;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/test-approval extra'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, 1);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'test-approval');
+  });
+
   test('/diff returns the injected diff summary', () async {
     final dispatcher = SlashCommandActionDispatcher(
       showDiff: (_) => 'diff --git a/lib/main.dart b/lib/main.dart',

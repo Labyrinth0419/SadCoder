@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 
 import '../../accounts/account_snapshot_controller.dart';
 import '../../appearance/app_appearance_controller.dart';
+import '../../approvals/approval_request_mapper.dart';
+import '../../approvals/pending_approval.dart';
 import '../../commands/slash_command_action_dispatcher.dart';
 import '../../commands/slash_command_registry.dart';
 import '../../config/codex_config_override_controller.dart';
@@ -683,6 +685,7 @@ class _ChatPageState extends State<ChatPage> {
           showApps: _buildAppsSummary,
           showDebugConfig: _buildDebugConfigSummary,
           showRollout: _buildRolloutSummary,
+          testApproval: _testApprovalRequest,
           showDiff: _buildDiffSummary,
           handleGoal: _handleGoalCommand,
           handleReview: _handleReviewCommand,
@@ -970,6 +973,51 @@ class _ChatPageState extends State<ChatPage> {
       return 'Current rollout path: $rolloutPath';
     }
     return 'Rollout path is not available yet.';
+  }
+
+  Future<String?> _testApprovalRequest(String arguments) async {
+    if (arguments.trim().isNotEmpty) {
+      return null;
+    }
+    final approvalController = widget.sessionController?.approvalController;
+    if (approvalController == null) {
+      return null;
+    }
+    final now = DateTime.now();
+    final threadId = _currentThreadId();
+    final turnId = widget.turnController?.activeTurnId ?? 'turn-1';
+    final rawParams = <String, Object?>{
+      'turnId': turnId,
+      'startedAtMs': now.millisecondsSinceEpoch,
+      'grantRoot': '/tmp',
+      'reason': 'SadCoder test approval request',
+      'changes': [
+        {'path': '/tmp/test.txt', 'kind': 'add', 'content': 'test'},
+        {
+          'path': '/tmp/test2.txt',
+          'kind': 'update',
+          'unifiedDiff': '+test\n-test2',
+        },
+      ],
+    };
+    if (threadId != null) {
+      rawParams['threadId'] = threadId;
+    }
+    approvalController.upsert(
+      PendingApproval(
+        requestId: 'debug-test-approval-${now.microsecondsSinceEpoch}',
+        method: fileChangeApprovalMethod,
+        kind: PendingApprovalKind.fileChange,
+        rawParams: rawParams,
+        title: 'File change approval: /tmp',
+        threadId: threadId,
+        turnId: turnId,
+        startedAtMs: now.millisecondsSinceEpoch,
+        reason: 'SadCoder test approval request',
+        grantRoot: '/tmp',
+      ),
+    );
+    return 'Test approval request queued.';
   }
 
   Future<String?> _buildDiffSummary(String arguments) async {
@@ -2131,6 +2179,9 @@ class _ChatPageState extends State<ChatPage> {
           result.slash,
         ),
         SlashCommandActionEffect.rollout => l10n.slashCommandExecuted(
+          result.slash,
+        ),
+        SlashCommandActionEffect.testApproval => l10n.slashCommandExecuted(
           result.slash,
         ),
         SlashCommandActionEffect.diff => l10n.slashCommandExecuted(

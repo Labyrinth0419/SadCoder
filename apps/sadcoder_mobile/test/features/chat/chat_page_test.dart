@@ -10,6 +10,7 @@ import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/apps/app_list_reader.dart';
 import 'package:sadcoder_mobile/src/appearance/app_appearance_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
+import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal_runner.dart';
 import 'package:sadcoder_mobile/src/commands/slash_command_manifest_reader.dart';
@@ -1044,18 +1045,36 @@ void main() {
     (tester) async {
       final harness = await _pumpConnectedChatPage(tester);
 
-      await _submitComposerText(tester, '/test-approval');
+      await _submitComposerText(tester, '/debug-m-drop');
 
       expect(harness.turnRunner.startedTurns, isEmpty);
       expect(
         find.text(
-          '/test-approval is registered but not available: debug-only command. '
-          'Planned path: approval pipeline test.',
+          '/debug-m-drop is registered but not available: debug-only command. '
+          'Planned path: memory debug drop. Risk: high.',
         ),
         findsOneWidget,
       );
     },
   );
+
+  testWidgets('/test-approval injects a local file-change approval', (
+    tester,
+  ) async {
+    final harness = await _pumpConnectedChatPage(tester);
+
+    await _submitComposerText(tester, '/test-approval');
+
+    expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(find.text('Test approval request queued.'), findsOneWidget);
+    expect(harness.approvalController.approvals, hasLength(1));
+    final approval = harness.approvalController.approvals.single;
+    expect(approval.kind, PendingApprovalKind.fileChange);
+    expect(approval.method, 'item/fileChange/requestApproval');
+    expect(approval.grantRoot, '/tmp');
+    expect(approval.reason, 'SadCoder test approval request');
+    expect(approval.rawParams['changes'], isA<List<Object?>>());
+  });
 
   testWidgets('high-risk fallback slash commands include risk state', (
     tester,
@@ -6883,7 +6902,10 @@ Future<_ConnectedChatHarness> _pumpConnectedChatPage(
     turnController: turnController,
     appearanceController: appearanceController,
   );
-  return _ConnectedChatHarness(turnRunner: turnRunner);
+  return _ConnectedChatHarness(
+    turnRunner: turnRunner,
+    approvalController: approvalController,
+  );
 }
 
 Future<void> _submitComposerText(WidgetTester tester, String text) async {
@@ -6929,9 +6951,13 @@ CodexEvent _autoReviewCompletedNotification({
 }
 
 class _ConnectedChatHarness {
-  const _ConnectedChatHarness({required this.turnRunner});
+  const _ConnectedChatHarness({
+    required this.turnRunner,
+    required this.approvalController,
+  });
 
   final _FakeTurnRunner turnRunner;
+  final ApprovalStateController approvalController;
 }
 
 Future<void> _selectDropdownOption(
