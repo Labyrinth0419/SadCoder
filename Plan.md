@@ -1151,6 +1151,7 @@ MVP 可以简化为底部导航：
 - 验证当前 Codex 斜杠命令 manifest 覆盖 `/model`、`/ide`、`/permissions`、`/keymap`、`/vim`、`/setup-default-sandbox`、`/sandbox-add-read-dir`、`/experimental`、`/approve`、`/memories`、`/skills`、`/import`、`/hooks`、`/review`、`/rename`、`/new`、`/archive`、`/delete`、`/resume`、`/fork`、`/app`、`/init`、`/compact`、`/plan`、`/goal`、`/agent`、`/side`、`/btw`、`/copy`、`/raw`、`/diff`、`/mention`、`/status`、`/usage`、`/debug-config`、`/title`、`/statusline`、`/theme`、`/pets`、`/mcp`、`/apps`、`/plugins`、`/logout`、`/quit`、`/exit`、`/feedback`、`/rollout`、`/ps`、`/stop`、`/clear`、`/personality`、`/test-approval`、`/subagents`、`/debug-m-drop`、`/debug-m-update`。
 - 验证别名 `/clean -> /stop`、`/pet -> /pets`、`/approve -> AutoReview`、`/subagents -> MultiAgents`。
 - 验证 active turn 中不可用的斜杠命令被禁用，不会触发隐式 `turn/interrupt`。
+  - 已补充 Chat widget 层覆盖：active turn 时命令面板将不可用命令（例如 `/delete`）置灰并显示不可用原因，同时 fake turn runner 未记录任何 `turn/interrupt`。
 - 验证 `/quit`、`/exit` 只断开 App/proxy，不停止服务器上的 active turn。
   - 已补充 Chat widget 层覆盖：`/quit` 和 `/exit` 都通过真实 composer 提交流程断开 mobile proxy，session 回到 idle，且 fake turn runner 未记录任何 `turn/interrupt`。
 - 验证 `/stop` 只作用于后台 terminal/process，不等价于 `turn/interrupt`。

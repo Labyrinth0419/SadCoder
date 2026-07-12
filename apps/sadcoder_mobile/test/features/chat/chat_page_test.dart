@@ -6846,6 +6846,7 @@ void main() {
         find.textContaining('Unavailable while a turn is active'),
         findsOneWidget,
       );
+      expect(turnRunner.interruptedTurns, isEmpty);
     },
   );
 
