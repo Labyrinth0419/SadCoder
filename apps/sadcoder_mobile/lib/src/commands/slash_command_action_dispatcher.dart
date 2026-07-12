@@ -123,6 +123,7 @@ enum SlashCommandActionEffect {
   mention,
   sideConversation,
   agentTopology,
+  appHandoff,
   modelOverride,
   personalityOverride,
   permissionsOverride,
@@ -466,6 +467,8 @@ class SlashCommandActionDispatcher {
           action: rewindThread,
           effect: SlashCommandActionEffect.rewindThread,
         );
+      case 'app':
+        return _appHandoffDiagnostic(parsed);
       case 'compact':
         return _configuredAction(
           parsed,
@@ -842,6 +845,24 @@ class SlashCommandActionDispatcher {
         error: error,
       );
     }
+  }
+
+  SlashCommandActionResult _appHandoffDiagnostic(
+    SlashCommandParseResult parsed,
+  ) {
+    if (parsed.arguments.trim().isNotEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    return SlashCommandActionResult.executed(
+      command: parsed.command!,
+      rawCommand: parsed.rawCommand,
+      arguments: parsed.arguments,
+      effect: SlashCommandActionEffect.appHandoff,
+    );
   }
 
   SlashCommandActionResult _toggleRawTranscript(

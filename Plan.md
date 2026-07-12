@@ -918,6 +918,7 @@ MVP 可以简化为底部导航：
 - 已将 `/test-approval` 接成移动端本地 debug-only 审批链路测试：注入一条 file-change `PendingApproval` 到当前 session 的 `ApprovalStateController`，不调用 app-server、不修改服务器状态。
 - 已将 `/experimental` 接成只读配置摘要：刷新当前 cwd 的 `config/read` snapshot，显示 app-server experimental API 已启用，并列出 config 中 experimental/feature 相关键；写服务器配置和 toggle 仍留待后续确认流程。
 - 已将 `/memories` 接成只读配置摘要：刷新当前 cwd 的 `config/read` snapshot，展示 `[memories]` / memory feature 相关配置和当前 thread memory mode；`thread/memoryMode/set`、`memory/reset` 等写操作仍留待后续带确认流程实现。
+- 已将 `/app` 接成移动端 UI-only 诊断：无参数时明确提示 Codex Desktop handoff 在移动端不可用，不调用 app-server、不发送 prompt；带参数时返回 unavailable。后续只有在服务器明确暴露 Desktop handoff 能力时再改成结构化接入。
 
 ### 9.6 工作区文件浏览与只读查看
 

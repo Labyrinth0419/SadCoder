@@ -314,6 +314,31 @@ void main() {
     expect(result.command?.command, 'apps');
   });
 
+  test('/app reports mobile Desktop handoff diagnostic locally', () async {
+    const dispatcher = SlashCommandActionDispatcher();
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/app'),
+      hasActiveTurn: true,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.appHandoff);
+    expect(result.command?.command, 'app');
+  });
+
+  test('/app rejects unsupported inline arguments', () async {
+    const dispatcher = SlashCommandActionDispatcher();
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/app desktop'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'app');
+  });
+
   test('/debug-config returns the injected debug config summary', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

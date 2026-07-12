@@ -979,19 +979,14 @@ void main() {
     expect(find.text('Approved a recent auto-review denial.'), findsOneWidget);
   });
 
-  testWidgets('platform-only slash commands explain visibility state', (
-    tester,
-  ) async {
+  testWidgets('/app reports mobile Desktop handoff diagnostic', (tester) async {
     final harness = await _pumpConnectedChatPage(tester);
 
     await _submitComposerText(tester, '/app');
 
     expect(harness.turnRunner.startedTurns, isEmpty);
     expect(
-      find.text(
-        '/app is registered but not available: desktop-only command. '
-        'Planned path: Codex Desktop handoff unavailable on mobile.',
-      ),
+      find.text('Codex Desktop handoff is not available in the mobile app.'),
       findsOneWidget,
     );
   });

@@ -314,6 +314,8 @@ class AppLocalizations {
       _text('slashCommandReturnedToMainThread');
   String get slashCommandAgentThreadSelected =>
       _text('slashCommandAgentThreadSelected');
+  String get slashCommandAppHandoffUnavailable =>
+      _text('slashCommandAppHandoffUnavailable');
   String get slashCommandModelUpdated => _text('slashCommandModelUpdated');
   String get slashCommandPersonalityUpdated =>
       _text('slashCommandPersonalityUpdated');
@@ -1281,6 +1283,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandSideConversationStarted': 'Started side conversation.',
     'slashCommandReturnedToMainThread': 'Returned to main thread.',
     'slashCommandAgentThreadSelected': 'Selected agent thread.',
+    'slashCommandAppHandoffUnavailable':
+        'Codex Desktop handoff is not available in the mobile app.',
     'slashCommandModelUpdated': 'Model override updated.',
     'slashCommandPersonalityUpdated': 'Personality override updated.',
     'slashCommandPermissionsUpdated': 'Permission override updated.',
@@ -2080,6 +2084,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandSideConversationStarted': '已开始侧聊。',
     'slashCommandReturnedToMainThread': '已返回主线会话。',
     'slashCommandAgentThreadSelected': '已切换 agent 会话。',
+    'slashCommandAppHandoffUnavailable': '移动端暂不支持交接到 Codex Desktop。',
     'slashCommandModelUpdated': '已更新模型覆盖。',
     'slashCommandPersonalityUpdated': '已更新协作风格覆盖。',
     'slashCommandPermissionsUpdated': '已更新权限覆盖。',
