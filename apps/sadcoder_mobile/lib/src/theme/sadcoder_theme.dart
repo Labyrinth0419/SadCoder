@@ -139,6 +139,68 @@ ColorScheme sadCoderColorScheme({
           ? const Color(0xFF725C73)
           : const Color(0xFFE8D3EE),
     ),
+    AppColorPalette.candyPop => base.copyWith(
+      primary: brightness == Brightness.dark
+          ? const Color(0xFFD8B6FF)
+          : const Color(0xFF6B22B8),
+      onPrimary: brightness == Brightness.dark
+          ? const Color(0xFF3A006F)
+          : const Color(0xFFFFFFFF),
+      primaryContainer: brightness == Brightness.dark
+          ? const Color(0xFF5E1C9C)
+          : const Color(0xFFE9D8FF),
+      onPrimaryContainer: brightness == Brightness.dark
+          ? const Color(0xFFF5EBFF)
+          : const Color(0xFF25004E),
+      secondary: brightness == Brightness.dark
+          ? const Color(0xFFFFB0DE)
+          : const Color(0xFFA51678),
+      onSecondary: brightness == Brightness.dark
+          ? const Color(0xFF5E003D)
+          : const Color(0xFFFFFFFF),
+      secondaryContainer: brightness == Brightness.dark
+          ? const Color(0xFF7C0054)
+          : const Color(0xFFFFD7EF),
+      onSecondaryContainer: brightness == Brightness.dark
+          ? const Color(0xFFFFECF7)
+          : const Color(0xFF430029),
+      tertiary: brightness == Brightness.dark
+          ? const Color(0xFF72E8FF)
+          : const Color(0xFF006A83),
+      onTertiary: brightness == Brightness.dark
+          ? const Color(0xFF003642)
+          : const Color(0xFFFFFFFF),
+      tertiaryContainer: brightness == Brightness.dark
+          ? const Color(0xFF005365)
+          : const Color(0xFFB6F1FF),
+      onTertiaryContainer: brightness == Brightness.dark
+          ? const Color(0xFFDDF9FF)
+          : const Color(0xFF001F28),
+      surface: brightness == Brightness.dark
+          ? const Color(0xFF17111C)
+          : const Color(0xFFFFFBFF),
+      surfaceContainerLowest: brightness == Brightness.dark
+          ? const Color(0xFF0F0A13)
+          : const Color(0xFFFFFFFF),
+      surfaceContainerLow: brightness == Brightness.dark
+          ? const Color(0xFF211828)
+          : const Color(0xFFFFF3FB),
+      surfaceContainer: brightness == Brightness.dark
+          ? const Color(0xFF2B2034)
+          : const Color(0xFFF1FBFF),
+      surfaceContainerHigh: brightness == Brightness.dark
+          ? const Color(0xFF362840)
+          : const Color(0xFFFFF9DD),
+      surfaceContainerHighest: brightness == Brightness.dark
+          ? const Color(0xFF43304F)
+          : const Color(0xFFEADFFF),
+      outline: brightness == Brightness.dark
+          ? const Color(0xFFD3B8D9)
+          : const Color(0xFF7D6B83),
+      outlineVariant: brightness == Brightness.dark
+          ? const Color(0xFF725E78)
+          : const Color(0xFFE0D2EA),
+    ),
     AppColorPalette.lagoon => base.copyWith(
       secondary: brightness == Brightness.dark
           ? const Color(0xFF2DD4BF)
@@ -255,6 +317,26 @@ class SadCoderThemeColors extends ThemeExtension<SadCoderThemeColors> {
         diffHeaderBackground: const Color(0xFF46344D),
         diffHeaderForeground: const Color(0xFFF3DEFF),
         terminalAccent: const Color(0xFFCBEFF3),
+      ),
+      (AppColorPalette.candyPop, Brightness.light) => base.copyWith(
+        codeBackground: const Color(0xFFFFFBFF),
+        codeForeground: const Color(0xFF211527),
+        codeKeyword: const Color(0xFF7B2CBF),
+        codeString: const Color(0xFF007A6F),
+        codeComment: const Color(0xFF6F6674),
+        diffHeaderBackground: const Color(0xFFE9D8FF),
+        diffHeaderForeground: const Color(0xFF2A1040),
+        terminalAccent: const Color(0xFF00BBF9),
+      ),
+      (AppColorPalette.candyPop, Brightness.dark) => base.copyWith(
+        codeBackground: const Color(0xFF21172A),
+        codeForeground: const Color(0xFFF7ECFF),
+        codeKeyword: const Color(0xFFD8B6FF),
+        codeString: const Color(0xFF00F5D4),
+        codeComment: const Color(0xFFC7BBC9),
+        diffHeaderBackground: const Color(0xFF432552),
+        diffHeaderForeground: const Color(0xFFF6E5FF),
+        terminalAccent: const Color(0xFF00F5D4),
       ),
       (AppColorPalette.lagoon, Brightness.light) => base.copyWith(
         codeBackground: const Color(0xFFF1F7FF),

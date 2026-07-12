@@ -37,6 +37,7 @@ extension AppThemePreferenceMode on AppThemePreference {
 enum AppColorPalette {
   sadcoder,
   candy,
+  candyPop,
   lagoon,
   ember;
 
@@ -45,6 +46,10 @@ enum AppColorPalette {
       '' => null,
       'sadcoder' || 'default' => AppColorPalette.sadcoder,
       'candy' || 'sweet' => AppColorPalette.candy,
+      'candy-pop' ||
+      'candypop' ||
+      'pop' ||
+      'sweet-pop' => AppColorPalette.candyPop,
       'lagoon' || 'blue' || 'ocean' => AppColorPalette.lagoon,
       'ember' || 'warm' => AppColorPalette.ember,
       _ => null,
@@ -57,6 +62,7 @@ extension AppColorPaletteValues on AppColorPalette {
     return switch (this) {
       AppColorPalette.sadcoder => 'sadcoder',
       AppColorPalette.candy => 'candy',
+      AppColorPalette.candyPop => 'candy-pop',
       AppColorPalette.lagoon => 'lagoon',
       AppColorPalette.ember => 'ember',
     };
@@ -66,6 +72,7 @@ extension AppColorPaletteValues on AppColorPalette {
     return switch (this) {
       AppColorPalette.sadcoder => const Color(0xFF0F766E),
       AppColorPalette.candy => const Color(0xFFF26A8D),
+      AppColorPalette.candyPop => const Color(0xFF9B5DE5),
       AppColorPalette.lagoon => const Color(0xFF2563EB),
       AppColorPalette.ember => const Color(0xFFC2410C),
     };
@@ -85,6 +92,13 @@ extension AppColorPaletteValues on AppColorPalette {
         Color(0xFFFFF9C9),
         Color(0xFF81D4A5),
         Color(0xFF985DC0),
+      ],
+      AppColorPalette.candyPop => const [
+        Color(0xFF9B5DE5),
+        Color(0xFFF15BB5),
+        Color(0xFFFEE440),
+        Color(0xFF00BBF9),
+        Color(0xFF00F5D4),
       ],
       AppColorPalette.lagoon => const [
         Color(0xFF2563EB),

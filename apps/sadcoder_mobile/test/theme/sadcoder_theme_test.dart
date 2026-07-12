@@ -19,12 +19,20 @@ void main() {
         colorPalette: AppColorPalette.lagoon,
         brightness: Brightness.light,
       ).extension<SadCoderThemeColors>()!;
+      final candyPop = sadCoderThemeData(
+        colorPalette: AppColorPalette.candyPop,
+        brightness: Brightness.light,
+      ).extension<SadCoderThemeColors>()!;
 
       expect(candy.codeKeyword, isNot(sadcoder.codeKeyword));
       expect(candy.terminalAccent, isNot(sadcoder.terminalAccent));
       expect(lagoon.codeKeyword, isNot(candy.codeKeyword));
+      expect(candyPop.codeKeyword, isNot(candy.codeKeyword));
+      expect(candyPop.terminalAccent, isNot(candy.terminalAccent));
       expect(candy.diffAddedForeground, sadcoder.diffAddedForeground);
       expect(candy.diffRemovedForeground, sadcoder.diffRemovedForeground);
+      expect(candyPop.diffAddedForeground, sadcoder.diffAddedForeground);
+      expect(candyPop.diffRemovedForeground, sadcoder.diffRemovedForeground);
       expect(lagoon.diffAddedForeground, sadcoder.diffAddedForeground);
       expect(lagoon.diffRemovedForeground, sadcoder.diffRemovedForeground);
     },
@@ -45,6 +53,24 @@ void main() {
     expect(scheme.secondaryContainer, const Color(0xFFCBEFF3));
     expect(scheme.tertiaryContainer, const Color(0xFFFFF9C9));
     expect(scheme.outlineVariant, const Color(0xFFE8D3EE));
+    expect(scheme.primary, isNot(nativeSeed.primary));
+  });
+
+  test('candy pop color scheme uses bespoke high saturation tones', () {
+    final scheme = sadCoderColorScheme(
+      colorPalette: AppColorPalette.candyPop,
+      brightness: Brightness.light,
+    );
+    final nativeSeed = ColorScheme.fromSeed(
+      seedColor: AppColorPalette.candyPop.seedColor,
+      brightness: Brightness.light,
+    );
+
+    expect(scheme.primary, const Color(0xFF6B22B8));
+    expect(scheme.primaryContainer, const Color(0xFFE9D8FF));
+    expect(scheme.secondaryContainer, const Color(0xFFFFD7EF));
+    expect(scheme.tertiaryContainer, const Color(0xFFB6F1FF));
+    expect(scheme.outlineVariant, const Color(0xFFE0D2EA));
     expect(scheme.primary, isNot(nativeSeed.primary));
   });
 

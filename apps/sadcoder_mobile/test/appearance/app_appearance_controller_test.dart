@@ -21,6 +21,8 @@ void main() {
     expect(AppColorPalette.parse('sadcoder'), AppColorPalette.sadcoder);
     expect(AppColorPalette.parse('default'), AppColorPalette.sadcoder);
     expect(AppColorPalette.parse('candy'), AppColorPalette.candy);
+    expect(AppColorPalette.parse('candy-pop'), AppColorPalette.candyPop);
+    expect(AppColorPalette.parse('pop'), AppColorPalette.candyPop);
     expect(AppColorPalette.parse('ocean'), AppColorPalette.lagoon);
     expect(AppColorPalette.parse('warm'), AppColorPalette.ember);
     expect(AppColorPalette.parse('unknown'), isNull);
@@ -35,6 +37,17 @@ void main() {
       Color(0xFFFFF9C9),
       Color(0xFF81D4A5),
       Color(0xFF985DC0),
+    ]);
+  });
+
+  test('candy pop palette exposes sourced high saturation swatches', () {
+    expect(AppColorPalette.candyPop.seedColor, const Color(0xFF9B5DE5));
+    expect(AppColorPalette.candyPop.swatchColors, const [
+      Color(0xFF9B5DE5),
+      Color(0xFFF15BB5),
+      Color(0xFFFEE440),
+      Color(0xFF00BBF9),
+      Color(0xFF00F5D4),
     ]);
   });
 
