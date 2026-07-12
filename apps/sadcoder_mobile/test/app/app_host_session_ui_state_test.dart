@@ -355,7 +355,10 @@ class _StaticAgentSnapshotReader implements AgentSnapshotReader {
   final AgentSnapshot snapshot;
 
   @override
-  Future<AgentSnapshot> readSnapshot(SshProfile profile) async {
+  Future<AgentSnapshot> readSnapshot(
+    SshProfile profile, {
+    String? sinceCursor,
+  }) async {
     return snapshot;
   }
 }

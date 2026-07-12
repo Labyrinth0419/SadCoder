@@ -55,6 +55,15 @@ impl AgentStateCache {
         self.snapshot
     }
 
+    pub(crate) fn snapshot_since_cursor(&self, since_cursor: Option<&str>) -> AgentStateSnapshot {
+        let Some(since_cursor) = normalized_cursor(since_cursor) else {
+            return self.snapshot.clone();
+        };
+        let mut snapshot = self.snapshot.clone();
+        snapshot.recent_events = events_after_cursor(&snapshot.recent_events, since_cursor);
+        snapshot
+    }
+
     pub(crate) fn observe_server_line_bytes(&mut self, line: &[u8]) -> bool {
         let Ok(line) = std::str::from_utf8(line) else {
             return false;
@@ -178,6 +187,34 @@ impl AgentStateCache {
             .map_or(1, |cursor| cursor.saturating_add(1))
             .to_string()
     }
+}
+
+fn events_after_cursor(events: &[AgentCachedEvent], since_cursor: &str) -> Vec<AgentCachedEvent> {
+    if let Ok(since) = since_cursor.parse::<u64>() {
+        return events
+            .iter()
+            .filter(|event| {
+                event
+                    .cursor
+                    .as_deref()
+                    .and_then(|cursor| cursor.parse::<u64>().ok())
+                    .is_some_and(|cursor| cursor > since)
+            })
+            .cloned()
+            .collect();
+    }
+
+    let Some(index) = events
+        .iter()
+        .position(|event| event.cursor.as_deref() == Some(since_cursor))
+    else {
+        return events.to_vec();
+    };
+    events.iter().skip(index + 1).cloned().collect()
+}
+
+fn normalized_cursor(cursor: Option<&str>) -> Option<&str> {
+    cursor.map(str::trim).filter(|cursor| !cursor.is_empty())
 }
 
 pub(crate) fn resolve_state_path(configured: Option<&Path>) -> PathBuf {
@@ -381,6 +418,64 @@ mod tests {
             Some("42")
         );
         assert_eq!(cache.snapshot.delivered_cursor.as_deref(), Some("42"));
+    }
+
+    #[test]
+    fn filters_snapshot_events_after_numeric_cursor() {
+        let mut cache = AgentStateCache::empty();
+        cache.observe_server_line(r#"{"jsonrpc":"2.0","method":"event/one"}"#);
+        cache.observe_server_line(r#"{"jsonrpc":"2.0","method":"event/two"}"#);
+        cache.observe_server_line(r#"{"jsonrpc":"2.0","method":"event/three"}"#);
+
+        let snapshot = cache.snapshot_since_cursor(Some("1"));
+
+        let methods = snapshot
+            .recent_events
+            .iter()
+            .map(|event| event.method.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(methods, vec!["event/two", "event/three"]);
+        assert_eq!(snapshot.delivered_cursor.as_deref(), Some("3"));
+    }
+
+    #[test]
+    fn filters_snapshot_events_after_matching_non_numeric_cursor() {
+        let mut cache = AgentStateCache::empty();
+        cache.snapshot.recent_events = vec![
+            AgentCachedEvent {
+                method: "event/one".to_string(),
+                params: None,
+                cursor: Some("event-1".to_string()),
+            },
+            AgentCachedEvent {
+                method: "event/two".to_string(),
+                params: None,
+                cursor: Some("event-2".to_string()),
+            },
+        ];
+        cache.snapshot.delivered_cursor = Some("event-2".to_string());
+
+        let snapshot = cache.snapshot_since_cursor(Some("event-1"));
+
+        assert_eq!(snapshot.recent_events.len(), 1);
+        assert_eq!(snapshot.recent_events[0].method, "event/two");
+        assert_eq!(snapshot.delivered_cursor.as_deref(), Some("event-2"));
+    }
+
+    #[test]
+    fn keeps_retained_snapshot_events_when_non_numeric_cursor_is_unknown() {
+        let mut cache = AgentStateCache::empty();
+        cache.snapshot.recent_events = vec![AgentCachedEvent {
+            method: "event/one".to_string(),
+            params: None,
+            cursor: Some("event-1".to_string()),
+        }];
+        cache.snapshot.delivered_cursor = Some("event-1".to_string());
+
+        let snapshot = cache.snapshot_since_cursor(Some("missing"));
+
+        assert_eq!(snapshot.recent_events.len(), 1);
+        assert_eq!(snapshot.recent_events[0].method, "event/one");
     }
 
     #[test]

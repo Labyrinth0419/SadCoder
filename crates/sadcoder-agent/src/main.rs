@@ -1235,7 +1235,9 @@ fn handle_agent_request(
                 .map_err(|error| error.to_string())
         }
         AgentRpcMethod::Snapshot => AgentStateCache::load(&context.state_path)
-            .map(AgentStateCache::into_snapshot)
+            .map(|cache| {
+                cache.snapshot_since_cursor(snapshot_since_cursor(request.params.as_ref()))
+            })
             .and_then(|snapshot| serde_json::to_value(snapshot).map_err(Into::into))
             .map_err(|error| error.to_string()),
         AgentRpcMethod::Schema => collect_agent_schema_from_params(
@@ -1258,6 +1260,19 @@ fn handle_agent_request(
         Ok(result) => agent_rpc::success_response(request, result),
         Err(detail) => agent_rpc::error_response(request, detail),
     })
+}
+
+fn snapshot_since_cursor(params: Option<&Value>) -> Option<&str> {
+    params
+        .and_then(Value::as_object)
+        .and_then(|params| {
+            params
+                .get("sinceCursor")
+                .or_else(|| params.get("since_cursor"))
+        })
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|cursor| !cursor.is_empty())
 }
 
 fn write_proxy_json_response(
@@ -1348,6 +1363,22 @@ mod tests {
 
     fn response_json(response: JsonRpcResponse) -> Value {
         serde_json::to_value(response).expect("serialize response")
+    }
+
+    #[test]
+    fn snapshot_since_cursor_accepts_camel_and_snake_case_params() {
+        assert_eq!(
+            snapshot_since_cursor(Some(&json!({ "sinceCursor": " 7 " }))),
+            Some("7")
+        );
+        assert_eq!(
+            snapshot_since_cursor(Some(&json!({ "since_cursor": " 8 " }))),
+            Some("8")
+        );
+        assert_eq!(
+            snapshot_since_cursor(Some(&json!({ "sinceCursor": " " }))),
+            None
+        );
     }
 
     #[test]
@@ -1822,6 +1853,66 @@ mod tests {
             response["result"]["pendingApprovals"][0]["method"],
             "item/commandExecution/requestApproval"
         );
+    }
+
+    #[test]
+    fn local_proxy_handles_agent_snapshot_since_cursor() {
+        let path = std::env::temp_dir().join(format!(
+            "sadcoder-agent-rpc-snapshot-cursor-{}-{}.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        let mut cache = AgentStateCache::empty();
+        cache
+            .snapshot
+            .pending_approvals
+            .push(sadcoder_protocol::AgentCachedServerRequest {
+                id: json!("approval-1"),
+                method: "item/commandExecution/requestApproval".to_string(),
+                params: Some(json!({ "command": "cargo test" })),
+            });
+        cache
+            .snapshot
+            .recent_events
+            .push(sadcoder_protocol::AgentCachedEvent {
+                method: "event/one".to_string(),
+                params: Some(json!({ "threadId": "thr_1" })),
+                cursor: Some("1".to_string()),
+            });
+        cache
+            .snapshot
+            .recent_events
+            .push(sadcoder_protocol::AgentCachedEvent {
+                method: "event/two".to_string(),
+                params: Some(json!({ "threadId": "thr_1" })),
+                cursor: Some("2".to_string()),
+            });
+        cache.snapshot.delivered_cursor = Some("2".to_string());
+        cache.save(&path).expect("save cache");
+        let context = test_proxy_context(path.clone());
+
+        let response = local_response_from_client_line(
+            &request_line("agent/snapshot", Some(json!({ "sinceCursor": "1" }))),
+            &context,
+        )
+        .expect("local response");
+        let response = response_json(response);
+        let _ = std::fs::remove_file(&path);
+
+        assert_eq!(
+            response["result"]["pendingApprovals"][0]["id"],
+            "approval-1"
+        );
+        assert_eq!(
+            response["result"]["recentEvents"].as_array().unwrap().len(),
+            1
+        );
+        assert_eq!(response["result"]["recentEvents"][0]["method"], "event/two");
+        assert_eq!(response["result"]["recentEvents"][0]["cursor"], "2");
+        assert_eq!(response["result"]["deliveredCursor"], "2");
     }
 
     #[test]

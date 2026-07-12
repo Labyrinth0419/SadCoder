@@ -339,6 +339,33 @@ void main() {
     expect(snapshots.single.recentEvents.single.cursor, 'event-1');
   });
 
+  test(
+    'connect passes snapshot cursor to connection snapshot reader',
+    () async {
+      final approvalController = ApprovalStateController();
+      final snapshotReader = _FakeAgentSnapshotReader(
+        outcomes: [
+          _snapshotWithEvent(
+            threadId: 'thr_snapshot',
+            deliveredCursor: 'event-8',
+          ),
+        ],
+      );
+      final controller = CodexSessionStateController(
+        connector: _FakeSessionStarter(agentSnapshotReaders: [snapshotReader]),
+        approvalController: approvalController,
+        snapshotCursorProvider: (_) => ' event-7 ',
+      );
+      addTearDown(controller.dispose);
+      addTearDown(approvalController.dispose);
+
+      await controller.connect(_profile);
+      await _flushMicrotasks();
+
+      expect(snapshotReader.sinceCursors, ['event-7']);
+    },
+  );
+
   test('snapshot backfill failure does not fail connection', () async {
     final approvalController = ApprovalStateController();
     final snapshotReader = _FakeAgentSnapshotReader(
@@ -1802,11 +1829,16 @@ class _FakeAgentSnapshotReader implements AgentSnapshotReader {
 
   final List<Object> outcomes;
   final profiles = <SshProfile>[];
+  final sinceCursors = <String?>[];
   int _readCount = 0;
 
   @override
-  Future<AgentSnapshot> readSnapshot(SshProfile profile) async {
+  Future<AgentSnapshot> readSnapshot(
+    SshProfile profile, {
+    String? sinceCursor,
+  }) async {
     profiles.add(profile);
+    sinceCursors.add(sinceCursor);
     final index = _readCount < outcomes.length
         ? _readCount
         : outcomes.length - 1;
@@ -1821,13 +1853,18 @@ class _FakeAgentSnapshotReader implements AgentSnapshotReader {
 
 class _PendingAgentSnapshotReader implements AgentSnapshotReader {
   final profiles = <SshProfile>[];
+  final sinceCursors = <String?>[];
   final _completers = <Completer<AgentSnapshot>>[];
 
   int get pendingCount => _completers.length;
 
   @override
-  Future<AgentSnapshot> readSnapshot(SshProfile profile) {
+  Future<AgentSnapshot> readSnapshot(
+    SshProfile profile, {
+    String? sinceCursor,
+  }) {
     profiles.add(profile);
+    sinceCursors.add(sinceCursor);
     final completer = Completer<AgentSnapshot>();
     _completers.add(completer);
     return completer.future;

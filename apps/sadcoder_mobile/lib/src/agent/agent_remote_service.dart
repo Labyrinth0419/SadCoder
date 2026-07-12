@@ -148,7 +148,10 @@ class AgentRemoteService
   }
 
   @override
-  Future<AgentSnapshot> readSnapshot(SshProfile profile) async {
+  Future<AgentSnapshot> readSnapshot(
+    SshProfile profile, {
+    String? sinceCursor,
+  }) async {
     final decoded = await _readJsonObjectCommand(
       profile,
       '${profile.agentCommand} snapshot --json',

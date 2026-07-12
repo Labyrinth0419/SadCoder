@@ -56,6 +56,9 @@ enum CodexSessionStatus {
   failed,
 }
 
+typedef AgentSnapshotCursorProvider =
+    FutureOr<String?> Function(SshProfile profile);
+
 class CodexSessionStateController extends ChangeNotifier {
   CodexSessionStateController({
     required CodexSessionConnectionStarter connector,
@@ -65,6 +68,7 @@ class CodexSessionStateController extends ChangeNotifier {
         const TimerReconnectDelayScheduler(),
     bool autoReconnect = true,
     AgentSnapshotReader? snapshotReader,
+    AgentSnapshotCursorProvider? snapshotCursorProvider,
     ThreadItemCacheStore? threadItemCacheStore,
     List<SessionHeartbeatChannel> heartbeatChannels = const [],
     SessionHeartbeatScheduler heartbeatScheduler =
@@ -74,6 +78,7 @@ class CodexSessionStateController extends ChangeNotifier {
        _reconnectDelayScheduler = reconnectDelayScheduler,
        _autoReconnect = autoReconnect,
        _snapshotReader = snapshotReader,
+       _snapshotCursorProvider = snapshotCursorProvider,
        _threadItemCacheStore = threadItemCacheStore,
        _heartbeatChannels = List.unmodifiable(heartbeatChannels),
        _heartbeatScheduler = heartbeatScheduler;
@@ -83,6 +88,7 @@ class CodexSessionStateController extends ChangeNotifier {
   final ReconnectDelayScheduler _reconnectDelayScheduler;
   final bool _autoReconnect;
   final AgentSnapshotReader? _snapshotReader;
+  final AgentSnapshotCursorProvider? _snapshotCursorProvider;
   final ThreadItemCacheStore? _threadItemCacheStore;
   final List<SessionHeartbeatChannel> _heartbeatChannels;
   final SessionHeartbeatScheduler _heartbeatScheduler;
@@ -582,10 +588,12 @@ class CodexSessionStateController extends ChangeNotifier {
     final snapshotReader = _snapshotReader;
 
     try {
+      final sinceCursor = await _readAgentSnapshotCursor(profile);
       final snapshot = await _readAgentSnapshot(
         profile,
         connection,
         snapshotReader,
+        sinceCursor: sinceCursor,
       );
       if (snapshot == null) {
         return;
@@ -608,24 +616,42 @@ class CodexSessionStateController extends ChangeNotifier {
     }
   }
 
+  Future<String?> _readAgentSnapshotCursor(SshProfile profile) async {
+    final provider = _snapshotCursorProvider;
+    if (provider == null) {
+      return null;
+    }
+    try {
+      final cursor = await provider(profile);
+      final trimmed = cursor?.trim();
+      return trimmed == null || trimmed.isEmpty ? null : trimmed;
+    } on Object {
+      return null;
+    }
+  }
+
   Future<AgentSnapshot?> _readAgentSnapshot(
     SshProfile profile,
     CodexSessionConnectionHandle connection,
-    AgentSnapshotReader? fallbackReader,
-  ) async {
+    AgentSnapshotReader? fallbackReader, {
+    String? sinceCursor,
+  }) async {
     final connectionReader = connection is AgentSnapshotConnectionHandle
         ? (connection as AgentSnapshotConnectionHandle).agentSnapshotReader
         : null;
     if (connectionReader != null) {
       try {
-        return await connectionReader.readSnapshot(profile);
+        return await connectionReader.readSnapshot(
+          profile,
+          sinceCursor: sinceCursor,
+        );
       } on Object {
         if (fallbackReader == null) {
           rethrow;
         }
       }
     }
-    return fallbackReader?.readSnapshot(profile);
+    return fallbackReader?.readSnapshot(profile, sinceCursor: sinceCursor);
   }
 
   void _emitLiveEvent(CodexEvent event) {

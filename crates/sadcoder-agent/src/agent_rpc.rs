@@ -49,6 +49,7 @@ pub(crate) fn hello_result() -> Value {
             "logs": true,
             "restartBackend": true,
             "reconnectSnapshot": true,
+            "reconnectSnapshotCursor": true,
             "schema": true,
             "slashCommands": true,
             "workspaceFiles": true
@@ -131,6 +132,7 @@ mod tests {
 
         assert_eq!(result["capabilities"]["agentRpc"], true);
         assert_eq!(result["capabilities"]["logs"], true);
+        assert_eq!(result["capabilities"]["reconnectSnapshotCursor"], true);
         assert_eq!(result["capabilities"]["schema"], true);
         assert_eq!(result["capabilities"]["workspaceFiles"], true);
         assert!(

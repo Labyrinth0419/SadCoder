@@ -9,7 +9,12 @@ class CodexAgentSnapshotReader implements AgentSnapshotReader {
   final CodexAppServerClient _client;
 
   @override
-  Future<AgentSnapshot> readSnapshot(SshProfile profile) async {
-    return AgentSnapshot.fromJson(await _client.agentSnapshot());
+  Future<AgentSnapshot> readSnapshot(
+    SshProfile profile, {
+    String? sinceCursor,
+  }) async {
+    return AgentSnapshot.fromJson(
+      await _client.agentSnapshot(sinceCursor: sinceCursor),
+    );
   }
 }

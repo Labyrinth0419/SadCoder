@@ -347,8 +347,13 @@ class CodexAppServerClient {
     return _request('agent/schema', params.isEmpty ? null : params);
   }
 
-  Future<Map<String, Object?>> agentSnapshot() {
-    return _request('agent/snapshot');
+  Future<Map<String, Object?>> agentSnapshot({String? sinceCursor}) {
+    final params = <String, Object?>{};
+    final trimmedCursor = sinceCursor?.trim();
+    if (trimmedCursor != null && trimmedCursor.isNotEmpty) {
+      params['sinceCursor'] = trimmedCursor;
+    }
+    return _request('agent/snapshot', params.isEmpty ? null : params);
   }
 
   Future<Map<String, Object?>> agentSlashCommandsList() {

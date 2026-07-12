@@ -600,6 +600,7 @@ void main() {
     await client.agentSchema();
     await client.agentSchema(refresh: true, experimental: true);
     await client.agentSnapshot();
+    await client.agentSnapshot(sinceCursor: ' event-7 ');
     await client.agentSlashCommandsList();
     await client.agentRestartBackend();
     await client.agentPing();
@@ -610,6 +611,7 @@ void main() {
       'agent/logs',
       'agent/schema',
       'agent/schema',
+      'agent/snapshot',
       'agent/snapshot',
       'agent/slashCommands/list',
       'agent/restartBackend',
@@ -622,6 +624,7 @@ void main() {
       null,
       {'refresh': true, 'experimental': true},
       null,
+      {'sinceCursor': 'event-7'},
       null,
       null,
       null,
