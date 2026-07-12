@@ -143,7 +143,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
                     left: sidebarVisible && !overlaySidebar ? sidebarWidth : 0,
                     child: ListView(
                       key: const ValueKey('workspace-files-main'),
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
                       children: [
                         if (directoryReader == null || fileReader == null)
                           _StatusPanel(
@@ -712,7 +712,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
       final displayPath = WorkspacePath.fromRoot(root, entry.path).absolutePath;
       rows.add(
         _WorkspaceEntryRow(
-          key: ValueKey('workspace-files-entry-${entry.path}'),
+          entryKey: ValueKey('workspace-files-entry-${entry.path}'),
           entry: entry,
           displayPath: displayPath,
           depth: depth,
@@ -1035,9 +1035,9 @@ class _FilesToolbar extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final searchWidth = constraints.maxWidth < 300
+        final searchWidth = constraints.maxWidth < 280
             ? constraints.maxWidth
-            : 188.0;
+            : 164.0;
         return Row(
           children: [
             Flexible(
@@ -1045,7 +1045,7 @@ class _FilesToolbar extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: searchWidth),
                 child: SizedBox(
-                  height: 28,
+                  height: 26,
                   child: TextField(
                     key: const ValueKey('workspace-files-filter'),
                     controller: filterController,
@@ -1054,8 +1054,8 @@ class _FilesToolbar extends StatelessWidget {
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.search, size: 15),
                       prefixIconConstraints: const BoxConstraints(
-                        minWidth: 26,
-                        minHeight: 26,
+                        minWidth: 24,
+                        minHeight: 24,
                       ),
                       hintText: l10n.workspaceFilesSearchHint,
                       border: OutlineInputBorder(
@@ -1066,7 +1066,7 @@ class _FilesToolbar extends StatelessWidget {
                       fillColor: colorScheme.surface,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 6,
-                        vertical: 2,
+                        vertical: 1,
                       ),
                     ),
                   ),
@@ -1126,7 +1126,7 @@ class _CompactFilesToolButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return SizedBox.square(
-      dimension: 30,
+      dimension: 28,
       child: IconButton.filledTonal(
         onPressed: onPressed,
         tooltip: tooltip,
@@ -1187,7 +1187,7 @@ class _DirectoryPanel extends StatelessWidget {
                 ],
               ),
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: colorScheme.outlineVariant),
             ...rows,
           ],
         ),
@@ -1198,7 +1198,7 @@ class _DirectoryPanel extends StatelessWidget {
 
 class _WorkspaceEntryRow extends StatelessWidget {
   const _WorkspaceEntryRow({
-    super.key,
+    required this.entryKey,
     required this.entry,
     required this.displayPath,
     required this.depth,
@@ -1208,6 +1208,7 @@ class _WorkspaceEntryRow extends StatelessWidget {
     required this.onCopy,
   });
 
+  final Key entryKey;
   final WorkspaceDirectoryEntry entry;
   final String displayPath;
   final int depth;
@@ -1228,31 +1229,98 @@ class _WorkspaceEntryRow extends StatelessWidget {
       if (entry.modifiedAt != null)
         l10n.workspaceFilesModifiedAt(entry.modifiedAt!),
     ];
-    return ListTile(
-      dense: true,
-      visualDensity: VisualDensity.compact,
-      contentPadding: EdgeInsetsDirectional.only(
-        start: 16.0 + depth * 20,
-        end: 8,
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final foreground = selected
+        ? colorScheme.onPrimaryContainer
+        : colorScheme.onSurface;
+    return Material(
+      key: entryKey,
+      color: selected
+          ? colorScheme.primaryContainer.withValues(alpha: 0.52)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsetsDirectional.only(
+            start: 8.0 + depth * 18,
+            end: 2,
+            top: 4,
+            bottom: 4,
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 18,
+                child: Icon(
+                  isDirectory
+                      ? expanded
+                            ? Icons.expand_more
+                            : Icons.chevron_right
+                      : Icons.chevron_right,
+                  size: 17,
+                  color: isDirectory
+                      ? colorScheme.onSurfaceVariant
+                      : Colors.transparent,
+                ),
+              ),
+              const SizedBox(width: 2),
+              Icon(
+                entry.isSymlink
+                    ? Icons.link
+                    : isDirectory
+                    ? expanded
+                          ? Icons.folder_open
+                          : Icons.folder_outlined
+                    : _fileIcon(entry.path),
+                size: 18,
+                color: selected ? colorScheme.primary : colorScheme.secondary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      entry.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: foreground,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      details.join(' | '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox.square(
+                dimension: 30,
+                child: IconButton(
+                  onPressed: onCopy,
+                  tooltip: l10n.workspaceFilesCopyPath,
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.copy, size: 16),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      selected: selected,
-      leading: Icon(
-        entry.isSymlink
-            ? Icons.link
-            : isDirectory
-            ? expanded
-                  ? Icons.folder_open
-                  : Icons.folder_outlined
-            : _fileIcon(entry.path),
-      ),
-      title: Text(entry.name, overflow: TextOverflow.ellipsis),
-      subtitle: Text(details.join(' | '), overflow: TextOverflow.ellipsis),
-      trailing: IconButton(
-        onPressed: onCopy,
-        tooltip: l10n.workspaceFilesCopyPath,
-        icon: const Icon(Icons.copy),
-      ),
-      onTap: onTap,
     );
   }
 }
@@ -1266,17 +1334,13 @@ class _StatusPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
+    return ColoredBox(
       key: const ValueKey('workspace-files-status-page'),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        border: Border.all(color: colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(8),
-      ),
+      color: colorScheme.surfaceContainerLowest,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 260),
+        constraints: const BoxConstraints(minHeight: 320),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(28),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -1308,15 +1372,27 @@ class _IndentedStatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      dense: true,
-      visualDensity: VisualDensity.compact,
-      contentPadding: EdgeInsetsDirectional.only(
-        start: 16.0 + depth * 20,
-        end: 16,
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: EdgeInsetsDirectional.only(
+        start: 10.0 + depth * 18,
+        end: 8,
+        top: 8,
+        bottom: 8,
       ),
-      leading: Icon(icon),
-      title: Text(text),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.bodySmall,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

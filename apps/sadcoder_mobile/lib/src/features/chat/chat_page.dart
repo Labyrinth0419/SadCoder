@@ -4306,96 +4306,177 @@ class _ChatActivityStripBody extends StatelessWidget {
     ];
 
     return Material(
-      color: colorScheme.surface,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 5, 8, 5),
-            child: Row(
-              children: [
-                IconButton(
-                  key: const ValueKey('chat-session-sidebar-toggle'),
-                  tooltip: l10n.sessions,
-                  onPressed: onToggleSidebar,
-                  style: IconButton.styleFrom(
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    minimumSize: const Size.square(36),
-                    padding: EdgeInsets.zero,
+      color: colorScheme.surfaceContainerLowest,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+              child: Row(
+                children: [
+                  IconButton(
+                    key: const ValueKey('chat-session-sidebar-toggle'),
+                    tooltip: l10n.sessions,
+                    onPressed: onToggleSidebar,
+                    style: IconButton.styleFrom(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      minimumSize: const Size.square(36),
+                      padding: EdgeInsets.zero,
+                    ),
+                    icon: const Icon(Icons.menu),
                   ),
-                  icon: const Icon(Icons.menu),
-                ),
-                const SizedBox(width: 6),
-                _ChatTuiStatusMark(
-                  key: const ValueKey('chat-tui-status-mark'),
-                  color: indicator,
-                  active: busy || running,
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        status,
-                        key: const ValueKey('chat-activity-status'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      if (details.isNotEmpty)
-                        Text(
-                          details.join('  |  '),
-                          key: const ValueKey('chat-activity-detail'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      if (statusLineParts.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Wrap(
-                          key: const ValueKey('chat-status-line'),
-                          spacing: 8,
-                          runSpacing: 2,
-                          children: [
-                            for (final part in statusLineParts)
-                              Text(
-                                part,
-                                style: Theme.of(context).textTheme.labelMedium,
-                              ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Flexible(flex: 0, child: connectionControls),
-              ],
-            ),
-          ),
-          if (busy || running)
-            DecoratedBox(
-              key: const ValueKey('chat-running-progress'),
-              decoration: BoxDecoration(
-                color: indicator.withValues(alpha: 0.18),
-              ),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: FractionallySizedBox(
-                  widthFactor: busy ? 0.42 : 1,
-                  child: ColoredBox(
+                  const SizedBox(width: 6),
+                  _ChatTuiStatusMark(
+                    key: const ValueKey('chat-tui-status-mark'),
                     color: indicator,
-                    child: const SizedBox(height: 2),
+                    active: busy || running,
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: _ChatTuiStatusLine(
+                      status: status,
+                      details: details,
+                      statusLineParts: statusLineParts,
+                      color: indicator,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    fit: FlexFit.loose,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: connectionControls,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (busy || running)
+              DecoratedBox(
+                key: const ValueKey('chat-running-progress'),
+                decoration: BoxDecoration(
+                  color: indicator.withValues(alpha: 0.14),
+                ),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: FractionallySizedBox(
+                    widthFactor: busy ? 0.42 : 1,
+                    child: ColoredBox(
+                      color: indicator,
+                      child: const SizedBox(height: 2),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatTuiStatusLine extends StatelessWidget {
+  const _ChatTuiStatusLine({
+    required this.status,
+    required this.details,
+    required this.statusLineParts,
+    required this.color,
+  });
+
+  final String status;
+  final List<String> details;
+  final List<String> statusLineParts;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Flexible(
+              fit: FlexFit.loose,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  border: Border.all(color: color.withValues(alpha: 0.42)),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  child: Text(
+                    status,
+                    key: const ValueKey('chat-activity-status'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w800,
+                      fontFamily: 'monospace',
+                    ),
                   ),
                 ),
               ),
             ),
+            if (details.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  details.join('  |  '),
+                  key: const ValueKey('chat-activity-detail'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        if (statusLineParts.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Wrap(
+            key: const ValueKey('chat-status-line'),
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              for (final part in statusLineParts)
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerLow,
+                    border: Border.all(color: colorScheme.outlineVariant),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    child: Text(
+                      part,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ],
-      ),
+      ],
     );
   }
 }
