@@ -1408,6 +1408,7 @@ mod tests {
             .push(sadcoder_protocol::AgentCachedEvent {
                 method: "thread/item".to_string(),
                 params: None,
+                cursor: Some("1".to_string()),
             });
 
         cache.save(&path).expect("save cache");

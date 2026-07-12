@@ -5,6 +5,7 @@ class AgentSnapshot {
     required this.schemaVersion,
     required this.pendingApprovals,
     required this.recentEvents,
+    this.deliveredCursor,
   });
 
   factory AgentSnapshot.fromJson(Map<String, Object?> json) {
@@ -26,26 +27,33 @@ class AgentSnapshot {
       recentEvents: _listOfMaps(
         _valueField(json, ['recentEvents', 'recent_events']),
       ).map(AgentCachedEvent.fromJson).toList(growable: false),
+      deliveredCursor: _stringField(json, [
+        'deliveredCursor',
+        'delivered_cursor',
+      ]),
     );
   }
 
   final int schemaVersion;
   final List<JsonRpcServerRequest> pendingApprovals;
   final List<AgentCachedEvent> recentEvents;
+  final String? deliveredCursor;
 }
 
 class AgentCachedEvent {
-  const AgentCachedEvent({required this.method, this.params});
+  const AgentCachedEvent({required this.method, this.params, this.cursor});
 
   factory AgentCachedEvent.fromJson(Map<String, Object?> json) {
     return AgentCachedEvent(
       method: json['method'] as String? ?? '',
       params: json['params'],
+      cursor: _stringField(json, ['cursor']),
     );
   }
 
   final String method;
   final Object? params;
+  final String? cursor;
 
   Map<String, Object?> toNotification() {
     return {'method': method, if (params != null) 'params': params};
@@ -77,6 +85,16 @@ int? _intField(Map<String, Object?> map, List<String> keys) {
     final value = _intValue(map[key]);
     if (value != null) {
       return value;
+    }
+  }
+  return null;
+}
+
+String? _stringField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = map[key];
+    if (value is String && value.trim().isNotEmpty) {
+      return value.trim();
     }
   }
   return null;

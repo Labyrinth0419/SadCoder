@@ -74,6 +74,12 @@ pub struct AgentStateSnapshot {
     pub schema_version: u32,
     pub pending_approvals: Vec<AgentCachedServerRequest>,
     pub recent_events: Vec<AgentCachedEvent>,
+    #[serde(
+        default,
+        alias = "delivered_cursor",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub delivered_cursor: Option<String>,
 }
 
 impl Default for AgentStateSnapshot {
@@ -82,6 +88,7 @@ impl Default for AgentStateSnapshot {
             schema_version: 1,
             pending_approvals: Vec::new(),
             recent_events: Vec::new(),
+            delivered_cursor: None,
         }
     }
 }
@@ -101,6 +108,8 @@ pub struct AgentCachedEvent {
     pub method: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -328,7 +337,9 @@ mod tests {
             recent_events: vec![AgentCachedEvent {
                 method: "thread/item".to_string(),
                 params: Some(serde_json::json!({ "threadId": "thr_1" })),
+                cursor: Some("42".to_string()),
             }],
+            delivered_cursor: Some("42".to_string()),
         };
 
         let encoded = serde_json::to_value(snapshot).expect("serialize snapshot");
@@ -339,6 +350,27 @@ mod tests {
             "item/commandExecution/requestApproval"
         );
         assert_eq!(encoded["recentEvents"][0]["params"]["threadId"], "thr_1");
+        assert_eq!(encoded["recentEvents"][0]["cursor"], "42");
+        assert_eq!(encoded["deliveredCursor"], "42");
+    }
+
+    #[test]
+    fn agent_state_snapshot_accepts_snake_case_delivered_cursor() {
+        let snapshot: AgentStateSnapshot = serde_json::from_value(serde_json::json!({
+            "schemaVersion": 1,
+            "pendingApprovals": [],
+            "recentEvents": [
+                {
+                    "method": "thread/item",
+                    "cursor": "event-7"
+                }
+            ],
+            "delivered_cursor": "event-7"
+        }))
+        .expect("deserialize snapshot");
+
+        assert_eq!(snapshot.delivered_cursor.as_deref(), Some("event-7"));
+        assert_eq!(snapshot.recent_events[0].cursor.as_deref(), Some("event-7"));
     }
 
     #[test]

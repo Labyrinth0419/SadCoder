@@ -115,6 +115,7 @@ impl AgentStateCache {
             self.push_recent_event(AgentCachedEvent {
                 method: method.to_string(),
                 params,
+                cursor: None,
             });
             changed = true;
         }
@@ -154,7 +155,10 @@ impl AgentStateCache {
         before != self.snapshot.pending_approvals.len()
     }
 
-    fn push_recent_event(&mut self, event: AgentCachedEvent) {
+    fn push_recent_event(&mut self, mut event: AgentCachedEvent) {
+        let cursor = self.next_delivered_cursor();
+        event.cursor = Some(cursor.clone());
+        self.snapshot.delivered_cursor = Some(cursor);
         self.snapshot.recent_events.push(event);
         let overflow = self
             .snapshot
@@ -164,6 +168,15 @@ impl AgentStateCache {
         if overflow > 0 {
             self.snapshot.recent_events.drain(0..overflow);
         }
+    }
+
+    fn next_delivered_cursor(&self) -> String {
+        self.snapshot
+            .delivered_cursor
+            .as_deref()
+            .and_then(|cursor| cursor.parse::<u64>().ok())
+            .map_or(1, |cursor| cursor.saturating_add(1))
+            .to_string()
     }
 }
 
@@ -346,6 +359,28 @@ mod tests {
             .map(|event| event.method.as_str())
             .collect::<Vec<_>>();
         assert_eq!(methods, vec!["event/two", "event/three"]);
+        let cursors = cache
+            .snapshot
+            .recent_events
+            .iter()
+            .map(|event| event.cursor.as_deref())
+            .collect::<Vec<_>>();
+        assert_eq!(cursors, vec![Some("2"), Some("3")]);
+        assert_eq!(cache.snapshot.delivered_cursor.as_deref(), Some("3"));
+    }
+
+    #[test]
+    fn resumes_delivered_cursor_after_load() {
+        let mut cache = AgentStateCache::empty();
+        cache.snapshot.delivered_cursor = Some("41".to_string());
+
+        cache.observe_server_line(r#"{"jsonrpc":"2.0","method":"event/next"}"#);
+
+        assert_eq!(
+            cache.snapshot.recent_events[0].cursor.as_deref(),
+            Some("42")
+        );
+        assert_eq!(cache.snapshot.delivered_cursor.as_deref(), Some("42"));
     }
 
     #[test]

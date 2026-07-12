@@ -524,10 +524,12 @@ void main() {
   ],
   "recentEvents": [
     {
+      "cursor": "event-1",
       "method": "thread/item",
       "params": { "threadId": "thr_1" }
     }
-  ]
+  ],
+  "deliveredCursor": "event-1"
 }
 ''',
         stderr: '',
@@ -545,6 +547,8 @@ void main() {
       'item/commandExecution/requestApproval',
     );
     expect(snapshot.recentEvents.single.method, 'thread/item');
+    expect(snapshot.recentEvents.single.cursor, 'event-1');
+    expect(snapshot.deliveredCursor, 'event-1');
   });
 
   test('readSnapshot parses snake_case cached payloads', () async {
@@ -563,10 +567,12 @@ void main() {
   ],
   "recent_events": [
     {
+      "cursor": "event-2",
       "method": "thread/turn/completed",
       "params": { "thread_id": "thr_2" }
     }
-  ]
+  ],
+  "delivered_cursor": "event-2"
 }
 ''',
         stderr: '',
@@ -583,6 +589,8 @@ void main() {
       'item/fileChange/requestApproval',
     );
     expect(snapshot.recentEvents.single.method, 'thread/turn/completed');
+    expect(snapshot.recentEvents.single.cursor, 'event-2');
+    expect(snapshot.deliveredCursor, 'event-2');
   });
 }
 
