@@ -31,6 +31,7 @@ void main() {
     "schemaVersion": 1,
     "pendingApprovals": 2,
     "recentEvents": 7,
+    "threads": 4,
     "deliveredCursor": "event-7",
     "loadError": null
   }
@@ -54,6 +55,7 @@ void main() {
     );
     expect(status.reconnectCache.pendingApprovals, 2);
     expect(status.reconnectCache.recentEvents, 7);
+    expect(status.reconnectCache.threads, 4);
     expect(status.reconnectCache.deliveredCursor, 'event-7');
   });
 
@@ -120,6 +122,7 @@ void main() {
     "schema_version": 2,
     "pending_approvals": 3,
     "recent_events": 9,
+    "threads": 5,
     "delivered_cursor": "event-9",
     "load_error": "cache warning"
   }
@@ -149,6 +152,7 @@ void main() {
     expect(status.reconnectCache.schemaVersion, 2);
     expect(status.reconnectCache.pendingApprovals, 3);
     expect(status.reconnectCache.recentEvents, 9);
+    expect(status.reconnectCache.threads, 5);
     expect(status.reconnectCache.deliveredCursor, 'event-9');
     expect(status.reconnectCache.loadError, 'cache warning');
   });
@@ -216,6 +220,7 @@ void main() {
       "schemaVersion": 1,
       "pendingApprovals": 1,
       "recentEvents": 4,
+      "threads": 2,
       "loadError": null
     }
   }
@@ -247,6 +252,7 @@ void main() {
     expect(doctor.status.backendState, BackendState.ready);
     expect(doctor.status.reconnectCache.pendingApprovals, 1);
     expect(doctor.status.reconnectCache.recentEvents, 4);
+    expect(doctor.status.reconnectCache.threads, 2);
   });
 
   test('readLogs parses bounded sadcoder-agent service logs', () async {

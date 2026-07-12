@@ -138,6 +138,7 @@ class AgentReconnectCacheStatus {
     this.schemaVersion = 1,
     this.pendingApprovals = 0,
     this.recentEvents = 0,
+    this.threads = 0,
     this.deliveredCursor,
     this.loadError,
   });
@@ -149,6 +150,7 @@ class AgentReconnectCacheStatus {
       pendingApprovals:
           _intField(json, ['pendingApprovals', 'pending_approvals']) ?? 0,
       recentEvents: _intField(json, ['recentEvents', 'recent_events']) ?? 0,
+      threads: _intField(json, ['threads']) ?? 0,
       deliveredCursor: _stringField(json, [
         'deliveredCursor',
         'delivered_cursor',
@@ -161,6 +163,7 @@ class AgentReconnectCacheStatus {
   final int schemaVersion;
   final int pendingApprovals;
   final int recentEvents;
+  final int threads;
   final String? deliveredCursor;
   final String? loadError;
 }

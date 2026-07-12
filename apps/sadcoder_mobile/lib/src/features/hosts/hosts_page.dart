@@ -1822,6 +1822,7 @@ class _ProbeResultPanel extends StatelessWidget {
     final summary = l10n.reconnectCacheSummary(
       cache.pendingApprovals,
       cache.recentEvents,
+      cache.threads,
     );
     final deliveredCursor = cache.deliveredCursor;
     if (deliveredCursor == null) {

@@ -335,9 +335,10 @@ fn print_agent_status(status: &AgentStatus, json: bool) {
         status.backend.kind, status.backend.state
     );
     println!(
-        "reconnect cache: {} pending approvals, {} recent events ({})",
+        "reconnect cache: {} pending approvals, {} recent events, {} threads ({})",
         status.reconnect_cache.pending_approvals,
         status.reconnect_cache.recent_events,
+        status.reconnect_cache.threads,
         status.reconnect_cache.state_path
     );
     if let Some(load_error) = &status.reconnect_cache.load_error {
@@ -456,9 +457,10 @@ fn print_doctor(
             println!("backend detail: {detail}");
         }
         println!(
-            "reconnect cache: {} pending approvals, {} recent events ({})",
+            "reconnect cache: {} pending approvals, {} recent events, {} threads ({})",
             result.status.reconnect_cache.pending_approvals,
             result.status.reconnect_cache.recent_events,
+            result.status.reconnect_cache.threads,
             result.status.reconnect_cache.state_path
         );
         if let Some(load_error) = &result.status.reconnect_cache.load_error {
@@ -718,6 +720,7 @@ fn collect_reconnect_cache_status(state_path: &Path) -> AgentReconnectCacheStatu
                 schema_version: snapshot.schema_version,
                 pending_approvals: snapshot.pending_approvals.len(),
                 recent_events: snapshot.recent_events.len(),
+                threads: snapshot.threads.len(),
                 delivered_cursor: snapshot.delivered_cursor,
                 load_error: None,
             }
@@ -727,6 +730,7 @@ fn collect_reconnect_cache_status(state_path: &Path) -> AgentReconnectCacheStatu
             schema_version: 1,
             pending_approvals: 0,
             recent_events: 0,
+            threads: 0,
             delivered_cursor: None,
             load_error: Some(error.to_string()),
         },
@@ -1537,6 +1541,15 @@ mod tests {
                 params: None,
                 cursor: Some("1".to_string()),
             });
+        cache
+            .snapshot
+            .threads
+            .push(sadcoder_protocol::AgentCachedThread {
+                thread_id: "thread-1".to_string(),
+                last_turn_id: Some("turn-1".to_string()),
+                last_item_id: None,
+                last_event_cursor: Some("1".to_string()),
+            });
         cache.snapshot.delivered_cursor = Some("1".to_string());
 
         cache.save(&path).expect("save cache");
@@ -1551,6 +1564,7 @@ mod tests {
         assert_eq!(status.reconnect_cache.schema_version, 1);
         assert_eq!(status.reconnect_cache.pending_approvals, 1);
         assert_eq!(status.reconnect_cache.recent_events, 1);
+        assert_eq!(status.reconnect_cache.threads, 1);
         assert_eq!(
             status.reconnect_cache.delivered_cursor.as_deref(),
             Some("1")

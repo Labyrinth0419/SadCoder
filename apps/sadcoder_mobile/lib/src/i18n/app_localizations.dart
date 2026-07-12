@@ -142,10 +142,14 @@ class AppLocalizations {
   String get backendReady => _text('backendReady');
   String get backendNotStarted => _text('backendNotStarted');
   String get backendUnavailable => _text('backendUnavailable');
-  String reconnectCacheSummary(int pendingApprovals, int recentEvents) =>
-      _text('reconnectCacheSummary')
-          .replaceAll('{pendingApprovals}', formatNumber(pendingApprovals))
-          .replaceAll('{recentEvents}', formatNumber(recentEvents));
+  String reconnectCacheSummary(
+    int pendingApprovals,
+    int recentEvents,
+    int threads,
+  ) => _text('reconnectCacheSummary')
+      .replaceAll('{pendingApprovals}', formatNumber(pendingApprovals))
+      .replaceAll('{recentEvents}', formatNumber(recentEvents))
+      .replaceAll('{threads}', formatNumber(threads));
   String reconnectCacheDeliveredCursor(String cursor) =>
       _text('reconnectCacheDeliveredCursor').replaceAll('{cursor}', cursor);
   String statePath(String path) =>
@@ -1109,7 +1113,7 @@ const _values = <String, Map<String, String>>{
     'backendNotStarted': 'not started',
     'backendUnavailable': 'unavailable',
     'reconnectCacheSummary':
-        'Reconnect cache: {pendingApprovals} pending approvals, {recentEvents} recent events',
+        'Reconnect cache: {pendingApprovals} pending approvals, {recentEvents} recent events, {threads} threads',
     'reconnectCacheDeliveredCursor': 'Delivered cursor: {cursor}',
     'statePath': 'State path: {path}',
     'reconnectCacheLoadError': 'Reconnect cache load error: {error}',
@@ -1881,7 +1885,7 @@ const _values = <String, Map<String, String>>{
     'backendNotStarted': '未启动',
     'backendUnavailable': '不可用',
     'reconnectCacheSummary':
-        '重连缓存：{pendingApprovals} 个待审批，{recentEvents} 个最近事件',
+        '重连缓存：{pendingApprovals} 个待审批，{recentEvents} 个最近事件，{threads} 个线程',
     'reconnectCacheDeliveredCursor': '已投递 cursor：{cursor}',
     'statePath': '状态路径：{path}',
     'reconnectCacheLoadError': '重连缓存读取失败：{error}',

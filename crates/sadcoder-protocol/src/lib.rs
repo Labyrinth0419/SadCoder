@@ -183,6 +183,8 @@ pub struct AgentReconnectCacheStatus {
     pub schema_version: u32,
     pub pending_approvals: usize,
     pub recent_events: usize,
+    #[serde(default)]
+    pub threads: usize,
     #[serde(
         default,
         alias = "delivered_cursor",
@@ -322,6 +324,7 @@ mod tests {
                 schema_version: 1,
                 pending_approvals: 2,
                 recent_events: 10,
+                threads: 3,
                 delivered_cursor: Some("42".to_string()),
                 load_error: None,
             },
@@ -338,6 +341,7 @@ mod tests {
             "/tmp/sadcoder-agent-state.json"
         );
         assert_eq!(encoded["reconnectCache"]["pendingApprovals"], 2);
+        assert_eq!(encoded["reconnectCache"]["threads"], 3);
         assert_eq!(encoded["reconnectCache"]["deliveredCursor"], "42");
     }
 
@@ -364,6 +368,7 @@ mod tests {
                 schema_version: 1,
                 pending_approvals: 0,
                 recent_events: 0,
+                threads: 0,
                 delivered_cursor: None,
                 load_error: None,
             },
@@ -403,6 +408,7 @@ mod tests {
             status.reconnect_cache.delivered_cursor.as_deref(),
             Some("event-9")
         );
+        assert_eq!(status.reconnect_cache.threads, 0);
     }
 
     #[test]
