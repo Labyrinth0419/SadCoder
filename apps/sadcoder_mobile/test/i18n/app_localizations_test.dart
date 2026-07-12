@@ -101,6 +101,11 @@ void main() {
     expect(zh.slashCommandGroupLabel('filesAndCommands'), '文件/命令');
     expect(zh.colorPaletteLabel('candy'), '糖果');
     expect(zh.colorPaletteLabel('candy-pop'), '糖果汽水');
+    expect(zh.fontSizeLabel('extra-small'), '极小');
+    expect(zh.fontSizeLabel('small'), '小');
+    expect(zh.fontSizeLabel('medium'), '中');
+    expect(zh.fontSizeLabel('large'), '大');
+    expect(zh.fontSizeLabel('extra-large'), '极大');
     expect(zh.settingsSectionDiagnostics, '诊断');
     expect(zh.slashCommandArgs('<名称>'), '参数：<名称>');
     expect(zh.slashCommandArgumentHint('rename'), '<名称>');

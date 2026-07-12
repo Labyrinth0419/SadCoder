@@ -4356,7 +4356,7 @@ class _ChatActivityStripBody extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+              padding: const EdgeInsets.fromLTRB(8, 5, 8, 5),
               child: Row(
                 children: [
                   IconButton(
@@ -4370,13 +4370,13 @@ class _ChatActivityStripBody extends StatelessWidget {
                     ),
                     icon: const Icon(Icons.menu),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5),
                   _ChatTuiStatusMark(
                     key: const ValueKey('chat-tui-status-mark'),
                     color: indicator,
                     active: active,
                   ),
-                  const SizedBox(width: 9),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: _ChatTuiStatusLine(
                       status: status,
@@ -4718,7 +4718,7 @@ class _ChatThreadSidebar extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Material(
       elevation: overlay ? 8 : 0,
-      color: colorScheme.surfaceContainerLow,
+      color: colorScheme.surfaceContainerLowest,
       child: DecoratedBox(
         decoration: BoxDecoration(
           border: BorderDirectional(
@@ -4727,7 +4727,7 @@ class _ChatThreadSidebar extends StatelessWidget {
         ),
         child: ListView(
           key: const ValueKey('chat-session-sidebar'),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
           children: [child],
         ),
       ),
@@ -4912,19 +4912,12 @@ class _ThreadListCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: colorScheme.surface,
+        color: colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: colorScheme.outlineVariant),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.shadow.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 8, 8, 10),
+        padding: const EdgeInsets.fromLTRB(8, 7, 6, 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -5030,12 +5023,20 @@ class _ThreadListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = detailController?.selectedThreadId == thread.id;
+    final colorScheme = Theme.of(context).colorScheme;
     return ListTile(
       key: ValueKey('thread-summary-${thread.id}'),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 6),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
       dense: true,
       visualDensity: VisualDensity.compact,
       selected: selected,
+      selectedTileColor: colorScheme.primaryContainer.withValues(alpha: 0.46),
+      tileColor: colorScheme.surfaceContainerLowest,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      leading: Icon(
+        selected ? Icons.chat_bubble : Icons.chat_bubble_outline,
+        size: 18,
+      ),
       title: Text(thread.title, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: archived
           ? IconButton(

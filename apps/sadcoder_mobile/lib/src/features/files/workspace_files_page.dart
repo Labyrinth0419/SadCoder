@@ -811,9 +811,9 @@ class _FilesTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Material(
-      color: Theme.of(context).colorScheme.surface,
+      color: Theme.of(context).colorScheme.surfaceContainerLowest,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 7, 14, 7),
+        padding: const EdgeInsets.fromLTRB(8, 5, 12, 5),
         child: Row(
           children: [
             IconButton(
@@ -827,13 +827,13 @@ class _FilesTopBar extends StatelessWidget {
               ),
               icon: const Icon(Icons.menu),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 3),
             Icon(
               Icons.folder_copy_outlined,
-              size: 20,
+              size: 19,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 9),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -890,7 +890,7 @@ class _FilesSidebar extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Material(
       elevation: overlay ? 8 : 0,
-      color: colorScheme.surfaceContainerLow,
+      color: colorScheme.surfaceContainerLowest,
       child: DecoratedBox(
         decoration: BoxDecoration(
           border: BorderDirectional(
@@ -899,7 +899,7 @@ class _FilesSidebar extends StatelessWidget {
         ),
         child: ListView(
           key: const ValueKey('workspace-files-sidebar'),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
           children: [
             _WorkspaceRootSelector(
               controller: rootController,
@@ -1037,7 +1037,7 @@ class _FilesToolbar extends StatelessWidget {
       builder: (context, constraints) {
         final searchWidth = constraints.maxWidth < 260
             ? constraints.maxWidth
-            : 136.0;
+            : 112.0;
         return Row(
           children: [
             Flexible(
@@ -1045,17 +1045,17 @@ class _FilesToolbar extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: searchWidth),
                 child: SizedBox(
-                  height: 24,
+                  height: 22,
                   child: TextField(
                     key: const ValueKey('workspace-files-filter'),
                     controller: filterController,
                     textAlignVertical: TextAlignVertical.center,
                     style: Theme.of(context).textTheme.bodySmall,
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search, size: 14),
+                      prefixIcon: const Icon(Icons.search, size: 13),
                       prefixIconConstraints: const BoxConstraints(
-                        minWidth: 22,
-                        minHeight: 22,
+                        minWidth: 20,
+                        minHeight: 20,
                       ),
                       hintText: l10n.workspaceFilesSearchHint,
                       border: OutlineInputBorder(
@@ -1065,8 +1065,8 @@ class _FilesToolbar extends StatelessWidget {
                       filled: true,
                       fillColor: colorScheme.surface,
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 1,
+                        horizontal: 4,
+                        vertical: 0,
                       ),
                     ),
                   ),
@@ -1126,7 +1126,7 @@ class _CompactFilesToolButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return SizedBox.square(
-      dimension: 26,
+      dimension: 24,
       child: IconButton.filledTonal(
         onPressed: onPressed,
         tooltip: tooltip,
@@ -1140,7 +1140,7 @@ class _CompactFilesToolButton extends StatelessWidget {
               ? selectedForeground
               : colorScheme.onSurfaceVariant,
         ),
-        icon: Icon(icon, size: 17),
+        icon: Icon(icon, size: 16),
       ),
     );
   }
@@ -1157,7 +1157,7 @@ class _DirectoryPanel extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: colorScheme.surface,
+        color: colorScheme.surfaceContainerLow,
         border: Border.all(color: colorScheme.outlineVariant),
         borderRadius: BorderRadius.circular(8),
       ),
