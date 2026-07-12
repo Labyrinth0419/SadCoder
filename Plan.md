@@ -379,6 +379,7 @@ agent 负责：
 - UI 对 experimental 功能加标识。
 - 对未知 method/item 不崩溃，保留 raw event。
 - 模型选择与覆盖必须从 `model/list` 读取服务器实际 catalog，不能在 App 内硬编码 GPT-5.x 名称；解析层同时兼容 app-server v2 的 camelCase 字段与 Codex 远程 catalog/cache 的 snake_case 字段，例如 GPT-5.6 Sol/Terra/Luna 的 `default_reasoning_level`、`supported_reasoning_levels`、`service_tiers` 和 `availability_nux`。
+- 已补强移动端 model catalog 解析：`supportedReasoningEfforts` / `supported_reasoning_levels` 和 `serviceTiers` / `service_tiers` 同时支持对象数组与紧凑字符串数组，避免不同 Codex 版本或缓存来源把 reasoning/service tier 能力信息丢失。
 
 ### 5.6 Codex 配置策略
 

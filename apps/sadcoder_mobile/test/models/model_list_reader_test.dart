@@ -143,6 +143,37 @@ void main() {
     },
   );
 
+  test('ModelListPage accepts compact string model capability lists', () {
+    final page = ModelListPage.fromJson({
+      'models': [
+        {
+          'slug': 'gpt-5.6-sol',
+          'display_name': 'GPT-5.6 Sol',
+          'supported_reasoning_levels': ['low', '', 'medium', 42],
+          'service_tiers': [
+            'default',
+            '',
+            'priority',
+            {'id': 'flex'},
+          ],
+        },
+      ],
+    });
+
+    final model = page.models.single;
+    expect(model.supportedReasoningEfforts.map((effort) => effort.id), [
+      'low',
+      'medium',
+    ]);
+    expect(model.supportedReasoningEfforts.first.description, 'low');
+    expect(model.serviceTiers.map((tier) => tier.id), [
+      'default',
+      'priority',
+      'flex',
+    ]);
+    expect(model.serviceTiers.first.name, 'default');
+  });
+
   test('ModelListPage parses GPT-5.6 raw model catalog entries', () {
     final page = ModelListPage.fromJson({
       'models': [

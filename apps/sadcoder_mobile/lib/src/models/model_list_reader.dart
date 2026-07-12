@@ -161,12 +161,12 @@ CodexModelSummary? _modelFromJson(Object? value) {
         map['availabilityNux'] ?? map['availability_nux'],
       ),
       supportedReasoningEfforts: List.unmodifiable(
-        _listOfMaps(
+        _reasoningEffortsFromJson(
           map['supportedReasoningEfforts'] ??
               map['supported_reasoning_efforts'] ??
               map['supportedReasoningLevels'] ??
               map['supported_reasoning_levels'],
-        ).map(_reasoningEffortFromJson).nonNulls,
+        ),
       ),
       defaultReasoningEffort: _stringValue(
         map['defaultReasoningEffort'] ??
@@ -259,6 +259,25 @@ CodexModelReasoningEffort? _reasoningEffortFromJson(Map<String, Object?> map) {
   );
 }
 
+List<CodexModelReasoningEffort> _reasoningEffortsFromJson(Object? value) {
+  if (value is! List) {
+    return const [];
+  }
+  return value
+      .map((entry) {
+        if (entry is String && _hasText(entry)) {
+          final id = entry.trim();
+          return CodexModelReasoningEffort(id: id, description: id);
+        }
+        if (entry is Map) {
+          return _reasoningEffortFromJson(Map<String, Object?>.from(entry));
+        }
+        return null;
+      })
+      .nonNulls
+      .toList(growable: false);
+}
+
 CodexModelServiceTier? _serviceTierFromJson(Map<String, Object?> map) {
   final id = _stringValue(map['id']);
   if (!_hasText(id)) {
@@ -275,14 +294,31 @@ List<CodexModelServiceTier> _serviceTiersFromJson(
   Object? value, {
   required List<String> additionalSpeedTiers,
 }) {
-  final serviceTiers = _listOfMaps(
-    value,
-  ).map(_serviceTierFromJson).nonNulls.toList(growable: false);
+  final serviceTiers = _serviceTierListFromJson(value);
   if (serviceTiers.isNotEmpty) {
     return serviceTiers;
   }
   return additionalSpeedTiers
       .map((tier) => CodexModelServiceTier(id: tier, name: tier))
+      .toList(growable: false);
+}
+
+List<CodexModelServiceTier> _serviceTierListFromJson(Object? value) {
+  if (value is! List) {
+    return const [];
+  }
+  return value
+      .map((entry) {
+        if (entry is String && _hasText(entry)) {
+          final id = entry.trim();
+          return CodexModelServiceTier(id: id, name: id);
+        }
+        if (entry is Map) {
+          return _serviceTierFromJson(Map<String, Object?>.from(entry));
+        }
+        return null;
+      })
+      .nonNulls
       .toList(growable: false);
 }
 
@@ -296,16 +332,6 @@ Map<String, Object?> _stringKeyedMap(Object? value) {
     );
   }
   return const {};
-}
-
-List<Map<String, Object?>> _listOfMaps(Object? value) {
-  if (value is! List) {
-    return const [];
-  }
-  return value
-      .whereType<Map>()
-      .map((entry) => Map<String, Object?>.from(entry))
-      .toList(growable: false);
 }
 
 List<String> _stringList(Object? value) {
