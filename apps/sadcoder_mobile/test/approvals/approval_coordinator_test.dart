@@ -97,6 +97,32 @@ void main() {
   );
 
   test(
+    'ignores known unsupported server requests handled outside approvals',
+    () async {
+      final transport = _FakeJsonRpcTransport();
+      final coordinator = ApprovalCoordinator(transport: transport);
+      addTearDown(coordinator.close);
+      addTearDown(transport.close);
+
+      final snapshots = <List<PendingApproval>>[];
+      final subscription = coordinator.changes.listen(snapshots.add);
+      addTearDown(subscription.cancel);
+
+      transport.emitServerRequest(
+        const JsonRpcServerRequest(
+          id: 'tool-1',
+          method: dynamicToolCallMethod,
+          params: {'threadId': 'thr_1'},
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(snapshots, isEmpty);
+      expect(coordinator.approvals, isEmpty);
+    },
+  );
+
+  test(
     'sends command and file decisions without clearing pending state',
     () async {
       final transport = _FakeJsonRpcTransport();

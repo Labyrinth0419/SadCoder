@@ -70,7 +70,7 @@ class ApprovalStateController extends ChangeNotifier {
   void ingestServerRequests(Iterable<JsonRpcServerRequest> requests) {
     var changed = false;
     for (final request in requests) {
-      if (_isAutoHandledServerRequest(request)) {
+      if (isAutoHandledServerRequest(request)) {
         continue;
       }
       _store.ingestServerRequest(request);
@@ -86,7 +86,7 @@ class ApprovalStateController extends ChangeNotifier {
     required Set<Object> pruneRequestIds,
   }) {
     final pendingRequests = requests.where(
-      (request) => !_isAutoHandledServerRequest(request),
+      (request) => !isAutoHandledServerRequest(request),
     );
     final changed = _store.reconcileServerRequestSnapshot(
       pendingRequests,
@@ -154,8 +154,4 @@ class ApprovalStateController extends ChangeNotifier {
     unawaited(detachCoordinator(notify: false));
     super.dispose();
   }
-}
-
-bool _isAutoHandledServerRequest(JsonRpcServerRequest request) {
-  return request.method == currentTimeReadMethod;
 }

@@ -88,7 +88,7 @@ class ApprovalCoordinator {
   }
 
   void _handleServerRequest(JsonRpcServerRequest request) {
-    if (request.method == currentTimeReadMethod) {
+    if (isAutoHandledServerRequest(request)) {
       return;
     }
     store.ingestServerRequest(request);

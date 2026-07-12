@@ -91,7 +91,7 @@ void main() {
     });
   });
 
-  test('snapshot ingestion ignores auto-handled current-time requests', () {
+  test('snapshot ingestion ignores auto-handled server requests', () {
     final controller = ApprovalStateController();
     addTearDown(controller.dispose);
     var notifications = 0;
@@ -101,6 +101,11 @@ void main() {
       JsonRpcServerRequest(
         id: 'time-1',
         method: currentTimeReadMethod,
+        params: {'threadId': 'thr_1'},
+      ),
+      JsonRpcServerRequest(
+        id: 'tool-1',
+        method: dynamicToolCallMethod,
         params: {'threadId': 'thr_1'},
       ),
     ]);
@@ -114,8 +119,13 @@ void main() {
           method: currentTimeReadMethod,
           params: {'threadId': 'thr_1'},
         ),
+        JsonRpcServerRequest(
+          id: 'tool-1',
+          method: dynamicToolCallMethod,
+          params: {'threadId': 'thr_1'},
+        ),
       ],
-      pruneRequestIds: const {'time-1'},
+      pruneRequestIds: const {'time-1', 'tool-1'},
     );
     expect(controller.approvals, isEmpty);
     expect(notifications, 0);

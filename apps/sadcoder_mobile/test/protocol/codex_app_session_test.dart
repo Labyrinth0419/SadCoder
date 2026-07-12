@@ -118,6 +118,36 @@ void main() {
     },
   );
 
+  test(
+    'rejects known unsupported server requests without approval state',
+    () async {
+      final transport = MemoryJsonRpcTransport((_) async => {});
+      final session = CodexAppSession(transport);
+      addTearDown(session.close);
+
+      transport.emitServerRequest(
+        const JsonRpcServerRequest(
+          id: 'tool-1',
+          method: dynamicToolCallMethod,
+          params: {'threadId': 'thr_1'},
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(session.approvalController.approvals, isEmpty);
+      expect(transport.responses, hasLength(1));
+      expect(transport.responses.single.toJson(), {
+        'jsonrpc': '2.0',
+        'id': 'tool-1',
+        'error': {
+          'code': unsupportedServerRequestErrorCode,
+          'message': unsupportedServerRequestMessage(dynamicToolCallMethod),
+          'data': {'method': dynamicToolCallMethod},
+        },
+      });
+    },
+  );
+
   test('maps app-server notifications into session events', () async {
     final transport = MemoryJsonRpcTransport((_) async => {});
     final session = CodexAppSession(transport);

@@ -44,4 +44,68 @@ void main() {
 
     expect(transport.responses, isEmpty);
   });
+
+  test(
+    'rejects known unsupported server requests with explicit errors',
+    () async {
+      final transport = MemoryJsonRpcTransport((_) async => {});
+      final responder = ServerRequestAutoResponder(transport: transport);
+      addTearDown(responder.close);
+      addTearDown(transport.close);
+
+      const methods = [
+        dynamicToolCallMethod,
+        attestationGenerateMethod,
+        legacyApplyPatchApprovalMethod,
+        legacyExecCommandApprovalMethod,
+      ];
+
+      for (var index = 0; index < methods.length; index += 1) {
+        final method = methods[index];
+        transport.emitServerRequest(
+          JsonRpcServerRequest(
+            id: 'unsupported-$index',
+            method: method,
+            params: const {'threadId': 'thr_1'},
+          ),
+        );
+      }
+      await Future<void>.delayed(Duration.zero);
+
+      expect(transport.responses, hasLength(methods.length));
+      for (var index = 0; index < transport.responses.length; index += 1) {
+        final response = transport.responses[index];
+        expect(response.toJson(), {
+          'jsonrpc': '2.0',
+          'id': 'unsupported-$index',
+          'error': {
+            'code': unsupportedServerRequestErrorCode,
+            'message': unsupportedServerRequestMessage(methods[index]),
+            'data': {'method': methods[index]},
+          },
+        });
+      }
+    },
+  );
+
+  test('identifies auto-handled server request methods', () {
+    expect(
+      isAutoHandledServerRequest(
+        const JsonRpcServerRequest(id: 'time-1', method: currentTimeReadMethod),
+      ),
+      true,
+    );
+    expect(
+      isAutoHandledServerRequest(
+        const JsonRpcServerRequest(id: 'tool-1', method: dynamicToolCallMethod),
+      ),
+      true,
+    );
+    expect(
+      isAutoHandledServerRequest(
+        const JsonRpcServerRequest(id: 'future-1', method: 'future/request'),
+      ),
+      false,
+    );
+  });
 }
