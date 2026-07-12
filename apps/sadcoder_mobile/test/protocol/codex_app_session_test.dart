@@ -30,6 +30,10 @@ void main() {
     expect(models['models'], <Object?>[]);
     expect(permissionProfiles['data'], <Object?>[]);
     expect(account['requiresOpenaiAuth'], false);
+    expect(requests.first.params?['clientInfo'], {
+      'name': 'sadcoder-mobile',
+      'version': '1.0.0',
+    });
     expect(requests.map((request) => request.method), [
       'initialize',
       'model/list',

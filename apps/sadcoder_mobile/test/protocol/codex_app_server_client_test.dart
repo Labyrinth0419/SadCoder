@@ -21,10 +21,36 @@ void main() {
 
     expect(result['userAgent'], 'SadCoder test');
     expect(requests.single.method, 'initialize');
+    expect(requests.single.params?['clientInfo'], {
+      'name': 'sadcoder-mobile',
+      'version': '1.0.0',
+    });
     expect(requests.single.params?['capabilities'], {'experimentalApi': true});
     expect(notifications.single['method'], 'initialized');
 
     await subscription.cancel();
+  });
+
+  test('initialize accepts explicit client info', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
+
+    final client = CodexAppServerClient(transport);
+    await client.initialize(
+      clientName: 'custom-client',
+      clientVersion: '2.3.4',
+      experimentalApi: false,
+    );
+
+    expect(requests.single.method, 'initialize');
+    expect(requests.single.params?['clientInfo'], {
+      'name': 'custom-client',
+      'version': '2.3.4',
+    });
+    expect(requests.single.params?['capabilities'], {'experimentalApi': false});
   });
 
   test('model and thread methods use app-server method names', () async {

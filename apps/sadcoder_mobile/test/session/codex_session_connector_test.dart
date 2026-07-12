@@ -86,6 +86,15 @@ void main() {
       'turn/start',
       'turn/interrupt',
     ]);
+    final initializeRequest = proxyConnector.requests.singleWhere(
+      (request) => request['method'] == 'initialize',
+    );
+    final initializeParams =
+        initializeRequest['params'] as Map<String, Object?>;
+    expect(initializeParams['clientInfo'], {
+      'name': 'sadcoder-mobile',
+      'version': '1.0.0',
+    });
     expect(connection.profile, _profile);
     expect(snapshot.pendingApprovals.single.id, 'approval-proxy');
     final feedbackLog = connection.diagnosticLogs.lastWhere(
@@ -302,6 +311,7 @@ class _LineServerProxyConnector implements AgentProxyConnector {
   _LineServerProxyConnector({this.failMethod});
 
   final String? failMethod;
+  final requests = <Map<String, Object?>>[];
   final methods = <String>[];
   bool closed = false;
   int connectCount = 0;
@@ -335,6 +345,7 @@ class _LineServerProxyConnector implements AgentProxyConnector {
 
   void _handleLine(String line, StreamController<Uint8List> input) {
     final request = Map<String, Object?>.from(jsonDecode(line) as Map);
+    requests.add(request);
     final method = request['method'] as String;
     methods.add(method);
 

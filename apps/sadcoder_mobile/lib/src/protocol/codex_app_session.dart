@@ -2,6 +2,7 @@ import '../approvals/approval_coordinator.dart';
 import '../approvals/approval_state_controller.dart';
 import '../events/codex_event.dart';
 import 'codex_app_server_client.dart';
+import 'codex_client_info.dart';
 import 'json_rpc.dart';
 
 class CodexAppSession {
@@ -44,11 +45,13 @@ class CodexAppSession {
   final Stream<CodexEvent> events;
 
   Future<Map<String, Object?>> initialize({
-    String clientName = 'sadcoder-mobile',
+    String clientName = sadcoderMobileClientName,
+    String clientVersion = sadcoderMobileClientVersion,
     bool experimentalApi = true,
   }) {
     return client.initialize(
       clientName: clientName,
+      clientVersion: clientVersion,
       experimentalApi: experimentalApi,
     );
   }

@@ -49,6 +49,7 @@ import '../plugins/plugin_detail_reader.dart';
 import '../plugins/plugin_list_reader.dart';
 import '../plugins/plugin_mutation_runner.dart';
 import '../protocol/codex_app_session.dart';
+import '../protocol/codex_client_info.dart';
 import '../protocol/json_rpc_diagnostic_log.dart';
 import '../reviews/codex_thread_review_runner.dart';
 import '../reviews/thread_review_runner.dart';
@@ -174,7 +175,8 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
     required AgentProxyConnector proxyConnector,
     AgentStatusReader? statusReader,
     AgentStartRunner? startRunner,
-    this.clientName = 'sadcoder-mobile',
+    this.clientName = sadcoderMobileClientName,
+    this.clientVersion = sadcoderMobileClientVersion,
     this.experimentalApi = true,
   }) : _proxyConnector = proxyConnector,
        _statusReader = statusReader,
@@ -184,6 +186,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
   final AgentStatusReader? _statusReader;
   final AgentStartRunner? _startRunner;
   final String clientName;
+  final String clientVersion;
   final bool experimentalApi;
 
   @override
@@ -205,6 +208,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
       await session.client.agentHello();
       await session.initialize(
         clientName: clientName,
+        clientVersion: clientVersion,
         experimentalApi: experimentalApi,
       );
       return CodexSessionConnection(

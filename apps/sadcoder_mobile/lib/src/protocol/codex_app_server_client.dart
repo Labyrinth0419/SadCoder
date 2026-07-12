@@ -1,6 +1,7 @@
 import '../config/codex_config_overrides.dart';
 import '../events/guardian_assessment_event.dart';
 import '../turns/turn_text_element.dart';
+import 'codex_client_info.dart';
 import 'json_rpc.dart';
 
 class CodexAppServerClient {
@@ -12,11 +13,12 @@ class CodexAppServerClient {
   Stream<Map<String, Object?>> get notifications => _transport.notifications;
 
   Future<Map<String, Object?>> initialize({
-    String clientName = 'sadcoder-mobile',
+    String clientName = sadcoderMobileClientName,
+    String clientVersion = sadcoderMobileClientVersion,
     bool experimentalApi = true,
   }) async {
     final result = await _request('initialize', {
-      'clientInfo': {'name': clientName},
+      'clientInfo': {'name': clientName, 'version': clientVersion},
       'capabilities': {'experimentalApi': experimentalApi},
     });
     await _transport.notify(JsonRpcNotification(method: 'initialized'));
