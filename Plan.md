@@ -984,7 +984,7 @@ MVP 可以简化为底部导航：
 - 已落地 `features/files` 独立模块，包含目录树、文件预览、Markdown render/raw 切换、代码高亮、远端文件搜索入口和只读 toolbar。
 - 已落地 `workspace/directoryList`、`workspace/fileStat`、`workspace/fileRead` 的 agent RPC，并保留旧 `fs/*` 只读方法作为客户端兼容 fallback。
 - 已调整 Files 页面为左侧工作区文件侧栏和主区域 status page / 文件预览；文件过滤、隐藏文件、远端搜索和刷新入口已收敛为紧凑工具行，搜索栏高度已压缩，显式 workspace root 与默认 root 选择保持折叠入口。
-- 本轮 UI pass 已继续压缩 Files 顶部和工具栏密度，文件搜索栏同时限制高度和宽度，文件树行改为工具侧栏式密集行；主区域保留 status page / opened file 的单一主体语义，预览面板只保留清晰边界，不再用投影制造卡片感。
+- 本轮 UI pass 已继续压缩 Files 顶部和工具栏密度，文件搜索栏同时限制高度和宽度，文件树行改为工具侧栏式密集行；主区域保留 status page / opened file 的单一主体语义，预览面板只保留清晰边界，不再用投影制造卡片感；窄屏默认收起文件树侧栏，左上三横线负责展开，避免文件树覆盖主状态页。
 - 已覆盖路径归一化、目录响应 path/name 校验、目录分页 `nextCursor`/`cursor`、拒绝 `..` / 绝对 child path、符号链接祖先拒绝、二进制文件拒绝、UTF-8 range 边界、后续 chunk 失败重试和大 Markdown raw 保护。
 - 仍待后续单独设计：受控编辑、写文件、目录监听、diff 审批和冲突检测；这些能力不得混入只读 Files 页面。
 

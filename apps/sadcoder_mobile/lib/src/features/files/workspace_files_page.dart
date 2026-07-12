@@ -62,7 +62,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
   String? _manualRoot;
   String? _activeRoot;
   bool _includeHidden = false;
-  bool _showFileSidebar = true;
+  bool? _fileSidebarOverride;
   _FilePreviewState _preview = const _FilePreviewState.idle();
 
   @override
@@ -125,7 +125,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final overlaySidebar = constraints.maxWidth < 720;
-        final sidebarVisible = _showFileSidebar;
+        final sidebarVisible = _fileSidebarOverride ?? !overlaySidebar;
         final sidebarWidth = _filesSidebarWidthFor(constraints.maxWidth);
         return Column(
           key: const ValueKey('workspace-files-page'),
@@ -133,7 +133,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
             _FilesTopBar(
               root: root,
               sidebarVisible: sidebarVisible,
-              onToggleSidebar: _toggleFileSidebar,
+              onToggleSidebar: () => _toggleFileSidebar(sidebarVisible),
             ),
             const Divider(height: 1),
             Expanded(
@@ -314,8 +314,8 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     });
   }
 
-  void _toggleFileSidebar() {
-    setState(() => _showFileSidebar = !_showFileSidebar);
+  void _toggleFileSidebar(bool currentlyVisible) {
+    setState(() => _fileSidebarOverride = !currentlyVisible);
   }
 
   void _setWorkspaceRoot() {

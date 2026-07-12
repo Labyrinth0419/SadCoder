@@ -387,6 +387,47 @@ void main() {
     );
   });
 
+  testWidgets('keeps the file tree collapsed by default on compact widths', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpFilesPage(
+      tester,
+      directoryReader: _FakeWorkspaceDirectoryReader({
+        '': [_entry(path: 'README.md', name: 'README.md')],
+      }),
+      fileReader: const _FakeWorkspaceFileReader(),
+    );
+
+    expect(
+      find.byKey(const ValueKey('workspace-files-status-page')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('workspace-files-sidebar')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('workspace-files-entry-README.md')),
+      findsNothing,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-sidebar-toggle')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('workspace-files-sidebar')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('workspace-files-entry-README.md')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('shows a status page before a file is opened', (tester) async {
     await _pumpFilesPage(
       tester,
