@@ -24,10 +24,15 @@ abstract interface class AgentStartRunner {
   Future<AgentStatus> start(SshProfile profile);
 }
 
+abstract interface class AgentStopRunner {
+  Future<AgentStopResult> stop(SshProfile profile);
+}
+
 class AgentRemoteService
     implements
         AgentStatusReader,
         AgentStartRunner,
+        AgentStopRunner,
         AgentCodexConfigureRunner,
         AgentDoctorReader,
         AgentLogsReader,
@@ -55,6 +60,18 @@ class AgentRemoteService
       failurePrefix: 'Agent start',
       timeout: const Duration(seconds: 60),
     );
+  }
+
+  @override
+  Future<AgentStopResult> stop(SshProfile profile) async {
+    final json = await _readJsonObjectCommand(
+      profile,
+      '${profile.agentCommand} stop --json',
+      failurePrefix: 'Agent stop',
+      invalidJsonMessage: 'Agent stop did not return a JSON object.',
+      timeout: const Duration(seconds: 20),
+    );
+    return AgentStopResult.fromJson(json);
   }
 
   Future<AgentStatus> _readStatusCommand(

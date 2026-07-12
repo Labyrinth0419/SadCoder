@@ -495,6 +495,38 @@ void main() {
     expect(status.backendState, BackendState.ready);
   });
 
+  test(
+    'stop runs sadcoder-agent stop and parses returned backend status',
+    () async {
+      final runner = _FakeRunner(
+        result: const RemoteCommandResult(
+          exitCode: 0,
+          stdout: '''
+{
+  "stopped": true,
+  "backend": {
+    "kind": "sadcoder-agent-service",
+    "state": "not-started",
+    "detail": "SadCoder service is not running"
+  }
+}
+''',
+          stderr: '',
+        ),
+      );
+      final service = AgentRemoteService(runner);
+
+      final result = await service.stop(_profile);
+
+      expect(runner.lastCommand, 'sadcoder-agent stop --json');
+      expect(runner.lastTimeout, const Duration(seconds: 20));
+      expect(result.stopped, true);
+      expect(result.backendKind, BackendKind.sadcoderAgentService);
+      expect(result.backendState, BackendState.notStarted);
+      expect(result.backendDetail, 'SadCoder service is not running');
+    },
+  );
+
   test('readSlashCommands parses shared slash command manifest JSON', () async {
     final stdout = File(
       '../../resources/slash_commands_manifest.json',

@@ -79,6 +79,30 @@ class AgentStatus {
   final AgentReconnectCacheStatus reconnectCache;
 }
 
+class AgentStopResult {
+  const AgentStopResult({
+    required this.stopped,
+    required this.backendKind,
+    required this.backendState,
+    this.backendDetail,
+  });
+
+  factory AgentStopResult.fromJson(Map<String, Object?> json) {
+    final backend = _stringKeyedMap(json['backend']);
+    return AgentStopResult(
+      stopped: _boolField(json, ['stopped']) ?? false,
+      backendKind: BackendKind.fromWire(_stringValue(backend['kind']) ?? ''),
+      backendState: BackendState.fromWire(_stringValue(backend['state']) ?? ''),
+      backendDetail: _stringValue(backend['detail']),
+    );
+  }
+
+  final bool stopped;
+  final BackendKind backendKind;
+  final BackendState backendState;
+  final String? backendDetail;
+}
+
 class AgentCodexFailure {
   const AgentCodexFailure({required this.kind, required this.detail});
 
