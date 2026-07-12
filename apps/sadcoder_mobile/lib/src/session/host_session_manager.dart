@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../approvals/approval_state_controller.dart';
@@ -39,6 +41,8 @@ class HostSessionManager extends ChangeNotifier {
 
   final HostSessionControllerFactory _controllerFactory;
   final Map<String, HostSessionEntry> _sessions = {};
+  final Map<String, Future<CodexSessionStateController>> _connectsByProfileId =
+      {};
   String? _activeProfileId;
   bool _disposed = false;
 
@@ -59,24 +63,34 @@ class HostSessionManager extends ChangeNotifier {
     return _sessions[profileId.trim()];
   }
 
-  Future<CodexSessionStateController> connect(SshProfile profile) async {
+  Future<CodexSessionStateController> connect(SshProfile profile) {
     _debugAssertNotDisposed();
     final profileId = hostSessionProfileId(profile);
-    final entry = _sessions.putIfAbsent(profileId, () {
-      final approvalController = ApprovalStateController();
-      approvalController.addListener(_handleManagedSessionChanged);
-      final sessionController = _controllerFactory(approvalController)
-        ..addListener(_handleManagedSessionChanged);
-      return HostSessionEntry._(
-        profileId: profileId,
-        profile: profile,
-        approvalController: approvalController,
-        sessionController: sessionController,
-      );
-    });
+    final entry = _sessionEntryFor(profileId, profile);
     entry.updateProfile(profile);
     _activeProfileId = profileId;
     notifyListeners();
+
+    final pendingConnect = _connectsByProfileId[profileId];
+    if (pendingConnect != null) {
+      return pendingConnect;
+    }
+
+    final connectFuture = _connectEntry(entry, profile);
+    _connectsByProfileId[profileId] = connectFuture;
+    unawaited(
+      connectFuture.then<void>(
+        (_) => _clearPendingConnect(profileId, connectFuture),
+        onError: (Object _) => _clearPendingConnect(profileId, connectFuture),
+      ),
+    );
+    return connectFuture;
+  }
+
+  Future<CodexSessionStateController> _connectEntry(
+    HostSessionEntry entry,
+    SshProfile profile,
+  ) async {
     await entry.sessionController.connect(profile);
     return entry.sessionController;
   }
@@ -85,6 +99,14 @@ class HostSessionManager extends ChangeNotifier {
     _debugAssertNotDisposed();
     final profileId = hostSessionProfileId(profile);
     final existing = _sessions[profileId];
+    final pendingConnect = _connectsByProfileId[profileId];
+    if (pendingConnect != null) {
+      existing?.updateProfile(profile);
+      if (existing != null) {
+        select(profileId);
+      }
+      return pendingConnect;
+    }
     if (existing != null &&
         existing.status != CodexSessionStatus.idle &&
         existing.status != CodexSessionStatus.failed) {
@@ -111,10 +133,12 @@ class HostSessionManager extends ChangeNotifier {
 
   Future<bool> disconnect(String profileId) async {
     _debugAssertNotDisposed();
-    final entry = _sessions[profileId.trim()];
+    final normalized = profileId.trim();
+    final entry = _sessions[normalized];
     if (entry == null) {
       return false;
     }
+    _connectsByProfileId.remove(normalized);
     await entry.sessionController.disconnect();
     return true;
   }
@@ -130,6 +154,7 @@ class HostSessionManager extends ChangeNotifier {
   Future<bool> closeSession(String profileId) async {
     _debugAssertNotDisposed();
     final normalized = profileId.trim();
+    _connectsByProfileId.remove(normalized);
     final entry = _sessions.remove(normalized);
     if (entry == null) {
       return false;
@@ -159,8 +184,33 @@ class HostSessionManager extends ChangeNotifier {
       entry.approvalController.dispose();
     }
     _sessions.clear();
+    _connectsByProfileId.clear();
     _activeProfileId = null;
     super.dispose();
+  }
+
+  HostSessionEntry _sessionEntryFor(String profileId, SshProfile profile) {
+    return _sessions.putIfAbsent(profileId, () {
+      final approvalController = ApprovalStateController();
+      approvalController.addListener(_handleManagedSessionChanged);
+      final sessionController = _controllerFactory(approvalController)
+        ..addListener(_handleManagedSessionChanged);
+      return HostSessionEntry._(
+        profileId: profileId,
+        profile: profile,
+        approvalController: approvalController,
+        sessionController: sessionController,
+      );
+    });
+  }
+
+  void _clearPendingConnect(
+    String profileId,
+    Future<CodexSessionStateController> connectFuture,
+  ) {
+    if (identical(_connectsByProfileId[profileId], connectFuture)) {
+      _connectsByProfileId.remove(profileId);
+    }
   }
 
   void _handleManagedSessionChanged() {

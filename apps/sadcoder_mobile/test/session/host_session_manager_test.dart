@@ -68,6 +68,88 @@ void main() {
     expect(starter.connections.first.closeCount, 0);
   });
 
+  test('coalesces concurrent connect calls for the same host', () async {
+    final starter = _DeferredSessionStarter();
+    final manager = _manager(starter);
+    addTearDown(manager.dispose);
+
+    final first = manager.connect(_profileA);
+    final second = manager.connect(_profileA);
+
+    expect(second, same(first));
+    expect(starter.connectedProfiles, [_profileA]);
+    expect(
+      manager.sessionFor(_profileA.id)!.status,
+      CodexSessionStatus.connecting,
+    );
+
+    starter.completeNext();
+    final controllers = await Future.wait([first, second]);
+
+    expect(controllers[1], same(controllers[0]));
+    expect(starter.connections, hasLength(1));
+    expect(controllers[0].status, CodexSessionStatus.connected);
+  });
+
+  test('connectOrSelect reuses a pending host connect', () async {
+    final starter = _DeferredSessionStarter();
+    final manager = _manager(starter);
+    addTearDown(manager.dispose);
+
+    final first = manager.connect(_profileA);
+    final second = manager.connectOrSelect(_profileA);
+
+    expect(second, same(first));
+    expect(starter.connectedProfiles, [_profileA]);
+    expect(manager.activeProfileId, _profileA.id);
+
+    starter.completeNext();
+    expect(await second, same(await first));
+    expect(starter.connections, hasLength(1));
+  });
+
+  test('clears pending host connect after failure', () async {
+    final starter = _DeferredSessionStarter();
+    final manager = _manager(starter);
+    addTearDown(manager.dispose);
+
+    final failed = manager.connect(_profileA);
+    starter.failNext(StateError('boom'));
+
+    await expectLater(failed, throwsA(isA<StateError>()));
+    expect(manager.sessionFor(_profileA.id)!.status, CodexSessionStatus.failed);
+
+    final retried = manager.connect(_profileA);
+    expect(starter.connectedProfiles, [_profileA, _profileA]);
+
+    starter.completeNext();
+    final controller = await retried;
+
+    expect(controller.status, CodexSessionStatus.connected);
+    expect(starter.connections, hasLength(2));
+  });
+
+  test('disconnect releases pending host connect reuse', () async {
+    final starter = _DeferredSessionStarter();
+    final manager = _manager(starter);
+    addTearDown(manager.dispose);
+
+    final first = manager.connect(_profileA);
+    expect(await manager.disconnect(_profileA.id), true);
+    final second = manager.connect(_profileA);
+
+    expect(first, isNot(same(second)));
+    expect(starter.connectedProfiles, [_profileA, _profileA]);
+
+    starter.completeNext();
+    starter.completeNext();
+    await first;
+    final controller = await second;
+
+    expect(starter.connections.first.closeCount, 1);
+    expect(controller.status, CodexSessionStatus.connected);
+  });
+
   test('disconnects one host session without affecting another', () async {
     final starter = _RecordingSessionStarter();
     final manager = _manager(starter);
@@ -100,7 +182,7 @@ void main() {
   });
 }
 
-HostSessionManager _manager(_RecordingSessionStarter starter) {
+HostSessionManager _manager(CodexSessionConnectionStarter starter) {
   return HostSessionManager(
     controllerFactory: (approvalController) => CodexSessionStateController(
       connector: starter,
@@ -136,6 +218,53 @@ class _RecordingSessionStarter implements CodexSessionConnectionStarter {
     final connection = _FakeConnectionHandle(profile);
     connections.add(connection);
     return connection;
+  }
+}
+
+class _DeferredSessionStarter implements CodexSessionConnectionStarter {
+  final connectedProfiles = <SshProfile>[];
+  final connections = <_FakeConnectionHandle>[];
+  final _pendingConnections = <_PendingConnection>[];
+
+  @override
+  Future<CodexSessionConnectionHandle> connect(
+    SshProfile profile, {
+    ApprovalStateController? approvalController,
+  }) {
+    connectedProfiles.add(profile);
+    final connection = _FakeConnectionHandle(profile);
+    connections.add(connection);
+    final pendingConnection = _PendingConnection(connection);
+    _pendingConnections.add(pendingConnection);
+    return pendingConnection.future;
+  }
+
+  void completeNext() {
+    final pendingConnection = _pendingConnections.removeAt(0);
+    pendingConnection.complete();
+  }
+
+  void failNext(Object error) {
+    final pendingConnection = _pendingConnections.removeAt(0);
+    pendingConnection.fail(error);
+  }
+}
+
+class _PendingConnection {
+  _PendingConnection(this.connection);
+
+  final _FakeConnectionHandle connection;
+  final Completer<CodexSessionConnectionHandle> _completer =
+      Completer<CodexSessionConnectionHandle>();
+
+  Future<CodexSessionConnectionHandle> get future => _completer.future;
+
+  void complete() {
+    _completer.complete(connection);
+  }
+
+  void fail(Object error) {
+    _completer.completeError(error);
   }
 }
 
