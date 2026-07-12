@@ -1010,6 +1010,7 @@ MVP 可以简化为底部导航：
 - 已落地 agent snapshot 缓存窗口诊断：`AgentStateSnapshot` 会暴露 `retainedCursorFloor` 与 `cursorGap`，当客户端 `sinceCursor` 早于 agent retained recent event 窗口或无法在窗口中确认时标记 gap，为后续触发更保守的 thread/read、turn/item 分页 reconciliation 做准备。
 - 已落地 cursor gap 驱动的移动端保守恢复：`AppHostSessionUiState` 会把 agent snapshot 的 `cursorGap` 映射到对应 thread 的一次性 recovery hint；`AppSessionRecoveryCoordinator` 在 gap 存在时不再用本地 lastTurnId/lastItemId 提前截断 turn/item 有界回填，并会在 snapshot 晚于 connected 状态到达时主动对当前 thread 再触发一次恢复。
 - 已落地 cursor gap 的延迟 thread 切换恢复：如果 agent snapshot gap 属于非当前 thread，App 不会立刻切换 UI；用户之后打开该 thread 时，`AppHostSessionUiState` 会消费对应 gap hint 并触发一次保守 turn/item 回填，避免断线期间非当前 thread 的事件缺口长期停留。
+- 已落地未知归属 cursor gap 的保守恢复：当 agent snapshot 只报告 `cursorGap=true` 但没有 recent event/thread id 可归因时，App 会保留一个 unknown gap 信号；用户之后打开任一尚未消费该 gap 的 thread 时，会按保守策略有界回填，避免因为缺少 thread id 而误用旧 cursor 提前截断。
 - 已落地 agent `--backend auto` 的 service-only 生产语义：auto 会启动并连接 SadCoder service，service 启动或 proxy 连接失败时返回错误，不再静默降级到 direct stdio；direct stdio 仅保留给显式 `--backend stdio` 或兼容 `--backend daemon` 路径。
 - 已落地后台 active-turn retention 的上下文刷新：App 后台且 active turn 仍需保活时，如果 host/thread/turn context 变化，会释放旧 foreground retention 并用新 context 重新 retain，避免 Android 通知和保活上下文停留在旧 turn。
 - 已落地服务端 turn/started 事件驱动的 active turn 跟踪：`ChatTimelineController` 会把 `turn/started` 通知传给 host UI state，`TurnController` 可据此跟踪非本机提交但正在运行的 turn；AppShell 后台保活 context 会优先当前 host，必要时扫描已连接 host UI states，确保切到其他 host 后仍能为已有 active turn 建立 foreground retention。

@@ -102,6 +102,8 @@ class AppHostSessionUiState {
   String? _lastPersistedTimelineCursorFingerprint;
   final Map<String, String> _deliveredCursorByThreadId = {};
   final Set<String> _cursorGapThreadIds = {};
+  final Set<String> _unknownCursorGapRecoveredThreadIds = {};
+  bool _unknownCursorGapActive = false;
   bool _restoringCachedThreadState = false;
   bool _disposed = false;
 
@@ -232,12 +234,16 @@ class AppHostSessionUiState {
   Future<ThreadRecoveryHint> _loadRecoveryHint(String threadId) async {
     final timelineCursor = await _loadTimelineCursor(threadId);
     final normalizedThreadId = _normalized(threadId);
-    final forceConservativeBackfill =
+    final hasThreadGap =
         normalizedThreadId != null &&
         _cursorGapThreadIds.remove(normalizedThreadId);
+    final hasUnknownGap =
+        normalizedThreadId != null &&
+        _unknownCursorGapActive &&
+        _unknownCursorGapRecoveredThreadIds.add(normalizedThreadId);
     return ThreadRecoveryHint(
       timelineCursor: timelineCursor,
-      forceConservativeBackfill: forceConservativeBackfill,
+      forceConservativeBackfill: hasThreadGap || hasUnknownGap,
     );
   }
 
@@ -290,7 +296,14 @@ class AppHostSessionUiState {
       return;
     }
     final threadId = _normalized(threadDetailController.selectedThreadId);
-    if (threadId == null || !_cursorGapThreadIds.contains(threadId)) {
+    if (threadId == null) {
+      return;
+    }
+    final hasPendingThreadGap = _cursorGapThreadIds.contains(threadId);
+    final hasPendingUnknownGap =
+        _unknownCursorGapActive &&
+        !_unknownCursorGapRecoveredThreadIds.contains(threadId);
+    if (!hasPendingThreadGap && !hasPendingUnknownGap) {
       return;
     }
     _sessionRecoveryCoordinator.recoverCurrentThread();
@@ -329,7 +342,12 @@ class AppHostSessionUiState {
       final gapThreadIds = threadIds.isEmpty
           ? _fallbackThreadIdsForSnapshotGap()
           : threadIds;
-      _cursorGapThreadIds.addAll(gapThreadIds);
+      if (gapThreadIds.isEmpty) {
+        _unknownCursorGapActive = true;
+        _unknownCursorGapRecoveredThreadIds.clear();
+      } else {
+        _cursorGapThreadIds.addAll(gapThreadIds);
+      }
       if (gapThreadIds.isNotEmpty &&
           sessionController.status == CodexSessionStatus.connected) {
         _sessionRecoveryCoordinator.recoverCurrentThread();

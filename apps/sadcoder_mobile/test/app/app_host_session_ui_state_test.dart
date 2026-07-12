@@ -582,6 +582,90 @@ void main() {
       );
     },
   );
+
+  test(
+    'conservatively recovers a thread selected after unknown snapshot gap',
+    () async {
+      final threadStore = _MemoryThreadCacheStore();
+      final cursorStore = _MemoryThreadTimelineCursorStore({
+        'profile-a::thr_gap': const ThreadTimelineCursorSnapshot(
+          threadId: 'thr_gap',
+          turnIds: ['turn_seen'],
+          itemIds: [],
+          lastTurnId: 'turn_seen',
+          cachedAtMs: 1,
+        ),
+      });
+      final detailReader = _RecordingThreadDetailReader();
+      final turnListReader = _RecordingThreadTurnListReader.pages([
+        ThreadTurnsPage(
+          turns: [_turn('turn_new', 'new'), _turn('turn_seen', 'seen updated')],
+          nextCursor: 'older_turns',
+        ),
+        ThreadTurnsPage(turns: [_turn('turn_old', 'old')]),
+      ]);
+      final approvalController = ApprovalStateController();
+      final configOverrideController = CodexConfigOverrideController();
+      final sessionController = CodexSessionStateController(
+        connector: _RecoverySnapshotSessionStarter(
+          snapshot: const AgentSnapshot(
+            schemaVersion: 1,
+            pendingApprovals: [],
+            recentEvents: [],
+            deliveredCursor: 'event-9',
+            cursorGap: true,
+          ),
+          threadDetailReader: detailReader,
+          threadTurnListReader: turnListReader,
+        ),
+        approvalController: approvalController,
+      );
+      final state = AppHostSessionUiState(
+        sessionController: sessionController,
+        configOverrideController: configOverrideController,
+        threadCacheProfileId: 'profile-a',
+        threadCacheStore: threadStore,
+        threadTimelineCursorStore: cursorStore,
+      );
+      addTearDown(state.dispose);
+      addTearDown(sessionController.dispose);
+      addTearDown(configOverrideController.dispose);
+      addTearDown(approvalController.dispose);
+
+      await sessionController.connect(_profileA);
+      await _flushMicrotasks();
+
+      expect(detailReader.calls, isEmpty);
+
+      await state.threadDetailController.readThread('thr_gap');
+      await _flushMicrotasks();
+
+      expect(detailReader.calls, [
+        (threadId: 'thr_gap', includeTurns: true),
+        (threadId: 'thr_gap', includeTurns: false),
+      ]);
+      expect(turnListReader.calls, [
+        (
+          threadId: 'thr_gap',
+          cursor: null,
+          limit: 50,
+          sortDirection: 'desc',
+          itemsView: 'full',
+        ),
+        (
+          threadId: 'thr_gap',
+          cursor: 'older_turns',
+          limit: 50,
+          sortDirection: 'desc',
+          itemsView: 'full',
+        ),
+      ]);
+      expect(
+        state.threadDetailController.detail?.turns.map((turn) => turn.id),
+        ['turn_old', 'turn_seen', 'turn_new'],
+      );
+    },
+  );
 }
 
 class _UiStateFixture {
