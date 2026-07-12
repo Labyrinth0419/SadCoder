@@ -993,6 +993,7 @@ MVP 可以简化为底部导航：
 - 已落地 agent delivered cursor wire 基础：`sadcoder-agent` reconnect cache 会为 recent event 分配递增 cursor 并在 snapshot 上记录 `deliveredCursor`；Rust protocol 与移动端 `AgentSnapshot` 均已支持 camel/snake case cursor 字段解析，为后续按 delivered cursor 请求增量事件做准备。
 - 已落地移动端 agent delivered cursor 本地合并：`CodexSessionStateController` 会发布已确认的 agent snapshot stream，`AppHostSessionUiState` 监听后按 snapshot recent event 的 threadId 将 `deliveredCursor` 合并写入对应 profile/thread 的 `ThreadTimelineCursorStore`，且 timeline cursor 持久化会保留已有 delivered cursor。
 - 已落地 agent snapshot 增量读取基础：`agent/snapshot` 支持 `sinceCursor`/`since_cursor` 参数并只返回 cursor 之后的 retained recent events，pending approvals 仍全量返回；移动端 `AgentSnapshotReader` / `CodexAppServerClient.agentSnapshot` 已支持透传 `sinceCursor`，`CodexSessionStateController` 可通过注入的 cursor provider 在 backfill snapshot 时使用该 cursor。
+- 已落地移动端 snapshot cursor 接线：`AppAgentSnapshotCursorProvider` 会优先读取当前选中 thread 的内存 delivered cursor，必要时回落到 thread cache 的上次选中 thread 和 `ThreadTimelineCursorStore`；默认 `AppShell` 创建的单 host 与 `HostSessionManager` session controller 都会把该 provider 接入 `CodexSessionStateController.snapshotCursorProvider`。
 - 已落地后台 active-turn retention 的上下文刷新：App 后台且 active turn 仍需保活时，如果 host/thread/turn context 变化，会释放旧 foreground retention 并用新 context 重新 retain，避免 Android 通知和保活上下文停留在旧 turn。
 - 后续仍需完整多 host 同时连接架构：`HostSessionManager` 已作为基础控制器引入，但完整后台保活策略、断线期间事件 cursor/分页增量回填和更完整的 reconnect turn/item reconciliation 还需要继续拆分完善。
 

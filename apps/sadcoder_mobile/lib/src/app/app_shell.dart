@@ -42,6 +42,7 @@ import '../threads/thread_list_controller.dart';
 import '../threads/thread_timeline_cursor_store.dart';
 import '../turns/turn_controller.dart';
 import '../usage/account_usage_snapshot_controller.dart';
+import 'agent_snapshot_cursor_provider.dart';
 import 'app_background_notification_coordinator.dart';
 import 'app_host_session_ui_state.dart';
 
@@ -56,12 +57,14 @@ const _defaultAgentRemoteService = AgentRemoteService(
 
 CodexSessionStateController _createDefaultSessionController(
   ApprovalStateController approvalController,
-  ThreadItemCacheStore threadItemCacheStore,
-) {
+  ThreadItemCacheStore threadItemCacheStore, {
+  AgentSnapshotCursorProvider? snapshotCursorProvider,
+}) {
   return CodexSessionStateController(
     connector: _defaultSessionConnector,
     approvalController: approvalController,
     snapshotReader: _defaultAgentRemoteService,
+    snapshotCursorProvider: snapshotCursorProvider,
     threadItemCacheStore: threadItemCacheStore,
     heartbeatChannels: const [
       SessionHeartbeatChannel(
@@ -309,6 +312,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         _createDefaultSessionController(
           _approvalController,
           _resolvedThreadItemCacheStore,
+          snapshotCursorProvider: _loadActiveAgentSnapshotCursor,
         );
     _ownsHostSessionManager =
         sessionController == null && hostSessionManager == null;
@@ -319,6 +323,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                     _createDefaultSessionController(
                       approvalController,
                       _resolvedThreadItemCacheStore,
+                      snapshotCursorProvider: _loadManagedAgentSnapshotCursor,
                     ),
               )
         : null;
@@ -637,6 +642,23 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  Future<String?> _loadActiveAgentSnapshotCursor(SshProfile profile) {
+    return _activeUiState.loadAgentSnapshotCursor(profile);
+  }
+
+  Future<String?> _loadManagedAgentSnapshotCursor(SshProfile profile) {
+    final profileId = hostSessionProfileId(profile);
+    final uiState = _hostUiStates[profileId];
+    if (uiState != null) {
+      return uiState.loadAgentSnapshotCursor(profile);
+    }
+    return AppAgentSnapshotCursorProvider(
+      profileId: profileId,
+      threadCacheStore: _resolvedThreadCacheStore,
+      threadTimelineCursorStore: _resolvedThreadTimelineCursorStore,
+    ).load(profile);
   }
 
   AppHostSessionUiState _uiStateForHost(HostSessionEntry entry) {

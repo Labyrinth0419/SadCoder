@@ -186,6 +186,35 @@ void main() {
     expect(snapshot?.lastTurnId, 'turn_existing');
     expect(snapshot?.lastItemId, 'item_existing');
   });
+
+  test('loads agent snapshot cursor from cached selected thread', () async {
+    final threadStore = _MemoryThreadCacheStore({
+      'profile-a': ThreadCacheSnapshot(
+        threads: [_thread('thr_a', 'Host A task')],
+        selectedThreadId: 'thr_a',
+        cachedAtMs: 1,
+      ),
+    });
+    final cursorStore = _MemoryThreadTimelineCursorStore({
+      'profile-a::thr_a': const ThreadTimelineCursorSnapshot(
+        threadId: 'thr_a',
+        turnIds: [],
+        itemIds: [],
+        deliveredCursor: 'event-9',
+        cachedAtMs: 2,
+      ),
+    });
+    final fixture = _UiStateFixture(
+      profileId: 'profile-a',
+      store: threadStore,
+      timelineCursorStore: cursorStore,
+    );
+    addTearDown(fixture.dispose);
+
+    final cursor = await fixture.state.loadAgentSnapshotCursor(_profileA);
+
+    expect(cursor, 'event-9');
+  });
 }
 
 class _UiStateFixture {

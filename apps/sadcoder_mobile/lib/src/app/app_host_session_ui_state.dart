@@ -6,6 +6,7 @@ import '../commands/slash_command_registry_controller.dart';
 import '../config/codex_config_override_controller.dart';
 import '../features/chat/chat_timeline_controller.dart';
 import '../session/codex_session_state_controller.dart';
+import '../ssh/ssh_profile.dart';
 import '../threads/thread_cache_store.dart';
 import '../threads/thread_detail_controller.dart';
 import '../threads/thread_item_cache_store.dart';
@@ -13,6 +14,7 @@ import '../threads/thread_list_controller.dart';
 import '../threads/thread_summary.dart';
 import '../threads/thread_timeline_cursor_store.dart';
 import '../turns/turn_controller.dart';
+import 'agent_snapshot_cursor_provider.dart';
 import 'app_session_recovery_coordinator.dart';
 
 class AppHostSessionUiState {
@@ -45,6 +47,16 @@ class AppHostSessionUiState {
       readerProvider: () =>
           sessionController.slashCommandManifestReader ??
           fallbackSlashCommandManifestReader,
+    );
+    _agentSnapshotCursorProvider = AppAgentSnapshotCursorProvider(
+      profileId: threadCacheProfileId,
+      threadCacheStore: threadCacheStore,
+      threadTimelineCursorStore: threadTimelineCursorStore,
+      selectedThreadIdProvider: () =>
+          _normalized(timelineController.selectedThreadId) ??
+          _normalized(threadDetailController.selectedThreadId),
+      deliveredCursorProvider: (threadId) =>
+          _deliveredCursorByThreadId[threadId],
     );
     _sessionRecoveryCoordinator = AppSessionRecoveryCoordinator(
       threadListController: threadListController,
@@ -79,6 +91,7 @@ class AppHostSessionUiState {
   late final ChatTimelineController timelineController;
   late final SlashCommandRegistryController slashCommandRegistryController;
   late final AppSessionRecoveryCoordinator _sessionRecoveryCoordinator;
+  late final AppAgentSnapshotCursorProvider _agentSnapshotCursorProvider;
   late final StreamSubscription<AgentSnapshot> _agentSnapshotSubscription;
   Future<void>? _restoreCachedThreadStateFuture;
   String? _lastPersistedTimelineCursorFingerprint;
@@ -208,6 +221,10 @@ class AppHostSessionUiState {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<String?> loadAgentSnapshotCursor(SshProfile profile) {
+    return _agentSnapshotCursorProvider.load(profile);
   }
 
   void dispose() {
