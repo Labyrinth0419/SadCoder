@@ -161,6 +161,11 @@ class _FakeConnectionHandle extends Fake
   }
 
   @override
+  Future<Map<String, Object?>> stopBackend() async {
+    return {'stopped': true};
+  }
+
+  @override
   Future<void> close({bool notifyApprovalController = true}) async {
     closeCount++;
     if (!_done.isCompleted) {

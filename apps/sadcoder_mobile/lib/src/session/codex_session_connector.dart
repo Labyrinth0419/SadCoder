@@ -148,6 +148,8 @@ abstract interface class CodexSessionConnectionHandle {
 
   Future<Map<String, Object?>> restartBackend();
 
+  Future<Map<String, Object?>> stopBackend();
+
   Future<void> close({bool notifyApprovalController = true});
 }
 
@@ -452,6 +454,11 @@ class CodexSessionConnection
   @override
   Future<Map<String, Object?>> restartBackend() {
     return session.client.agentRestartBackend();
+  }
+
+  @override
+  Future<Map<String, Object?>> stopBackend() {
+    return session.client.agentStopBackend();
   }
 
   @override

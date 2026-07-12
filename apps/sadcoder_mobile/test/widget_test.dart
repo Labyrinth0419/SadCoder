@@ -1468,6 +1468,11 @@ class _StaticSessionConnection implements CodexSessionConnectionHandle {
   }
 
   @override
+  Future<Map<String, Object?>> stopBackend() async {
+    return {'stopped': true};
+  }
+
+  @override
   Future<void> close({bool notifyApprovalController = true}) async {
     closeCount++;
     if (!_eventsController.isClosed) {

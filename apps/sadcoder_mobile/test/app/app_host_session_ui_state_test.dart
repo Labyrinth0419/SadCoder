@@ -409,6 +409,11 @@ class _SnapshotConnection
   Future<void> get done => _done.future;
 
   @override
+  Future<Map<String, Object?>> stopBackend() async {
+    return {'stopped': true};
+  }
+
+  @override
   Future<void> close({bool notifyApprovalController = true}) async {
     await _events.close();
   }
@@ -458,6 +463,11 @@ class _ThreadListConnection implements CodexSessionConnectionHandle {
 
   @override
   Future<void> get done => _done.future;
+
+  @override
+  Future<Map<String, Object?>> stopBackend() async {
+    return {'stopped': true};
+  }
 
   @override
   Future<void> close({bool notifyApprovalController = true}) async {

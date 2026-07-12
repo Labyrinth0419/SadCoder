@@ -414,6 +414,58 @@ class CodexSessionStateController extends ChangeNotifier {
     }
   }
 
+  Future<void> stopBackend() async {
+    final connection = _connection;
+    final profile = _profile;
+    if (_status != CodexSessionStatus.connected ||
+        connection == null ||
+        profile == null) {
+      throw StateError('A connected session is required to stop the backend');
+    }
+
+    final generation = ++_generation;
+    _reconnectAttempt = 0;
+    _nextReconnectDelay = null;
+    _stopHeartbeats();
+    _setState(status: CodexSessionStatus.disconnecting, profile: profile);
+
+    try {
+      await connection.stopBackend();
+    } on Object catch (error) {
+      if (!_isCurrentGeneration(generation) || _connection != connection) {
+        return;
+      }
+      _watchConnectionDone(connection, generation);
+      _startHeartbeats(connection, generation);
+      _setState(
+        status: CodexSessionStatus.connected,
+        profile: profile,
+        error: error,
+      );
+      rethrow;
+    }
+
+    if (!_isCurrentGeneration(generation) || _connection != connection) {
+      return;
+    }
+
+    _connection = null;
+    _detachConnectionEvents();
+    try {
+      await connection.close(notifyApprovalController: false);
+    } on Object {
+      // The stopped backend invalidates the old proxy; local cleanup is best
+      // effort after the service has been told to exit.
+    }
+    if (!_isCurrentGeneration(generation)) {
+      return;
+    }
+
+    _reconnectAttempt = 0;
+    _nextReconnectDelay = null;
+    _setState(status: CodexSessionStatus.idle, profile: profile);
+  }
+
   @override
   void dispose() {
     _disposed = true;

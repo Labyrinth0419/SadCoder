@@ -462,6 +462,47 @@ void main() {
     expect(statuses, isNot(contains(CodexSessionStatus.disconnecting)));
   });
 
+  test('stop backend closes the active profile without reconnecting', () async {
+    final approvalController = ApprovalStateController(
+      initialApprovals: const [
+        PendingApproval(
+          requestId: 'approval-1',
+          method: commandExecutionApprovalMethod,
+          kind: PendingApprovalKind.commandExecution,
+          rawParams: {},
+        ),
+      ],
+    );
+    final connector = _FakeSessionStarter();
+    final controller = CodexSessionStateController(
+      connector: connector,
+      approvalController: approvalController,
+    );
+    addTearDown(controller.dispose);
+    addTearDown(approvalController.dispose);
+    final statuses = <CodexSessionStatus>[];
+    controller.addListener(() => statuses.add(controller.status));
+
+    await controller.connect(_profile);
+    await controller.stopBackend();
+    connector.connections.first.completeDone();
+    await _flushMicrotasks();
+
+    expect(connector.connectedProfiles, [_profile]);
+    expect(connector.connections.first.stopBackendCount, 1);
+    expect(connector.closeCount, 1);
+    expect(controller.status, CodexSessionStatus.idle);
+    expect(controller.profile, _profile);
+    expect(approvalController.approvals.single.requestId, 'approval-1');
+    expect(approvalController.canRespond, false);
+    expect(statuses, [
+      CodexSessionStatus.connecting,
+      CodexSessionStatus.connected,
+      CodexSessionStatus.disconnecting,
+      CodexSessionStatus.idle,
+    ]);
+  });
+
   test('failed connect records failure and keeps approvals', () async {
     final approvalController = ApprovalStateController(
       initialApprovals: const [
@@ -1099,6 +1140,10 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
         if (request.method == 'agent/restartBackend') {
           record.restartBackendCount++;
           return {'reconnectRequired': true};
+        }
+        if (request.method == 'agent/stopBackend') {
+          record.stopBackendCount++;
+          return {'stopped': true};
         }
         if (request.method == 'agent/ping') {
           record.agentPingCount++;
@@ -1883,6 +1928,7 @@ class _FakeConnectionRecord {
   bool closed = false;
   int agentPingCount = 0;
   int restartBackendCount = 0;
+  int stopBackendCount = 0;
 
   Future<void> get done => _doneCompleter.future;
 

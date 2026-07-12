@@ -1689,6 +1689,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   final _doneCompleter = Completer<void>();
   int restartBackendCount = 0;
+  int stopBackendCount = 0;
 
   @override
   final SshProfile profile;
@@ -1821,6 +1822,12 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   Future<Map<String, Object?>> restartBackend() async {
     restartBackendCount++;
     return {'reconnectRequired': true};
+  }
+
+  @override
+  Future<Map<String, Object?>> stopBackend() async {
+    stopBackendCount++;
+    return {'stopped': true};
   }
 
   void completeDone() {
