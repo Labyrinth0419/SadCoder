@@ -141,6 +141,8 @@ enum AgentCommand {
     Snapshot {
         #[arg(long)]
         json: bool,
+        #[arg(long = "since-cursor")]
+        since_cursor: Option<String>,
     },
     /// Print bounded service and app-server logs.
     Logs {
@@ -210,7 +212,9 @@ fn main() -> anyhow::Result<()> {
             print_probe(&codex, json)
         }
         AgentCommand::SlashCommands { json } => print_slash_commands(json),
-        AgentCommand::Snapshot { json } => print_snapshot(cli.state_path.as_deref(), json),
+        AgentCommand::Snapshot { json, since_cursor } => {
+            print_snapshot(cli.state_path.as_deref(), json, since_cursor.as_deref())
+        }
         AgentCommand::Logs { json, tail_bytes } => {
             print_logs(cli.state_path.as_deref(), json, tail_bytes)
         }
@@ -538,9 +542,13 @@ fn load_slash_command_manifest() -> anyhow::Result<SlashCommandManifest> {
         .context("embedded slash command manifest is invalid")
 }
 
-fn print_snapshot(state_path: Option<&Path>, json_output: bool) -> anyhow::Result<()> {
+fn print_snapshot(
+    state_path: Option<&Path>,
+    json_output: bool,
+    since_cursor: Option<&str>,
+) -> anyhow::Result<()> {
     let state_path = resolve_state_path(state_path);
-    let snapshot = AgentStateCache::load(&state_path)?.into_snapshot();
+    let snapshot = AgentStateCache::load(&state_path)?.snapshot_since_cursor(since_cursor);
     if json_output {
         println!("{}", serde_json::to_string_pretty(&snapshot)?);
     } else {
@@ -1379,6 +1387,26 @@ mod tests {
             snapshot_since_cursor(Some(&json!({ "sinceCursor": " " }))),
             None
         );
+    }
+
+    #[test]
+    fn snapshot_command_parses_since_cursor() {
+        let cli = Cli::try_parse_from([
+            "sadcoder-agent",
+            "snapshot",
+            "--since-cursor",
+            "7",
+            "--json",
+        ])
+        .expect("parse CLI");
+
+        match cli.command {
+            AgentCommand::Snapshot { json, since_cursor } => {
+                assert!(json);
+                assert_eq!(since_cursor.as_deref(), Some("7"));
+            }
+            command => panic!("unexpected command: {command:?}"),
+        }
     }
 
     #[test]

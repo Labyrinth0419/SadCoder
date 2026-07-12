@@ -154,7 +154,7 @@ class AgentRemoteService
   }) async {
     final decoded = await _readJsonObjectCommand(
       profile,
-      '${profile.agentCommand} snapshot --json',
+      _buildSnapshotCommand(profile, sinceCursor: sinceCursor),
       failurePrefix: 'Agent snapshot',
       invalidJsonMessage: 'Agent snapshot did not return a JSON object.',
       timeout: const Duration(seconds: 20),
@@ -206,6 +206,20 @@ String _buildConfigureCodexCommand(
       if (arg.isNotEmpty) ...['--codex-arg', _shellSingleQuoted(arg)],
     for (final path in request.pathPrepend.map((value) => value.trim()))
       if (path.isNotEmpty) ...['--path-prepend', _shellSingleQuoted(path)],
+    '--json',
+  ];
+  return parts.join(' ');
+}
+
+String _buildSnapshotCommand(SshProfile profile, {String? sinceCursor}) {
+  final trimmedCursor = sinceCursor?.trim();
+  final parts = <String>[
+    profile.agentCommand,
+    'snapshot',
+    if (trimmedCursor != null && trimmedCursor.isNotEmpty) ...[
+      '--since-cursor',
+      _shellSingleQuoted(trimmedCursor),
+    ],
     '--json',
   ];
   return parts.join(' ');

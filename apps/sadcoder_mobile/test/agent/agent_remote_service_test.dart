@@ -551,6 +551,40 @@ void main() {
     expect(snapshot.deliveredCursor, 'event-1');
   });
 
+  test('readSnapshot passes since cursor to the agent command', () async {
+    final runner = _FakeRunner(
+      result: const RemoteCommandResult(
+        exitCode: 0,
+        stdout: '''
+{
+  "schemaVersion": 1,
+  "pendingApprovals": [],
+  "recentEvents": [],
+  "deliveredCursor": "event-7"
+}
+''',
+        stderr: '',
+      ),
+    );
+    final service = AgentRemoteService(runner);
+
+    await service.readSnapshot(_profile, sinceCursor: ' event-6 ');
+
+    expect(
+      runner.lastCommand,
+      "sadcoder-agent snapshot --since-cursor 'event-6' --json",
+    );
+  });
+
+  test('readSnapshot rejects single quotes in since cursor', () async {
+    final service = AgentRemoteService(_FakeRunner(result: _emptyResult));
+
+    expect(
+      () => service.readSnapshot(_profile, sinceCursor: "event-'6"),
+      throwsA(isA<RemoteCommandException>()),
+    );
+  });
+
   test('readSnapshot parses snake_case cached payloads', () async {
     final runner = _FakeRunner(
       result: const RemoteCommandResult(
