@@ -19,6 +19,7 @@ import '../../mcp/mcp_server_status_controller.dart';
 import '../../mcp/mcp_server_status_reader.dart';
 import '../../models/model_labels.dart';
 import '../../models/model_list_controller.dart';
+import '../../models/model_list_reader.dart';
 import '../../permissions/permission_profile_list_controller.dart';
 import '../../permissions/permission_profile_list_reader.dart';
 import '../../plugins/plugin_list_reader.dart';
@@ -3847,11 +3848,23 @@ class _ModelListPicker extends StatelessWidget {
               key: const ValueKey('chat-model-command-model-list'),
               value: selectedModel,
               isExpanded: true,
+              itemHeight: null,
+              selectedItemBuilder: (context) => [
+                for (final model in controller.models)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      codexModelDisplayLabel(context, model),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
               items: [
                 for (final model in controller.models)
                   DropdownMenuItem(
                     value: model.id,
-                    child: Text(codexModelDisplayLabel(context, model)),
+                    child: _ModelPickerMenuItem(model: model),
                   ),
               ],
               onChanged: (value) {
@@ -3863,6 +3876,44 @@ class _ModelListPicker extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _ModelPickerMenuItem extends StatelessWidget {
+  const _ModelPickerMenuItem({required this.model});
+
+  final CodexModelSummary model;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final capabilitySummary = codexModelCapabilitySummary(context, model);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            codexModelDisplayLabel(context, model),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (capabilitySummary != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              capabilitySummary,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

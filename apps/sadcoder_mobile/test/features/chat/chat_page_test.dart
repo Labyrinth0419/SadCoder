@@ -1528,6 +1528,19 @@ void main() {
             name: 'GPT-5 Codex',
             provider: 'openai',
             isDefault: true,
+            supportedReasoningEfforts: [
+              CodexModelReasoningEffort(id: 'low', description: 'Fast'),
+              CodexModelReasoningEffort(id: 'high', description: 'Deep'),
+            ],
+            defaultReasoningEffort: 'low',
+            serviceTiers: [
+              CodexModelServiceTier(id: 'default', name: 'Default'),
+              CodexModelServiceTier(id: 'priority', name: 'Priority'),
+            ],
+            defaultServiceTier: 'priority',
+            availabilityNux: CodexModelAvailabilityNux(
+              message: 'GPT-5 Codex is available.',
+            ),
           ),
         ],
       ),
@@ -1578,11 +1591,18 @@ void main() {
       findsOneWidget,
     );
 
-    await _selectDropdownOption(
-      tester,
-      const ValueKey('chat-model-command-model-list'),
-      'GPT-5 Codex (openai) (default)',
+    await tester.tap(
+      find.byKey(const ValueKey('chat-model-command-model-list')),
     );
+    await tester.pumpAndSettle();
+    expect(
+      find.text(
+        'Reasoning: low, high (default: low) · Service tiers: Default, Priority (default: priority) · Announcement: GPT-5 Codex is available.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('GPT-5 Codex (openai) (default)').last);
+    await tester.pumpAndSettle();
 
     expect(
       tester
