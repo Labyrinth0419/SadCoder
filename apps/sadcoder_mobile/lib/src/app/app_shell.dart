@@ -121,6 +121,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late CodexSessionStateController _sessionController;
   late AppHostSessionUiState _activeUiState;
   final Map<String, AppHostSessionUiState> _hostUiStates = {};
+  final Set<String> _backgroundDisconnectedProfileIds = {};
   late CodexConfigOverrideController _configOverrideController;
   late CodexConfigSnapshotController _configSnapshotController;
   late AccountSnapshotController _accountSnapshotController;
@@ -410,6 +411,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (_ownsHostSessionManager) {
       _hostSessionManager?.dispose();
     }
+    _backgroundDisconnectedProfileIds.clear();
     if (_ownsBackgroundConnectionPreferences) {
       _backgroundConnectionPreferences.dispose();
     }
@@ -441,17 +443,80 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       keeper:
           widget.backgroundConnectionKeeper ??
           const NoopBackgroundConnectionKeeper(),
-      isConnected: () =>
-          _sessionController.isConnected ||
-          _backgroundActiveTurnContext() != null,
+      isConnected: _hasBackgroundObservableConnection,
       hasActiveTurn: () => _backgroundActiveTurnContext() != null,
       profileIdProvider: () => _backgroundActiveTurnContext()?.profileId,
       endpointProvider: () => _backgroundActiveTurnContext()?.endpoint,
       activeThreadIdProvider: () => _backgroundActiveTurnContext()?.threadId,
       activeTurnIdProvider: () => _backgroundActiveTurnContext()?.turnId,
-      disconnect: _sessionController.disconnect,
-      resume: _sessionController.resumeConnection,
+      disconnect: _disconnectBackgroundConnections,
+      resume: _resumeBackgroundConnections,
     )..start();
+  }
+
+  bool _hasBackgroundObservableConnection() {
+    final manager = _hostSessionManager;
+    if (manager == null) {
+      return _sessionController.isConnected;
+    }
+    return manager.sessions.any(
+      (entry) => entry.sessionController.isConnected,
+    );
+  }
+
+  Future<void> _disconnectBackgroundConnections() async {
+    final manager = _hostSessionManager;
+    if (manager == null) {
+      await _sessionController.disconnect();
+      return;
+    }
+
+    final disconnects = <Future<void>>[];
+    for (final entry in manager.sessions) {
+      if (!entry.sessionController.isConnected) {
+        continue;
+      }
+      _backgroundDisconnectedProfileIds.add(entry.profileId);
+      disconnects.add(entry.sessionController.disconnect());
+    }
+    if (disconnects.isNotEmpty) {
+      await Future.wait(disconnects);
+    }
+  }
+
+  Future<void> _resumeBackgroundConnections() async {
+    final manager = _hostSessionManager;
+    if (manager == null) {
+      await _sessionController.resumeConnection();
+      return;
+    }
+
+    final profileIds = List<String>.of(_backgroundDisconnectedProfileIds);
+    if (profileIds.isEmpty) {
+      return;
+    }
+    Object? firstError;
+    StackTrace? firstStackTrace;
+    await Future.wait(
+      profileIds.map((profileId) async {
+        final entry = manager.sessionFor(profileId);
+        if (entry == null) {
+          _backgroundDisconnectedProfileIds.remove(profileId);
+          return;
+        }
+        try {
+          await entry.sessionController.resumeConnection();
+          _backgroundDisconnectedProfileIds.remove(profileId);
+        } on Object catch (error, stackTrace) {
+          firstError ??= error;
+          firstStackTrace ??= stackTrace;
+        }
+      }),
+    );
+    final error = firstError;
+    if (error != null) {
+      Error.throwWithStackTrace(error, firstStackTrace ?? StackTrace.current);
+    }
   }
 
   Listenable _backgroundTurnListenable() {
