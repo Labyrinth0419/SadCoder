@@ -603,6 +603,7 @@ void main() {
     await client.agentSnapshot(sinceCursor: ' event-7 ');
     await client.agentSlashCommandsList();
     await client.agentRestartBackend();
+    await client.agentStopBackend();
     await client.agentPing();
 
     expect(requests.map((request) => request.method), [
@@ -615,6 +616,7 @@ void main() {
       'agent/snapshot',
       'agent/slashCommands/list',
       'agent/restartBackend',
+      'agent/stopBackend',
       'agent/ping',
     ]);
     expect(requests.map((request) => request.params), [
@@ -625,6 +627,7 @@ void main() {
       {'refresh': true, 'experimental': true},
       null,
       {'sinceCursor': 'event-7'},
+      null,
       null,
       null,
       null,

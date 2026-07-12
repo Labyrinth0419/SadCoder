@@ -17,6 +17,7 @@ pub(crate) enum AgentRpcMethod {
     Schema,
     SlashCommands,
     RestartBackend,
+    StopBackend,
     Ping,
 }
 
@@ -30,6 +31,7 @@ impl AgentRpcMethod {
             "agent/schema" => Some(Self::Schema),
             "agent/slashCommands/list" => Some(Self::SlashCommands),
             "agent/restartBackend" => Some(Self::RestartBackend),
+            "agent/stopBackend" => Some(Self::StopBackend),
             "agent/ping" => Some(Self::Ping),
             _ => None,
         }
@@ -48,6 +50,7 @@ pub(crate) fn hello_result() -> Value {
             "health": true,
             "logs": true,
             "restartBackend": true,
+            "stopBackend": true,
             "reconnectSnapshot": true,
             "reconnectSnapshotCursor": true,
             "schema": true,
@@ -99,6 +102,7 @@ fn agent_methods() -> Vec<&'static str> {
         "agent/schema",
         "agent/slashCommands/list",
         "agent/restartBackend",
+        "agent/stopBackend",
         "agent/ping",
     ]
 }
@@ -119,6 +123,7 @@ mod tests {
             ("agent/schema", AgentRpcMethod::Schema),
             ("agent/slashCommands/list", AgentRpcMethod::SlashCommands),
             ("agent/restartBackend", AgentRpcMethod::RestartBackend),
+            ("agent/stopBackend", AgentRpcMethod::StopBackend),
             ("agent/ping", AgentRpcMethod::Ping),
         ] {
             let request = JsonRpcRequest::new(RequestId::Number(1), method, None);
@@ -132,6 +137,7 @@ mod tests {
 
         assert_eq!(result["capabilities"]["agentRpc"], true);
         assert_eq!(result["capabilities"]["logs"], true);
+        assert_eq!(result["capabilities"]["stopBackend"], true);
         assert_eq!(result["capabilities"]["reconnectSnapshotCursor"], true);
         assert_eq!(result["capabilities"]["schema"], true);
         assert_eq!(result["capabilities"]["workspaceFiles"], true);

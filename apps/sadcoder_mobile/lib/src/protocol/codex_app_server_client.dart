@@ -364,6 +364,10 @@ class CodexAppServerClient {
     return _request('agent/restartBackend');
   }
 
+  Future<Map<String, Object?>> agentStopBackend() {
+    return _request('agent/stopBackend');
+  }
+
   Future<Map<String, Object?>> agentPing() {
     return _request('agent/ping');
   }

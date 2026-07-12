@@ -232,7 +232,7 @@ agent 负责：
 - 管理 keepalive、日志、版本、安装状态。
 - 缓冲最近事件，记录最后 delivered cursor。
 - 管理 pending approval；移动端断开时默认无限期等待用户重连后决策，不自动拒绝、不自动取消、不触发 `turn/interrupt`。
-- 提供 `agent/health`、`agent/logs`、`agent/restartBackend` 等额外 RPC；`agent/logs` 返回 service/app-server 日志的有界尾部内容，App 设置诊断页可读取展示，`agent/installCodex` 留作后续安装自动化。
+- 提供 `agent/health`、`agent/logs`、`agent/restartBackend`、`agent/stopBackend` 等额外 RPC；`agent/logs` 返回 service/app-server 日志的有界尾部内容，App 设置诊断页可读取展示，`agent/installCodex` 留作后续安装自动化。
 
 ## 5. 协议设计
 

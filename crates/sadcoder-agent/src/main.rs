@@ -879,6 +879,22 @@ fn stop_backend(backend_mode: BackendMode, state_path: &Path) -> anyhow::Result<
     }
 }
 
+fn stop_backend_result(backend: SelectedBackend, state_path: &Path) -> anyhow::Result<Value> {
+    match backend {
+        SelectedBackend::Service => {
+            let result = stop_backend(BackendMode::Auto, state_path)?;
+            Ok(json!({
+                "disconnectRequired": true,
+                "stopped": result.stopped,
+                "backend": result.backend
+            }))
+        }
+        SelectedBackend::Stdio => anyhow::bail!(
+            "agent/stopBackend is only available for the SadCoder service backend; stdio is a direct debug backend"
+        ),
+    }
+}
+
 fn restart_backend_result(
     codex: &ResolvedCodexCommand,
     backend: SelectedBackend,
@@ -1312,6 +1328,8 @@ fn handle_agent_request(
             restart_backend_result(&context.codex, context.backend, &context.state_path)
                 .map_err(|error| error.to_string())
         }
+        AgentRpcMethod::StopBackend => stop_backend_result(context.backend, &context.state_path)
+            .map_err(|error| error.to_string()),
     };
 
     Some(match result {
@@ -2124,6 +2142,50 @@ mod tests {
 
         let response =
             local_response_from_client_line(&request_line("agent/restartBackend", None), &context)
+                .expect("local response");
+        let response = response_json(response);
+
+        assert_eq!(response["id"], 7);
+        assert!(
+            response["error"]["message"]
+                .as_str()
+                .expect("error message")
+                .contains("stdio is a direct debug backend")
+        );
+    }
+
+    #[test]
+    fn local_proxy_handles_agent_stop_backend_for_service_backend() {
+        let context = test_proxy_context(std::env::temp_dir().join(format!(
+            "sadcoder-agent-rpc-stop-{}.json",
+            std::process::id()
+        )));
+
+        let response =
+            local_response_from_client_line(&request_line("agent/stopBackend", None), &context)
+                .expect("local response");
+        let response = response_json(response);
+
+        assert_eq!(response["id"], 7);
+        assert_eq!(response["result"]["disconnectRequired"], true);
+        assert_eq!(response["result"]["stopped"], false);
+        assert_eq!(
+            response["result"]["backend"]["kind"],
+            "sadcoder-agent-service"
+        );
+        assert_eq!(response["result"]["backend"]["state"], "not-started");
+    }
+
+    #[test]
+    fn local_proxy_rejects_stop_backend_for_stdio_debug_backend() {
+        let mut context = test_proxy_context(std::env::temp_dir().join(format!(
+            "sadcoder-agent-rpc-stop-stdio-{}.json",
+            std::process::id()
+        )));
+        context.backend = SelectedBackend::Stdio;
+
+        let response =
+            local_response_from_client_line(&request_line("agent/stopBackend", None), &context)
                 .expect("local response");
         let response = response_json(response);
 
