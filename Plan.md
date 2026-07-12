@@ -314,6 +314,10 @@ agent 负责：
 - `account/rateLimits/updated`
 - `mcpServer/startupStatus/updated`
 
+当前实现状态：
+
+- 已落地移动端 `CodexEvent` typed mapper：thread/turn/item/chat delta、reasoning、file change、MCP progress、auto-review、`thread/tokenUsage/updated`、`account/updated`、`account/rateLimits/updated` 和 `mcpServer/startupStatus/updated` 均映射为明确 `CodexEventKind`；状态类通知保留结构化 `payload` 和原始 raw JSON，默认不进入 Chat timeline，供后续 account/rate-limit/MCP 控制器订阅。
+
 ### 5.4 审批请求
 
 必须支持：

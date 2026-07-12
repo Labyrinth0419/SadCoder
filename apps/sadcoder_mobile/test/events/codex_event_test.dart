@@ -218,6 +218,76 @@ void main() {
     });
   });
 
+  test('maps status update notifications to typed payload events', () {
+    final tokenUsage = CodexEvent.fromNotification({
+      'method': 'thread/tokenUsage/updated',
+      'params': {
+        'threadId': 'thr_1',
+        'turnId': 'turn_1',
+        'tokenUsage': {
+          'last': {
+            'inputTokens': 10,
+            'cachedInputTokens': 2,
+            'outputTokens': 5,
+            'reasoningOutputTokens': 1,
+            'totalTokens': 16,
+          },
+          'total': {
+            'inputTokens': 100,
+            'cachedInputTokens': 20,
+            'outputTokens': 50,
+            'reasoningOutputTokens': 10,
+            'totalTokens': 160,
+          },
+          'modelContextWindow': 200000,
+        },
+      },
+    });
+    final account = CodexEvent.fromNotification({
+      'method': 'account/updated',
+      'params': {'authMode': 'chatgpt', 'planType': 'pro'},
+    });
+    final rateLimits = CodexEvent.fromNotification({
+      'method': 'account/rateLimits/updated',
+      'params': {
+        'rateLimits': {
+          'limitId': 'codex',
+          'primary': {'usedPercent': 42},
+        },
+      },
+    });
+    final mcpStartup = CodexEvent.fromNotification({
+      'method': 'mcpServer/startupStatus/updated',
+      'params': {
+        'threadId': 'thr_1',
+        'name': 'filesystem',
+        'status': 'failed',
+        'error': 'missing command',
+        'failureReason': 'reauthenticationRequired',
+      },
+    });
+
+    expect(tokenUsage.kind, CodexEventKind.threadTokenUsageUpdated);
+    expect(tokenUsage.threadId, 'thr_1');
+    expect(tokenUsage.turnId, 'turn_1');
+    expect(tokenUsage.payload?['tokenUsage'], isA<Map<String, Object?>>());
+    expect(
+      (tokenUsage.payload?['tokenUsage'] as Map<String, Object?>)['total'],
+      isA<Map<String, Object?>>(),
+    );
+
+    expect(account.kind, CodexEventKind.accountUpdated);
+    expect(account.payload, {'authMode': 'chatgpt', 'planType': 'pro'});
+
+    expect(rateLimits.kind, CodexEventKind.accountRateLimitsUpdated);
+    expect(rateLimits.payload?['rateLimits'], isA<Map<String, Object?>>());
+
+    expect(mcpStartup.kind, CodexEventKind.mcpServerStartupStatusUpdated);
+    expect(mcpStartup.threadId, 'thr_1');
+    expect(mcpStartup.payload?['name'], 'filesystem');
+    expect(mcpStartup.payload?['status'], 'failed');
+  });
+
   test('preserves unknown notifications without throwing', () {
     final event = CodexEvent.fromNotification({
       'method': 'future/event',

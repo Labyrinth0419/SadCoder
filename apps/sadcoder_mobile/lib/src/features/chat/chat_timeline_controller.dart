@@ -110,6 +110,10 @@ class ChatTimelineController extends ChangeNotifier {
           CodexEventKind.threadDeleted ||
           CodexEventKind.threadNameUpdated ||
           CodexEventKind.threadSettingsUpdated ||
+          CodexEventKind.threadTokenUsageUpdated ||
+          CodexEventKind.accountUpdated ||
+          CodexEventKind.accountRateLimitsUpdated ||
+          CodexEventKind.mcpServerStartupStatusUpdated ||
           CodexEventKind.unknown:
         return;
     }

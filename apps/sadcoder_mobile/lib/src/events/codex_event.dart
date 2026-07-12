@@ -8,6 +8,7 @@ enum CodexEventKind {
   threadDeleted,
   threadNameUpdated,
   threadSettingsUpdated,
+  threadTokenUsageUpdated,
   turnStarted,
   turnCompleted,
   itemStarted,
@@ -22,6 +23,9 @@ enum CodexEventKind {
   planDelta,
   autoApprovalReviewStarted,
   autoApprovalReviewCompleted,
+  accountUpdated,
+  accountRateLimitsUpdated,
+  mcpServerStartupStatusUpdated,
   unknown,
 }
 
@@ -42,6 +46,7 @@ class CodexEvent {
     this.threadSettings,
     this.fileChanges,
     this.guardianAssessment,
+    this.payload,
   });
 
   factory CodexEvent.fromNotification(Map<String, Object?> notification) {
@@ -77,6 +82,14 @@ class CodexEvent {
         method,
         notification,
         params,
+      ),
+      'thread/tokenUsage/updated' => _payloadEvent(
+        CodexEventKind.threadTokenUsageUpdated,
+        method,
+        notification,
+        params,
+        threadId: _stringValue(params['threadId']),
+        turnId: _stringValue(params['turnId']),
       ),
       'turn/started' => _turnEvent(
         CodexEventKind.turnStarted,
@@ -161,6 +174,25 @@ class CodexEvent {
         notification,
         params,
       ),
+      'account/updated' => _payloadEvent(
+        CodexEventKind.accountUpdated,
+        method,
+        notification,
+        params,
+      ),
+      'account/rateLimits/updated' => _payloadEvent(
+        CodexEventKind.accountRateLimitsUpdated,
+        method,
+        notification,
+        params,
+      ),
+      'mcpServer/startupStatus/updated' => _payloadEvent(
+        CodexEventKind.mcpServerStartupStatusUpdated,
+        method,
+        notification,
+        params,
+        threadId: _stringValue(params['threadId']),
+      ),
       _ => CodexEvent(
         kind: CodexEventKind.unknown,
         method: method,
@@ -183,6 +215,7 @@ class CodexEvent {
   final Map<String, Object?>? threadSettings;
   final List<ThreadFileChangeSummary>? fileChanges;
   final GuardianAssessmentEvent? guardianAssessment;
+  final Map<String, Object?>? payload;
   final Map<String, Object?> raw;
 
   static CodexEvent _threadStarted(
@@ -350,6 +383,24 @@ class CodexEvent {
       turnId: assessment.turnId,
       itemId: assessment.targetItemId,
       guardianAssessment: assessment,
+    );
+  }
+
+  static CodexEvent _payloadEvent(
+    CodexEventKind kind,
+    String method,
+    Map<String, Object?> raw,
+    Map<String, Object?> params, {
+    String? threadId,
+    String? turnId,
+  }) {
+    return CodexEvent(
+      kind: kind,
+      method: method,
+      raw: Map.unmodifiable(raw),
+      threadId: threadId,
+      turnId: turnId,
+      payload: Map.unmodifiable(params),
     );
   }
 }
