@@ -1146,6 +1146,7 @@ MVP 可以简化为底部导航：
 - 验证未设置覆盖时，`thread/start` / `turn/start` 不发送覆盖字段，沿用服务器 Codex 配置。
 - 验证本次 turn、本会话、App 默认覆盖的优先级正确。
 - 验证普通覆盖不会调用 `config/value/write` 或 `config/batchWrite`。
+  - 已补充移动端协议层快速覆盖：普通 one-turn override 只发 `turn/start`，普通 thread/session override 只发 `thread/settings/update`，method log 明确不包含 `config/value/write` 或 `config/batchWrite`。
 - 验证清除会话覆盖时只对上游支持显式清除的字段发送 `null`，例如 `serviceTier`；普通 `Option<T>` 字段不得用 `null` 伪装成恢复服务器默认。
 - 验证当前 Codex 斜杠命令 manifest 覆盖 `/model`、`/ide`、`/permissions`、`/keymap`、`/vim`、`/setup-default-sandbox`、`/sandbox-add-read-dir`、`/experimental`、`/approve`、`/memories`、`/skills`、`/import`、`/hooks`、`/review`、`/rename`、`/new`、`/archive`、`/delete`、`/resume`、`/fork`、`/app`、`/init`、`/compact`、`/plan`、`/goal`、`/agent`、`/side`、`/btw`、`/copy`、`/raw`、`/diff`、`/mention`、`/status`、`/usage`、`/debug-config`、`/title`、`/statusline`、`/theme`、`/pets`、`/mcp`、`/apps`、`/plugins`、`/logout`、`/quit`、`/exit`、`/feedback`、`/rollout`、`/ps`、`/stop`、`/clear`、`/personality`、`/test-approval`、`/subagents`、`/debug-m-drop`、`/debug-m-update`。
 - 验证别名 `/clean -> /stop`、`/pet -> /pets`、`/approve -> AutoReview`、`/subagents -> MultiAgents`。

@@ -545,6 +545,41 @@ void main() {
     },
   );
 
+  test(
+    'ordinary thread and turn overrides never write server config values',
+    () async {
+      final requests = <JsonRpcRequest>[];
+      final transport = MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        return {};
+      });
+
+      final client = CodexAppServerClient(transport);
+      await client.startTurn(
+        threadId: 'thr_1',
+        text: 'Use a one-turn override',
+        overrides: const CodexConfigOverrides(
+          model: 'gpt-5-codex',
+          effort: 'high',
+          cwd: '/repo',
+        ),
+      );
+      await client.updateThreadSettings(
+        threadId: 'thr_1',
+        overrides: const CodexConfigOverrides(
+          model: 'gpt-5-codex',
+          personality: 'concise',
+          serviceTier: 'priority',
+        ),
+      );
+
+      final methods = requests.map((request) => request.method).toList();
+      expect(methods, ['turn/start', 'thread/settings/update']);
+      expect(methods, isNot(contains('config/value/write')));
+      expect(methods, isNot(contains('config/batchWrite')));
+    },
+  );
+
   test('filesystem methods use app-server request names', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {
