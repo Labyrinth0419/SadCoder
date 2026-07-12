@@ -1146,6 +1146,7 @@ MVP 可以简化为底部导航：
 - 验证未设置覆盖时，`thread/start` / `turn/start` 不发送覆盖字段，沿用服务器 Codex 配置。
   - 已补充协议层覆盖：`startThread` 只发送空 `thread/start` params，默认 `startTurn` 只发送 `threadId` 和 `input`，并显式断言不包含 model/effort/cwd/personality/serviceTier 等覆盖字段。
 - 验证本次 turn、本会话、App 默认覆盖的优先级正确。
+  - 已补充 turn controller 覆盖：提交文本前会先解析覆盖层，App 默认保留未被覆盖字段，会话覆盖 App 默认，本次 turn 覆盖会话/App 默认后再传给 `turn/start` runner。
 - 验证普通覆盖不会调用 `config/value/write` 或 `config/batchWrite`。
   - 已补充移动端协议层快速覆盖：普通 one-turn override 只发 `turn/start`，普通 thread/session override 只发 `thread/settings/update`，method log 明确不包含 `config/value/write` 或 `config/batchWrite`。
 - 验证清除会话覆盖时只对上游支持显式清除的字段发送 `null`，例如 `serviceTier`；普通 `Option<T>` 字段不得用 `null` 伪装成恢复服务器默认。

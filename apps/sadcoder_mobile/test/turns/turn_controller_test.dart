@@ -288,14 +288,26 @@ void main() {
     },
   );
 
-  test('submitText resolves and passes explicit config overrides', () async {
+  test('submitText resolves override layers before starting a turn', () async {
     final runner = _FakeTurnRunner();
     final controller = TurnController(
       runnerProvider: () => runner,
       overrideLayersProvider: () => const CodexConfigOverrideLayers(
-        appDefault: CodexConfigOverrides(model: 'gpt-5'),
-        session: CodexConfigOverrides(model: 'gpt-5-codex'),
-        turn: CodexConfigOverrides(effort: 'high'),
+        appDefault: CodexConfigOverrides(
+          model: 'gpt-5',
+          approvalPolicy: 'on-request',
+          serviceTier: 'flex',
+        ),
+        session: CodexConfigOverrides(
+          model: 'gpt-5-codex',
+          cwd: '/repo',
+          personality: 'pragmatic',
+        ),
+        turn: CodexConfigOverrides(
+          effort: 'high',
+          cwd: '/tmp',
+          serviceTier: 'priority',
+        ),
       ),
     );
     addTearDown(controller.dispose);
@@ -305,6 +317,10 @@ void main() {
     expect(runner.startedTurnOverrides.single.toTurnStartParams(), {
       'model': 'gpt-5-codex',
       'effort': 'high',
+      'approvalPolicy': 'on-request',
+      'cwd': '/tmp',
+      'personality': 'pragmatic',
+      'serviceTier': 'priority',
     });
   });
 
