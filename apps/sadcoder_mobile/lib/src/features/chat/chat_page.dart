@@ -4076,6 +4076,50 @@ class _ChatActivityStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final timelineController = this.timelineController;
+    if (timelineController == null) {
+      return _buildBody();
+    }
+    return AnimatedBuilder(
+      animation: timelineController,
+      builder: (context, _) => _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    return _ChatActivityStripBody(
+      sidebarVisible: sidebarVisible,
+      onToggleSidebar: onToggleSidebar,
+      sessionController: sessionController,
+      turnController: turnController,
+      timelineController: timelineController,
+      statusLineParts: statusLineParts,
+      connectionControls: connectionControls,
+    );
+  }
+}
+
+class _ChatActivityStripBody extends StatelessWidget {
+  const _ChatActivityStripBody({
+    required this.sidebarVisible,
+    required this.onToggleSidebar,
+    required this.sessionController,
+    required this.turnController,
+    required this.timelineController,
+    required this.statusLineParts,
+    required this.connectionControls,
+  });
+
+  final bool sidebarVisible;
+  final VoidCallback onToggleSidebar;
+  final CodexSessionStateController? sessionController;
+  final TurnController? turnController;
+  final ChatTimelineController? timelineController;
+  final List<String> statusLineParts;
+  final Widget connectionControls;
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = context.l10n;
     final colorScheme = Theme.of(context).colorScheme;
     final turn = turnController;
@@ -4093,73 +4137,148 @@ class _ChatActivityStrip extends StatelessWidget {
         ? sessionStatusLabel(l10n, sessionController?.status)
         : _chatActivityTurnStatusLabel(l10n, turn);
     final hostState = sessionStatusLabel(l10n, sessionController?.status);
-    final details = [if (hostState != status) hostState];
+    final activityDetail = _timelineActivityDetail(l10n, timelineController);
+    final details = [?activityDetail, if (hostState != status) hostState];
 
     return Material(
       color: colorScheme.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-        child: Row(
-          children: [
-            IconButton(
-              key: const ValueKey('chat-session-sidebar-toggle'),
-              tooltip: l10n.sessions,
-              onPressed: onToggleSidebar,
-              icon: Icon(sidebarVisible ? Icons.menu_open : Icons.menu),
-            ),
-            Container(
-              width: 4,
-              height: 28,
-              decoration: BoxDecoration(
-                color: indicator,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    status,
-                    key: const ValueKey('chat-activity-status'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelLarge,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+            child: Row(
+              children: [
+                IconButton(
+                  key: const ValueKey('chat-session-sidebar-toggle'),
+                  tooltip: l10n.sessions,
+                  onPressed: onToggleSidebar,
+                  icon: Icon(sidebarVisible ? Icons.menu_open : Icons.menu),
+                ),
+                Container(
+                  width: 4,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: indicator,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  if (details.isNotEmpty)
-                    Text(
-                      details.join('  |  '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  if (statusLineParts.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Wrap(
-                      key: const ValueKey('chat-status-line'),
-                      spacing: 8,
-                      runSpacing: 2,
-                      children: [
-                        for (final part in statusLineParts)
-                          Text(
-                            part,
-                            style: Theme.of(context).textTheme.labelMedium,
-                          ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        status,
+                        key: const ValueKey('chat-activity-status'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      if (details.isNotEmpty)
+                        Text(
+                          details.join('  |  '),
+                          key: const ValueKey('chat-activity-detail'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      if (statusLineParts.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Wrap(
+                          key: const ValueKey('chat-status-line'),
+                          spacing: 8,
+                          runSpacing: 2,
+                          children: [
+                            for (final part in statusLineParts)
+                              Text(
+                                part,
+                                style: Theme.of(context).textTheme.labelMedium,
+                              ),
+                          ],
+                        ),
                       ],
-                    ),
-                  ],
-                ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(flex: 0, child: connectionControls),
+              ],
+            ),
+          ),
+          if (busy || running)
+            DecoratedBox(
+              key: const ValueKey('chat-running-progress'),
+              decoration: BoxDecoration(
+                color: indicator.withValues(alpha: 0.18),
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: busy ? 0.42 : 1,
+                  child: ColoredBox(
+                    color: indicator,
+                    child: const SizedBox(height: 2),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(width: 8),
-            Flexible(flex: 0, child: connectionControls),
-          ],
-        ),
+        ],
       ),
     );
   }
+}
+
+String? _timelineActivityDetail(
+  AppLocalizations l10n,
+  ChatTimelineController? controller,
+) {
+  final turns = controller?.turns;
+  if (turns == null || turns.isEmpty) {
+    return null;
+  }
+  ChatTimelineTurn? activeTurn;
+  for (final turn in turns.reversed) {
+    if (!_isTerminalTurnStatus(turn.status)) {
+      activeTurn = turn;
+      break;
+    }
+  }
+  if (activeTurn == null) {
+    return null;
+  }
+  for (final item in activeTurn.items.reversed) {
+    final title = _timelineActivityItemTitle(l10n, item);
+    if (title != null) {
+      return title;
+    }
+  }
+  return null;
+}
+
+String? _timelineActivityItemTitle(
+  AppLocalizations l10n,
+  ChatTimelineItem item,
+) {
+  return switch (item.itemType) {
+    'commandExecution' when item.command != null =>
+      '${l10n.timelineCommand}: ${item.command}',
+    'commandExecution' => l10n.timelineCommand,
+    'fileChange' when item.fileChanges.isNotEmpty =>
+      '${l10n.timelineFileChanges}: ${item.fileChanges.length}',
+    'fileChange' => l10n.timelineFileChanges,
+    'mcpToolCall' when item.server != null && item.tool != null =>
+      '${l10n.timelineTool}: ${item.server}/${item.tool}',
+    'mcpToolCall' when item.tool != null =>
+      '${l10n.timelineTool}: ${item.tool}',
+    'mcpToolCall' ||
+    'dynamicToolCall' ||
+    'collabAgentToolCall' => l10n.timelineToolCall,
+    'reasoning' => l10n.timelineReasoning,
+    'plan' => l10n.timelinePlan,
+    _ => null,
+  };
 }
 
 String _chatActivityTurnStatusLabel(
@@ -4670,45 +4789,35 @@ class _TimelineItemView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final body = _body;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(_iconFor(item.itemType), size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  _title(context),
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                if (body.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  _TimelineBodyBlock(item: item, body: body),
-                ],
-                if (item.fileChanges.any(
-                  (change) => change.diff.trim().isNotEmpty,
-                )) ...[
-                  const SizedBox(height: 8),
-                  for (final change in item.fileChanges)
-                    if (change.diff.trim().isNotEmpty)
-                      _TimelineDiffBlock(change: change),
-                ],
-                if (showRaw) ...[
-                  const SizedBox(height: 8),
-                  SelectableText(
-                    _rawJson,
-                    key: ValueKey('timeline-raw-${item.itemId}'),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
+    final title = _title(context);
+    final icon = _iconFor(item.itemType);
+    if (item.itemType == 'userMessage' || item.itemType == 'agentMessage') {
+      return _TimelineMessageItem(
+        item: item,
+        title: title,
+        icon: icon,
+        body: body,
+        rawJson: _rawJson,
+        showRaw: showRaw,
+      );
+    }
+    if (item.itemType == 'reasoning') {
+      return _TimelineCollapsibleItem(
+        item: item,
+        title: title,
+        icon: icon,
+        body: body,
+        rawJson: _rawJson,
+        showRaw: showRaw,
+      );
+    }
+    return _TimelineExecutionItem(
+      item: item,
+      title: title,
+      icon: icon,
+      body: body,
+      rawJson: _rawJson,
+      showRaw: showRaw,
     );
   }
 
@@ -4771,6 +4880,265 @@ class _TimelineItemView extends StatelessWidget {
       'plan' => Icons.checklist,
       _ => Icons.notes_outlined,
     };
+  }
+}
+
+class _TimelineMessageItem extends StatelessWidget {
+  const _TimelineMessageItem({
+    required this.item,
+    required this.title,
+    required this.icon,
+    required this.body,
+    required this.rawJson,
+    required this.showRaw,
+  });
+
+  final ChatTimelineItem item;
+  final String title;
+  final IconData icon;
+  final String body;
+  final String rawJson;
+  final bool showRaw;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isUser = item.itemType == 'userMessage';
+    final accent = isUser ? colorScheme.primary : colorScheme.tertiary;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _TimelineGlyph(icon: icon, color: accent),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _TimelineRoleLabel(
+                    label: title,
+                    foreground: accent,
+                    background: accent.withValues(alpha: 0.10),
+                  ),
+                ),
+                if (body.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  SelectableText(
+                    body,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      height: 1.38,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+                if (showRaw) ...[
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    rawJson,
+                    key: ValueKey('timeline-raw-${item.itemId}'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineExecutionItem extends StatelessWidget {
+  const _TimelineExecutionItem({
+    required this.item,
+    required this.title,
+    required this.icon,
+    required this.body,
+    required this.rawJson,
+    required this.showRaw,
+  });
+
+  final ChatTimelineItem item;
+  final String title;
+  final IconData icon;
+  final String body;
+  final String rawJson;
+  final bool showRaw;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasDiffs = item.fileChanges.any(
+      (change) => change.diff.trim().isNotEmpty,
+    );
+    final hasBody = body.isNotEmpty;
+    return Container(
+      key: ValueKey('timeline-execution-${item.itemId}'),
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        border: Border.all(color: colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              _TimelineGlyph(icon: icon, color: colorScheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+            ],
+          ),
+          if (hasBody) ...[
+            const SizedBox(height: 10),
+            _TimelineBodyBlock(item: item, body: body),
+          ],
+          if (hasDiffs) ...[
+            const SizedBox(height: 10),
+            for (final change in item.fileChanges)
+              if (change.diff.trim().isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _TimelineDiffBlock(change: change),
+                ),
+          ],
+          if (showRaw) ...[
+            const SizedBox(height: 8),
+            SelectableText(
+              rawJson,
+              key: ValueKey('timeline-raw-${item.itemId}'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineCollapsibleItem extends StatelessWidget {
+  const _TimelineCollapsibleItem({
+    required this.item,
+    required this.title,
+    required this.icon,
+    required this.body,
+    required this.rawJson,
+    required this.showRaw,
+  });
+
+  final ChatTimelineItem item;
+  final String title;
+  final IconData icon;
+  final String body;
+  final String rawJson;
+  final bool showRaw;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      key: ValueKey('timeline-collapsible-${item.itemId}'),
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        border: Border.all(color: colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          dense: true,
+          initiallyExpanded: false,
+          leading: _TimelineGlyph(icon: icon, color: colorScheme.secondary),
+          title: Text(title, style: Theme.of(context).textTheme.titleSmall),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          children: [
+            if (body.isNotEmpty)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _TimelineBodyBlock(item: item, body: body),
+              ),
+            if (showRaw) ...[
+              const SizedBox(height: 8),
+              SelectableText(
+                rawJson,
+                key: ValueKey('timeline-raw-${item.itemId}'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TimelineGlyph extends StatelessWidget {
+  const _TimelineGlyph({required this.icon, required this.color});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 28,
+      height: 28,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Icon(icon, size: 17, color: color),
+    );
+  }
+}
+
+class _TimelineRoleLabel extends StatelessWidget {
+  const _TimelineRoleLabel({
+    required this.label,
+    required this.foreground,
+    required this.background,
+  });
+
+  final String label;
+  final Color foreground;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: foreground,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
   }
 }
 

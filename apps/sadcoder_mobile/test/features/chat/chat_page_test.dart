@@ -2853,6 +2853,65 @@ void main() {
     expect(find.textContaining('turn_debug_header'), findsNothing);
   });
 
+  testWidgets('activity strip shows active timeline work without ids', (
+    tester,
+  ) async {
+    final turnController = TurnController(runnerProvider: () => null);
+    final timelineController = ChatTimelineController();
+    addTearDown(turnController.dispose);
+    addTearDown(timelineController.dispose);
+
+    turnController.trackStartedTurn(
+      threadId: 'thr_active',
+      turn: TurnSummary.fromJson({
+        'id': 'turn_active',
+        'status': 'inProgress',
+        'items': <Object?>[],
+        'itemsView': 'notLoaded',
+      }),
+    );
+    timelineController.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_active',
+        'sessionId': 'sess_1',
+        'preview': 'Run tests',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': [
+          {
+            'id': 'turn_active',
+            'status': 'inProgress',
+            'itemsView': 'full',
+            'items': [
+              {
+                'id': 'cmd_active',
+                'type': 'commandExecution',
+                'command': 'cargo test',
+                'status': 'running',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    await _pumpChatPage(
+      tester,
+      turnController: turnController,
+      timelineController: timelineController,
+    );
+
+    expect(find.byKey(const ValueKey('chat-running-progress')), findsOneWidget);
+    final detail = tester.widget<Text>(
+      find.byKey(const ValueKey('chat-activity-detail')),
+    );
+    expect(detail.data, contains('Command: cargo test'));
+    expect(find.textContaining('thr_active'), findsNothing);
+    expect(find.textContaining('turn_active'), findsNothing);
+  });
+
   testWidgets('/keymap applies mobile keyboard shortcut settings', (
     tester,
   ) async {
