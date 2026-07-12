@@ -338,6 +338,37 @@ void main() {
     expect(find.text('README.md'), findsNothing);
   });
 
+  testWidgets('keeps workspace controls compact with root folded', (
+    tester,
+  ) async {
+    await _pumpFilesPage(
+      tester,
+      directoryReader: const _FakeWorkspaceDirectoryReader({'': []}),
+      fileReader: const _FakeWorkspaceFileReader(),
+    );
+
+    expect(
+      find.byKey(const ValueKey('workspace-files-root-field')),
+      findsNothing,
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('workspace-files-filter')))
+          .height,
+      lessThanOrEqualTo(36),
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-root-selector')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('workspace-files-root-field')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('opens remote file search results from the current root', (
     tester,
   ) async {

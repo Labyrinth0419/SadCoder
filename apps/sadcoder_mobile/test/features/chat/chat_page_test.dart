@@ -584,7 +584,8 @@ void main() {
     expect(timelineController.turns.single.items.single.text, 'Fix login bug');
     expect(find.text('You'), findsOneWidget);
     expect(find.text('Fix login bug'), findsOneWidget);
-    expect(find.text('Turn submitted: turn_1'), findsOneWidget);
+    expect(find.text('Sending turn'), findsOneWidget);
+    expect(find.textContaining('turn_1'), findsNothing);
     expect(find.text(' Fix login bug '), findsNothing);
   });
 
@@ -2827,6 +2828,29 @@ void main() {
     expect(find.text('Model: gpt-5-codex'), findsOneWidget);
     expect(find.text('Reasoning effort: high'), findsOneWidget);
     expect(find.text('Status line display updated.'), findsOneWidget);
+  });
+
+  testWidgets('activity strip hides thread and turn identifiers', (
+    tester,
+  ) async {
+    final turnController = TurnController(runnerProvider: () => null);
+    addTearDown(turnController.dispose);
+
+    turnController.trackStartedTurn(
+      threadId: 'thr_debug_header',
+      turn: TurnSummary.fromJson({
+        'id': 'turn_debug_header',
+        'status': 'inProgress',
+        'items': <Object?>[],
+        'itemsView': 'notLoaded',
+      }),
+    );
+
+    await _pumpChatPage(tester, turnController: turnController);
+
+    expect(find.byKey(const ValueKey('chat-activity-status')), findsOneWidget);
+    expect(find.textContaining('thr_debug_header'), findsNothing);
+    expect(find.textContaining('turn_debug_header'), findsNothing);
   });
 
   testWidgets('/keymap applies mobile keyboard shortcut settings', (
@@ -6316,11 +6340,9 @@ void main() {
 
     expect(find.text('cargo test'), findsOneWidget);
     expect(find.textContaining('Working directory: /repo'), findsNothing);
-    await tester.tap(find.byKey(const ValueKey('timeline-details-cmd_1')));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Working directory: /repo'), findsOneWidget);
-    expect(find.textContaining('Exit code: 0'), findsOneWidget);
-    expect(find.textContaining('Duration: 1,200 ms'), findsOneWidget);
+    expect(find.byKey(const ValueKey('timeline-details-cmd_1')), findsNothing);
+    expect(find.textContaining('Exit code: 0'), findsNothing);
+    expect(find.textContaining('Duration: 1,200 ms'), findsNothing);
     expect(find.text('tests passed'), findsOneWidget);
     final terminalBlock = tester.widget<Container>(
       find.byKey(const ValueKey('timeline-terminal-output')),
@@ -6364,12 +6386,7 @@ void main() {
     );
     expect(find.text('github/search_issues'), findsOneWidget);
     expect(find.textContaining('Tool: search_issues'), findsNothing);
-    final mcpDetails = find.byKey(const ValueKey('timeline-details-mcp_1'));
-    await tester.ensureVisible(mcpDetails);
-    await tester.pumpAndSettle();
-    await tester.tap(mcpDetails);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Tool: search_issues'), findsOneWidget);
+    expect(find.byKey(const ValueKey('timeline-details-mcp_1')), findsNothing);
   });
 
   testWidgets(

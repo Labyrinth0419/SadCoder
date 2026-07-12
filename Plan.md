@@ -840,7 +840,7 @@ MVP 可以简化为底部导航：
 
 当前实现状态：
 
-- 已收敛 Chat 顶部为左侧三横线会话侧栏按钮、中部 running/working 状态条和右侧 host selector；主区域优先显示 thread timeline 的用户/Codex 文本、工具调用、命令输出和 diff，会话列表不再展示 cwd/status 详情，timeline item metadata 默认折叠。
+- 已收敛 Chat 顶部为左侧三横线会话侧栏按钮、中部 running/working 状态条和右侧 host selector；主区域优先显示 thread timeline 的用户/Codex 文本、工具调用、命令输出和 diff，会话列表不再展示 cwd/status 详情，聊天顶栏不暴露 thread/turn 内部 id，timeline item metadata 不进入默认主对话流。
 
 ### 9.3 Approvals 页面
 
@@ -973,7 +973,7 @@ MVP 可以简化为底部导航：
 
 - 已落地 `features/files` 独立模块，包含目录树、文件预览、Markdown render/raw 切换、代码高亮、远端文件搜索入口和只读 toolbar。
 - 已落地 `workspace/directoryList`、`workspace/fileStat`、`workspace/fileRead` 的 agent RPC，并保留旧 `fs/*` 只读方法作为客户端兼容 fallback。
-- 已调整 Files 页面为左侧工作区文件侧栏和主区域状态/文件预览；文件过滤、隐藏文件、远端搜索和刷新入口已收敛为紧凑工具行，显式 workspace root 与默认 root 选择保持折叠入口。
+- 已调整 Files 页面为左侧工作区文件侧栏和主区域状态/文件预览；文件过滤、隐藏文件、远端搜索和刷新入口已收敛为紧凑工具行，搜索栏高度已压缩，显式 workspace root 与默认 root 选择保持折叠入口。
 - 已覆盖路径归一化、目录响应 path/name 校验、目录分页 `nextCursor`/`cursor`、拒绝 `..` / 绝对 child path、符号链接祖先拒绝、二进制文件拒绝、UTF-8 range 边界、后续 chunk 失败重试和大 Markdown raw 保护。
 - 仍待后续单独设计：受控编辑、写文件、目录监听、diff 审批和冲突检测；这些能力不得混入只读 Files 页面。
 
@@ -983,7 +983,7 @@ MVP 可以简化为底部导航：
 - 支持 system / light / dark。
 - 代码块、diff、terminal output 要有专门配色，不能只用普通文本颜色。
 - 配色方案可影响代码关键字、终端 accent 和标题区等语义 accent，但 diff added/removed、风险状态等角色必须保持可识别，不能随主题被简单染成同一种主色。
-- 已落地 system/light/dark、五档字号（极小/小/中/大/极大）和多配色方案；Candy palette 已从单一 Material seed 调整为粉、薄荷、天蓝、淡紫、奶油黄的粉彩组合，并保留深色文字/主色对比。
+- 已落地 system/light/dark、五档字号（极小/小/中/大/极大）和多配色方案；Candy palette 已从单一 Material seed 调整为粉、天蓝、薄荷、淡紫、奶油黄的粉彩组合，并保留深色文字/主色对比。
 
 ### 9.7.1 主机、设置与主题后续改造
 

@@ -40,10 +40,10 @@ void main() {
       brightness: Brightness.light,
     );
 
-    expect(scheme.primary, const Color(0xFFA91F6B));
-    expect(scheme.primaryContainer, const Color(0xFFFFD6E8));
-    expect(scheme.secondaryContainer, const Color(0xFFC8FFFB));
-    expect(scheme.tertiaryContainer, const Color(0xFFF1D9FF));
+    expect(scheme.primary, const Color(0xFF8F255B));
+    expect(scheme.primaryContainer, const Color(0xFFF694C1));
+    expect(scheme.secondaryContainer, const Color(0xFFA9DEF9));
+    expect(scheme.tertiaryContainer, const Color(0xFFD3F8E2));
     expect(scheme.primary, isNot(nativeSeed.primary));
   });
 

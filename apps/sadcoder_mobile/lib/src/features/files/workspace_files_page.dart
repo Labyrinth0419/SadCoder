@@ -897,8 +897,8 @@ class _FilesSidebar extends StatelessWidget {
               onUseDefaultRoot: onUseDefaultRoot,
               onSaveDefaultRoot: onSaveDefaultRoot,
             ),
-            if (toolbar != null) ...[const SizedBox(height: 12), toolbar!],
-            if (directory != null) ...[const SizedBox(height: 12), directory!],
+            if (toolbar != null) ...[const SizedBox(height: 8), toolbar!],
+            if (directory != null) ...[const SizedBox(height: 10), directory!],
           ],
         ),
       ),
@@ -924,54 +924,80 @@ class _WorkspaceRootSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(8),
-      child: ExpansionTile(
-        key: const ValueKey('workspace-files-root-selector'),
-        initiallyExpanded: false,
-        leading: const Icon(Icons.workspaces_outline),
-        title: Text(l10n.workspaceFilesRootLabel),
-        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        children: [
-          TextField(
-            key: const ValueKey('workspace-files-root-field'),
-            controller: controller,
-            onSubmitted: (_) => onUseRoot(),
-            minLines: 1,
-            maxLines: 1,
-            decoration: InputDecoration(
-              labelText: l10n.workspaceFilesRootLabel,
-              isDense: true,
-              border: const OutlineInputBorder(),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border.all(color: colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Theme(
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          key: const ValueKey('workspace-files-root-selector'),
+          initiallyExpanded: false,
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          leading: const Icon(Icons.workspaces_outline, size: 20),
+          title: Text(
+            l10n.workspaceFilesRootLabel,
+            style: theme.textTheme.titleSmall,
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+          children: [
+            SizedBox(
+              height: 36,
+              child: TextField(
+                key: const ValueKey('workspace-files-root-field'),
+                controller: controller,
+                onSubmitted: (_) => onUseRoot(),
+                minLines: 1,
+                maxLines: 1,
+                textAlignVertical: TextAlignVertical.center,
+                decoration: InputDecoration(
+                  hintText: l10n.workspaceFilesRootLabel,
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FilledButton.tonalIcon(
-                key: const ValueKey('workspace-files-use-root'),
-                onPressed: onUseRoot,
-                icon: const Icon(Icons.folder_open_outlined),
-                label: Text(l10n.workspaceFilesUseRoot),
-              ),
-              IconButton.outlined(
-                key: const ValueKey('workspace-files-use-default-root'),
-                onPressed: onUseDefaultRoot,
-                tooltip: l10n.workspaceFilesUseDefaultRoot,
-                icon: const Icon(Icons.restore),
-              ),
-              IconButton.outlined(
-                key: const ValueKey('workspace-files-save-default-root'),
-                onPressed: canSaveDefaultRoot ? onSaveDefaultRoot : null,
-                tooltip: l10n.workspaceFilesSaveDefaultRoot,
-                icon: const Icon(Icons.push_pin_outlined),
-              ),
-            ],
-          ),
-        ],
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    key: const ValueKey('workspace-files-use-root'),
+                    onPressed: onUseRoot,
+                    icon: const Icon(Icons.folder_open_outlined),
+                    label: Text(
+                      l10n.workspaceFilesUseRoot,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.outlined(
+                  key: const ValueKey('workspace-files-use-default-root'),
+                  onPressed: onUseDefaultRoot,
+                  tooltip: l10n.workspaceFilesUseDefaultRoot,
+                  icon: const Icon(Icons.restore),
+                ),
+                const SizedBox(width: 4),
+                IconButton.outlined(
+                  key: const ValueKey('workspace-files-save-default-root'),
+                  onPressed: canSaveDefaultRoot ? onSaveDefaultRoot : null,
+                  tooltip: l10n.workspaceFilesSaveDefaultRoot,
+                  icon: const Icon(Icons.push_pin_outlined),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -996,70 +1022,103 @@ class _FilesToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final colorScheme = Theme.of(context).colorScheme;
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 40,
-                child: TextField(
-                  key: const ValueKey('workspace-files-filter'),
-                  controller: filterController,
-                  textAlignVertical: TextAlignVertical.center,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search, size: 18),
-                    prefixIconConstraints: const BoxConstraints(
-                      minWidth: 36,
-                      minHeight: 36,
-                    ),
-                    hintText: l10n.workspaceFilesSearchHint,
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                  ),
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 32,
+            child: TextField(
+              key: const ValueKey('workspace-files-filter'),
+              controller: filterController,
+              textAlignVertical: TextAlignVertical.center,
+              style: Theme.of(context).textTheme.bodySmall,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search, size: 16),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 30,
+                  minHeight: 30,
+                ),
+                hintText: l10n.workspaceFilesSearchHint,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                isDense: true,
+                filled: true,
+                fillColor: colorScheme.surface,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 4,
                 ),
               ),
             ),
-            const SizedBox(width: 6),
-            IconButton.filledTonal(
-              key: const ValueKey('workspace-files-hidden-toggle'),
-              onPressed: () => onIncludeHiddenChanged(!includeHidden),
-              tooltip: l10n.workspaceFilesShowHidden,
-              style: IconButton.styleFrom(
-                backgroundColor: includeHidden
-                    ? colorScheme.secondaryContainer
-                    : colorScheme.surfaceContainerHighest,
-                foregroundColor: includeHidden
-                    ? colorScheme.onSecondaryContainer
-                    : colorScheme.onSurfaceVariant,
-              ),
-              icon: Icon(
-                includeHidden
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-              ),
-            ),
-            IconButton.filledTonal(
-              key: const ValueKey('workspace-files-remote-search'),
-              onPressed: onSearch,
-              tooltip: l10n.mentionSearchHint,
-              icon: const Icon(Icons.manage_search),
-            ),
-            IconButton.filledTonal(
-              key: const ValueKey('workspace-files-refresh'),
-              onPressed: onRefresh,
-              tooltip: l10n.workspaceFilesRefresh,
-              icon: const Icon(Icons.refresh),
-            ),
-          ],
+          ),
         ),
+        const SizedBox(width: 4),
+        _CompactFilesToolButton(
+          key: const ValueKey('workspace-files-hidden-toggle'),
+          onPressed: () => onIncludeHiddenChanged(!includeHidden),
+          tooltip: l10n.workspaceFilesShowHidden,
+          selected: includeHidden,
+          selectedColor: colorScheme.secondaryContainer,
+          selectedForeground: colorScheme.onSecondaryContainer,
+          icon: includeHidden
+              ? Icons.visibility_outlined
+              : Icons.visibility_off_outlined,
+        ),
+        _CompactFilesToolButton(
+          key: const ValueKey('workspace-files-remote-search'),
+          onPressed: onSearch,
+          tooltip: l10n.mentionSearchHint,
+          icon: Icons.manage_search,
+        ),
+        _CompactFilesToolButton(
+          key: const ValueKey('workspace-files-refresh'),
+          onPressed: onRefresh,
+          tooltip: l10n.workspaceFilesRefresh,
+          icon: Icons.refresh,
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactFilesToolButton extends StatelessWidget {
+  const _CompactFilesToolButton({
+    super.key,
+    required this.onPressed,
+    required this.tooltip,
+    required this.icon,
+    this.selected = false,
+    this.selectedColor,
+    this.selectedForeground,
+  });
+
+  final VoidCallback? onPressed;
+  final String tooltip;
+  final IconData icon;
+  final bool selected;
+  final Color? selectedColor;
+  final Color? selectedForeground;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return SizedBox.square(
+      dimension: 32,
+      child: IconButton.filledTonal(
+        onPressed: onPressed,
+        tooltip: tooltip,
+        padding: EdgeInsets.zero,
+        visualDensity: VisualDensity.compact,
+        style: IconButton.styleFrom(
+          backgroundColor: selected
+              ? selectedColor
+              : colorScheme.surfaceContainerHighest,
+          foregroundColor: selected
+              ? selectedForeground
+              : colorScheme.onSurfaceVariant,
+        ),
+        icon: Icon(icon, size: 18),
       ),
     );
   }

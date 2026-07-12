@@ -4091,16 +4091,9 @@ class _ChatActivityStrip extends StatelessWidget {
         : colorScheme.outline;
     final status = turn == null
         ? sessionStatusLabel(l10n, sessionController?.status)
-        : turnStatusLabel(l10n, turn);
-    final threadId =
-        _nonEmptyStatusText(timelineController?.selectedThreadId) ??
-        _nonEmptyStatusText(turn?.activeThreadId);
-    final activeTurnId = _nonEmptyStatusText(turn?.activeTurnId);
-    final details = [
-      sessionStatusLabel(l10n, sessionController?.status),
-      ?threadId,
-      ?activeTurnId,
-    ];
+        : _chatActivityTurnStatusLabel(l10n, turn);
+    final hostState = sessionStatusLabel(l10n, sessionController?.status);
+    final details = [if (hostState != status) hostState];
 
     return Material(
       color: colorScheme.surfaceContainerLow,
@@ -4169,9 +4162,22 @@ class _ChatActivityStrip extends StatelessWidget {
   }
 }
 
-String? _nonEmptyStatusText(String? value) {
-  final trimmed = value?.trim();
-  return trimmed == null || trimmed.isEmpty ? null : trimmed;
+String _chatActivityTurnStatusLabel(
+  AppLocalizations l10n,
+  TurnController controller,
+) {
+  return switch (controller.status) {
+    TurnControllerStatus.idle => l10n.statusIdle,
+    TurnControllerStatus.startingThread => l10n.startingThread,
+    TurnControllerStatus.resumingThread => l10n.resumingThread,
+    TurnControllerStatus.sendingTurn => l10n.sendingTurn,
+    TurnControllerStatus.submitted => l10n.sendingTurn,
+    TurnControllerStatus.completed => l10n.turnCompleted,
+    TurnControllerStatus.interrupting => l10n.interruptingTurn,
+    TurnControllerStatus.interrupted => l10n.turnInterrupted,
+    TurnControllerStatus.failed =>
+      controller.error?.toString() ?? l10n.turnFailed,
+  };
 }
 
 class _ChatMainConversation extends StatelessWidget {
@@ -4663,7 +4669,6 @@ class _TimelineItemView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final details = _details(context);
     final body = _body;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -4680,10 +4685,6 @@ class _TimelineItemView extends StatelessWidget {
                   _title(context),
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
-                if (details.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  _TimelineItemDetails(itemId: item.itemId, details: details),
-                ],
                 if (body.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   _TimelineBodyBlock(item: item, body: body),
@@ -4759,33 +4760,6 @@ class _TimelineItemView extends StatelessWidget {
     return item.itemId;
   }
 
-  List<String> _details(BuildContext context) {
-    final l10n = context.l10n;
-    return [
-      if (item.cwd != null && item.cwd!.isNotEmpty)
-        '${l10n.approvalWorkingDirectory}: ${item.cwd}',
-      if (item.status != null && item.status!.isNotEmpty)
-        '${l10n.timelineStatus}: ${item.status}',
-      if (item.exitCode != null)
-        '${l10n.timelineExitCode}: ${l10n.formatNumber(item.exitCode!)}',
-      if (item.durationMs != null)
-        '${l10n.timelineDuration}: ${l10n.timelineDurationMilliseconds(item.durationMs!)}',
-      if (item.server != null && item.server!.isNotEmpty)
-        '${l10n.approvalServer}: ${item.server}',
-      if (item.tool != null && item.tool!.isNotEmpty)
-        '${l10n.timelineTool}: ${item.tool}',
-      if (item.fileChanges.isNotEmpty)
-        '${l10n.timelineFileChanges}: ${item.fileChanges.map(_fileChangeLabel).join(', ')}',
-    ];
-  }
-
-  String _fileChangeLabel(ThreadFileChangeSummary change) {
-    if (change.path.isEmpty) {
-      return change.kind;
-    }
-    return '${change.kind} ${change.path}';
-  }
-
   IconData _iconFor(String itemType) {
     return switch (itemType) {
       'userMessage' => Icons.person_outline,
@@ -4797,48 +4771,6 @@ class _TimelineItemView extends StatelessWidget {
       'plan' => Icons.checklist,
       _ => Icons.notes_outlined,
     };
-  }
-}
-
-class _TimelineItemDetails extends StatelessWidget {
-  const _TimelineItemDetails({required this.itemId, required this.details});
-
-  final String itemId;
-  final List<String> details;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        key: ValueKey('timeline-details-$itemId'),
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: EdgeInsets.zero,
-        dense: true,
-        visualDensity: VisualDensity.compact,
-        leading: Icon(
-          Icons.info_outline,
-          size: 18,
-          color: colorScheme.onSurfaceVariant,
-        ),
-        title: Text(
-          context.l10n.timelineStatus,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-        children: [
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: SelectableText(
-              details.join('\n'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

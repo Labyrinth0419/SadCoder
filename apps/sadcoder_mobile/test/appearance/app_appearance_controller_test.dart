@@ -27,13 +27,13 @@ void main() {
   });
 
   test('candy palette exposes explicit pastel swatches', () {
-    expect(AppColorPalette.candy.seedColor, const Color(0xFFFF8FC7));
+    expect(AppColorPalette.candy.seedColor, const Color(0xFFF694C1));
     expect(AppColorPalette.candy.swatchColors, const [
-      Color(0xFFFF9ECF),
-      Color(0xFFA7F3D0),
-      Color(0xFFBDE0FE),
-      Color(0xFFCDB4DB),
-      Color(0xFFFFF6A6),
+      Color(0xFFF694C1),
+      Color(0xFFA9DEF9),
+      Color(0xFFD3F8E2),
+      Color(0xFFE4C1F9),
+      Color(0xFFEDE7B1),
     ]);
   });
 
