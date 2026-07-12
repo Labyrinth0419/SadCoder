@@ -60,6 +60,83 @@ void main() {
     expect(controller.status, AccountSnapshotStatus.failed);
     expect(controller.error, isA<StateError>());
   });
+
+  test('account update preserves existing sparse account fields', () async {
+    final reader = _FakeAccountSnapshotReader(
+      snapshot: const AccountSnapshot(
+        account: AccountSummary(
+          type: 'chatgpt',
+          email: 'user@example.com',
+          planType: 'plus',
+        ),
+        requiresOpenaiAuth: true,
+      ),
+    );
+    final controller = AccountSnapshotController(readerProvider: () => reader);
+    addTearDown(controller.dispose);
+
+    await controller.refresh();
+    controller.ingestAccountUpdated({'authMode': null, 'planType': 'pro'});
+
+    expect(controller.status, AccountSnapshotStatus.loaded);
+    expect(controller.snapshot?.requiresOpenaiAuth, true);
+    expect(controller.snapshot?.account?.type, 'chatgpt');
+    expect(controller.snapshot?.account?.email, 'user@example.com');
+    expect(controller.snapshot?.account?.planType, 'pro');
+  });
+
+  test('account update normalizes auth modes into account types', () async {
+    final reader = _FakeAccountSnapshotReader(
+      snapshot: const AccountSnapshot(
+        account: AccountSummary(
+          type: 'chatgpt',
+          email: 'user@example.com',
+          planType: 'plus',
+        ),
+        requiresOpenaiAuth: true,
+      ),
+    );
+    final controller = AccountSnapshotController(readerProvider: () => reader);
+    addTearDown(controller.dispose);
+
+    await controller.refresh();
+    controller.ingestAccountUpdated({'authMode': 'apikey'});
+
+    expect(controller.snapshot?.requiresOpenaiAuth, true);
+    expect(controller.snapshot?.account?.type, 'apiKey');
+    expect(controller.snapshot?.account?.label, 'API key');
+    expect(controller.snapshot?.account?.email, 'user@example.com');
+    expect(controller.snapshot?.account?.planType, 'plus');
+  });
+
+  test('account update creates a minimal loaded snapshot', () {
+    final controller = AccountSnapshotController(readerProvider: () => null);
+    addTearDown(controller.dispose);
+
+    controller.ingestAccountUpdated({
+      'authMode': 'chatgpt',
+      'planType': 'team',
+    });
+
+    expect(controller.status, AccountSnapshotStatus.loaded);
+    expect(controller.snapshot?.requiresOpenaiAuth, false);
+    expect(controller.snapshot?.account?.type, 'chatgpt');
+    expect(controller.snapshot?.account?.planType, 'team');
+  });
+
+  test('empty account update does not notify', () {
+    final controller = AccountSnapshotController(readerProvider: () => null);
+    addTearDown(controller.dispose);
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+
+    controller.ingestAccountUpdated(<String, Object?>{});
+    controller.ingestAccountUpdated({'authMode': null, 'planType': null});
+
+    expect(notifications, 0);
+    expect(controller.status, AccountSnapshotStatus.idle);
+    expect(controller.snapshot, isNull);
+  });
 }
 
 class _FakeAccountSnapshotReader implements AccountSnapshotReader {

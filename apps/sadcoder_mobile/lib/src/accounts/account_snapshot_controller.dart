@@ -21,6 +21,35 @@ class AccountSnapshotController extends ChangeNotifier {
   AccountSnapshot? get snapshot => _snapshot;
   Object? get error => _error;
 
+  void ingestAccountUpdated(Map<String, Object?> payload) {
+    final authMode = _stringField(payload, ['authMode', 'auth_mode']);
+    final planType = _stringField(payload, ['planType', 'plan_type']);
+    if (authMode == null && planType == null) {
+      return;
+    }
+
+    final current = _snapshot;
+    final currentAccount = current?.account;
+    final nextAccount = currentAccount == null
+        ? AccountSummary.fromAccountUpdated(
+            authMode: authMode,
+            planType: planType,
+          )
+        : currentAccount.mergeAccountUpdated(
+            authMode: authMode,
+            planType: planType,
+          );
+    if (nextAccount == null) {
+      return;
+    }
+
+    _generation++;
+    _snapshot =
+        current?.copyWith(account: nextAccount) ??
+        AccountSnapshot(account: nextAccount, requiresOpenaiAuth: false);
+    _setState(status: AccountSnapshotStatus.loaded, error: null);
+  }
+
   Future<void> refresh({bool refreshToken = false}) async {
     final reader = _readerProvider();
     if (reader == null) {
@@ -51,4 +80,14 @@ class AccountSnapshotController extends ChangeNotifier {
     _error = error;
     notifyListeners();
   }
+}
+
+String? _stringField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = map[key];
+    if (value is String && value.trim().isNotEmpty) {
+      return value.trim();
+    }
+  }
+  return null;
 }

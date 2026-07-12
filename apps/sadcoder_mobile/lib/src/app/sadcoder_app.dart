@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import '../accounts/account_snapshot_controller.dart';
 import '../appearance/app_appearance_controller.dart';
 import '../approvals/approval_state_controller.dart';
 import '../background/background_connection_policy.dart';
@@ -32,6 +33,7 @@ class SadCoderApp extends StatefulWidget {
     this.backgroundNotificationRouter,
     this.profileStore,
     this.slashCommandManifestReader,
+    this.accountSnapshotController,
     this.accountUsageSnapshotController,
     this.threadCacheStore,
     this.threadItemCacheStore,
@@ -49,6 +51,7 @@ class SadCoderApp extends StatefulWidget {
   final BackgroundNotificationRouter? backgroundNotificationRouter;
   final SshProfileStore? profileStore;
   final SlashCommandManifestReader? slashCommandManifestReader;
+  final AccountSnapshotController? accountSnapshotController;
   final AccountUsageSnapshotController? accountUsageSnapshotController;
   final ThreadCacheStore? threadCacheStore;
   final ThreadItemCacheStore? threadItemCacheStore;
@@ -128,6 +131,7 @@ class _SadCoderAppState extends State<SadCoderApp> {
             backgroundNotificationRouter: widget.backgroundNotificationRouter,
             profileStore: widget.profileStore,
             slashCommandManifestReader: widget.slashCommandManifestReader,
+            accountSnapshotController: widget.accountSnapshotController,
             accountUsageSnapshotController:
                 widget.accountUsageSnapshotController,
             threadCacheStore: widget.threadCacheStore,

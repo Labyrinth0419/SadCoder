@@ -2,6 +2,8 @@ abstract interface class AccountSnapshotReader {
   Future<AccountSnapshot> readAccount({bool refreshToken = false});
 }
 
+const _unchanged = Object();
+
 class AccountSnapshot {
   const AccountSnapshot({
     required this.account,
@@ -21,6 +23,18 @@ class AccountSnapshot {
   final bool requiresOpenaiAuth;
 
   bool get isAuthenticated => account != null;
+
+  AccountSnapshot copyWith({
+    Object? account = _unchanged,
+    bool? requiresOpenaiAuth,
+  }) {
+    return AccountSnapshot(
+      account: identical(account, _unchanged)
+          ? this.account
+          : account as AccountSummary?,
+      requiresOpenaiAuth: requiresOpenaiAuth ?? this.requiresOpenaiAuth,
+    );
+  }
 }
 
 class AccountSummary {
@@ -46,6 +60,17 @@ class AccountSummary {
         'credential_source',
       ]),
     );
+  }
+
+  static AccountSummary? fromAccountUpdated({
+    required String? authMode,
+    required String? planType,
+  }) {
+    final type = _accountTypeFromAuthMode(authMode);
+    if (type == null) {
+      return null;
+    }
+    return AccountSummary(type: type, planType: planType);
   }
 
   final String type;
@@ -78,6 +103,18 @@ class AccountSummary {
       return 'Amazon Bedrock / ${credentialSource!.trim()}';
     }
     return 'Amazon Bedrock';
+  }
+
+  AccountSummary mergeAccountUpdated({
+    required String? authMode,
+    required String? planType,
+  }) {
+    return AccountSummary(
+      type: _accountTypeFromAuthMode(authMode) ?? type,
+      email: email,
+      planType: planType ?? this.planType,
+      credentialSource: credentialSource,
+    );
   }
 }
 
@@ -127,3 +164,13 @@ bool? _boolField(Map<String, Object?> map, List<String> keys) {
 }
 
 bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
+
+String? _accountTypeFromAuthMode(String? authMode) {
+  final value = _stringValue(authMode);
+  return switch (value) {
+    null => null,
+    'apikey' || 'apiKey' || 'api_key' => 'apiKey',
+    'bedrockApiKey' => 'amazonBedrock',
+    _ => value,
+  };
+}

@@ -316,7 +316,7 @@ agent 负责：
 
 当前实现状态：
 
-- 已落地移动端 `CodexEvent` typed mapper：thread/turn/item/chat delta、reasoning、file change、MCP progress、auto-review、`thread/tokenUsage/updated`、`account/updated`、`account/rateLimits/updated` 和 `mcpServer/startupStatus/updated` 均映射为明确 `CodexEventKind`；状态类通知保留结构化 `payload` 和原始 raw JSON，默认不进入 Chat timeline。`AccountUsageSnapshotController` 已支持 `account/rateLimits/updated` 稀疏 payload 的非破坏性合并，AppShell 已订阅 active session event stream 并把 rate-limit 更新接入 account usage state；`account/updated`、token usage 和 MCP startup status 的 UI 控制器订阅仍后续拆分。
+- 已落地移动端 `CodexEvent` typed mapper：thread/turn/item/chat delta、reasoning、file change、MCP progress、auto-review、`thread/tokenUsage/updated`、`account/updated`、`account/rateLimits/updated` 和 `mcpServer/startupStatus/updated` 均映射为明确 `CodexEventKind`；状态类通知保留结构化 `payload` 和原始 raw JSON，默认不进入 Chat timeline。`AccountSnapshotController` 已支持 `account/updated` 稀疏 payload 的非破坏性合并，AppShell 已订阅 active session event stream 并把 auth mode / plan type 更新接入 account snapshot state；`AccountUsageSnapshotController` 已支持 `account/rateLimits/updated` 稀疏 payload 的非破坏性合并，AppShell 已把 rate-limit 更新接入 account usage state；token usage 和 MCP startup status 的 UI 控制器订阅仍后续拆分。
 
 ### 5.4 审批请求
 

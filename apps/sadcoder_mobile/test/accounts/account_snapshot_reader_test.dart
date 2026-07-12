@@ -70,4 +70,26 @@ void main() {
 
     expect(snapshot.account?.label, 'customProvider');
   });
+
+  test('AccountSummary normalizes account update auth modes', () {
+    final apiKey = AccountSummary.fromAccountUpdated(
+      authMode: 'apikey',
+      planType: null,
+    );
+    final bedrock = AccountSummary.fromAccountUpdated(
+      authMode: 'bedrockApiKey',
+      planType: null,
+    );
+    final accessToken = AccountSummary.fromAccountUpdated(
+      authMode: 'personalAccessToken',
+      planType: 'team',
+    );
+
+    expect(apiKey?.type, 'apiKey');
+    expect(apiKey?.label, 'API key');
+    expect(bedrock?.type, 'amazonBedrock');
+    expect(bedrock?.label, 'Amazon Bedrock');
+    expect(accessToken?.type, 'personalAccessToken');
+    expect(accessToken?.planType, 'team');
+  });
 }

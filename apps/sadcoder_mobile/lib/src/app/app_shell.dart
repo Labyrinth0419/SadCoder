@@ -93,6 +93,7 @@ class AppShell extends StatefulWidget {
     this.backgroundNotificationRouter,
     this.profileStore,
     this.slashCommandManifestReader,
+    this.accountSnapshotController,
     this.accountUsageSnapshotController,
     this.threadCacheStore,
     this.threadItemCacheStore,
@@ -109,6 +110,7 @@ class AppShell extends StatefulWidget {
   final BackgroundNotificationRouter? backgroundNotificationRouter;
   final SshProfileStore? profileStore;
   final SlashCommandManifestReader? slashCommandManifestReader;
+  final AccountSnapshotController? accountSnapshotController;
   final AccountUsageSnapshotController? accountUsageSnapshotController;
   final ThreadCacheStore? threadCacheStore;
   final ThreadItemCacheStore? threadItemCacheStore;
@@ -146,6 +148,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
   late bool _ownsConfigOverrideController;
+  late bool _ownsAccountSnapshotController;
   late bool _ownsAccountUsageSnapshotController;
   late bool _ownsBackgroundConnectionPreferences;
 
@@ -213,6 +216,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             widget.backgroundConnectionKeeper ||
         oldWidget.slashCommandManifestReader !=
             widget.slashCommandManifestReader ||
+        oldWidget.accountSnapshotController !=
+            widget.accountSnapshotController ||
         oldWidget.accountUsageSnapshotController !=
             widget.accountUsageSnapshotController ||
         oldWidget.threadCacheStore != widget.threadCacheStore ||
@@ -355,9 +360,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _configSnapshotController = CodexConfigSnapshotController(
       readerProvider: () => _sessionController.configSnapshotReader,
     );
-    _accountSnapshotController = AccountSnapshotController(
-      readerProvider: () => _sessionController.accountSnapshotReader,
-    );
+    _ownsAccountSnapshotController = widget.accountSnapshotController == null;
+    _accountSnapshotController =
+        widget.accountSnapshotController ??
+        AccountSnapshotController(
+          readerProvider: () => _sessionController.accountSnapshotReader,
+        );
     _ownsAccountUsageSnapshotController =
         widget.accountUsageSnapshotController == null;
     _accountUsageSnapshotController =
@@ -403,7 +411,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       _configOverrideController.dispose();
     }
     _configSnapshotController.dispose();
-    _accountSnapshotController.dispose();
+    if (_ownsAccountSnapshotController) {
+      _accountSnapshotController.dispose();
+    }
     if (_ownsAccountUsageSnapshotController) {
       _accountUsageSnapshotController.dispose();
     }
@@ -460,14 +470,18 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 
   void _handleAccountEvent(CodexEvent event) {
-    if (event.kind != CodexEventKind.accountRateLimitsUpdated) {
-      return;
-    }
     final payload = event.payload;
     if (payload == null) {
       return;
     }
-    _accountUsageSnapshotController.ingestRateLimitsUpdated(payload);
+    switch (event.kind) {
+      case CodexEventKind.accountUpdated:
+        _accountSnapshotController.ingestAccountUpdated(payload);
+      case CodexEventKind.accountRateLimitsUpdated:
+        _accountUsageSnapshotController.ingestRateLimitsUpdated(payload);
+      case _:
+        return;
+    }
   }
 
   void _startLifecycleConnectionCoordinator() {

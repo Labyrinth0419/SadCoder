@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/accounts/account_logout_runner.dart';
+import 'package:sadcoder_mobile/src/accounts/account_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/accounts/account_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/appearance/app_appearance_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_coordinator.dart';
@@ -324,6 +325,49 @@ void main() {
       accountUsageSnapshotController.snapshot?.rateLimits?.planType,
       'pro',
     );
+  });
+
+  testWidgets('account update events update active account snapshot', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final starter = _RecordingStaticSessionStarter(
+      threads: const [],
+      detail: ThreadDetail(thread: _emptyThread),
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final accountSnapshotController = AccountSnapshotController(
+      readerProvider: () => null,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(accountSnapshotController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+
+    await tester.pumpWidget(
+      SadCoderApp(
+        approvalController: approvalController,
+        sessionController: sessionController,
+        accountSnapshotController: accountSnapshotController,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    starter.connections.single.emit(
+      CodexEvent.fromNotification({
+        'method': 'account/updated',
+        'params': {'authMode': 'chatgpt', 'planType': 'pro'},
+      }),
+    );
+    await tester.pump();
+
+    expect(accountSnapshotController.status, AccountSnapshotStatus.loaded);
+    expect(accountSnapshotController.snapshot?.account?.type, 'chatgpt');
+    expect(accountSnapshotController.snapshot?.account?.planType, 'pro');
+    expect(accountSnapshotController.snapshot?.account?.label, 'ChatGPT / pro');
   });
 
   testWidgets('chat host selector restores per-host thread timeline state', (
