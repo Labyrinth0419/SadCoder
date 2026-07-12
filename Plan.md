@@ -920,6 +920,7 @@ MVP 可以简化为底部导航：
 - 已将 `/memories` 接成只读配置摘要：刷新当前 cwd 的 `config/read` snapshot，展示 `[memories]` / memory feature 相关配置和当前 thread memory mode；`thread/memoryMode/set`、`memory/reset` 等写操作仍留待后续带确认流程实现。
 - 已将 `/app` 接成移动端 UI-only 诊断：无参数时明确提示 Codex Desktop handoff 在移动端不可用，不调用 app-server、不发送 prompt；带参数时返回 unavailable。后续只有在服务器明确暴露 Desktop handoff 能力时再改成结构化接入。
 - 已将 `/import` 接成移动端 UI-only 诊断：无参数时明确提示 Claude Code import 仍需要受保护的 agent fallback，不调用 app-server、不扫描远端文件、不发送 prompt；带参数时返回 unavailable。后续实现必须先设计确认、可预览迁移摘要和回滚/跳过策略。
+- 已将 `/init` 接成移动端 UI-only 诊断：无参数时明确提示 AGENTS.md 初始化需要先生成 diff 预览并审批，不调用 app-server、不写文件、不发送 prompt；带参数时返回 unavailable。后续实现必须复用受控编辑/审批链路，不能直接通过 SSH 命令写入工作区。
 
 ### 9.6 工作区文件浏览与只读查看
 

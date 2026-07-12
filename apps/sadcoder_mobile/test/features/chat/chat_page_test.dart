@@ -1006,6 +1006,21 @@ void main() {
     );
   });
 
+  testWidgets('/init reports guarded diff approval diagnostic', (tester) async {
+    final harness = await _pumpConnectedChatPage(tester);
+
+    await _submitComposerText(tester, '/init');
+
+    expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(
+      find.text(
+        'AGENTS.md initialization is not wired in the mobile app yet. '
+        'It requires a generated diff preview and approval before writing files.',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('/rollout shows the TUI-compatible missing path diagnostic', (
     tester,
   ) async {

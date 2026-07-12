@@ -318,6 +318,8 @@ class AppLocalizations {
       _text('slashCommandAppHandoffUnavailable');
   String get slashCommandImportUnavailable =>
       _text('slashCommandImportUnavailable');
+  String get slashCommandInitUnavailable =>
+      _text('slashCommandInitUnavailable');
   String get slashCommandModelUpdated => _text('slashCommandModelUpdated');
   String get slashCommandPersonalityUpdated =>
       _text('slashCommandPersonalityUpdated');
@@ -1289,6 +1291,8 @@ const _values = <String, Map<String, String>>{
         'Codex Desktop handoff is not available in the mobile app.',
     'slashCommandImportUnavailable':
         'Claude Code import is not wired in the mobile app yet. It requires a guarded agent fallback on the selected host.',
+    'slashCommandInitUnavailable':
+        'AGENTS.md initialization is not wired in the mobile app yet. It requires a generated diff preview and approval before writing files.',
     'slashCommandModelUpdated': 'Model override updated.',
     'slashCommandPersonalityUpdated': 'Personality override updated.',
     'slashCommandPermissionsUpdated': 'Permission override updated.',
@@ -2091,6 +2095,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandAppHandoffUnavailable': '移动端暂不支持交接到 Codex Desktop。',
     'slashCommandImportUnavailable':
         '移动端尚未接入 Claude Code 导入流程。该能力需要在选中主机上通过受保护的 agent fallback 执行。',
+    'slashCommandInitUnavailable':
+        '移动端尚未接入 AGENTS.md 初始化流程。写入文件前必须先生成 diff 预览并完成审批。',
     'slashCommandModelUpdated': '已更新模型覆盖。',
     'slashCommandPersonalityUpdated': '已更新协作风格覆盖。',
     'slashCommandPermissionsUpdated': '已更新权限覆盖。',

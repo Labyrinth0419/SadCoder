@@ -364,6 +364,31 @@ void main() {
     expect(result.command?.command, 'app');
   });
 
+  test('/init reports the guarded mobile fallback diagnostic', () async {
+    const dispatcher = SlashCommandActionDispatcher();
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/init'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.initFlow);
+    expect(result.command?.command, 'init');
+  });
+
+  test('/init rejects unsupported inline arguments', () async {
+    const dispatcher = SlashCommandActionDispatcher();
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/init overwrite'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'init');
+  });
+
   test('/debug-config returns the injected debug config summary', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

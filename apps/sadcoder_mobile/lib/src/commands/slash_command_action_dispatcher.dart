@@ -125,6 +125,7 @@ enum SlashCommandActionEffect {
   agentTopology,
   appHandoff,
   importFlow,
+  initFlow,
   modelOverride,
   personalityOverride,
   permissionsOverride,
@@ -472,6 +473,8 @@ class SlashCommandActionDispatcher {
         );
       case 'app':
         return _appHandoffDiagnostic(parsed);
+      case 'init':
+        return _initDiagnostic(parsed);
       case 'compact':
         return _configuredAction(
           parsed,
@@ -881,6 +884,22 @@ class SlashCommandActionDispatcher {
       rawCommand: parsed.rawCommand,
       arguments: parsed.arguments,
       effect: SlashCommandActionEffect.importFlow,
+    );
+  }
+
+  SlashCommandActionResult _initDiagnostic(SlashCommandParseResult parsed) {
+    if (parsed.arguments.trim().isNotEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    return SlashCommandActionResult.executed(
+      command: parsed.command!,
+      rawCommand: parsed.rawCommand,
+      arguments: parsed.arguments,
+      effect: SlashCommandActionEffect.initFlow,
     );
   }
 
