@@ -389,6 +389,35 @@ void main() {
     },
   );
 
+  test(
+    'updateThreadSettings omits ordinary blank fields during clears',
+    () async {
+      final requests = <JsonRpcRequest>[];
+      final transport = MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        return {};
+      });
+
+      final client = CodexAppServerClient(transport);
+      await client.updateThreadSettings(
+        threadId: 'thr_1',
+        overrides: const CodexConfigOverrides(
+          model: '',
+          effort: '',
+          cwd: '',
+          personality: '',
+          serviceTier: '',
+        ),
+      );
+
+      expect(requests.single.method, 'thread/settings/update');
+      expect(requests.single.params, {
+        'threadId': 'thr_1',
+        'serviceTier': null,
+      });
+    },
+  );
+
   test('runThreadShellCommand calls thread/shellCommand', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {
