@@ -132,6 +132,7 @@ void main() {
       find.byKey(const ValueKey('chat-turn-overrides-edit')),
       findsNothing,
     );
+    expect(find.byKey(const ValueKey('chat-raw-rpc-panel')), findsNothing);
     expect(
       find.byKey(const ValueKey('chat-advanced-controls-toggle')),
       findsOneWidget,
@@ -150,6 +151,7 @@ void main() {
       find.byKey(const ValueKey('chat-turn-overrides-edit')),
       findsOneWidget,
     );
+    expect(find.byKey(const ValueKey('chat-raw-rpc-panel')), findsOneWidget);
   });
 
   testWidgets('host selector connects a saved SSH profile', (tester) async {
@@ -7761,6 +7763,18 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   @override
   Future<Map<String, Object?>> restartBackend() async {
     return {'reconnectRequired': true};
+  }
+
+  @override
+  Future<Map<String, Object?>> requestRaw({
+    required String method,
+    Map<String, Object?>? params,
+  }) async {
+    final result = <String, Object?>{'method': method.trim()};
+    if (params != null) {
+      result['params'] = params;
+    }
+    return result;
   }
 
   @override

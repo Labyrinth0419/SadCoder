@@ -282,7 +282,7 @@ agent 负责：
 
 所有 Codex 方法都通过通用 dispatcher 支持，避免客户端版本落后时无法调用新方法。UI 层可以先实现常用功能，开发者/高级界面保留“原始 RPC 调用”能力。
 
-- 已在 `CodexAppServerClient` 暴露低层 `requestRaw`，允许传入非空 method 与 object params 直通同一 JSON-RPC request path；协议测试覆盖未知 app-server 方法转发和空 method 拒绝。后续仍需把它接到受保护的开发者/高级 UI，而不是默认暴露给普通流程。
+- 已在 `CodexAppServerClient` 暴露低层 `requestRaw`，允许传入非空 method 与 object params 直通同一 JSON-RPC request path；协议测试覆盖未知 app-server 方法转发和空 method 拒绝。该能力已通过 `CodexSessionStateController.requestRaw` 接到 Chat 高级折叠区的 Raw RPC 面板：默认不出现在主对话面，展开后仍需用户勾选确认，params 只接受 JSON object，不走 SSH command fallback。
 
 ### 5.3 事件映射
 
@@ -1373,6 +1373,7 @@ MVP 可以简化为底部导航：
 - 所有拓扑切换都必须携带明确 threadId，审批、事件回填和 interrupt/cancel 必须绑定到具体 thread/turn，不能使用“当前 UI 所在页面”做隐式目标。
 - UI 分阶段结构化。
 - 提供高级 Raw RPC/Command 面板用于临时覆盖新能力。
+  - Raw RPC 已先接入 Chat 高级折叠区并带确认；Raw Command/SSH fallback 仍需后续单独设计审计、确认和敏感信息处理。
 
 ## 15. 需要定夺的问题
 

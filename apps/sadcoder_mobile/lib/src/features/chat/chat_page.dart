@@ -38,6 +38,7 @@ import '../../turns/turn_controller.dart';
 import '../../turns/turn_text_element.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import '../../usage/thread_token_usage_controller.dart';
+import 'raw_rpc_panel.dart';
 import '../appearance/app_color_palette_picker.dart';
 import '../diffs/diff_text_block.dart';
 import '../files/file_search_sheet.dart';
@@ -288,7 +289,8 @@ class _ChatPageState extends State<ChatPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (!compactHeight &&
-                        widget.configOverrideController != null) ...[
+                        (widget.configOverrideController != null ||
+                            widget.sessionController != null)) ...[
                       _AdvancedChatControlsToggle(
                         expanded: _showAdvancedControls,
                         onPressed: () => setState(
@@ -304,6 +306,12 @@ class _ChatPageState extends State<ChatPage> {
                         const SizedBox(height: 8),
                         TurnOverrideControls(
                           controller: widget.configOverrideController!,
+                        ),
+                      ],
+                      if (_showAdvancedControls) ...[
+                        const SizedBox(height: 8),
+                        RawRpcPanel(
+                          onSend: widget.sessionController?.requestRaw,
                         ),
                       ],
                       const SizedBox(height: 8),

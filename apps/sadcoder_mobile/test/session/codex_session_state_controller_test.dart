@@ -583,6 +583,31 @@ void main() {
     ]);
   });
 
+  test('requestRaw forwards through the active connection only', () async {
+    final approvalController = ApprovalStateController();
+    final connector = _FakeSessionStarter();
+    final controller = CodexSessionStateController(
+      connector: connector,
+      approvalController: approvalController,
+    );
+    addTearDown(controller.dispose);
+    addTearDown(approvalController.dispose);
+
+    expect(
+      () => controller.requestRaw(method: 'thread/custom'),
+      throwsA(isA<StateError>()),
+    );
+
+    await controller.connect(_profile);
+    final result = await controller.requestRaw(
+      method: ' thread/custom ',
+      params: {'threadId': 'thr_1'},
+    );
+
+    expect(result, {'method': 'thread/custom'});
+    expect(connector.connections.single.requestMethods, ['thread/custom']);
+  });
+
   test('failed connect records failure and keeps approvals', () async {
     final approvalController = ApprovalStateController(
       initialApprovals: const [
@@ -1256,7 +1281,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
           }
           return {'ok': true};
         }
-        return {};
+        return {'method': request.method};
       }),
       approvalController: approvalController,
     );

@@ -190,6 +190,17 @@ class AppLocalizations {
   String get slashCommandSurfaceBody => _text('slashCommandSurfaceBody');
   String get showChatAdvancedControls => _text('showChatAdvancedControls');
   String get hideChatAdvancedControls => _text('hideChatAdvancedControls');
+  String get rawRpcTitle => _text('rawRpcTitle');
+  String get rawRpcDescription => _text('rawRpcDescription');
+  String get rawRpcDisconnected => _text('rawRpcDisconnected');
+  String get rawRpcMethod => _text('rawRpcMethod');
+  String get rawRpcParams => _text('rawRpcParams');
+  String get rawRpcConfirm => _text('rawRpcConfirm');
+  String get rawRpcSend => _text('rawRpcSend');
+  String get rawRpcResult => _text('rawRpcResult');
+  String get rawRpcError => _text('rawRpcError');
+  String get rawRpcInvalidJsonObject => _text('rawRpcInvalidJsonObject');
+  String get rawRpcMethodRequired => _text('rawRpcMethodRequired');
   String get connectBeforeTurn => _text('connectBeforeTurn');
   String get connectBeforeLoadingThreads =>
       _text('connectBeforeLoadingThreads');
@@ -1192,6 +1203,18 @@ const _values = <String, Map<String, String>>{
         'Typing / will later open the SadCoder command palette instead of sending slash text as a normal prompt.',
     'showChatAdvancedControls': 'Advanced controls',
     'hideChatAdvancedControls': 'Hide advanced controls',
+    'rawRpcTitle': 'Raw RPC',
+    'rawRpcDescription':
+        'Developer-only app-server JSON-RPC request. Use only when a feature is not modeled yet.',
+    'rawRpcDisconnected': 'Connect to a host before sending raw RPC.',
+    'rawRpcMethod': 'Method',
+    'rawRpcParams': 'Params JSON object',
+    'rawRpcConfirm': 'I understand this raw request may change server state.',
+    'rawRpcSend': 'Send raw RPC',
+    'rawRpcResult': 'Result',
+    'rawRpcError': 'Error',
+    'rawRpcInvalidJsonObject': 'Params must be a JSON object',
+    'rawRpcMethodRequired': 'Method is required.',
     'connectBeforeTurn': 'Connect to a host before sending a turn',
     'connectBeforeLoadingThreads': 'Connect to a host to load sessions.',
     'refreshThreads': 'Refresh sessions',
@@ -2007,6 +2030,17 @@ const _values = <String, Map<String, String>>{
     'slashCommandSurfaceBody': '输入 / 后会打开 SadCoder 命令面板，而不是把斜杠文本当作普通提示词发送。',
     'showChatAdvancedControls': '高级控制',
     'hideChatAdvancedControls': '收起高级控制',
+    'rawRpcTitle': '原始 RPC',
+    'rawRpcDescription': '开发者专用 app-server JSON-RPC 请求。仅在功能尚未结构化时使用。',
+    'rawRpcDisconnected': '连接主机后才能发送原始 RPC。',
+    'rawRpcMethod': '方法',
+    'rawRpcParams': '参数 JSON 对象',
+    'rawRpcConfirm': '我了解此原始请求可能会修改服务器状态。',
+    'rawRpcSend': '发送原始 RPC',
+    'rawRpcResult': '结果',
+    'rawRpcError': '错误',
+    'rawRpcInvalidJsonObject': '参数必须是 JSON 对象',
+    'rawRpcMethodRequired': '必须填写方法。',
     'connectBeforeTurn': '连接主机后才能发送任务',
     'connectBeforeLoadingThreads': '连接主机后加载会话。',
     'refreshThreads': '刷新会话',

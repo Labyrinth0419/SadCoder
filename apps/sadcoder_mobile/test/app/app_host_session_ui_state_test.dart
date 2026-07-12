@@ -858,6 +858,18 @@ class _SnapshotConnection
   }
 
   @override
+  Future<Map<String, Object?>> requestRaw({
+    required String method,
+    Map<String, Object?>? params,
+  }) async {
+    final result = <String, Object?>{'method': method.trim()};
+    if (params != null) {
+      result['params'] = params;
+    }
+    return result;
+  }
+
+  @override
   Future<void> close({bool notifyApprovalController = true}) async {
     await _events.close();
   }
@@ -928,6 +940,18 @@ class _RecoverySnapshotConnection
   }
 
   @override
+  Future<Map<String, Object?>> requestRaw({
+    required String method,
+    Map<String, Object?>? params,
+  }) async {
+    final result = <String, Object?>{'method': method.trim()};
+    if (params != null) {
+      result['params'] = params;
+    }
+    return result;
+  }
+
+  @override
   Future<void> close({bool notifyApprovalController = true}) async {
     await _events.close();
     if (!_done.isCompleted) {
@@ -967,6 +991,18 @@ class _ThreadListConnection implements CodexSessionConnectionHandle {
   @override
   Future<Map<String, Object?>> stopBackend() async {
     return {'stopped': true};
+  }
+
+  @override
+  Future<Map<String, Object?>> requestRaw({
+    required String method,
+    Map<String, Object?>? params,
+  }) async {
+    final result = <String, Object?>{'method': method.trim()};
+    if (params != null) {
+      result['params'] = params;
+    }
+    return result;
   }
 
   @override

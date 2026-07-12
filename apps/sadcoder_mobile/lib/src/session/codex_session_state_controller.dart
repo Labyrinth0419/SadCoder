@@ -334,6 +334,17 @@ class CodexSessionStateController extends ChangeNotifier {
     unawaited(_reconnect(profile, generation, _error));
   }
 
+  Future<Map<String, Object?>> requestRaw({
+    required String method,
+    Map<String, Object?>? params,
+  }) {
+    final connection = _connection;
+    if (_status != CodexSessionStatus.connected || connection == null) {
+      throw StateError('A connected session is required to send raw RPC');
+    }
+    return connection.requestRaw(method: method, params: params);
+  }
+
   Future<void> restartBackend() async {
     final connection = _connection;
     final profile = _profile;

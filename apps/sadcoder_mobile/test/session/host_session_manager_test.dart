@@ -290,6 +290,18 @@ class _FakeConnectionHandle extends Fake
   }
 
   @override
+  Future<Map<String, Object?>> requestRaw({
+    required String method,
+    Map<String, Object?>? params,
+  }) async {
+    final result = <String, Object?>{'method': method.trim()};
+    if (params != null) {
+      result['params'] = params;
+    }
+    return result;
+  }
+
+  @override
   Future<Map<String, Object?>> stopBackend() async {
     return {'stopped': true};
   }

@@ -146,6 +146,11 @@ abstract interface class CodexSessionConnectionHandle {
 
   Future<Map<String, Object?>> agentPing();
 
+  Future<Map<String, Object?>> requestRaw({
+    required String method,
+    Map<String, Object?>? params,
+  });
+
   Future<Map<String, Object?>> restartBackend();
 
   Future<Map<String, Object?>> stopBackend();
@@ -449,6 +454,14 @@ class CodexSessionConnection
   @override
   Future<Map<String, Object?>> agentPing() {
     return session.client.agentPing();
+  }
+
+  @override
+  Future<Map<String, Object?>> requestRaw({
+    required String method,
+    Map<String, Object?>? params,
+  }) {
+    return session.client.requestRaw(method: method, params: params);
   }
 
   @override
