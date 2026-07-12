@@ -67,7 +67,7 @@ class AppHostSessionUiState {
       threadItemListReaderProvider: () =>
           sessionController.threadItemListReader,
       threadItemRecoveryHandler: timelineController.restoreThreadItems,
-      threadTimelineCursorProvider: _loadTimelineCursor,
+      threadRecoveryHintProvider: _loadRecoveryHint,
     );
     threadListController.addListener(_handleThreadListChanged);
     threadDetailController.addListener(_handleThreadDetailChanged);
@@ -96,6 +96,7 @@ class AppHostSessionUiState {
   Future<void>? _restoreCachedThreadStateFuture;
   String? _lastPersistedTimelineCursorFingerprint;
   final Map<String, String> _deliveredCursorByThreadId = {};
+  final Set<String> _cursorGapThreadIds = {};
   bool _restoringCachedThreadState = false;
   bool _disposed = false;
 
@@ -223,6 +224,18 @@ class AppHostSessionUiState {
     }
   }
 
+  Future<ThreadRecoveryHint> _loadRecoveryHint(String threadId) async {
+    final timelineCursor = await _loadTimelineCursor(threadId);
+    final normalizedThreadId = _normalized(threadId);
+    final forceConservativeBackfill =
+        normalizedThreadId != null &&
+        _cursorGapThreadIds.remove(normalizedThreadId);
+    return ThreadRecoveryHint(
+      timelineCursor: timelineCursor,
+      forceConservativeBackfill: forceConservativeBackfill,
+    );
+  }
+
   Future<String?> loadAgentSnapshotCursor(SshProfile profile) {
     return _agentSnapshotCursorProvider.load(profile);
   }
@@ -274,11 +287,22 @@ class AppHostSessionUiState {
   }
 
   void _handleAgentSnapshot(AgentSnapshot snapshot) {
+    final threadIds = _threadIdsForAgentSnapshot(snapshot);
+    if (snapshot.cursorGap) {
+      final gapThreadIds = threadIds.isEmpty
+          ? _fallbackThreadIdsForSnapshotGap()
+          : threadIds;
+      _cursorGapThreadIds.addAll(gapThreadIds);
+      if (gapThreadIds.isNotEmpty &&
+          sessionController.status == CodexSessionStatus.connected) {
+        _sessionRecoveryCoordinator.recoverCurrentThread();
+      }
+    }
+
     final deliveredCursor = _normalized(snapshot.deliveredCursor);
     if (deliveredCursor == null) {
       return;
     }
-    final threadIds = _threadIdsForAgentSnapshot(snapshot);
     if (threadIds.isEmpty) {
       return;
     }
@@ -291,6 +315,15 @@ class AppHostSessionUiState {
         ),
       );
     }
+  }
+
+  Set<String> _fallbackThreadIdsForSnapshotGap() {
+    return {
+      _normalized(_agentSnapshotCursorProvider.lastResolvedThreadId),
+      _normalized(timelineController.selectedThreadId),
+      _normalized(threadDetailController.selectedThreadId),
+      _normalized(turnController.activeThreadId),
+    }.whereType<String>().toSet();
   }
 
   void _persistThreadCache() {

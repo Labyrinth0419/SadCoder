@@ -16,6 +16,20 @@ typedef ThreadItemRecoveryHandler =
     });
 typedef ThreadTimelineCursorProvider =
     Future<ThreadTimelineCursorSnapshot?> Function(String threadId);
+typedef ThreadRecoveryHintProvider =
+    Future<ThreadRecoveryHint> Function(String threadId);
+
+class ThreadRecoveryHint {
+  const ThreadRecoveryHint({
+    this.timelineCursor,
+    this.forceConservativeBackfill = false,
+  });
+
+  static const empty = ThreadRecoveryHint();
+
+  final ThreadTimelineCursorSnapshot? timelineCursor;
+  final bool forceConservativeBackfill;
+}
 
 class AppSessionRecoveryCoordinator {
   AppSessionRecoveryCoordinator({
@@ -26,13 +40,15 @@ class AppSessionRecoveryCoordinator {
     ThreadItemListReader? Function()? threadItemListReaderProvider,
     ThreadItemRecoveryHandler? threadItemRecoveryHandler,
     ThreadTimelineCursorProvider? threadTimelineCursorProvider,
+    ThreadRecoveryHintProvider? threadRecoveryHintProvider,
   }) : _threadListController = threadListController,
        _threadDetailController = threadDetailController,
        _turnController = turnController,
        _threadTurnListReaderProvider = threadTurnListReaderProvider,
        _threadItemListReaderProvider = threadItemListReaderProvider,
        _threadItemRecoveryHandler = threadItemRecoveryHandler,
-       _threadTimelineCursorProvider = threadTimelineCursorProvider;
+       _threadTimelineCursorProvider = threadTimelineCursorProvider,
+       _threadRecoveryHintProvider = threadRecoveryHintProvider;
 
   final ThreadListController _threadListController;
   final ThreadDetailController _threadDetailController;
@@ -41,6 +57,7 @@ class AppSessionRecoveryCoordinator {
   final ThreadItemListReader? Function()? _threadItemListReaderProvider;
   final ThreadItemRecoveryHandler? _threadItemRecoveryHandler;
   final ThreadTimelineCursorProvider? _threadTimelineCursorProvider;
+  final ThreadRecoveryHintProvider? _threadRecoveryHintProvider;
   CodexSessionStatus? _lastStatus;
 
   static const _turnBackfillLimit = 50;
@@ -64,13 +81,20 @@ class AppSessionRecoveryCoordinator {
     }
   }
 
+  void recoverCurrentThread() {
+    final threadId = _threadIdToRecover();
+    if (threadId != null) {
+      unawaited(_recoverThread(threadId));
+    }
+  }
+
   Future<void> _recoverThread(String threadId) async {
-    final recoveryCursor = await _loadTimelineCursor(threadId);
+    final recoveryHint = await _loadRecoveryHint(threadId);
     final turnListReader = _threadTurnListReaderProvider?.call();
     if (turnListReader == null) {
       final itemRecovered = await _recoverThreadWithItems(
         threadId,
-        recoveryCursor: recoveryCursor,
+        recoveryHint: recoveryHint,
       );
       if (!itemRecovered) {
         await _threadDetailController.readThread(threadId);
@@ -85,7 +109,9 @@ class AppSessionRecoveryCoordinator {
     try {
       final turns = <TurnSummary>[];
       final seenTurnIds = <String>{};
-      final stopTurnId = _normalized(recoveryCursor?.lastTurnId);
+      final stopTurnId = recoveryHint.forceConservativeBackfill
+          ? null
+          : _normalized(recoveryHint.timelineCursor?.lastTurnId);
       String? cursor;
       for (var pageIndex = 0; pageIndex < _turnBackfillMaxPages; pageIndex++) {
         final page = await turnListReader.listTurns(
@@ -121,7 +147,7 @@ class AppSessionRecoveryCoordinator {
       if (_threadDetailController.selectedThreadId == threadId) {
         final itemRecovered = await _recoverThreadItems(
           threadId,
-          recoveryCursor: recoveryCursor,
+          recoveryHint: recoveryHint,
         );
         if (!itemRecovered) {
           await _threadDetailController.readThread(threadId);
@@ -132,7 +158,7 @@ class AppSessionRecoveryCoordinator {
 
   Future<bool> _recoverThreadWithItems(
     String threadId, {
-    required ThreadTimelineCursorSnapshot? recoveryCursor,
+    required ThreadRecoveryHint recoveryHint,
   }) async {
     final itemReader = _threadItemListReaderProvider?.call();
     if (itemReader == null || _threadItemRecoveryHandler == null) {
@@ -142,12 +168,12 @@ class AppSessionRecoveryCoordinator {
     if (_threadDetailController.selectedThreadId != threadId) {
       return true;
     }
-    return _recoverThreadItems(threadId, recoveryCursor: recoveryCursor);
+    return _recoverThreadItems(threadId, recoveryHint: recoveryHint);
   }
 
   Future<bool> _recoverThreadItems(
     String threadId, {
-    required ThreadTimelineCursorSnapshot? recoveryCursor,
+    required ThreadRecoveryHint recoveryHint,
   }) async {
     final itemReader = _threadItemListReaderProvider?.call();
     final recoveryHandler = _threadItemRecoveryHandler;
@@ -160,7 +186,9 @@ class AppSessionRecoveryCoordinator {
       final items = <ThreadItemSummary>[];
       final seenItemIds = <String>{};
       final itemBoundary = _ItemRecoveryBoundary(
-        lastSeenItemId: recoveryCursor?.lastItemId,
+        lastSeenItemId: recoveryHint.forceConservativeBackfill
+            ? null
+            : recoveryHint.timelineCursor?.lastItemId,
       );
       String? cursor;
       for (var pageIndex = 0; pageIndex < _itemBackfillMaxPages; pageIndex++) {
@@ -220,6 +248,40 @@ class AppSessionRecoveryCoordinator {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<ThreadRecoveryHint> _loadRecoveryHint(String threadId) async {
+    final hintProvider = _threadRecoveryHintProvider;
+    if (hintProvider != null) {
+      try {
+        return _sanitizeRecoveryHint(threadId, await hintProvider(threadId));
+      } catch (_) {
+        return ThreadRecoveryHint.empty;
+      }
+    }
+
+    final cursor = await _loadTimelineCursor(threadId);
+    return ThreadRecoveryHint(timelineCursor: cursor);
+  }
+
+  ThreadRecoveryHint _sanitizeRecoveryHint(
+    String threadId,
+    ThreadRecoveryHint hint,
+  ) {
+    final cursor = hint.timelineCursor;
+    final normalizedThreadId = _normalized(threadId);
+    final normalizedCursorThreadId = _normalized(cursor?.threadId);
+    final validCursor =
+        cursor != null &&
+        normalizedCursorThreadId == normalizedThreadId &&
+        cursor.isEmpty != true;
+    if (!validCursor && !hint.forceConservativeBackfill) {
+      return ThreadRecoveryHint.empty;
+    }
+    return ThreadRecoveryHint(
+      timelineCursor: validCursor ? cursor : null,
+      forceConservativeBackfill: hint.forceConservativeBackfill,
+    );
   }
 }
 

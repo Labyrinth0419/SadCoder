@@ -997,6 +997,7 @@ MVP 可以简化为底部导航：
 - 已落地 snapshot CLI cursor fallback：`sadcoder-agent snapshot --since-cursor ... --json` 与 proxy `agent/snapshot` 共享 retained event 过滤语义；移动端 `AgentRemoteService.readSnapshot` 会把 `sinceCursor` 传给独立 SSH fallback 命令，避免旧兼容路径退回全量 snapshot。
 - 已落地 reconnect cache cursor 诊断：`AgentReconnectCacheStatus` / `agent status` / `doctor` 会暴露最新 `deliveredCursor`，移动端 agent status 解析与 Hosts/Settings 诊断页会在存在 cursor 时展示该值，便于确认重连增量 snapshot 使用的事实来源。
 - 已落地 agent snapshot 缓存窗口诊断：`AgentStateSnapshot` 会暴露 `retainedCursorFloor` 与 `cursorGap`，当客户端 `sinceCursor` 早于 agent retained recent event 窗口或无法在窗口中确认时标记 gap，为后续触发更保守的 thread/read、turn/item 分页 reconciliation 做准备。
+- 已落地 cursor gap 驱动的移动端保守恢复：`AppHostSessionUiState` 会把 agent snapshot 的 `cursorGap` 映射到对应 thread 的一次性 recovery hint；`AppSessionRecoveryCoordinator` 在 gap 存在时不再用本地 lastTurnId/lastItemId 提前截断 turn/item 有界回填，并会在 snapshot 晚于 connected 状态到达时主动对当前 thread 再触发一次恢复。
 - 已落地后台 active-turn retention 的上下文刷新：App 后台且 active turn 仍需保活时，如果 host/thread/turn context 变化，会释放旧 foreground retention 并用新 context 重新 retain，避免 Android 通知和保活上下文停留在旧 turn。
 - 后续仍需完整多 host 同时连接架构：`HostSessionManager` 已作为基础控制器引入，但完整后台保活策略、断线期间事件 cursor/分页增量回填和更完整的 reconnect turn/item reconciliation 还需要继续拆分完善。
 

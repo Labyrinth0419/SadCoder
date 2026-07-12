@@ -7,7 +7,7 @@ typedef SelectedThreadIdProvider = String? Function();
 typedef DeliveredCursorProvider = String? Function(String threadId);
 
 class AppAgentSnapshotCursorProvider {
-  const AppAgentSnapshotCursorProvider({
+  AppAgentSnapshotCursorProvider({
     required this.threadCacheStore,
     required this.threadTimelineCursorStore,
     this.profileId,
@@ -20,6 +20,8 @@ class AppAgentSnapshotCursorProvider {
   final String? profileId;
   final SelectedThreadIdProvider? selectedThreadIdProvider;
   final DeliveredCursorProvider? deliveredCursorProvider;
+  String? get lastResolvedThreadId => _lastResolvedThreadId;
+  String? _lastResolvedThreadId;
 
   Future<String?> load(SshProfile profile) async {
     final resolvedProfileId =
@@ -33,6 +35,7 @@ class AppAgentSnapshotCursorProvider {
     if (threadId == null) {
       return null;
     }
+    _lastResolvedThreadId = threadId;
     final inMemoryCursor = _normalized(deliveredCursorProvider?.call(threadId));
     if (inMemoryCursor != null) {
       return inMemoryCursor;

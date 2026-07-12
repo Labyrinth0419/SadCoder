@@ -220,6 +220,80 @@ void main() {
     );
   });
 
+  test(
+    'uses conservative turn backfill when recovery hint reports cursor gap',
+    () async {
+      final turnListReader = _RecordingThreadTurnListReader.pages([
+        ThreadTurnsPage(
+          turns: [
+            _turn('turn_newest', 'completed', 'newest'),
+            _turn('turn_middle', 'completed', 'middle'),
+          ],
+          nextCursor: 'older_turns',
+        ),
+        ThreadTurnsPage(
+          turns: [
+            _turn('turn_seen', 'completed', 'seen updated'),
+            _turn('turn_too_old', 'completed', 'too old'),
+          ],
+          nextCursor: 'oldest_turns',
+        ),
+        ThreadTurnsPage(turns: [_turn('turn_oldest', 'completed', 'oldest')]),
+      ]);
+      final fixture = _Fixture(
+        threadTurnListReader: turnListReader,
+        timelineCursor: const ThreadTimelineCursorSnapshot(
+          threadId: 'thr_selected',
+          turnIds: ['turn_seen'],
+          itemIds: [],
+          lastTurnId: 'turn_seen',
+          cachedAtMs: 1,
+        ),
+        forceConservativeBackfill: true,
+      );
+      addTearDown(fixture.dispose);
+      await fixture.threadDetailController.readThread('thr_selected');
+      fixture.threadDetailReader.clear();
+
+      fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
+      await _flushMicrotasks();
+
+      expect(turnListReader.calls, [
+        (
+          threadId: 'thr_selected',
+          cursor: null,
+          limit: 50,
+          sortDirection: 'desc',
+          itemsView: 'full',
+        ),
+        (
+          threadId: 'thr_selected',
+          cursor: 'older_turns',
+          limit: 50,
+          sortDirection: 'desc',
+          itemsView: 'full',
+        ),
+        (
+          threadId: 'thr_selected',
+          cursor: 'oldest_turns',
+          limit: 50,
+          sortDirection: 'desc',
+          itemsView: 'full',
+        ),
+      ]);
+      expect(
+        fixture.threadDetailController.detail?.turns.map((turn) => turn.id),
+        [
+          'turn_oldest',
+          'turn_too_old',
+          'turn_seen',
+          'turn_middle',
+          'turn_newest',
+        ],
+      );
+    },
+  );
+
   test('backfills thread items when turn list reader is unavailable', () async {
     final itemListReader = _RecordingThreadItemListReader(
       page: ThreadItemsPage(
@@ -368,6 +442,48 @@ void main() {
   });
 
   test(
+    'uses conservative item backfill when recovery hint reports cursor gap',
+    () async {
+      final itemListReader = _RecordingThreadItemListReader.pages([
+        ThreadItemsPage(
+          items: [
+            _item('item_old', 'Old item', turnId: 'turn_1'),
+            _item('item_seen', 'Seen item updated', turnId: 'turn_1'),
+          ],
+          nextCursor: 'cursor_2',
+        ),
+        ThreadItemsPage(
+          items: [_item('item_new', 'New item', turnId: 'turn_2')],
+        ),
+      ]);
+      final fixture = _Fixture(
+        threadItemListReader: itemListReader,
+        timelineCursor: const ThreadTimelineCursorSnapshot(
+          threadId: 'thr_selected',
+          turnIds: ['turn_1'],
+          itemIds: ['item_seen'],
+          lastTurnId: 'turn_1',
+          lastItemId: 'item_seen',
+          cachedAtMs: 1,
+        ),
+        forceConservativeBackfill: true,
+      );
+      addTearDown(fixture.dispose);
+      await fixture.threadDetailController.readThread('thr_selected');
+      fixture.threadDetailReader.clear();
+
+      fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
+      await _flushMicrotasks();
+
+      expect(fixture.recoveredItems.single.items.map((item) => item.id), [
+        'item_old',
+        'item_seen',
+        'item_new',
+      ]);
+    },
+  );
+
+  test(
     'falls back to bounded item backfill when cursor item is missing',
     () async {
       final itemListReader = _RecordingThreadItemListReader.pages([
@@ -472,6 +588,7 @@ class _Fixture {
     ThreadTurnListReader? threadTurnListReader,
     ThreadItemListReader? threadItemListReader,
     ThreadTimelineCursorSnapshot? timelineCursor,
+    bool forceConservativeBackfill = false,
   }) : threadListReader = _RecordingThreadListReader(),
        threadDetailReader = _RecordingThreadDetailReader() {
     threadListController = ThreadListController(
@@ -494,9 +611,16 @@ class _Fixture {
       threadItemRecoveryHandler: ({required threadId, required items}) {
         recoveredItems.add((threadId: threadId, items: items));
       },
-      threadTimelineCursorProvider: timelineCursor == null
+      threadTimelineCursorProvider:
+          timelineCursor == null || forceConservativeBackfill
           ? null
           : (threadId) async => timelineCursor,
+      threadRecoveryHintProvider: forceConservativeBackfill
+          ? (threadId) async => ThreadRecoveryHint(
+              timelineCursor: timelineCursor,
+              forceConservativeBackfill: true,
+            )
+          : null,
     );
   }
 
