@@ -101,6 +101,7 @@ void main() {
     expect(zh.slashCommandGroupLabel('filesAndCommands'), '文件/命令');
     expect(zh.colorPaletteLabel('candy'), '糖果');
     expect(zh.colorPaletteLabel('pastel-candy'), '粉彩糖果');
+    expect(zh.colorPaletteLabel('candy-tones'), '糖果色调');
     expect(zh.colorPaletteLabel('candy-pop'), '糖果汽水');
     expect(zh.approvalMethod, '方法');
     expect(zh.approvalParameterKeys, '参数键');

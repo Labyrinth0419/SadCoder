@@ -23,6 +23,10 @@ void main() {
         colorPalette: AppColorPalette.candyPop,
         brightness: Brightness.light,
       ).extension<SadCoderThemeColors>()!;
+      final candyTones = sadCoderThemeData(
+        colorPalette: AppColorPalette.candyTones,
+        brightness: Brightness.light,
+      ).extension<SadCoderThemeColors>()!;
       final pastelCandy = sadCoderThemeData(
         colorPalette: AppColorPalette.pastelCandy,
         brightness: Brightness.light,
@@ -33,12 +37,16 @@ void main() {
       expect(lagoon.codeKeyword, isNot(candy.codeKeyword));
       expect(candyPop.codeKeyword, isNot(candy.codeKeyword));
       expect(candyPop.terminalAccent, isNot(candy.terminalAccent));
+      expect(candyTones.codeKeyword, isNot(candy.codeKeyword));
+      expect(candyTones.terminalAccent, isNot(candy.terminalAccent));
       expect(pastelCandy.codeKeyword, isNot(candy.codeKeyword));
       expect(pastelCandy.terminalAccent, isNot(candy.terminalAccent));
       expect(candy.diffAddedForeground, sadcoder.diffAddedForeground);
       expect(candy.diffRemovedForeground, sadcoder.diffRemovedForeground);
       expect(candyPop.diffAddedForeground, sadcoder.diffAddedForeground);
       expect(candyPop.diffRemovedForeground, sadcoder.diffRemovedForeground);
+      expect(candyTones.diffAddedForeground, sadcoder.diffAddedForeground);
+      expect(candyTones.diffRemovedForeground, sadcoder.diffRemovedForeground);
       expect(pastelCandy.diffAddedForeground, sadcoder.diffAddedForeground);
       expect(pastelCandy.diffRemovedForeground, sadcoder.diffRemovedForeground);
       expect(lagoon.diffAddedForeground, sadcoder.diffAddedForeground);
@@ -97,6 +105,24 @@ void main() {
     expect(scheme.secondaryContainer, const Color(0xFFFFD7EF));
     expect(scheme.tertiaryContainer, const Color(0xFFB6F1FF));
     expect(scheme.outlineVariant, const Color(0xFFE0D2EA));
+    expect(scheme.primary, isNot(nativeSeed.primary));
+  });
+
+  test('candy tones color scheme uses bespoke soft multi-color tones', () {
+    final scheme = sadCoderColorScheme(
+      colorPalette: AppColorPalette.candyTones,
+      brightness: Brightness.light,
+    );
+    final nativeSeed = ColorScheme.fromSeed(
+      seedColor: AppColorPalette.candyTones.seedColor,
+      brightness: Brightness.light,
+    );
+
+    expect(scheme.primary, const Color(0xFF9E2B66));
+    expect(scheme.primaryContainer, const Color(0xFFF694C1));
+    expect(scheme.secondaryContainer, const Color(0xFFD3F8E2));
+    expect(scheme.tertiaryContainer, const Color(0xFFA9DEF9));
+    expect(scheme.surfaceContainerHighest, const Color(0xFFF4E6FF));
     expect(scheme.primary, isNot(nativeSeed.primary));
   });
 

@@ -4919,45 +4919,47 @@ class _ThreadListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 7, 6, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.forum_outlined,
-                  size: 18,
-                  color: colorScheme.onSurfaceVariant,
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(2, 2, 0, 4),
+          child: Row(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: colorScheme.primary,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                child: const SizedBox(width: 4, height: 20),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.forum_outlined,
+                size: 18,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                ?action,
-              ],
-            ),
-            if (modeControl != null) ...[
-              const SizedBox(height: 8),
-              modeControl!,
+              ),
+              ?action,
             ],
-            const SizedBox(height: 6),
-            child,
-          ],
+          ),
         ),
-      ),
+        if (modeControl != null) ...[const SizedBox(height: 4), modeControl!],
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Divider(height: 1, color: colorScheme.outlineVariant),
+        ),
+        child,
+      ],
     );
   }
 }
@@ -5035,12 +5037,12 @@ class _ThreadListTile extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return ListTile(
       key: ValueKey('thread-summary-${thread.id}'),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+      contentPadding: const EdgeInsetsDirectional.only(start: 8, end: 4),
       dense: true,
       visualDensity: VisualDensity.compact,
       selected: selected,
       selectedTileColor: colorScheme.primaryContainer.withValues(alpha: 0.46),
-      tileColor: colorScheme.surfaceContainerLowest,
+      tileColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       leading: Icon(
         selected ? Icons.chat_bubble : Icons.chat_bubble_outline,

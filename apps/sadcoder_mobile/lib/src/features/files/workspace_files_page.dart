@@ -890,7 +890,7 @@ class _FilesSidebar extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Material(
       elevation: overlay ? 8 : 0,
-      color: colorScheme.surfaceContainerLowest,
+      color: colorScheme.surfaceContainerLow,
       child: DecoratedBox(
         decoration: BoxDecoration(
           border: BorderDirectional(
@@ -1155,43 +1155,50 @@ class _DirectoryPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        border: Border.all(color: colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.account_tree_outlined,
-                    size: 18,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      root,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium,
-                    ),
-                  ),
-                ],
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(2, 4, 2, 6),
+          child: Row(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: colorScheme.secondary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                child: const SizedBox(width: 4, height: 20),
               ),
-            ),
-            Divider(height: 1, color: colorScheme.outlineVariant),
-            ...rows,
-          ],
+              const SizedBox(width: 8),
+              Icon(
+                Icons.account_tree_outlined,
+                size: 18,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  root,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+        Divider(height: 1, color: colorScheme.outlineVariant),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: rows,
+          ),
+        ),
+      ],
     );
   }
 }

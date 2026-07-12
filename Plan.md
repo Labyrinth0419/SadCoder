@@ -1003,7 +1003,7 @@ MVP 可以简化为底部导航：
 - 支持 system / light / dark。
 - 代码块、diff、terminal output 要有专门配色，不能只用普通文本颜色。
 - 配色方案可影响代码关键字、终端 accent 和标题区等语义 accent，但 diff added/removed、风险状态等角色必须保持可识别，不能随主题被简单染成同一种主色。
-- 已落地 system/light/dark、五档字号（极小/小/中/大/极大）和多配色方案；Candy palette 已从单一 Material seed 调整为参考 cotton-candy / bubblegum / mint / sky / lemon 调色板的明确 hex 色板（`#FFB3E6`、`#FFD1F3`、`#B8F2E6`、`#A0C4FF`、`#FFF1B6`），并保留浅色模式深色主按钮/正文对比；新增 `pastel-candy` 粉彩糖果方案，参考 pastel candy 的粉、浅蓝、浅金、清绿、淡紫组合（`#F4BCC7`、`#9EDEF2`、`#F2E1B1`、`#C6F2AF`、`#D5CAF9`），Candy Pop 高饱和糖果配色参考紫、粉、黄、青、薄荷的 candy-pop hex 调色板，同时保留代码、diff、terminal 的语义色边界。
+- 已落地 system/light/dark、五档字号（极小/小/中/大/极大）和多配色方案；Candy palette 已从单一 Material seed 调整为参考 cotton-candy / bubblegum / mint / sky / lemon 调色板的明确 hex 色板（`#FFB3E6`、`#FFD1F3`、`#B8F2E6`、`#A0C4FF`、`#FFF1B6`），并保留浅色模式深色主按钮/正文对比；新增 `pastel-candy` 粉彩糖果方案，参考 pastel candy 的粉、浅蓝、浅金、清绿、淡紫组合（`#F4BCC7`、`#9EDEF2`、`#F2E1B1`、`#C6F2AF`、`#D5CAF9`），新增 `candy-tones` 柔和糖果色方案（`#D3F8E2`、`#E4C1F9`、`#F694C1`、`#EDE7B1`、`#A9DEF9`），Candy Pop 高饱和糖果配色参考紫、粉、黄、青、薄荷的 candy-pop hex 调色板，同时保留代码、diff、terminal 的语义色边界。
 
 ### 9.7.1 主机、设置与主题后续改造
 
