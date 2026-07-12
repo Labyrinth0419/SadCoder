@@ -831,6 +831,7 @@ class AppLocalizations {
   String get debugConfigOrigins => _text('debugConfigOrigins');
   String get debugConfigLayerConfig => _text('debugConfigLayerConfig');
   String get debugConfigLayerMetadata => _text('debugConfigLayerMetadata');
+  String get debugConfigLayerUnknown => _text('debugConfigLayerUnknown');
   String get experimentalTitle => _text('experimentalTitle');
   String get experimentalUnavailable => _text('experimentalUnavailable');
   String get experimentalLoadFailed => _text('experimentalLoadFailed');
@@ -1810,6 +1811,7 @@ const _values = <String, Map<String, String>>{
     'debugConfigOrigins': 'Origins',
     'debugConfigLayerConfig': 'config',
     'debugConfigLayerMetadata': 'metadata',
+    'debugConfigLayerUnknown': 'unknown layer',
     'experimentalTitle': 'Experimental features',
     'experimentalUnavailable': 'Connect to a host, then run /experimental.',
     'experimentalLoadFailed': 'Failed to load experimental config',
@@ -2623,6 +2625,7 @@ const _values = <String, Map<String, String>>{
     'debugConfigOrigins': '来源',
     'debugConfigLayerConfig': '配置',
     'debugConfigLayerMetadata': '元数据',
+    'debugConfigLayerUnknown': '未知层',
     'experimentalTitle': '实验功能',
     'experimentalUnavailable': '连接主机后运行 /experimental。',
     'experimentalLoadFailed': '实验功能配置加载失败',

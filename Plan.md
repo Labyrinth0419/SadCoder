@@ -1075,7 +1075,7 @@ MVP 可以简化为底部导航：
 
 当前实现状态：
 
-- 已覆盖 `en-US` / `zh-CN` 基础资源完整性、数字/日期/文件大小格式化和斜杠命令说明本地化；Chat 中 `/rollout` 与 `/test-approval` 的可见诊断文本已移入资源文件，避免 debug/diagnostic 路径继续硬编码英文 UI。
+- 已覆盖 `en-US` / `zh-CN` 基础资源完整性、数字/日期/文件大小格式化和斜杠命令说明本地化；Chat 中 `/rollout`、`/test-approval` 和 `/debug-config` 未知 layer 标签等可见诊断文本已移入资源文件，避免 debug/diagnostic 路径继续硬编码英文 UI。
 
 ## 10. 本地数据模型
 

@@ -82,6 +82,27 @@ void main() {
       );
     },
   );
+
+  test(
+    'buildDebugConfigSummary localizes unknown config layer labels',
+    () async {
+      const zh = AppLocalizations(Locale('zh', 'CN'));
+      final controller = CodexConfigSnapshotController(
+        readerProvider: () => _FakeConfigSnapshotReader(
+          CodexConfigSnapshot.fromJson({
+            'config': const {},
+            'layers': [const <String, Object?>{}],
+          }),
+        ),
+      );
+      addTearDown(controller.dispose);
+      await controller.refresh(cwd: '/repo');
+
+      final summary = buildDebugConfigSummary(l10n: zh, controller: controller);
+
+      expect(summary, contains('第 1 层: 未知层'));
+    },
+  );
 }
 
 class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {

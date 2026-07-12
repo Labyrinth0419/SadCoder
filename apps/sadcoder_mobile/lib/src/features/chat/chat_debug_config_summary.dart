@@ -53,7 +53,7 @@ String buildDebugConfigSummary({
   lines.add(l10n.debugConfigLayers(snapshot.layers.length));
   for (var i = 0; i < snapshot.layers.length; i++) {
     final layer = snapshot.layers[i];
-    lines.add('  ${l10n.debugConfigLayer(i + 1)}: ${_layerLabel(layer)}');
+    lines.add('  ${l10n.debugConfigLayer(i + 1)}: ${_layerLabel(l10n, layer)}');
     final config = _objectMap(layer['config']);
     if (config.isNotEmpty) {
       lines.add('    ${l10n.debugConfigLayerConfig}: ${jsonEncode(config)}');
@@ -69,7 +69,7 @@ String buildDebugConfigSummary({
   return lines.join('\n');
 }
 
-String _layerLabel(Map<String, Object?> layer) {
+String _layerLabel(AppLocalizations l10n, Map<String, Object?> layer) {
   final version = _stringValue(layer['version']);
   if (version != null) {
     return version;
@@ -82,7 +82,7 @@ String _layerLabel(Map<String, Object?> layer) {
     final map = _objectMap(name);
     return jsonEncode(map);
   }
-  return 'unknown';
+  return l10n.debugConfigLayerUnknown;
 }
 
 Map<String, Object?> _objectMap(Object? value) {
