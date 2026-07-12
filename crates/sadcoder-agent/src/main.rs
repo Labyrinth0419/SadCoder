@@ -127,6 +127,11 @@ enum AgentCommand {
         #[arg(long)]
         json: bool,
     },
+    /// Stop the SadCoder service backend if it is running.
+    Stop {
+        #[arg(long)]
+        json: bool,
+    },
     /// Run initialize and core read probes against a fresh app-server.
     Probe {
         #[arg(long)]
@@ -207,6 +212,7 @@ fn main() -> anyhow::Result<()> {
             let codex = resolve_codex_command(cli_codex_program)?;
             print_start(&codex, cli.backend, cli.state_path.as_deref(), json)
         }
+        AgentCommand::Stop { json } => print_stop(cli.backend, cli.state_path.as_deref(), json),
         AgentCommand::Probe { json } => {
             let codex = resolve_codex_command(cli_codex_program)?;
             print_probe(&codex, json)
@@ -392,6 +398,40 @@ struct DoctorResult {
 struct ConfigureResult {
     config_path: String,
     codex: CodexCommandDiagnostic,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct StopResult {
+    stopped: bool,
+    backend: BackendStatus,
+}
+
+fn print_stop(
+    backend_mode: BackendMode,
+    state_path: Option<&Path>,
+    json_output: bool,
+) -> anyhow::Result<()> {
+    let state_path = resolve_state_path(state_path);
+    let result = stop_backend(backend_mode, &state_path)?;
+
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&result)?);
+    } else {
+        if result.stopped {
+            println!("SadCoder service stopped.");
+        } else {
+            println!("SadCoder service was not running.");
+        }
+        println!(
+            "backend: {:?} {:?}",
+            result.backend.kind, result.backend.state
+        );
+        if let Some(detail) = &result.backend.detail {
+            println!("backend detail: {detail}");
+        }
+    }
+    Ok(())
 }
 
 fn print_doctor(
@@ -814,6 +854,27 @@ fn start_backend(
                 "direct stdio debug backend; SSH disconnect can end app-server",
             ),
         }),
+        Err(detail) => anyhow::bail!(detail),
+    }
+}
+
+fn stop_backend(backend_mode: BackendMode, state_path: &Path) -> anyhow::Result<StopResult> {
+    match select_backend(backend_mode) {
+        Ok(SelectedBackend::Service) => {
+            let service_paths = resolve_service_paths(state_path);
+            let stopped = service_is_ready(&service_paths)
+                || service_paths.info_path.exists()
+                || service_paths.socket_path.exists()
+                || service_paths.app_server_socket_path.exists();
+            service::stop_service_process(&service_paths)?;
+            Ok(StopResult {
+                stopped,
+                backend: collect_service_backend_status(&service_paths),
+            })
+        }
+        Ok(SelectedBackend::Stdio) => anyhow::bail!(
+            "sadcoder-agent stop is only available for the SadCoder service backend; stdio is a direct debug backend"
+        ),
         Err(detail) => anyhow::bail!(detail),
     }
 }
@@ -1579,6 +1640,60 @@ mod tests {
     }
 
     #[test]
+    fn stop_backend_cleans_stale_service_files_without_codex_probe() {
+        let base = std::env::temp_dir().join(format!(
+            "sadcoder-agent-stop-backend-stale-test-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        let state_path = base.join("agent-state.json");
+        let service_paths = resolve_service_paths(&state_path);
+        std::fs::create_dir_all(&base).expect("create service base");
+        std::fs::write(
+            &service_paths.info_path,
+            serde_json::to_vec(&json!({
+                "schemaVersion": 2,
+                "servicePid": 1,
+                "appServerPid": 2,
+                "socketPath": service_paths.socket_path,
+                "appServerSocketPath": service_paths.app_server_socket_path,
+                "listenUrl": "unix://stale",
+                "startedAtUnixMs": 1
+            }))
+            .expect("serialize service info"),
+        )
+        .expect("write service info");
+        std::fs::write(&service_paths.socket_path, b"stale").expect("write stale service socket");
+        std::fs::write(&service_paths.app_server_socket_path, b"stale")
+            .expect("write stale app-server socket");
+
+        let result = stop_backend(BackendMode::Auto, &state_path).expect("stop stale backend");
+        let _ = std::fs::remove_dir_all(&base);
+
+        assert!(result.stopped);
+        assert_eq!(result.backend.kind, BackendKind::SadcoderAgentService);
+        assert_eq!(result.backend.state, BackendState::NotStarted);
+    }
+
+    #[test]
+    fn stop_backend_rejects_stdio_debug_backend() {
+        let error = stop_backend(
+            BackendMode::Stdio,
+            &std::env::temp_dir().join("sadcoder-agent-stop-stdio.json"),
+        )
+        .expect_err("stdio stop should be rejected");
+
+        assert!(
+            error
+                .to_string()
+                .contains("stdio is a direct debug backend")
+        );
+    }
+
+    #[test]
     fn configure_command_parses_codex_args() {
         let cli = Cli::try_parse_from([
             "sadcoder-agent",
@@ -1625,6 +1740,17 @@ mod tests {
                 assert_eq!(tail_bytes, 8192);
             }
             command => panic!("expected logs command, got {command:?}"),
+        }
+    }
+
+    #[test]
+    fn stop_command_parses_json_flag() {
+        let cli =
+            Cli::try_parse_from(["sadcoder-agent", "stop", "--json"]).expect("parse stop command");
+
+        match cli.command {
+            AgentCommand::Stop { json } => assert!(json),
+            command => panic!("expected stop command, got {command:?}"),
         }
     }
 

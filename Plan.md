@@ -111,6 +111,8 @@ App 端推荐：
 sadcoder-agent install
 sadcoder-agent service
 sadcoder-agent status --json
+sadcoder-agent start --json
+sadcoder-agent stop --json
 sadcoder-agent proxy
 ```
 
