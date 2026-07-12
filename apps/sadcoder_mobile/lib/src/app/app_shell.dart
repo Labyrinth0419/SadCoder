@@ -422,7 +422,6 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _sessionController.addListener(_handleSessionChanged);
     _activeUiState.attachEvents();
     _startLifecycleConnectionCoordinator();
-    _activeUiState.handleSessionStatus(_sessionController.status);
   }
 
   void _detachActiveSessionBindings({bool detachEvents = true}) {
@@ -737,7 +736,6 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   void _handleSessionChanged() {
     _activeUiState.attachEvents();
-    _activeUiState.handleSessionStatus(_sessionController.status);
     if (_sessionController.isConnected) {
       unawaited(_configSnapshotController.refresh());
       unawaited(_accountSnapshotController.refresh());

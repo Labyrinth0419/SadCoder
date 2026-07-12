@@ -1003,6 +1003,7 @@ MVP 可以简化为底部导航：
 - 已落地后台 active-turn retention 的上下文刷新：App 后台且 active turn 仍需保活时，如果 host/thread/turn context 变化，会释放旧 foreground retention 并用新 context 重新 retain，避免 Android 通知和保活上下文停留在旧 turn。
 - 已落地服务端 turn/started 事件驱动的 active turn 跟踪：`ChatTimelineController` 会把 `turn/started` 通知传给 host UI state，`TurnController` 可据此跟踪非本机提交但正在运行的 turn；AppShell 后台保活 context 会优先当前 host，必要时扫描已连接 host UI states，确保切到其他 host 后仍能为已有 active turn 建立 foreground retention。
 - 已落地多 host 后台 active-turn 监听扩展：AppShell 的 lifecycle coordinator 会监听已创建 host UI states 的 `TurnController`，managed host 切到后台后仍保持各自 event subscription；如果 App 已在后台时 inactive host 后续收到 `turn/started`，也会触发 foreground retention context 刷新。
+- 已落地 host UI state 自主观察 session status：每个 `AppHostSessionUiState` 会监听自己的 `CodexSessionStateController`，连接成功后自行恢复缓存、触发 reconnect recovery 并刷新 slash command manifest；AppShell 不再只把 active session status 转发给当前页面，避免 inactive host 切换前漏掉线程刷新和重连恢复。
 - 后续仍需完整多 host 同时连接架构：`HostSessionManager` 已作为基础控制器引入，但完整后台保活策略、断线期间事件 cursor/分页增量回填和更完整的 reconnect turn/item reconciliation 还需要继续拆分完善。
 
 ### 9.8 i18n

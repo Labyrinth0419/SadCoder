@@ -80,6 +80,8 @@ class AppHostSessionUiState {
       _handleAgentSnapshot,
       onError: (_) {},
     );
+    sessionController.addListener(_handleSessionControllerChanged);
+    handleSessionStatus(sessionController.status);
     unawaited(_restoreCachedThreadStateOnce().catchError((Object _) {}));
   }
 
@@ -246,6 +248,7 @@ class AppHostSessionUiState {
   void dispose() {
     _disposed = true;
     detachEvents();
+    sessionController.removeListener(_handleSessionControllerChanged);
     unawaited(_agentSnapshotSubscription.cancel());
     threadListController.removeListener(_handleThreadListChanged);
     threadDetailController.removeListener(_handleThreadDetailChanged);
@@ -256,6 +259,10 @@ class AppHostSessionUiState {
     turnController.dispose();
     threadDetailController.dispose();
     threadListController.dispose();
+  }
+
+  void _handleSessionControllerChanged() {
+    handleSessionStatus(sessionController.status);
   }
 
   void _handleThreadDetailChanged() {
