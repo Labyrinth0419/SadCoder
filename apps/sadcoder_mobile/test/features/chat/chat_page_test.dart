@@ -873,7 +873,9 @@ void main() {
       find.widgetWithIcon(IconButton, Icons.send),
     );
     expect(sendButton.onPressed, isNull);
+    expect(find.text('Send as text'), findsOneWidget);
     expect(turnRunner.startedTurns, isEmpty);
+    expect(turnRunner.interruptedTurns, isEmpty);
   });
 
   testWidgets('explicitly sends slash input as prompt text', (tester) async {

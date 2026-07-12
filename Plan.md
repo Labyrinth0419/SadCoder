@@ -1157,6 +1157,7 @@ MVP 可以简化为底部导航：
 - 验证 `/stop` 只作用于后台 terminal/process，不等价于 `turn/interrupt`。
   - 已补充 Chat widget 层覆盖：active turn 中 `/stop` 只调用当前 thread 的 background terminal clean，未启动新 turn，且 fake turn runner 未记录任何 `turn/interrupt`。
 - 验证 unknown slash command 被显示为未支持或需要 raw fallback，不会静默作为普通 prompt 发送。
+  - 已补充 Chat widget 层覆盖：unknown slash 会显示 `Send as text` 显式入口，默认发送按钮不可用，fake turn runner 未记录新 turn 或 `turn/interrupt`；只有用户显式选择发送为文本后才会启动 turn。
 - 验证 `/side`、`/btw` 创建 ephemeral fork 时不会 interrupt main thread，side 返回/丢弃不会影响 main thread active turn。
 - 验证 side thread 注入 boundary prompt，side 内不允许再次 `/side`，不允许 rename/review 等不适合 side 的命令。
   - 已补充 runner 层覆盖：`startSideConversation` 使用 `thread/fork ephemeral=true` + developer instructions，并通过 `thread/inject_items` 注入 side boundary prompt，注入失败时 best-effort 删除 side thread。
