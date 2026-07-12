@@ -1152,6 +1152,7 @@ MVP 可以简化为底部导航：
 - 验证 `/side`、`/btw` 创建 ephemeral fork 时不会 interrupt main thread，side 返回/丢弃不会影响 main thread active turn。
 - 验证 side thread 注入 boundary prompt，side 内不允许再次 `/side`，不允许 rename/review 等不适合 side 的命令。
 - 验证 `/agent`、`/subagents` 的只读拓扑可以从 `parentThreadId`、`ancestorThreadId`、`CollabAgentToolCall`、`SubAgentActivity` 回填，并正确区分 running、closed、errored 状态。
+  - 已补充 Chat widget 层覆盖：`/agent` 拓扑弹层同时展示 running/closed/errored agent runtime status，且状态色用于区分运行、关闭和错误的子 agent 条目。
 
 ### 12.3 移动端 QA
 

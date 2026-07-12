@@ -2795,6 +2795,7 @@ class _AgentTopologyTile extends StatelessWidget {
     final l10n = context.l10n;
     final thread = entry.thread;
     final role = entry.displayRole;
+    final statusColor = _agentRuntimeStatusColor(context, entry);
     final details = <String>[
       '${l10n.approvalThread}: ${thread.id}',
       '${l10n.timelineStatus}: ${entry.displayStatus}',
@@ -2814,6 +2815,7 @@ class _AgentTopologyTile extends StatelessWidget {
       ),
       leading: Icon(
         entry.isSubagent ? Icons.account_tree_outlined : Icons.forum_outlined,
+        color: statusColor,
       ),
       title: Text(
         active ? '${thread.title} (${l10n.activeThread})' : thread.title,
@@ -2828,6 +2830,27 @@ class _AgentTopologyTile extends StatelessWidget {
       onTap: () => Navigator.of(context).pop(thread),
     );
   }
+}
+
+Color _agentRuntimeStatusColor(
+  BuildContext context,
+  AgentThreadTopologyEntry entry,
+) {
+  final colorScheme = Theme.of(context).colorScheme;
+  return switch (entry.runtimeStatus) {
+    AgentThreadRuntimeStatus.running => colorScheme.primary,
+    AgentThreadRuntimeStatus.closed => colorScheme.onSurfaceVariant,
+    AgentThreadRuntimeStatus.errored => colorScheme.error,
+    null => switch (entry.displayStatus.trim().toLowerCase()) {
+      'running' || 'inprogress' || 'pendinginit' => colorScheme.primary,
+      'closed' ||
+      'completed' ||
+      'interrupted' ||
+      'shutdown' => colorScheme.onSurfaceVariant,
+      'errored' || 'failed' || 'notfound' => colorScheme.error,
+      _ => colorScheme.secondary,
+    },
+  };
 }
 
 class _ComposerMention {

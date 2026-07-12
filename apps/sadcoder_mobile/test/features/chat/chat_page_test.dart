@@ -6204,6 +6204,25 @@ void main() {
               'agentThreadId': 'thr_worker',
               'agentPath': 'agents/build',
             },
+            {
+              'id': 'item_close',
+              'type': 'collabAgentToolCall',
+              'tool': 'closeAgent',
+              'status': 'completed',
+              'senderThreadId': 'thr_main',
+              'receiverThreadIds': ['thr_review'],
+            },
+            {
+              'id': 'item_wait',
+              'type': 'collabAgentToolCall',
+              'tool': 'wait',
+              'status': 'completed',
+              'senderThreadId': 'thr_main',
+              'receiverThreadIds': ['thr_broken'],
+              'agentsStates': {
+                'thr_broken': {'status': 'errored', 'message': 'timeout'},
+              },
+            },
           ],
         },
       ],
@@ -6262,7 +6281,35 @@ void main() {
     expect(find.textContaining('Builder / coder'), findsOneWidget);
     expect(find.textContaining('Status: running'), findsOneWidget);
     expect(find.textContaining('Agent path: agents/build'), findsOneWidget);
-    expect(find.textContaining('Parent thread: thr_main'), findsOneWidget);
+    expect(find.textContaining('Parent thread: thr_main'), findsWidgets);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('agent-thread-thr_review')),
+      120,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Status: closed'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('agent-thread-thr_review')),
+      findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('agent-thread-thr_broken')),
+      120,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Status: errored'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('agent-thread-thr_broken')),
+      findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('agent-thread-thr_worker')),
+      -120,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('agent-thread-thr_worker')));
     await tester.pumpAndSettle();
