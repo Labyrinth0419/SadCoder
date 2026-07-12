@@ -217,11 +217,26 @@ void main() {
     }
   });
 
-  test('aliases resolve to canonical commands', () {
-    expect(registry.find('/clean')?.command, 'stop');
-    expect(registry.find('pet')?.command, 'pets');
-    expect(registry.find('/approve')?.command, 'approve');
-    expect(registry.find('/subagents')?.command, 'subagents');
+  test('aliases and renamed TUI variants keep explicit semantics', () {
+    final clean = registry.find('/clean');
+    expect(clean?.command, 'stop');
+    expect(clean?.mappingType, SlashCommandMappingType.appServer);
+    expect(clean?.mappingTarget, contains('never turn/interrupt'));
+
+    final pet = registry.find('pet');
+    expect(pet?.command, 'pets');
+    expect(pet?.platformVisibility, SlashPlatformVisibility.tuiOnly);
+    expect(pet?.mappingType, SlashCommandMappingType.notApplicable);
+
+    final approve = registry.find('/approve');
+    expect(approve?.command, 'approve');
+    expect(approve?.mappingTarget, contains('auto-review'));
+    expect(approve?.riskLevel, SlashCommandRiskLevel.medium);
+
+    final subagents = registry.find('/subagents');
+    expect(subagents?.command, 'subagents');
+    expect(subagents?.mappingType, SlashCommandMappingType.topology);
+    expect(subagents?.mappingTarget, contains('subagent thread tree'));
   });
 
   test('quit commands describe mobile disconnection only', () {

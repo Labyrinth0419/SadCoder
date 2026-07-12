@@ -1154,6 +1154,7 @@ MVP 可以简化为底部导航：
   - 已补充协议层覆盖：`updateThreadSettings` 在清理空字段时只发送 `serviceTier: null`，普通空白 `model` / `effort` / `cwd` / `personality` 字段不会出现在 `thread/settings/update` 参数中。
 - 验证当前 Codex 斜杠命令 manifest 覆盖 `/model`、`/ide`、`/permissions`、`/keymap`、`/vim`、`/setup-default-sandbox`、`/sandbox-add-read-dir`、`/experimental`、`/approve`、`/memories`、`/skills`、`/import`、`/hooks`、`/review`、`/rename`、`/new`、`/archive`、`/delete`、`/resume`、`/fork`、`/app`、`/init`、`/compact`、`/plan`、`/goal`、`/agent`、`/side`、`/btw`、`/copy`、`/raw`、`/diff`、`/mention`、`/status`、`/usage`、`/debug-config`、`/title`、`/statusline`、`/theme`、`/pets`、`/mcp`、`/apps`、`/plugins`、`/logout`、`/quit`、`/exit`、`/feedback`、`/rollout`、`/ps`、`/stop`、`/clear`、`/personality`、`/test-approval`、`/subagents`、`/debug-m-drop`、`/debug-m-update`。
 - 验证别名 `/clean -> /stop`、`/pet -> /pets`、`/approve -> AutoReview`、`/subagents -> MultiAgents`。
+  - 已补充 registry 层覆盖：别名/重命名变体不仅解析到 canonical command，还断言 `/clean` 的 background-terminal 语义、`/pet` 的 TUI-only not-applicable 语义、`/approve` 的 auto-review 语义和 `/subagents` 的 topology/subagent-tree 语义。
 - 验证 active turn 中不可用的斜杠命令被禁用，不会触发隐式 `turn/interrupt`。
   - 已补充 Chat widget 层覆盖：active turn 时命令面板将不可用命令（例如 `/delete`）置灰并显示不可用原因，同时 fake turn runner 未记录任何 `turn/interrupt`。
 - 验证 `/quit`、`/exit` 只断开 App/proxy，不停止服务器上的 active turn。
