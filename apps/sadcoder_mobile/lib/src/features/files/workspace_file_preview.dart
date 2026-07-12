@@ -29,6 +29,13 @@ class _PreviewPanel extends StatelessWidget {
         color: colorScheme.surface,
         border: Border.all(color: colorScheme.outlineVariant),
         borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 260),

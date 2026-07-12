@@ -3123,6 +3123,11 @@ void main() {
 
     await _pumpChatPage(tester, turnController: turnController);
 
+    expect(
+      find.byKey(const ValueKey('chat-session-sidebar-toggle')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('chat-tui-status-mark')), findsOneWidget);
     expect(find.byKey(const ValueKey('chat-activity-status')), findsOneWidget);
     expect(find.textContaining('thr_debug_header'), findsNothing);
     expect(find.textContaining('turn_debug_header'), findsNothing);
@@ -6613,6 +6618,7 @@ void main() {
 
     expect(find.text('Codex'), findsOneWidget);
     expect(find.text('hello'), findsOneWidget);
+    expect(find.byKey(const ValueKey('timeline-turn-turn_1')), findsOneWidget);
   });
 
   testWidgets('renders structured command file and MCP timeline items', (

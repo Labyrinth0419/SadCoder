@@ -813,18 +813,27 @@ class _FilesTopBar extends StatelessWidget {
     return Material(
       color: Theme.of(context).colorScheme.surface,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 10, 16, 10),
+        padding: const EdgeInsets.fromLTRB(8, 7, 14, 7),
         child: Row(
           children: [
             IconButton(
               key: const ValueKey('workspace-files-sidebar-toggle'),
               tooltip: l10n.workspaceFilesSidebar,
               onPressed: onToggleSidebar,
+              style: IconButton.styleFrom(
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                minimumSize: const Size.square(36),
+                padding: EdgeInsets.zero,
+              ),
               icon: const Icon(Icons.menu),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.folder_copy_outlined),
-            const SizedBox(width: 12),
+            Icon(
+              Icons.folder_copy_outlined,
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -832,7 +841,9 @@ class _FilesTopBar extends StatelessWidget {
                 children: [
                   Text(
                     l10n.workspaceFilesTitle,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   if (root != null)
                     Text(
@@ -1022,62 +1033,73 @@ class _FilesToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final colorScheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: 32,
-            child: TextField(
-              key: const ValueKey('workspace-files-filter'),
-              controller: filterController,
-              textAlignVertical: TextAlignVertical.center,
-              style: Theme.of(context).textTheme.bodySmall,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search, size: 16),
-                prefixIconConstraints: const BoxConstraints(
-                  minWidth: 30,
-                  minHeight: 30,
-                ),
-                hintText: l10n.workspaceFilesSearchHint,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                isDense: true,
-                filled: true,
-                fillColor: colorScheme.surface,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 4,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final searchWidth = constraints.maxWidth < 300
+            ? constraints.maxWidth
+            : 188.0;
+        return Row(
+          children: [
+            Flexible(
+              fit: FlexFit.loose,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: searchWidth),
+                child: SizedBox(
+                  height: 28,
+                  child: TextField(
+                    key: const ValueKey('workspace-files-filter'),
+                    controller: filterController,
+                    textAlignVertical: TextAlignVertical.center,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search, size: 15),
+                      prefixIconConstraints: const BoxConstraints(
+                        minWidth: 26,
+                        minHeight: 26,
+                      ),
+                      hintText: l10n.workspaceFilesSearchHint,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      isDense: true,
+                      filled: true,
+                      fillColor: colorScheme.surface,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-        const SizedBox(width: 4),
-        _CompactFilesToolButton(
-          key: const ValueKey('workspace-files-hidden-toggle'),
-          onPressed: () => onIncludeHiddenChanged(!includeHidden),
-          tooltip: l10n.workspaceFilesShowHidden,
-          selected: includeHidden,
-          selectedColor: colorScheme.secondaryContainer,
-          selectedForeground: colorScheme.onSecondaryContainer,
-          icon: includeHidden
-              ? Icons.visibility_outlined
-              : Icons.visibility_off_outlined,
-        ),
-        _CompactFilesToolButton(
-          key: const ValueKey('workspace-files-remote-search'),
-          onPressed: onSearch,
-          tooltip: l10n.mentionSearchHint,
-          icon: Icons.manage_search,
-        ),
-        _CompactFilesToolButton(
-          key: const ValueKey('workspace-files-refresh'),
-          onPressed: onRefresh,
-          tooltip: l10n.workspaceFilesRefresh,
-          icon: Icons.refresh,
-        ),
-      ],
+            const SizedBox(width: 4),
+            _CompactFilesToolButton(
+              key: const ValueKey('workspace-files-hidden-toggle'),
+              onPressed: () => onIncludeHiddenChanged(!includeHidden),
+              tooltip: l10n.workspaceFilesShowHidden,
+              selected: includeHidden,
+              selectedColor: colorScheme.secondaryContainer,
+              selectedForeground: colorScheme.onSecondaryContainer,
+              icon: includeHidden
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+            ),
+            _CompactFilesToolButton(
+              key: const ValueKey('workspace-files-remote-search'),
+              onPressed: onSearch,
+              tooltip: l10n.mentionSearchHint,
+              icon: Icons.manage_search,
+            ),
+            _CompactFilesToolButton(
+              key: const ValueKey('workspace-files-refresh'),
+              onPressed: onRefresh,
+              tooltip: l10n.workspaceFilesRefresh,
+              icon: Icons.refresh,
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1104,7 +1126,7 @@ class _CompactFilesToolButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return SizedBox.square(
-      dimension: 32,
+      dimension: 30,
       child: IconButton.filledTonal(
         onPressed: onPressed,
         tooltip: tooltip,

@@ -4283,29 +4283,32 @@ class _ChatActivityStripBody extends StatelessWidget {
     ];
 
     return Material(
-      color: colorScheme.surfaceContainerLow,
+      color: colorScheme.surface,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+            padding: const EdgeInsets.fromLTRB(8, 5, 8, 5),
             child: Row(
               children: [
                 IconButton(
                   key: const ValueKey('chat-session-sidebar-toggle'),
                   tooltip: l10n.sessions,
                   onPressed: onToggleSidebar,
+                  style: IconButton.styleFrom(
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    minimumSize: const Size.square(36),
+                    padding: EdgeInsets.zero,
+                  ),
                   icon: const Icon(Icons.menu),
                 ),
-                Container(
-                  width: 4,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: indicator,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                const SizedBox(width: 6),
+                _ChatTuiStatusMark(
+                  key: const ValueKey('chat-tui-status-mark'),
+                  color: indicator,
+                  active: busy || running,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 9),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -4369,6 +4372,38 @@ class _ChatActivityStripBody extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _ChatTuiStatusMark extends StatelessWidget {
+  const _ChatTuiStatusMark({
+    super.key,
+    required this.color,
+    required this.active,
+  });
+
+  final Color color;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 18,
+      height: 18,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: active ? 0.20 : 0.08),
+        border: Border.all(
+          color: color.withValues(alpha: active ? 0.72 : 0.45),
+        ),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Container(
+        width: active ? 8 : 6,
+        height: active ? 8 : 6,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       ),
     );
   }
@@ -4488,26 +4523,41 @@ class _ChatMainConversation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      key: const ValueKey('chat-main-conversation'),
-      padding: EdgeInsets.all(compact ? 8 : 16),
-      children: [
-        if (sideConversation != null)
-          _SideConversationPanel(
-            conversation: sideConversation!,
-            canReturn: canReturnToMain,
-            onReturn: onReturnToMain,
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(color: colorScheme.surfaceContainerLowest),
+      child: ListView(
+        key: const ValueKey('chat-main-conversation'),
+        padding: EdgeInsets.fromLTRB(
+          compact ? 8 : 16,
+          compact ? 8 : 14,
+          compact ? 8 : 16,
+          compact ? 8 : 16,
+        ),
+        children: [
+          if (sideConversation != null)
+            _SideConversationPanel(
+              conversation: sideConversation!,
+              canReturn: canReturnToMain,
+              onReturn: onReturnToMain,
+            ),
+          _ChatTimelinePanel(
+            controller: timelineController,
+            showRaw: showRawTranscript,
           ),
-        _ChatTimelinePanel(
-          controller: timelineController,
-          showRaw: showRawTranscript,
-        ),
-        _SlashCommandPreview(
-          result: slashCommand,
-          sendAsText: sendSlashAsText,
-          onSendAsText: onSendSlashAsText,
-        ),
-      ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 620),
+              child: _SlashCommandPreview(
+                result: slashCommand,
+                sendAsText: sendSlashAsText,
+                onSendAsText: onSendSlashAsText,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -4936,23 +4986,27 @@ class _TimelineTurnView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final showTurnStatus = !_isTerminalTurnStatus(turn.status);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (showTurnStatus)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              '${context.l10n.timelineStatus}: ${turn.status}',
-              style: Theme.of(context).textTheme.labelMedium,
+    return Padding(
+      key: ValueKey('timeline-turn-${turn.turnId}'),
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (showTurnStatus)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                '${context.l10n.timelineStatus}: ${turn.status}',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
             ),
-          ),
-        if (turn.items.isEmpty)
-          Text(context.l10n.noTimelineEvents)
-        else
-          for (final item in turn.items)
-            _TimelineItemView(item: item, showRaw: showRaw),
-      ],
+          if (turn.items.isEmpty)
+            Text(context.l10n.noTimelineEvents)
+          else
+            for (final item in turn.items)
+              _TimelineItemView(item: item, showRaw: showRaw),
+        ],
+      ),
     );
   }
 }
