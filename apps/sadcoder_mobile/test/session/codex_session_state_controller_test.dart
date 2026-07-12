@@ -310,6 +310,35 @@ void main() {
     expect(events.single.threadId, 'thr_snapshot');
   });
 
+  test('connect publishes accepted agent snapshots', () async {
+    final approvalController = ApprovalStateController();
+    final snapshotReader = _FakeAgentSnapshotReader(
+      outcomes: [
+        _snapshotWithEvent(
+          threadId: 'thr_snapshot',
+          deliveredCursor: 'event-1',
+        ),
+      ],
+    );
+    final controller = CodexSessionStateController(
+      connector: _FakeSessionStarter(),
+      approvalController: approvalController,
+      snapshotReader: snapshotReader,
+    );
+    final snapshots = <AgentSnapshot>[];
+    final subscription = controller.agentSnapshots.listen(snapshots.add);
+    addTearDown(subscription.cancel);
+    addTearDown(controller.dispose);
+    addTearDown(approvalController.dispose);
+
+    await controller.connect(_profile);
+    await _flushMicrotasks();
+
+    expect(snapshots, hasLength(1));
+    expect(snapshots.single.deliveredCursor, 'event-1');
+    expect(snapshots.single.recentEvents.single.cursor, 'event-1');
+  });
+
   test('snapshot backfill failure does not fail connection', () async {
     final approvalController = ApprovalStateController();
     final snapshotReader = _FakeAgentSnapshotReader(
@@ -930,11 +959,15 @@ AgentSnapshot _snapshotWithToolUserInput() {
   );
 }
 
-AgentSnapshot _snapshotWithEvent({required String threadId}) {
+AgentSnapshot _snapshotWithEvent({
+  required String threadId,
+  String? deliveredCursor,
+}) {
   return AgentSnapshot(
     schemaVersion: 1,
     pendingApprovals: const [],
-    recentEvents: [_turnStartedCachedEvent(threadId)],
+    recentEvents: [_turnStartedCachedEvent(threadId, cursor: deliveredCursor)],
+    deliveredCursor: deliveredCursor,
   );
 }
 
@@ -956,7 +989,7 @@ AgentSnapshot _snapshotWithApprovalAndEvent({
   );
 }
 
-AgentCachedEvent _turnStartedCachedEvent(String threadId) {
+AgentCachedEvent _turnStartedCachedEvent(String threadId, {String? cursor}) {
   return AgentCachedEvent(
     method: 'turn/started',
     params: {
@@ -968,6 +1001,7 @@ AgentCachedEvent _turnStartedCachedEvent(String threadId) {
         'itemsView': 'notLoaded',
       },
     },
+    cursor: cursor,
   );
 }
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../agent/agent_snapshot.dart';
 import '../commands/slash_command_manifest_reader.dart';
 import '../commands/slash_command_registry_controller.dart';
 import '../config/codex_config_override_controller.dart';
@@ -60,6 +61,10 @@ class AppHostSessionUiState {
     threadDetailController.addListener(_handleThreadDetailChanged);
     turnController.addListener(_handleTurnChanged);
     timelineController.addListener(_handleTimelineChanged);
+    _agentSnapshotSubscription = sessionController.agentSnapshots.listen(
+      _handleAgentSnapshot,
+      onError: (_) {},
+    );
     unawaited(_restoreCachedThreadStateOnce().catchError((Object _) {}));
   }
 
@@ -74,8 +79,10 @@ class AppHostSessionUiState {
   late final ChatTimelineController timelineController;
   late final SlashCommandRegistryController slashCommandRegistryController;
   late final AppSessionRecoveryCoordinator _sessionRecoveryCoordinator;
+  late final StreamSubscription<AgentSnapshot> _agentSnapshotSubscription;
   Future<void>? _restoreCachedThreadStateFuture;
   String? _lastPersistedTimelineCursorFingerprint;
+  final Map<String, String> _deliveredCursorByThreadId = {};
   bool _restoringCachedThreadState = false;
   bool _disposed = false;
 
@@ -206,6 +213,7 @@ class AppHostSessionUiState {
   void dispose() {
     _disposed = true;
     detachEvents();
+    unawaited(_agentSnapshotSubscription.cancel());
     threadListController.removeListener(_handleThreadListChanged);
     threadDetailController.removeListener(_handleThreadDetailChanged);
     turnController.removeListener(_handleTurnChanged);
@@ -246,6 +254,26 @@ class AppHostSessionUiState {
 
   void _handleTimelineChanged() {
     _persistTimelineCursor();
+  }
+
+  void _handleAgentSnapshot(AgentSnapshot snapshot) {
+    final deliveredCursor = _normalized(snapshot.deliveredCursor);
+    if (deliveredCursor == null) {
+      return;
+    }
+    final threadIds = _threadIdsForAgentSnapshot(snapshot);
+    if (threadIds.isEmpty) {
+      return;
+    }
+    for (final threadId in threadIds) {
+      _deliveredCursorByThreadId[threadId] = deliveredCursor;
+      unawaited(
+        _persistDeliveredCursor(
+          threadId: threadId,
+          deliveredCursor: deliveredCursor,
+        ),
+      );
+    }
   }
 
   void _persistThreadCache() {
@@ -314,6 +342,7 @@ class AppHostSessionUiState {
       itemIds: cursor.itemIds,
       lastTurnId: cursor.lastTurnId,
       lastItemId: cursor.lastItemId,
+      deliveredCursor: _deliveredCursorByThreadId[threadId],
       cachedAtMs: DateTime.now().millisecondsSinceEpoch,
     );
     if (snapshot.isEmpty) {
@@ -326,17 +355,91 @@ class AppHostSessionUiState {
     _lastPersistedTimelineCursorFingerprint = fingerprint;
     try {
       unawaited(
-        store
-            .saveThreadCursor(
-              profileId: profileId,
-              threadId: threadId,
-              snapshot: snapshot,
-            )
-            .catchError((Object _) {}),
+        _saveTimelineCursor(
+          store: store,
+          profileId: profileId,
+          threadId: threadId,
+          snapshot: snapshot,
+        ).catchError((Object _) {}),
       );
     } on Object {
       // Cursor persistence is best-effort reconnect state.
     }
+  }
+
+  Future<void> _persistDeliveredCursor({
+    required String threadId,
+    required String deliveredCursor,
+  }) async {
+    if (_disposed) {
+      return;
+    }
+    final store = threadTimelineCursorStore;
+    final profileId = _normalized(threadCacheProfileId);
+    if (store == null || profileId == null) {
+      return;
+    }
+    final current = timelineController.cursor;
+    final currentMatchesThread = current.threadId == threadId;
+    final existing = await store.loadThreadCursor(
+      profileId: profileId,
+      threadId: threadId,
+    );
+    if (_disposed) {
+      return;
+    }
+    final snapshot = ThreadTimelineCursorSnapshot(
+      threadId: threadId,
+      turnIds: _mergedIds(
+        existing?.turnIds,
+        currentMatchesThread ? current.turnIds : null,
+      ),
+      itemIds: _mergedIds(
+        existing?.itemIds,
+        currentMatchesThread ? current.itemIds : null,
+      ),
+      lastTurnId: currentMatchesThread
+          ? current.lastTurnId ?? existing?.lastTurnId
+          : existing?.lastTurnId,
+      lastItemId: currentMatchesThread
+          ? current.lastItemId ?? existing?.lastItemId
+          : existing?.lastItemId,
+      deliveredCursor: deliveredCursor,
+      cachedAtMs: DateTime.now().millisecondsSinceEpoch,
+    );
+    await store.saveThreadCursor(
+      profileId: profileId,
+      threadId: threadId,
+      snapshot: snapshot,
+    );
+  }
+
+  Future<void> _saveTimelineCursor({
+    required ThreadTimelineCursorStore store,
+    required String profileId,
+    required String threadId,
+    required ThreadTimelineCursorSnapshot snapshot,
+  }) async {
+    if (snapshot.deliveredCursor != null) {
+      await store.saveThreadCursor(
+        profileId: profileId,
+        threadId: threadId,
+        snapshot: snapshot,
+      );
+      return;
+    }
+    final existing = await store.loadThreadCursor(
+      profileId: profileId,
+      threadId: threadId,
+    );
+    if (_disposed) {
+      return;
+    }
+    await store.saveThreadCursor(
+      profileId: profileId,
+      threadId: threadId,
+      snapshot: _withDeliveredCursor(snapshot, existing?.deliveredCursor),
+    );
   }
 }
 
@@ -356,4 +459,55 @@ String _timelineCursorFingerprint(ThreadTimelineCursorSnapshot snapshot) {
     ..write('\nlastItem:')
     ..write(snapshot.lastItemId ?? '');
   return buffer.toString();
+}
+
+Set<String> _threadIdsForAgentSnapshot(AgentSnapshot snapshot) {
+  final threadIds = <String>{};
+  for (final event in snapshot.recentEvents) {
+    final threadId = _threadIdFromParams(event.params);
+    if (threadId != null) {
+      threadIds.add(threadId);
+    }
+  }
+  return threadIds;
+}
+
+String? _threadIdFromParams(Object? params) {
+  if (params is! Map) {
+    return null;
+  }
+  return _normalized(params['threadId']?.toString()) ??
+      _normalized(params['thread_id']?.toString());
+}
+
+List<String> _mergedIds(List<String>? first, List<String>? second) {
+  final ids = <String>[];
+  final seen = <String>{};
+  for (final values in [first, second]) {
+    if (values == null) {
+      continue;
+    }
+    for (final value in values) {
+      final normalized = _normalized(value);
+      if (normalized != null && seen.add(normalized)) {
+        ids.add(normalized);
+      }
+    }
+  }
+  return List.unmodifiable(ids);
+}
+
+ThreadTimelineCursorSnapshot _withDeliveredCursor(
+  ThreadTimelineCursorSnapshot snapshot,
+  String? deliveredCursor,
+) {
+  return ThreadTimelineCursorSnapshot(
+    threadId: snapshot.threadId,
+    turnIds: snapshot.turnIds,
+    itemIds: snapshot.itemIds,
+    lastTurnId: snapshot.lastTurnId,
+    lastItemId: snapshot.lastItemId,
+    deliveredCursor: deliveredCursor,
+    cachedAtMs: snapshot.cachedAtMs,
+  );
 }

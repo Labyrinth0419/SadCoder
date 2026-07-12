@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/agent/agent_snapshot.dart';
+import 'package:sadcoder_mobile/src/agent/agent_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/app/app_host_session_ui_state.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
+import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
@@ -120,6 +125,67 @@ void main() {
     expect(snapshot?.lastItemId, 'item_thr_a');
     expect(cursorStore.snapshots.keys, ['profile-a::thr_a']);
   });
+
+  test('persists agent delivered cursor for snapshot thread', () async {
+    final threadStore = _MemoryThreadCacheStore();
+    final cursorStore = _MemoryThreadTimelineCursorStore({
+      'profile-a::thr_a': const ThreadTimelineCursorSnapshot(
+        threadId: 'thr_a',
+        turnIds: ['turn_existing'],
+        itemIds: ['item_existing'],
+        lastTurnId: 'turn_existing',
+        lastItemId: 'item_existing',
+        cachedAtMs: 1,
+      ),
+    });
+    final approvalController = ApprovalStateController();
+    final configOverrideController = CodexConfigOverrideController();
+    final sessionController = CodexSessionStateController(
+      connector: _SnapshotSessionStarter(
+        snapshot: const AgentSnapshot(
+          schemaVersion: 1,
+          pendingApprovals: [],
+          recentEvents: [
+            AgentCachedEvent(
+              method: 'turn/started',
+              cursor: 'event-7',
+              params: {
+                'threadId': 'thr_a',
+                'turn': {
+                  'id': 'turn_existing',
+                  'status': 'completed',
+                  'items': <Object?>[],
+                },
+              },
+            ),
+          ],
+          deliveredCursor: 'event-7',
+        ),
+      ),
+      approvalController: approvalController,
+    );
+    final state = AppHostSessionUiState(
+      sessionController: sessionController,
+      configOverrideController: configOverrideController,
+      threadCacheProfileId: 'profile-a',
+      threadCacheStore: threadStore,
+      threadTimelineCursorStore: cursorStore,
+    );
+    addTearDown(state.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(configOverrideController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profileA);
+    await _flushMicrotasks();
+
+    final snapshot = cursorStore.snapshots['profile-a::thr_a'];
+    expect(snapshot?.deliveredCursor, 'event-7');
+    expect(snapshot?.turnIds, ['turn_existing']);
+    expect(snapshot?.itemIds, ['item_existing']);
+    expect(snapshot?.lastTurnId, 'turn_existing');
+    expect(snapshot?.lastItemId, 'item_existing');
+  });
 }
 
 class _UiStateFixture {
@@ -202,7 +268,11 @@ class _MemoryThreadItemCacheStore implements ThreadItemCacheStore {
 }
 
 class _MemoryThreadTimelineCursorStore implements ThreadTimelineCursorStore {
-  final snapshots = <String, ThreadTimelineCursorSnapshot>{};
+  _MemoryThreadTimelineCursorStore([
+    Map<String, ThreadTimelineCursorSnapshot>? initial,
+  ]) : snapshots = Map.of(initial ?? const {});
+
+  final Map<String, ThreadTimelineCursorSnapshot> snapshots;
 
   @override
   Future<ThreadTimelineCursorSnapshot?> loadThreadCursor({
@@ -231,6 +301,71 @@ class _NeverConnectStarter implements CodexSessionConnectionStarter {
     throw UnimplementedError();
   }
 }
+
+class _SnapshotSessionStarter implements CodexSessionConnectionStarter {
+  const _SnapshotSessionStarter({required this.snapshot});
+
+  final AgentSnapshot snapshot;
+
+  @override
+  Future<CodexSessionConnectionHandle> connect(
+    SshProfile profile, {
+    ApprovalStateController? approvalController,
+  }) async {
+    return _SnapshotConnection(
+      profile: profile,
+      snapshotReader: _StaticAgentSnapshotReader(snapshot),
+    );
+  }
+}
+
+class _SnapshotConnection
+    implements CodexSessionConnectionHandle, AgentSnapshotConnectionHandle {
+  _SnapshotConnection({required this.profile, required this.snapshotReader});
+
+  final _events = StreamController<CodexEvent>.broadcast();
+  final _done = Completer<void>();
+
+  @override
+  final SshProfile profile;
+
+  final AgentSnapshotReader snapshotReader;
+
+  @override
+  AgentSnapshotReader? get agentSnapshotReader => snapshotReader;
+
+  @override
+  Stream<CodexEvent> get events => _events.stream;
+
+  @override
+  Future<void> get done => _done.future;
+
+  @override
+  Future<void> close({bool notifyApprovalController = true}) async {
+    await _events.close();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _StaticAgentSnapshotReader implements AgentSnapshotReader {
+  const _StaticAgentSnapshotReader(this.snapshot);
+
+  final AgentSnapshot snapshot;
+
+  @override
+  Future<AgentSnapshot> readSnapshot(SshProfile profile) async {
+    return snapshot;
+  }
+}
+
+const _profileA = SshProfile(
+  id: 'profile-a',
+  name: 'Host A',
+  host: 'host-a.example.com',
+  username: 'dev',
+);
 
 ThreadSummary _thread(String id, String preview) {
   return ThreadSummary.fromJson({
@@ -290,4 +425,10 @@ ThreadItemSummary _item(String id, String text, {String? turnId}) {
     json['turnId'] = turnId;
   }
   return ThreadItemSummary.fromJson(json);
+}
+
+Future<void> _flushMicrotasks() async {
+  await Future<void>.delayed(Duration.zero);
+  await Future<void>.delayed(Duration.zero);
+  await Future<void>.delayed(Duration.zero);
 }

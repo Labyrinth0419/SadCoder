@@ -89,6 +89,8 @@ class CodexSessionStateController extends ChangeNotifier {
   final ApprovalStateController approvalController;
   final StreamController<CodexEvent> _eventsController =
       StreamController.broadcast();
+  final StreamController<AgentSnapshot> _agentSnapshotsController =
+      StreamController.broadcast();
   final Set<String> _seenEventFingerprints = <String>{};
   final List<String> _seenEventOrder = <String>[];
   CodexSessionConnectionHandle? _connection;
@@ -223,6 +225,8 @@ class CodexSessionStateController extends ChangeNotifier {
       _connection?.diagnosticLogs ?? const [];
 
   Stream<CodexEvent>? get events => _eventsController.stream;
+
+  Stream<AgentSnapshot> get agentSnapshots => _agentSnapshotsController.stream;
 
   int get reconnectAttempt => _reconnectAttempt;
 
@@ -413,6 +417,7 @@ class CodexSessionStateController extends ChangeNotifier {
     unawaited(_connection?.close(notifyApprovalController: false));
     _connection = null;
     unawaited(_eventsController.close());
+    unawaited(_agentSnapshotsController.close());
     super.dispose();
   }
 
@@ -588,6 +593,7 @@ class CodexSessionStateController extends ChangeNotifier {
       if (!_isCurrentGeneration(generation) || _connection != connection) {
         return;
       }
+      _agentSnapshotsController.add(snapshot);
       approvalController.ingestServerRequests(snapshot.pendingApprovals);
       for (final cachedEvent in snapshot.recentEvents) {
         if (cachedEvent.method.isEmpty) {
