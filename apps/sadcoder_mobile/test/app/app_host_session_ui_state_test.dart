@@ -8,6 +8,7 @@ import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/threads/thread_cache_store.dart';
 import 'package:sadcoder_mobile/src/threads/thread_item_cache_store.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
+import 'package:sadcoder_mobile/src/threads/thread_timeline_cursor_store.dart';
 
 void main() {
   test('restores cached thread list and selection for its host', () async {
@@ -95,6 +96,30 @@ void main() {
       'Cached answer',
     );
   });
+
+  test('persists timeline cursor for its host', () async {
+    final threadStore = _MemoryThreadCacheStore();
+    final cursorStore = _MemoryThreadTimelineCursorStore();
+    final fixture = _UiStateFixture(
+      profileId: 'profile-a',
+      store: threadStore,
+      timelineCursorStore: cursorStore,
+    );
+    addTearDown(fixture.dispose);
+
+    fixture.state.timelineController.showThread(
+      _threadWithTurnAndItem('thr_a', 'Host A task'),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    final snapshot = cursorStore.snapshots['profile-a::thr_a'];
+    expect(snapshot?.threadId, 'thr_a');
+    expect(snapshot?.turnIds, ['turn_thr_a']);
+    expect(snapshot?.itemIds, ['item_thr_a']);
+    expect(snapshot?.lastTurnId, 'turn_thr_a');
+    expect(snapshot?.lastItemId, 'item_thr_a');
+    expect(cursorStore.snapshots.keys, ['profile-a::thr_a']);
+  });
 }
 
 class _UiStateFixture {
@@ -102,6 +127,7 @@ class _UiStateFixture {
     required String profileId,
     required ThreadCacheStore store,
     ThreadItemCacheStore? itemStore,
+    ThreadTimelineCursorStore? timelineCursorStore,
   }) : approvalController = ApprovalStateController(),
        configOverrideController = CodexConfigOverrideController() {
     sessionController = CodexSessionStateController(
@@ -114,6 +140,7 @@ class _UiStateFixture {
       threadCacheProfileId: profileId,
       threadCacheStore: store,
       threadItemCacheStore: itemStore,
+      threadTimelineCursorStore: timelineCursorStore,
     );
   }
 
@@ -174,6 +201,27 @@ class _MemoryThreadItemCacheStore implements ThreadItemCacheStore {
   }
 }
 
+class _MemoryThreadTimelineCursorStore implements ThreadTimelineCursorStore {
+  final snapshots = <String, ThreadTimelineCursorSnapshot>{};
+
+  @override
+  Future<ThreadTimelineCursorSnapshot?> loadThreadCursor({
+    required String profileId,
+    required String threadId,
+  }) async {
+    return snapshots['$profileId::$threadId'];
+  }
+
+  @override
+  Future<void> saveThreadCursor({
+    required String profileId,
+    required String threadId,
+    required ThreadTimelineCursorSnapshot snapshot,
+  }) async {
+    snapshots['$profileId::$threadId'] = snapshot;
+  }
+}
+
 class _NeverConnectStarter implements CodexSessionConnectionStarter {
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -207,6 +255,27 @@ ThreadSummary _threadWithTurn(String id, String preview) {
     'updatedAt': 1,
     'turns': [
       {'id': 'turn_$id', 'status': 'completed', 'items': <Object?>[]},
+    ],
+  });
+}
+
+ThreadSummary _threadWithTurnAndItem(String id, String preview) {
+  return ThreadSummary.fromJson({
+    'id': id,
+    'sessionId': 'sess_1',
+    'preview': preview,
+    'ephemeral': false,
+    'status': 'idle',
+    'cwd': '/repo',
+    'updatedAt': 42,
+    'turns': [
+      {
+        'id': 'turn_$id',
+        'status': 'completed',
+        'items': [
+          {'id': 'item_$id', 'type': 'agentMessage', 'text': 'Cached answer'},
+        ],
+      },
     ],
   });
 }

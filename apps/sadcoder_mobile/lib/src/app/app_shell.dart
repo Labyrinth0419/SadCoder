@@ -39,6 +39,7 @@ import '../threads/thread_cache_store.dart';
 import '../threads/thread_detail_controller.dart';
 import '../threads/thread_item_cache_store.dart';
 import '../threads/thread_list_controller.dart';
+import '../threads/thread_timeline_cursor_store.dart';
 import '../turns/turn_controller.dart';
 import '../usage/account_usage_snapshot_controller.dart';
 import 'app_background_notification_coordinator.dart';
@@ -90,6 +91,7 @@ class AppShell extends StatefulWidget {
     this.slashCommandManifestReader,
     this.threadCacheStore,
     this.threadItemCacheStore,
+    this.threadTimelineCursorStore,
   });
 
   final AppAppearanceController? appearanceController;
@@ -104,6 +106,7 @@ class AppShell extends StatefulWidget {
   final SlashCommandManifestReader? slashCommandManifestReader;
   final ThreadCacheStore? threadCacheStore;
   final ThreadItemCacheStore? threadItemCacheStore;
+  final ThreadTimelineCursorStore? threadTimelineCursorStore;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -164,6 +167,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         const SharedPreferencesThreadItemCacheStore();
   }
 
+  ThreadTimelineCursorStore get _resolvedThreadTimelineCursorStore {
+    return widget.threadTimelineCursorStore ??
+        const SharedPreferencesThreadTimelineCursorStore();
+  }
+
   bool get _usesHostApprovalGroups =>
       _hostSessionManager != null && _hostSessionManager!.sessions.isNotEmpty;
 
@@ -197,7 +205,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         oldWidget.slashCommandManifestReader !=
             widget.slashCommandManifestReader ||
         oldWidget.threadCacheStore != widget.threadCacheStore ||
-        oldWidget.threadItemCacheStore != widget.threadItemCacheStore) {
+        oldWidget.threadItemCacheStore != widget.threadItemCacheStore ||
+        oldWidget.threadTimelineCursorStore !=
+            widget.threadTimelineCursorStore) {
       _disposeOwnedControllers();
       _setControllers(
         approvalController: widget.approvalController,
@@ -326,6 +336,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       threadCacheProfileId: _threadCacheProfileIdForSession(_sessionController),
       threadCacheStore: _resolvedThreadCacheStore,
       threadItemCacheStore: _resolvedThreadItemCacheStore,
+      threadTimelineCursorStore: _resolvedThreadTimelineCursorStore,
       fallbackSlashCommandManifestReader: _resolvedSlashCommandManifestReader,
     );
     _configSnapshotController = CodexConfigSnapshotController(
@@ -637,6 +648,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         threadCacheProfileId: entry.profileId,
         threadCacheStore: _resolvedThreadCacheStore,
         threadItemCacheStore: _resolvedThreadItemCacheStore,
+        threadTimelineCursorStore: _resolvedThreadTimelineCursorStore,
         fallbackSlashCommandManifestReader: _resolvedSlashCommandManifestReader,
       ),
     );

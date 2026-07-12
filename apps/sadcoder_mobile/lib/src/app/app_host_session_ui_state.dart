@@ -10,6 +10,7 @@ import '../threads/thread_detail_controller.dart';
 import '../threads/thread_item_cache_store.dart';
 import '../threads/thread_list_controller.dart';
 import '../threads/thread_summary.dart';
+import '../threads/thread_timeline_cursor_store.dart';
 import '../turns/turn_controller.dart';
 import 'app_session_recovery_coordinator.dart';
 
@@ -20,6 +21,7 @@ class AppHostSessionUiState {
     this.threadCacheProfileId,
     this.threadCacheStore,
     this.threadItemCacheStore,
+    this.threadTimelineCursorStore,
     SlashCommandManifestReader? fallbackSlashCommandManifestReader,
   }) {
     threadListController = ThreadListController(
@@ -56,6 +58,7 @@ class AppHostSessionUiState {
     threadListController.addListener(_handleThreadListChanged);
     threadDetailController.addListener(_handleThreadDetailChanged);
     turnController.addListener(_handleTurnChanged);
+    timelineController.addListener(_handleTimelineChanged);
     unawaited(_restoreCachedThreadStateOnce().catchError((Object _) {}));
   }
 
@@ -63,6 +66,7 @@ class AppHostSessionUiState {
   final String? threadCacheProfileId;
   final ThreadCacheStore? threadCacheStore;
   final ThreadItemCacheStore? threadItemCacheStore;
+  final ThreadTimelineCursorStore? threadTimelineCursorStore;
   late final ThreadListController threadListController;
   late final ThreadDetailController threadDetailController;
   late final TurnController turnController;
@@ -70,6 +74,7 @@ class AppHostSessionUiState {
   late final SlashCommandRegistryController slashCommandRegistryController;
   late final AppSessionRecoveryCoordinator _sessionRecoveryCoordinator;
   Future<void>? _restoreCachedThreadStateFuture;
+  String? _lastPersistedTimelineCursorFingerprint;
   bool _restoringCachedThreadState = false;
   bool _disposed = false;
 
@@ -180,6 +185,7 @@ class AppHostSessionUiState {
     threadListController.removeListener(_handleThreadListChanged);
     threadDetailController.removeListener(_handleThreadDetailChanged);
     turnController.removeListener(_handleTurnChanged);
+    timelineController.removeListener(_handleTimelineChanged);
     timelineController.dispose();
     slashCommandRegistryController.dispose();
     turnController.dispose();
@@ -212,6 +218,10 @@ class AppHostSessionUiState {
 
   void _handleTurnChanged() {
     _persistThreadCache();
+  }
+
+  void _handleTimelineChanged() {
+    _persistTimelineCursor();
   }
 
   void _persistThreadCache() {
@@ -262,9 +272,64 @@ class AppHostSessionUiState {
     }
     return detail.thread.id == selectedThreadId ? detail.thread : null;
   }
+
+  void _persistTimelineCursor() {
+    if (_disposed || _restoringCachedThreadState) {
+      return;
+    }
+    final store = threadTimelineCursorStore;
+    final profileId = _normalized(threadCacheProfileId);
+    final cursor = timelineController.cursor;
+    final threadId = _normalized(cursor.threadId);
+    if (store == null || profileId == null || threadId == null) {
+      return;
+    }
+    final snapshot = ThreadTimelineCursorSnapshot(
+      threadId: threadId,
+      turnIds: cursor.turnIds,
+      itemIds: cursor.itemIds,
+      lastTurnId: cursor.lastTurnId,
+      lastItemId: cursor.lastItemId,
+      cachedAtMs: DateTime.now().millisecondsSinceEpoch,
+    );
+    if (snapshot.isEmpty) {
+      return;
+    }
+    final fingerprint = _timelineCursorFingerprint(snapshot);
+    if (_lastPersistedTimelineCursorFingerprint == fingerprint) {
+      return;
+    }
+    _lastPersistedTimelineCursorFingerprint = fingerprint;
+    try {
+      unawaited(
+        store
+            .saveThreadCursor(
+              profileId: profileId,
+              threadId: threadId,
+              snapshot: snapshot,
+            )
+            .catchError((Object _) {}),
+      );
+    } on Object {
+      // Cursor persistence is best-effort reconnect state.
+    }
+  }
 }
 
 String? _normalized(String? value) {
   final trimmed = value?.trim();
   return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}
+
+String _timelineCursorFingerprint(ThreadTimelineCursorSnapshot snapshot) {
+  final buffer = StringBuffer(snapshot.threadId)
+    ..write('\nturns:')
+    ..writeAll(snapshot.turnIds, ',')
+    ..write('\nitems:')
+    ..writeAll(snapshot.itemIds, ',')
+    ..write('\nlastTurn:')
+    ..write(snapshot.lastTurnId ?? '')
+    ..write('\nlastItem:')
+    ..write(snapshot.lastItemId ?? '');
+  return buffer.toString();
 }
