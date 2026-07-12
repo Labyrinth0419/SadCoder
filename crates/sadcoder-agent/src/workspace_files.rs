@@ -807,7 +807,34 @@ mod tests {
                 "includeHidden": true,
             }),
         );
+        let hidden_entries = hidden["entries"].as_array().expect("entries");
+        assert_eq!(
+            hidden_entries
+                .iter()
+                .map(|entry| entry["name"].as_str().expect("name"))
+                .collect::<Vec<_>>(),
+            vec!["src", ".env"]
+        );
         assert_eq!(hidden["nextCursor"].as_str(), Some("2"));
+
+        let hidden_second_page = workspace_result(
+            "workspace/directoryList",
+            json!({
+                "root": root.path_string(),
+                "limit": 2,
+                "cursor": hidden["nextCursor"].as_str().expect("next cursor"),
+                "includeHidden": true,
+            }),
+        );
+        let hidden_second_entries = hidden_second_page["entries"].as_array().expect("entries");
+        assert_eq!(
+            hidden_second_entries
+                .iter()
+                .map(|entry| entry["name"].as_str().expect("name"))
+                .collect::<Vec<_>>(),
+            vec!["README.md"]
+        );
+        assert_eq!(hidden_second_page["nextCursor"].as_str(), None);
     }
 
     #[test]

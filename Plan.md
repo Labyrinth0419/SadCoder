@@ -970,7 +970,7 @@ MVP 可以简化为底部导航：
 - 已落地 `features/files` 独立模块，包含目录树、文件预览、Markdown render/raw 切换、代码高亮、远端文件搜索入口和只读 toolbar。
 - 已落地 `workspace/directoryList`、`workspace/fileStat`、`workspace/fileRead` 的 agent RPC，并保留旧 `fs/*` 只读方法作为客户端兼容 fallback。
 - 已调整 Files 页面为左侧工作区文件侧栏和主区域状态/文件预览；文件过滤、隐藏文件、远端搜索和刷新入口已收敛为紧凑工具行，显式 workspace root 与默认 root 选择保持折叠入口。
-- 已覆盖路径归一化、目录响应 path/name 校验、拒绝 `..` / 绝对 child path、符号链接祖先拒绝、二进制文件拒绝、UTF-8 range 边界、后续 chunk 失败重试和大 Markdown raw 保护。
+- 已覆盖路径归一化、目录响应 path/name 校验、目录分页 `nextCursor`/`cursor`、拒绝 `..` / 绝对 child path、符号链接祖先拒绝、二进制文件拒绝、UTF-8 range 边界、后续 chunk 失败重试和大 Markdown raw 保护。
 - 仍待后续单独设计：受控编辑、写文件、目录监听、diff 审批和冲突检测；这些能力不得混入只读 Files 页面。
 
 ### 9.7 深色模式
