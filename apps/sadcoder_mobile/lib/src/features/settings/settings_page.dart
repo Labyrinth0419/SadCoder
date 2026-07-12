@@ -20,6 +20,7 @@ import '../../diagnostics/diagnostic_log_export_controller.dart';
 import '../../i18n/app_localizations.dart';
 import '../../models/model_labels.dart';
 import '../../models/model_list_controller.dart';
+import '../../models/model_list_reader.dart';
 import '../../security/permission_risk.dart';
 import '../appearance/app_color_palette_picker.dart';
 
@@ -565,8 +566,7 @@ class _LoadedModelList extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final model in visibleModels)
-              Chip(label: Text(codexModelDisplayLabel(context, model))),
+            for (final model in visibleModels) _ModelSummaryTile(model: model),
           ],
         ),
         if (models.length > visibleModels.length) ...[
@@ -574,6 +574,55 @@ class _LoadedModelList extends StatelessWidget {
           Text(l10n.modelListMore(models.length - visibleModels.length)),
         ],
       ],
+    );
+  }
+}
+
+class _ModelSummaryTile extends StatelessWidget {
+  const _ModelSummaryTile({required this.model});
+
+  final CodexModelSummary model;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final capabilitySummary = codexModelCapabilitySummary(context, model);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 360, minWidth: 180),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLow,
+          border: Border.all(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                codexModelDisplayLabel(context, model),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelLarge,
+              ),
+              if (capabilitySummary != null) ...[
+                const SizedBox(height: 3),
+                Text(
+                  capabilitySummary,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

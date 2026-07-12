@@ -364,6 +364,19 @@ void main() {
             name: 'GPT-5 Codex',
             provider: 'openai',
             isDefault: true,
+            supportedReasoningEfforts: [
+              CodexModelReasoningEffort(id: 'low', description: 'Fast'),
+              CodexModelReasoningEffort(id: 'high', description: 'Deep'),
+            ],
+            defaultReasoningEffort: 'low',
+            serviceTiers: [
+              CodexModelServiceTier(id: 'default', name: 'Default'),
+              CodexModelServiceTier(id: 'priority', name: 'Priority'),
+            ],
+            defaultServiceTier: 'default',
+            availabilityNux: CodexModelAvailabilityNux(
+              message: 'GPT-5 Codex is available.',
+            ),
           ),
           CodexModelSummary(id: 'gpt-5'),
         ],
@@ -394,6 +407,12 @@ void main() {
     expect(modelReader.calls, 1);
     expect(find.text('Available models: 2'), findsOneWidget);
     expect(find.text('GPT-5 Codex (openai) (default)'), findsOneWidget);
+    expect(
+      find.text(
+        'Reasoning: low, high (default: low) · Service tiers: Default, Priority (default: default) · Announcement: GPT-5 Codex is available.',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('gpt-5'), findsOneWidget);
   });
 

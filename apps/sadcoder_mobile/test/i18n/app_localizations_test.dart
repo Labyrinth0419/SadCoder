@@ -103,6 +103,9 @@ void main() {
     expect(zh.colorPaletteLabel('pastel-candy'), '粉彩糖果');
     expect(zh.colorPaletteLabel('candy-tones'), '糖果色调');
     expect(zh.colorPaletteLabel('candy-pop'), '糖果汽水');
+    expect(zh.modelReasoningSummary('low, high'), '推理：low, high');
+    expect(zh.modelServiceTierSummary('default'), '服务档位：default');
+    expect(zh.modelAnnouncementSummary('new'), '公告：new');
     expect(zh.approvalMethod, '方法');
     expect(zh.approvalParameterKeys, '参数键');
     expect(zh.fontSizeLabel('extra-small'), '极小');

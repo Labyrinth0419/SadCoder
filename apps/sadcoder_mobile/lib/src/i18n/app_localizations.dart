@@ -111,6 +111,12 @@ class AppLocalizations {
   String get accountRead => _text('accountRead');
   String get modelList => _text('modelList');
   String get modelDefaultBadge => _text('modelDefaultBadge');
+  String modelReasoningSummary(String summary) =>
+      _text('modelReasoningSummary').replaceAll('{summary}', summary);
+  String modelServiceTierSummary(String summary) =>
+      _text('modelServiceTierSummary').replaceAll('{summary}', summary);
+  String modelAnnouncementSummary(String message) =>
+      _text('modelAnnouncementSummary').replaceAll('{message}', message);
   String get configRead => _text('configRead');
   String get permissionProfileList => _text('permissionProfileList');
   String get threadList => _text('threadList');
@@ -1652,6 +1658,9 @@ const _values = <String, Map<String, String>>{
     'availableModels': 'Available models: {count}',
     'modelListMore': '{count} more models available.',
     'modelDefaultBadge': 'default',
+    'modelReasoningSummary': 'Reasoning: {summary}',
+    'modelServiceTierSummary': 'Service tiers: {summary}',
+    'modelAnnouncementSummary': 'Announcement: {message}',
     'accountUsageStatus': 'Usage',
     'accountUsageUnavailable': 'Connect to a host, then run /usage.',
     'accountUsageLoadFailed': 'Failed to load usage',
@@ -2456,6 +2465,9 @@ const _values = <String, Map<String, String>>{
     'availableModels': '可用模型：{count}',
     'modelListMore': '还有 {count} 个模型可用。',
     'modelDefaultBadge': '默认',
+    'modelReasoningSummary': '推理：{summary}',
+    'modelServiceTierSummary': '服务档位：{summary}',
+    'modelAnnouncementSummary': '公告：{message}',
     'accountUsageStatus': '使用量',
     'accountUsageUnavailable': '连接主机后运行 /usage。',
     'accountUsageLoadFailed': '使用量加载失败',
