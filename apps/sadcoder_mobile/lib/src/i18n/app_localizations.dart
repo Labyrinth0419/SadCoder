@@ -697,6 +697,10 @@ class AppLocalizations {
   String get mcpServerResources => _text('mcpServerResources');
   String get mcpServerResourceTemplates => _text('mcpServerResourceTemplates');
   String get mcpServerInfo => _text('mcpServerInfo');
+  String get mcpServerStartupStatus => _text('mcpServerStartupStatus');
+  String get mcpServerStartupError => _text('mcpServerStartupError');
+  String get mcpServerStartupFailureReason =>
+      _text('mcpServerStartupFailureReason');
   String get mcpServersMore => _text('mcpServersMore');
   String get skillsTitle => _text('skillsTitle');
   String get skillsUnavailable => _text('skillsUnavailable');
@@ -1609,6 +1613,9 @@ const _values = <String, Map<String, String>>{
     'mcpServerResources': 'resources',
     'mcpServerResourceTemplates': 'templates',
     'mcpServerInfo': 'server',
+    'mcpServerStartupStatus': 'startup',
+    'mcpServerStartupError': 'error',
+    'mcpServerStartupFailureReason': 'reason',
     'mcpServersMore': 'More MCP servers are available.',
     'skillsTitle': 'Skills',
     'skillsUnavailable': 'Connect to a host, then run /skills.',
@@ -2355,6 +2362,9 @@ const _values = <String, Map<String, String>>{
     'mcpServerResources': '资源',
     'mcpServerResourceTemplates': '模板',
     'mcpServerInfo': '服务器',
+    'mcpServerStartupStatus': '启动',
+    'mcpServerStartupError': '错误',
+    'mcpServerStartupFailureReason': '原因',
     'mcpServersMore': '还有更多 MCP 服务器可用。',
     'skillsTitle': '技能',
     'skillsUnavailable': '连接主机后运行 /skills。',

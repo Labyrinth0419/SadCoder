@@ -32,6 +32,7 @@ import 'package:sadcoder_mobile/src/files/workspace_file_reader.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_server_status_controller.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_config_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_oauth_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
@@ -368,6 +369,62 @@ void main() {
     expect(accountSnapshotController.snapshot?.account?.type, 'chatgpt');
     expect(accountSnapshotController.snapshot?.account?.planType, 'pro');
     expect(accountSnapshotController.snapshot?.account?.label, 'ChatGPT / pro');
+  });
+
+  testWidgets('MCP startup events update active MCP status snapshot', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final starter = _RecordingStaticSessionStarter(
+      threads: const [],
+      detail: ThreadDetail(thread: _emptyThread),
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final mcpServerStatusController = McpServerStatusController(
+      readerProvider: () => null,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(mcpServerStatusController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+
+    await tester.pumpWidget(
+      SadCoderApp(
+        approvalController: approvalController,
+        sessionController: sessionController,
+        mcpServerStatusController: mcpServerStatusController,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    starter.connections.single.emit(
+      CodexEvent.fromNotification({
+        'method': 'mcpServer/startupStatus/updated',
+        'params': {
+          'threadId': 'thr_1',
+          'name': 'github',
+          'status': 'failed',
+          'error': 'missing command',
+          'failureReason': 'reauthenticationRequired',
+        },
+      }),
+    );
+    await tester.pump();
+
+    expect(mcpServerStatusController.status, McpServerStatusListStatus.loaded);
+    expect(mcpServerStatusController.servers.single.name, 'github');
+    expect(mcpServerStatusController.servers.single.startupStatus, 'failed');
+    expect(
+      mcpServerStatusController.servers.single.startupError,
+      'missing command',
+    );
+    expect(
+      mcpServerStatusController.servers.single.startupFailureReason,
+      'reauthenticationRequired',
+    );
   });
 
   testWidgets('chat host selector restores per-host thread timeline state', (

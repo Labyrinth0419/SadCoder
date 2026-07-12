@@ -22,6 +22,19 @@ class McpServerStatusController extends ChangeNotifier {
   List<McpServerStatus> get servers => _page?.servers ?? const [];
   Object? get error => _error;
 
+  void ingestStartupStatusUpdated(Map<String, Object?> payload) {
+    final update = McpServerStatus.fromStartupStatusUpdated(payload);
+    if (update == null) {
+      return;
+    }
+
+    _generation++;
+    _page =
+        _page?.upsertStartupStatus(update) ??
+        McpServerStatusPage(servers: [update]);
+    _setState(status: McpServerStatusListStatus.loaded, error: null);
+  }
+
   Future<void> refresh({
     String? threadId,
     String? cursor,

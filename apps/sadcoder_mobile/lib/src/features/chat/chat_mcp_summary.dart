@@ -71,7 +71,12 @@ String _serverSummaryLine(AppLocalizations l10n, McpServerStatus server) {
     '${l10n.mcpServerResources}: ${server.resources.length}',
     '${l10n.mcpServerResourceTemplates}: ${server.resourceTemplates.length}',
   ].join(', ');
-  return '${server.name}: ${l10n.mcpServerAuthStatus}: ${server.authStatus}, $counts';
+  final startup = _startupSummary(l10n, server);
+  return [
+    '${server.name}: ${l10n.mcpServerAuthStatus}: ${server.authStatus}',
+    if (startup.isNotEmpty) startup,
+    counts,
+  ].join(', ');
 }
 
 Iterable<String> _serverVerboseLines(
@@ -92,6 +97,21 @@ Iterable<String> _serverVerboseLines(
   if (server.resourceTemplates.isNotEmpty) {
     yield '  ${l10n.mcpServerResourceTemplates}: ${server.resourceTemplates.map((template) => template.label).join(', ')}';
   }
+}
+
+String _startupSummary(AppLocalizations l10n, McpServerStatus server) {
+  final startupStatus = server.startupStatus;
+  if (startupStatus == null || startupStatus.isEmpty) {
+    return '';
+  }
+  final parts = <String>[
+    '${l10n.mcpServerStartupStatus}: $startupStatus',
+    if (server.startupError != null)
+      '${l10n.mcpServerStartupError}: ${server.startupError}',
+    if (server.startupFailureReason != null)
+      '${l10n.mcpServerStartupFailureReason}: ${server.startupFailureReason}',
+  ];
+  return parts.join(', ');
 }
 
 String _serverInfoSummary(McpServerInfo? info) {

@@ -95,6 +95,7 @@ class AppShell extends StatefulWidget {
     this.slashCommandManifestReader,
     this.accountSnapshotController,
     this.accountUsageSnapshotController,
+    this.mcpServerStatusController,
     this.threadCacheStore,
     this.threadItemCacheStore,
     this.threadTimelineCursorStore,
@@ -112,6 +113,7 @@ class AppShell extends StatefulWidget {
   final SlashCommandManifestReader? slashCommandManifestReader;
   final AccountSnapshotController? accountSnapshotController;
   final AccountUsageSnapshotController? accountUsageSnapshotController;
+  final McpServerStatusController? mcpServerStatusController;
   final ThreadCacheStore? threadCacheStore;
   final ThreadItemCacheStore? threadItemCacheStore;
   final ThreadTimelineCursorStore? threadTimelineCursorStore;
@@ -143,13 +145,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   HostSessionManager? _hostSessionManager;
   AppLifecycleConnectionCoordinator? _lifecycleConnectionCoordinator;
   AppBackgroundNotificationCoordinator? _backgroundNotificationCoordinator;
-  StreamSubscription<CodexEvent>? _accountEventSubscription;
+  StreamSubscription<CodexEvent>? _statusEventSubscription;
   late bool _ownsHostSessionManager;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
   late bool _ownsConfigOverrideController;
   late bool _ownsAccountSnapshotController;
   late bool _ownsAccountUsageSnapshotController;
+  late bool _ownsMcpServerStatusController;
   late bool _ownsBackgroundConnectionPreferences;
 
   ThreadListController get _threadListController =>
@@ -220,6 +223,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             widget.accountSnapshotController ||
         oldWidget.accountUsageSnapshotController !=
             widget.accountUsageSnapshotController ||
+        oldWidget.mcpServerStatusController !=
+            widget.mcpServerStatusController ||
         oldWidget.threadCacheStore != widget.threadCacheStore ||
         oldWidget.threadItemCacheStore != widget.threadItemCacheStore ||
         oldWidget.threadTimelineCursorStore !=
@@ -389,9 +394,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       readerProvider: () => _defaultAgentRemoteService,
       profileProvider: () => _sessionController.profile,
     );
-    _mcpServerStatusController = McpServerStatusController(
-      readerProvider: () => _sessionController.mcpServerStatusReader,
-    );
+    _ownsMcpServerStatusController = widget.mcpServerStatusController == null;
+    _mcpServerStatusController =
+        widget.mcpServerStatusController ??
+        McpServerStatusController(
+          readerProvider: () => _sessionController.mcpServerStatusReader,
+        );
     _modelListController = ModelListController(
       readerProvider: () => _sessionController.modelListReader,
     );
@@ -421,7 +429,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _agentDoctorController.dispose();
     _agentLogsController.dispose();
     _agentSchemaController.dispose();
-    _mcpServerStatusController.dispose();
+    if (_ownsMcpServerStatusController) {
+      _mcpServerStatusController.dispose();
+    }
     _modelListController.dispose();
     _permissionProfileListController.dispose();
     for (final state in {_activeUiState, ..._hostUiStates.values}) {
@@ -446,7 +456,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void _attachActiveSessionBindings() {
     _sessionController.addListener(_handleSessionChanged);
     _activeUiState.attachEvents();
-    _attachAccountEvents();
+    _attachStatusEvents();
     _startLifecycleConnectionCoordinator();
   }
 
@@ -454,22 +464,22 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     unawaited(_lifecycleConnectionCoordinator?.dispose());
     _lifecycleConnectionCoordinator = null;
     _sessionController.removeListener(_handleSessionChanged);
-    unawaited(_accountEventSubscription?.cancel());
-    _accountEventSubscription = null;
+    unawaited(_statusEventSubscription?.cancel());
+    _statusEventSubscription = null;
     if (detachEvents) {
       _activeUiState.detachEvents();
     }
   }
 
-  void _attachAccountEvents() {
-    unawaited(_accountEventSubscription?.cancel());
-    _accountEventSubscription = _sessionController.events?.listen(
-      _handleAccountEvent,
+  void _attachStatusEvents() {
+    unawaited(_statusEventSubscription?.cancel());
+    _statusEventSubscription = _sessionController.events?.listen(
+      _handleStatusEvent,
       onError: (_) {},
     );
   }
 
-  void _handleAccountEvent(CodexEvent event) {
+  void _handleStatusEvent(CodexEvent event) {
     final payload = event.payload;
     if (payload == null) {
       return;
@@ -479,6 +489,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         _accountSnapshotController.ingestAccountUpdated(payload);
       case CodexEventKind.accountRateLimitsUpdated:
         _accountUsageSnapshotController.ingestRateLimitsUpdated(payload);
+      case CodexEventKind.mcpServerStartupStatusUpdated:
+        _mcpServerStatusController.ingestStartupStatusUpdated(payload);
       case _:
         return;
     }

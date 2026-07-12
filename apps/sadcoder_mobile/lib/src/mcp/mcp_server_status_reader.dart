@@ -31,6 +31,22 @@ class McpServerStatusPage {
 
   final List<McpServerStatus> servers;
   final String? nextCursor;
+
+  McpServerStatusPage upsertStartupStatus(McpServerStatus update) {
+    final index = servers.indexWhere((server) => server.name == update.name);
+    if (index == -1) {
+      return McpServerStatusPage(
+        servers: List.unmodifiable([...servers, update]),
+        nextCursor: nextCursor,
+      );
+    }
+    final nextServers = List<McpServerStatus>.from(servers);
+    nextServers[index] = nextServers[index].mergeStartupStatus(update);
+    return McpServerStatusPage(
+      servers: List.unmodifiable(nextServers),
+      nextCursor: nextCursor,
+    );
+  }
 }
 
 class McpServerStatus {
@@ -42,6 +58,10 @@ class McpServerStatus {
     required this.resourceTemplates,
     required this.raw,
     this.serverInfo,
+    this.startupStatus,
+    this.startupError,
+    this.startupFailureReason,
+    this.startupThreadId,
   });
 
   static McpServerStatus? fromJson(Object? value) {
@@ -57,7 +77,35 @@ class McpServerStatus {
       resources: _resourceList(map['resources']),
       resourceTemplates: _resourceTemplateList(map['resourceTemplates']),
       authStatus: _stringValue(map['authStatus']) ?? 'unknown',
+      startupStatus: _stringValue(map['startupStatus'] ?? map['status']),
+      startupError: _stringValue(map['startupError'] ?? map['error']),
+      startupFailureReason: _stringValue(
+        map['startupFailureReason'] ?? map['failureReason'],
+      ),
+      startupThreadId: _stringValue(map['startupThreadId'] ?? map['threadId']),
       raw: map,
+    );
+  }
+
+  static McpServerStatus? fromStartupStatusUpdated(
+    Map<String, Object?> payload,
+  ) {
+    final name = _stringValue(payload['name']);
+    final startupStatus = _stringValue(payload['status']);
+    if (name == null || startupStatus == null) {
+      return null;
+    }
+    return McpServerStatus(
+      name: name,
+      authStatus: 'unknown',
+      tools: const {},
+      resources: const [],
+      resourceTemplates: const [],
+      startupStatus: startupStatus,
+      startupError: _stringValue(payload['error']),
+      startupFailureReason: _stringValue(payload['failureReason']),
+      startupThreadId: _stringValue(payload['threadId']),
+      raw: Map.unmodifiable(payload),
     );
   }
 
@@ -67,6 +115,10 @@ class McpServerStatus {
   final List<McpResourceSummary> resources;
   final List<McpResourceTemplateSummary> resourceTemplates;
   final String authStatus;
+  final String? startupStatus;
+  final String? startupError;
+  final String? startupFailureReason;
+  final String? startupThreadId;
   final Map<String, Object?> raw;
 
   String get displayName {
@@ -75,6 +127,22 @@ class McpServerStatus {
       return title;
     }
     return name;
+  }
+
+  McpServerStatus mergeStartupStatus(McpServerStatus update) {
+    return McpServerStatus(
+      name: name,
+      serverInfo: serverInfo,
+      tools: tools,
+      resources: resources,
+      resourceTemplates: resourceTemplates,
+      authStatus: authStatus,
+      startupStatus: update.startupStatus ?? startupStatus,
+      startupError: update.startupError,
+      startupFailureReason: update.startupFailureReason,
+      startupThreadId: update.startupThreadId,
+      raw: Map.unmodifiable({...raw, ...update.raw}),
+    );
   }
 }
 

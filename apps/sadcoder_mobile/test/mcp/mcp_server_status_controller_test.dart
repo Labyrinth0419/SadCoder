@@ -68,6 +68,68 @@ void main() {
     expect(controller.status, McpServerStatusListStatus.failed);
     expect(controller.error, isA<StateError>());
   });
+
+  test('startup status update creates a minimal loaded page', () {
+    final controller = McpServerStatusController(readerProvider: () => null);
+    addTearDown(controller.dispose);
+
+    controller.ingestStartupStatusUpdated({
+      'name': 'filesystem',
+      'status': 'starting',
+      'threadId': 'thr_1',
+    });
+
+    expect(controller.status, McpServerStatusListStatus.loaded);
+    expect(controller.servers.single.name, 'filesystem');
+    expect(controller.servers.single.authStatus, 'unknown');
+    expect(controller.servers.single.startupStatus, 'starting');
+    expect(controller.servers.single.startupThreadId, 'thr_1');
+  });
+
+  test('startup status update preserves refreshed server inventory', () async {
+    final reader = _FakeMcpServerStatusReader(
+      page: McpServerStatusPage.fromJson({
+        'data': [
+          {
+            'name': 'github',
+            'authStatus': 'oAuth',
+            'tools': {
+              'search_issues': {'name': 'search_issues', 'inputSchema': {}},
+            },
+            'resources': [],
+            'resourceTemplates': [],
+          },
+        ],
+      }),
+    );
+    final controller = McpServerStatusController(readerProvider: () => reader);
+    addTearDown(controller.dispose);
+
+    await controller.refresh();
+    controller.ingestStartupStatusUpdated({
+      'name': 'github',
+      'status': 'ready',
+    });
+
+    expect(controller.status, McpServerStatusListStatus.loaded);
+    expect(controller.servers.single.authStatus, 'oAuth');
+    expect(controller.servers.single.tools, contains('search_issues'));
+    expect(controller.servers.single.startupStatus, 'ready');
+  });
+
+  test('malformed startup status update does not notify', () {
+    final controller = McpServerStatusController(readerProvider: () => null);
+    addTearDown(controller.dispose);
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+
+    controller.ingestStartupStatusUpdated({'name': 'filesystem'});
+    controller.ingestStartupStatusUpdated({'status': 'ready'});
+
+    expect(notifications, 0);
+    expect(controller.status, McpServerStatusListStatus.idle);
+    expect(controller.servers, isEmpty);
+  });
 }
 
 class _FakeMcpServerStatusReader implements McpServerStatusReader {

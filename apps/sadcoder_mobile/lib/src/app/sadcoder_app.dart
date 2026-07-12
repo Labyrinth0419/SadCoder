@@ -9,6 +9,7 @@ import '../background/background_notification_router.dart';
 import '../commands/slash_command_manifest_reader.dart';
 import '../config/codex_config_override_controller.dart';
 import '../i18n/app_localizations.dart';
+import '../mcp/mcp_server_status_controller.dart';
 import '../session/codex_session_state_controller.dart';
 import '../session/host_session_manager.dart';
 import '../ssh/ssh_profile_store.dart';
@@ -35,6 +36,7 @@ class SadCoderApp extends StatefulWidget {
     this.slashCommandManifestReader,
     this.accountSnapshotController,
     this.accountUsageSnapshotController,
+    this.mcpServerStatusController,
     this.threadCacheStore,
     this.threadItemCacheStore,
     this.threadTimelineCursorStore,
@@ -53,6 +55,7 @@ class SadCoderApp extends StatefulWidget {
   final SlashCommandManifestReader? slashCommandManifestReader;
   final AccountSnapshotController? accountSnapshotController;
   final AccountUsageSnapshotController? accountUsageSnapshotController;
+  final McpServerStatusController? mcpServerStatusController;
   final ThreadCacheStore? threadCacheStore;
   final ThreadItemCacheStore? threadItemCacheStore;
   final ThreadTimelineCursorStore? threadTimelineCursorStore;
@@ -134,6 +137,7 @@ class _SadCoderAppState extends State<SadCoderApp> {
             accountSnapshotController: widget.accountSnapshotController,
             accountUsageSnapshotController:
                 widget.accountUsageSnapshotController,
+            mcpServerStatusController: widget.mcpServerStatusController,
             threadCacheStore: widget.threadCacheStore,
             threadItemCacheStore: widget.threadItemCacheStore,
             threadTimelineCursorStore: widget.threadTimelineCursorStore,

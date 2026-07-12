@@ -60,6 +60,59 @@ void main() {
     expect(server.resourceTemplates.single.uriTemplate, contains('{path}'));
   });
 
+  test(
+    'McpServerStatusPage upserts startup status without clearing inventory',
+    () {
+      final page = McpServerStatusPage.fromJson({
+        'data': [
+          {
+            'name': 'github',
+            'authStatus': 'oAuth',
+            'tools': {
+              'search_issues': {'name': 'search_issues', 'inputSchema': {}},
+            },
+            'resources': [],
+            'resourceTemplates': [],
+          },
+        ],
+      });
+      final update = McpServerStatus.fromStartupStatusUpdated({
+        'threadId': 'thr_1',
+        'name': 'github',
+        'status': 'failed',
+        'error': 'missing command',
+        'failureReason': 'reauthenticationRequired',
+      });
+
+      final updated = page.upsertStartupStatus(update!);
+
+      expect(updated.servers, hasLength(1));
+      final server = updated.servers.single;
+      expect(server.authStatus, 'oAuth');
+      expect(server.tools, contains('search_issues'));
+      expect(server.startupStatus, 'failed');
+      expect(server.startupError, 'missing command');
+      expect(server.startupFailureReason, 'reauthenticationRequired');
+      expect(server.startupThreadId, 'thr_1');
+    },
+  );
+
+  test('McpServerStatus parses standalone startup status updates', () {
+    final update = McpServerStatus.fromStartupStatusUpdated({
+      'name': 'filesystem',
+      'status': 'starting',
+    });
+
+    expect(update?.name, 'filesystem');
+    expect(update?.authStatus, 'unknown');
+    expect(update?.startupStatus, 'starting');
+    expect(update?.tools, isEmpty);
+    expect(
+      McpServerStatus.fromStartupStatusUpdated({'name': 'broken'}),
+      isNull,
+    );
+  });
+
   test('CodexMcpServerStatusReader calls app-server status list', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {
