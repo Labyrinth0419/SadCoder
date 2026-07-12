@@ -670,6 +670,10 @@ class _LoadedAgentDoctor extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SettingsValueLine(
+          label: l10n.agentVersion,
+          value: status.agentVersion,
+        ),
+        _SettingsValueLine(
           label: l10n.codexVersion,
           value: _codexDoctorSummary(result.codex),
         ),

@@ -614,6 +614,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(doctorReader.profiles, [_profile]);
+    expect(find.text('Agent version: 0.2.0'), findsOneWidget);
     expect(find.text('Codex version: codex-cli 0.143.0'), findsOneWidget);
     expect(
       find.text('Codex program: /home/tester/.nvm/versions/node/v24/bin/codex'),

@@ -1729,6 +1729,8 @@ class _ProbeResultPanel extends StatelessWidget {
             if (report?.agentStatus != null) ...[
               const SizedBox(height: 8),
               Text(_agentStatusSummary(report!.agentStatus!)),
+              const SizedBox(height: 4),
+              Text('${l10n.agentVersion}: ${report.agentStatus!.agentVersion}'),
               if (report.agentStatus!.codexFailure != null) ...[
                 const SizedBox(height: 4),
                 Text(

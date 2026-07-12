@@ -105,6 +105,7 @@ void main() {
     expect(runner.lastProfile?.password, 'secret');
     expect(runner.lastProfile?.agentCommand, 'sadcoder-agent');
     expect(find.text('Probe passed'), findsOneWidget);
+    expect(find.text('Agent version: 0.1.0'), findsOneWidget);
     expect(find.text('Backend: stdio fallback / ready'), findsOneWidget);
     expect(
       find.text(

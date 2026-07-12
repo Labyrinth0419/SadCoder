@@ -102,6 +102,7 @@ class AppLocalizations {
   String get sshAuth => _text('sshAuth');
   String get remoteShell => _text('remoteShell');
   String get codexVersion => _text('codexVersion');
+  String get agentVersion => _text('agentVersion');
   String get agentStatus => _text('agentStatus');
   String get agentStart => _text('agentStart');
   String get proxyConnect => _text('proxyConnect');
@@ -1113,6 +1114,7 @@ const _values = <String, Map<String, String>>{
     'sshAuth': 'SSH auth',
     'remoteShell': 'Remote shell',
     'codexVersion': 'Codex version',
+    'agentVersion': 'Agent version',
     'agentStatus': 'Agent status',
     'agentStart': 'Agent start',
     'proxyConnect': 'Proxy connect',
@@ -1939,6 +1941,7 @@ const _values = <String, Map<String, String>>{
     'sshAuth': 'SSH 认证',
     'remoteShell': '远端 shell',
     'codexVersion': 'Codex 版本',
+    'agentVersion': 'Agent 版本',
     'agentStatus': 'Agent 状态',
     'agentStart': '启动 Agent',
     'proxyConnect': '代理连接',
