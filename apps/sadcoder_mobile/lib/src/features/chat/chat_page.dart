@@ -682,6 +682,7 @@ class _ChatPageState extends State<ChatPage> {
           showHooks: _buildHooksSummary,
           showApps: _buildAppsSummary,
           showDebugConfig: _buildDebugConfigSummary,
+          showRollout: _buildRolloutSummary,
           showDiff: _buildDiffSummary,
           handleGoal: _handleGoalCommand,
           handleReview: _handleReviewCommand,
@@ -956,6 +957,19 @@ class _ChatPageState extends State<ChatPage> {
       await controller.refresh(cwd: cwds.isEmpty ? null : cwds.first);
     }
     return buildDebugConfigSummary(l10n: l10n, controller: controller);
+  }
+
+  Future<String?> _buildRolloutSummary(String arguments) async {
+    if (arguments.trim().isNotEmpty) {
+      return null;
+    }
+    final rolloutPath = _rolloutPathFromRaw(
+      widget.threadDetailController?.detail?.thread.raw ?? const {},
+    );
+    if (rolloutPath != null) {
+      return 'Current rollout path: $rolloutPath';
+    }
+    return 'Rollout path is not available yet.';
   }
 
   Future<String?> _buildDiffSummary(String arguments) async {
@@ -2116,6 +2130,9 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.debugConfig => l10n.slashCommandExecuted(
           result.slash,
         ),
+        SlashCommandActionEffect.rollout => l10n.slashCommandExecuted(
+          result.slash,
+        ),
         SlashCommandActionEffect.diff => l10n.slashCommandExecuted(
           result.slash,
         ),
@@ -2521,6 +2538,32 @@ String? _normalizedText(String? value) {
     return null;
   }
   return value.trim();
+}
+
+String? _rolloutPathFromRaw(Map<String, Object?> raw) {
+  String? fromValue(Object? value) {
+    if (value is String) {
+      return _normalizedText(value);
+    }
+    if (value is Map) {
+      return fromValue(value['path']);
+    }
+    return null;
+  }
+
+  for (final key in const [
+    'rolloutPath',
+    'rollout_path',
+    'currentRolloutPath',
+    'current_rollout_path',
+    'rollout',
+  ]) {
+    final path = fromValue(raw[key]);
+    if (path != null) {
+      return path;
+    }
+  }
+  return null;
 }
 
 class _SideConversation {

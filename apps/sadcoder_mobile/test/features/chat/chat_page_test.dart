@@ -995,7 +995,7 @@ void main() {
     );
   });
 
-  testWidgets('debug-only slash commands explain diagnostic state', (
+  testWidgets('/rollout shows the TUI-compatible missing path diagnostic', (
     tester,
   ) async {
     final harness = await _pumpConnectedChatPage(tester);
@@ -1003,14 +1003,59 @@ void main() {
     await _submitComposerText(tester, '/rollout');
 
     expect(harness.turnRunner.startedTurns, isEmpty);
-    expect(
-      find.text(
-        '/rollout is registered but not available: debug-only command. '
-        'Planned path: diagnostic rollout path display.',
+    expect(find.text('Rollout path is not available yet.'), findsOneWidget);
+  });
+
+  testWidgets('/rollout shows the current raw rollout path when available', (
+    tester,
+  ) async {
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(
+        thread: ThreadSummary.fromJson({
+          'id': 'thr_selected',
+          'sessionId': 'sess_1',
+          'preview': 'Selected thread',
+          'ephemeral': false,
+          'status': 'idle',
+          'cwd': '/repo',
+          'updatedAt': 1,
+          'rolloutPath': '/tmp/codex-rollout.jsonl',
+          'turns': <Object?>[],
+        }),
       ),
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => detailReader,
+    );
+    addTearDown(detailController.dispose);
+    await detailController.readThread('thr_selected');
+    await _pumpChatPage(tester, threadDetailController: detailController);
+
+    await _submitComposerText(tester, '/rollout');
+
+    expect(
+      find.text('Current rollout path: /tmp/codex-rollout.jsonl'),
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'debug-only unsupported slash commands explain diagnostic state',
+    (tester) async {
+      final harness = await _pumpConnectedChatPage(tester);
+
+      await _submitComposerText(tester, '/test-approval');
+
+      expect(harness.turnRunner.startedTurns, isEmpty);
+      expect(
+        find.text(
+          '/test-approval is registered but not available: debug-only command. '
+          'Planned path: approval pipeline test.',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('high-risk fallback slash commands include risk state', (
     tester,

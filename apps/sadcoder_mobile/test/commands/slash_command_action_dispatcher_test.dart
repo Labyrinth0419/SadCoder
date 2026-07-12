@@ -351,6 +351,47 @@ void main() {
     },
   );
 
+  test('/rollout returns the injected rollout summary', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      showRollout: (argument) {
+        arguments.add(argument);
+        return 'Rollout path is not available yet.';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/rollout'),
+      hasActiveTurn: true,
+    );
+
+    expect(arguments, ['']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.rollout);
+    expect(result.message, 'Rollout path is not available yet.');
+  });
+
+  test('/rollout is unavailable when arguments are not supported', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      showRollout: (arguments) {
+        calls++;
+        return arguments.trim().isEmpty
+            ? 'Rollout path is not available yet.'
+            : null;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/rollout extra'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, 1);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'rollout');
+  });
+
   test('/diff returns the injected diff summary', () async {
     final dispatcher = SlashCommandActionDispatcher(
       showDiff: (_) => 'diff --git a/lib/main.dart b/lib/main.dart',
@@ -1614,7 +1655,7 @@ void main() {
         hasActiveTurn: false,
       );
       final debugOnly = await dispatcher.dispatch(
-        registry.parseComposerText('/rollout'),
+        registry.parseComposerText('/test-approval'),
         hasActiveTurn: false,
       );
 

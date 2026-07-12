@@ -14,6 +14,7 @@ typedef SlashCommandShowHooks = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowApps = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowDebugConfig =
     FutureOr<String?> Function(String arguments);
+typedef SlashCommandShowRollout = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowDiff = FutureOr<String?> Function(String arguments);
 typedef SlashCommandHandleGoal = FutureOr<String?> Function(String arguments);
 typedef SlashCommandHandleReview = FutureOr<String?> Function(String arguments);
@@ -86,6 +87,7 @@ enum SlashCommandActionEffect {
   hooks,
   apps,
   debugConfig,
+  rollout,
   diff,
   goal,
   review,
@@ -232,6 +234,7 @@ class SlashCommandActionDispatcher {
     this.showHooks,
     this.showApps,
     this.showDebugConfig,
+    this.showRollout,
     this.showDiff,
     this.handleGoal,
     this.handleReview,
@@ -277,6 +280,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandShowHooks? showHooks;
   final SlashCommandShowApps? showApps;
   final SlashCommandShowDebugConfig? showDebugConfig;
+  final SlashCommandShowRollout? showRollout;
   final SlashCommandShowDiff? showDiff;
   final SlashCommandHandleGoal? handleGoal;
   final SlashCommandHandleReview? handleReview;
@@ -399,6 +403,8 @@ class SlashCommandActionDispatcher {
         return _showApps(parsed);
       case 'debug-config':
         return _showDebugConfig(parsed);
+      case 'rollout':
+        return _showRollout(parsed);
       case 'diff':
         return _showDiff(parsed);
       case 'goal':
@@ -659,6 +665,16 @@ class SlashCommandActionDispatcher {
       parsed,
       action: showDebugConfig,
       effect: SlashCommandActionEffect.debugConfig,
+    );
+  }
+
+  Future<SlashCommandActionResult> _showRollout(
+    SlashCommandParseResult parsed,
+  ) async {
+    return _showMessageWithArguments(
+      parsed,
+      action: showRollout,
+      effect: SlashCommandActionEffect.rollout,
     );
   }
 
