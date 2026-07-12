@@ -15,6 +15,7 @@ import '../threads/thread_cache_store.dart';
 import '../threads/thread_item_cache_store.dart';
 import '../threads/thread_timeline_cursor_store.dart';
 import '../theme/sadcoder_theme.dart';
+import '../usage/account_usage_snapshot_controller.dart';
 import 'app_shell.dart';
 
 class SadCoderApp extends StatefulWidget {
@@ -31,6 +32,7 @@ class SadCoderApp extends StatefulWidget {
     this.backgroundNotificationRouter,
     this.profileStore,
     this.slashCommandManifestReader,
+    this.accountUsageSnapshotController,
     this.threadCacheStore,
     this.threadItemCacheStore,
     this.threadTimelineCursorStore,
@@ -47,6 +49,7 @@ class SadCoderApp extends StatefulWidget {
   final BackgroundNotificationRouter? backgroundNotificationRouter;
   final SshProfileStore? profileStore;
   final SlashCommandManifestReader? slashCommandManifestReader;
+  final AccountUsageSnapshotController? accountUsageSnapshotController;
   final ThreadCacheStore? threadCacheStore;
   final ThreadItemCacheStore? threadItemCacheStore;
   final ThreadTimelineCursorStore? threadTimelineCursorStore;
@@ -125,6 +128,8 @@ class _SadCoderAppState extends State<SadCoderApp> {
             backgroundNotificationRouter: widget.backgroundNotificationRouter,
             profileStore: widget.profileStore,
             slashCommandManifestReader: widget.slashCommandManifestReader,
+            accountUsageSnapshotController:
+                widget.accountUsageSnapshotController,
             threadCacheStore: widget.threadCacheStore,
             threadItemCacheStore: widget.threadItemCacheStore,
             threadTimelineCursorStore: widget.threadTimelineCursorStore,

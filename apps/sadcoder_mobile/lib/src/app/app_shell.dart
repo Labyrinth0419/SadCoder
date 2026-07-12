@@ -16,6 +16,7 @@ import '../commands/slash_command_manifest_reader.dart';
 import '../config/codex_config_override_controller.dart';
 import '../config/codex_config_snapshot_controller.dart';
 import '../diagnostics/diagnostic_log_export_controller.dart';
+import '../events/codex_event.dart';
 import '../features/approvals/approvals_page.dart';
 import '../features/chat/chat_page.dart';
 import '../features/chat/chat_timeline_controller.dart';
@@ -92,6 +93,7 @@ class AppShell extends StatefulWidget {
     this.backgroundNotificationRouter,
     this.profileStore,
     this.slashCommandManifestReader,
+    this.accountUsageSnapshotController,
     this.threadCacheStore,
     this.threadItemCacheStore,
     this.threadTimelineCursorStore,
@@ -107,6 +109,7 @@ class AppShell extends StatefulWidget {
   final BackgroundNotificationRouter? backgroundNotificationRouter;
   final SshProfileStore? profileStore;
   final SlashCommandManifestReader? slashCommandManifestReader;
+  final AccountUsageSnapshotController? accountUsageSnapshotController;
   final ThreadCacheStore? threadCacheStore;
   final ThreadItemCacheStore? threadItemCacheStore;
   final ThreadTimelineCursorStore? threadTimelineCursorStore;
@@ -138,10 +141,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   HostSessionManager? _hostSessionManager;
   AppLifecycleConnectionCoordinator? _lifecycleConnectionCoordinator;
   AppBackgroundNotificationCoordinator? _backgroundNotificationCoordinator;
+  StreamSubscription<CodexEvent>? _accountEventSubscription;
   late bool _ownsHostSessionManager;
   late bool _ownsApprovalController;
   late bool _ownsSessionController;
   late bool _ownsConfigOverrideController;
+  late bool _ownsAccountUsageSnapshotController;
   late bool _ownsBackgroundConnectionPreferences;
 
   ThreadListController get _threadListController =>
@@ -208,6 +213,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             widget.backgroundConnectionKeeper ||
         oldWidget.slashCommandManifestReader !=
             widget.slashCommandManifestReader ||
+        oldWidget.accountUsageSnapshotController !=
+            widget.accountUsageSnapshotController ||
         oldWidget.threadCacheStore != widget.threadCacheStore ||
         oldWidget.threadItemCacheStore != widget.threadItemCacheStore ||
         oldWidget.threadTimelineCursorStore !=
@@ -351,9 +358,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _accountSnapshotController = AccountSnapshotController(
       readerProvider: () => _sessionController.accountSnapshotReader,
     );
-    _accountUsageSnapshotController = AccountUsageSnapshotController(
-      readerProvider: () => _sessionController.accountUsageSnapshotReader,
-    );
+    _ownsAccountUsageSnapshotController =
+        widget.accountUsageSnapshotController == null;
+    _accountUsageSnapshotController =
+        widget.accountUsageSnapshotController ??
+        AccountUsageSnapshotController(
+          readerProvider: () => _sessionController.accountUsageSnapshotReader,
+        );
     _agentCodexConfigureController = AgentCodexConfigureController(
       runnerProvider: () => _defaultAgentRemoteService,
       profileProvider: () => _sessionController.profile,
@@ -393,7 +404,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     }
     _configSnapshotController.dispose();
     _accountSnapshotController.dispose();
-    _accountUsageSnapshotController.dispose();
+    if (_ownsAccountUsageSnapshotController) {
+      _accountUsageSnapshotController.dispose();
+    }
     _agentCodexConfigureController.dispose();
     _agentDoctorController.dispose();
     _agentLogsController.dispose();
@@ -423,6 +436,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void _attachActiveSessionBindings() {
     _sessionController.addListener(_handleSessionChanged);
     _activeUiState.attachEvents();
+    _attachAccountEvents();
     _startLifecycleConnectionCoordinator();
   }
 
@@ -430,9 +444,30 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     unawaited(_lifecycleConnectionCoordinator?.dispose());
     _lifecycleConnectionCoordinator = null;
     _sessionController.removeListener(_handleSessionChanged);
+    unawaited(_accountEventSubscription?.cancel());
+    _accountEventSubscription = null;
     if (detachEvents) {
       _activeUiState.detachEvents();
     }
+  }
+
+  void _attachAccountEvents() {
+    unawaited(_accountEventSubscription?.cancel());
+    _accountEventSubscription = _sessionController.events?.listen(
+      _handleAccountEvent,
+      onError: (_) {},
+    );
+  }
+
+  void _handleAccountEvent(CodexEvent event) {
+    if (event.kind != CodexEventKind.accountRateLimitsUpdated) {
+      return;
+    }
+    final payload = event.payload;
+    if (payload == null) {
+      return;
+    }
+    _accountUsageSnapshotController.ingestRateLimitsUpdated(payload);
   }
 
   void _startLifecycleConnectionCoordinator() {
@@ -459,9 +494,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (manager == null) {
       return _sessionController.isConnected;
     }
-    return manager.sessions.any(
-      (entry) => entry.sessionController.isConnected,
-    );
+    return manager.sessions.any((entry) => entry.sessionController.isConnected);
   }
 
   Future<void> _disconnectBackgroundConnections() async {

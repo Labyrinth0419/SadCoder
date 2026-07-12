@@ -58,6 +58,7 @@ import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 import 'package:sadcoder_mobile/src/threads/thread_turn_list_reader.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
 import 'package:sadcoder_mobile/src/turns/turn_text_element.dart';
+import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_reader.dart';
 
 void main() {
@@ -263,6 +264,66 @@ void main() {
 
     expect(find.text('/remote-only'), findsOneWidget);
     expect(find.text('remote command from agent manifest'), findsOneWidget);
+  });
+
+  testWidgets('account rate-limit events update active chat status', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final starter = _RecordingStaticSessionStarter(
+      threads: const [],
+      detail: ThreadDetail(thread: _emptyThread),
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final accountUsageSnapshotController = AccountUsageSnapshotController(
+      readerProvider: () => null,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(accountUsageSnapshotController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+
+    await tester.pumpWidget(
+      SadCoderApp(
+        approvalController: approvalController,
+        sessionController: sessionController,
+        accountUsageSnapshotController: accountUsageSnapshotController,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chat').last);
+    await tester.pumpAndSettle();
+
+    starter.connections.single.emit(
+      CodexEvent.fromNotification({
+        'method': 'account/rateLimits/updated',
+        'params': {
+          'rateLimits': {
+            'limitId': 'codex',
+            'limitName': 'Codex',
+            'primary': {'usedPercent': 72},
+            'planType': 'pro',
+          },
+        },
+      }),
+    );
+    await tester.pump();
+
+    expect(
+      accountUsageSnapshotController.status,
+      AccountUsageSnapshotStatus.loaded,
+    );
+    expect(
+      accountUsageSnapshotController.snapshot?.rateLimits?.primary?.usedPercent,
+      72,
+    );
+    expect(
+      accountUsageSnapshotController.snapshot?.rateLimits?.planType,
+      'pro',
+    );
   });
 
   testWidgets('chat host selector restores per-host thread timeline state', (
