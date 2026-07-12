@@ -678,6 +678,16 @@ class _LoadedAgentDoctor extends StatelessWidget {
           value: result.codex.program,
         ),
         _SettingsValueLine(label: l10n.codexSource, value: result.codex.source),
+        if (result.codex.failure != null)
+          _SettingsValueLine(
+            label: l10n.codexCommandFailure,
+            value: result.codex.failure!.message,
+          ),
+        if (status.codexFailure != null)
+          _SettingsValueLine(
+            label: l10n.codexStatusFailure,
+            value: status.codexFailure!.message,
+          ),
         if (result.configPath.trim().isNotEmpty)
           _SettingsValueLine(
             label: l10n.agentConfigPath,

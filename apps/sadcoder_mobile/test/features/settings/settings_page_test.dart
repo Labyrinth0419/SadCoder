@@ -642,6 +642,83 @@ void main() {
     );
   });
 
+  testWidgets('renders agent doctor Codex failure diagnostics', (tester) async {
+    final overrideController = CodexConfigOverrideController();
+    final doctorReader = _RecordingAgentDoctorReader(
+      result: const AgentDoctorResult(
+        configPath: '/home/tester/.config/sadcoder/agent.json',
+        codex: AgentCodexCommandDiagnostic(
+          program: '/home/tester/.nvm/versions/node/v24/bin/codex',
+          args: [],
+          pathPrepend: ['/home/tester/.nvm/versions/node/v24/bin'],
+          source: 'config',
+          available: false,
+          failure: AgentCodexFailure(
+            kind: 'runtime-not-found',
+            detail: 'node 24 was not found',
+          ),
+        ),
+        status: AgentStatus(
+          agentVersion: '0.2.0',
+          platformOs: 'linux',
+          platformArch: 'x86_64',
+          codexPath: '/home/tester/.nvm/versions/node/v24/bin/codex',
+          codexAvailable: false,
+          codexFailure: AgentCodexFailure(
+            kind: 'non-zero-exit',
+            detail: 'SyntaxError: Unexpected token',
+          ),
+          backendKind: BackendKind.sadcoderAgentService,
+          backendState: BackendState.unavailable,
+          backendDetail: 'service socket is not ready',
+          reconnectCache: AgentReconnectCacheStatus(
+            loadError: 'state file is corrupt',
+          ),
+        ),
+      ),
+    );
+    final doctorController = AgentDoctorController(
+      readerProvider: () => doctorReader,
+      profileProvider: () => _profile,
+    );
+    addTearDown(overrideController.dispose);
+    addTearDown(doctorController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      agentDoctorController: doctorController,
+    );
+    await _openSettingsSection(tester, 'diagnostics');
+
+    await tester.tap(
+      find.byKey(const ValueKey('settings-agent-doctor-refresh')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Codex command failure: runtime-not-found: node 24 was not found',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'Codex status failure: non-zero-exit: SyntaxError: Unexpected token',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Backend: agent service / unavailable'), findsOneWidget);
+    expect(
+      find.text('Backend detail: service socket is not ready'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Reconnect cache load error: state file is corrupt'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('configures persistent agent Codex launch settings', (
     tester,
   ) async {

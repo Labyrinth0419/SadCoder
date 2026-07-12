@@ -546,6 +546,8 @@ class AppLocalizations {
   String get agentConfigPath => _text('agentConfigPath');
   String get codexProgram => _text('codexProgram');
   String get codexSource => _text('codexSource');
+  String get codexCommandFailure => _text('codexCommandFailure');
+  String get codexStatusFailure => _text('codexStatusFailure');
   String get backendDetail => _text('backendDetail');
   String get copyDiagnosticLogs => _text('copyDiagnosticLogs');
   String get copyingDiagnosticLogs => _text('copyingDiagnosticLogs');
@@ -1516,6 +1518,8 @@ const _values = <String, Map<String, String>>{
     'agentConfigPath': 'Agent config',
     'codexProgram': 'Codex program',
     'codexSource': 'Codex source',
+    'codexCommandFailure': 'Codex command failure',
+    'codexStatusFailure': 'Codex status failure',
     'backendDetail': 'Backend detail',
     'copyDiagnosticLogs': 'Copy logs',
     'copyingDiagnosticLogs': 'Copying logs',
@@ -2305,6 +2309,8 @@ const _values = <String, Map<String, String>>{
     'agentConfigPath': 'Agent 配置',
     'codexProgram': 'Codex 程序',
     'codexSource': 'Codex 来源',
+    'codexCommandFailure': 'Codex 命令失败',
+    'codexStatusFailure': 'Codex 状态失败',
     'backendDetail': 'Backend 详情',
     'copyDiagnosticLogs': '复制日志',
     'copyingDiagnosticLogs': '正在复制日志',
