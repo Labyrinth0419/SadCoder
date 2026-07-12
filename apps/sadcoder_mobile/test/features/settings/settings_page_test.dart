@@ -130,6 +130,20 @@ void main() {
     expect(find.byKey(const ValueKey('settings-theme-selector')), findsNothing);
   });
 
+  testWidgets('shows app version in diagnostics without a connected agent', (
+    tester,
+  ) async {
+    final controller = CodexConfigOverrideController();
+    addTearDown(controller.dispose);
+
+    await _pumpSettings(tester, controller, appVersion: '1.2.3-test');
+    await _openSettingsSection(tester, 'diagnostics');
+
+    expect(find.text('Diagnostics'), findsWidgets);
+    expect(find.text('Version: 1.2.3-test'), findsOneWidget);
+    expect(find.text('This section is unavailable.'), findsNothing);
+  });
+
   testWidgets('applies and clears app default config overrides', (
     tester,
   ) async {
@@ -628,6 +642,7 @@ void main() {
     await _openSettingsSection(tester, 'diagnostics');
 
     expect(find.text('Agent doctor'), findsOneWidget);
+    expect(find.text('Version: 1.0.0'), findsOneWidget);
     expect(
       find.text('Connect to a host, then run agent doctor.'),
       findsOneWidget,
@@ -1182,6 +1197,7 @@ Future<void> _pumpSettings(
   AgentLogsController? agentLogsController,
   AgentSchemaController? agentSchemaController,
   DiagnosticLogExportController? diagnosticLogExportController,
+  String appVersion = '1.0.0',
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -1205,6 +1221,7 @@ Future<void> _pumpSettings(
           agentLogsController: agentLogsController,
           agentSchemaController: agentSchemaController,
           diagnosticLogExportController: diagnosticLogExportController,
+          appVersion: appVersion,
         ),
       ),
     ),

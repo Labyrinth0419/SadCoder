@@ -1044,6 +1044,7 @@ MVP 可以简化为底部导航：
 - 已落地 snapshot CLI cursor fallback：`sadcoder-agent snapshot --since-cursor ... --json` 与 proxy `agent/snapshot` 共享 retained event 过滤语义；移动端 `AgentRemoteService.readSnapshot` 会把 `sinceCursor` 传给独立 SSH fallback 命令，避免旧兼容路径退回全量 snapshot。
 - 已落地 reconnect cache cursor/thread 诊断：`AgentReconnectCacheStatus` / `agent status` / `doctor` 会暴露最新 `deliveredCursor`、pending approval 数、recent event 数和 thread snapshot 数，移动端 agent status 解析与 Hosts/Settings 诊断页会展示这些值，便于确认重连增量 snapshot 使用的事实来源。
 - 已落地 Hosts / Settings Diagnostics 的 agent version 展示：主机探测结果与 Settings agent doctor 卡片会显示 `AgentStatus.agentVersion`，便于排查 App 与 sadcoder-agent 版本不匹配。
+- 已落地 Settings Diagnostics 的 App version 展示：Diagnostics 顶部会显示移动端 `sadcoderMobileClientVersion`，并与 agent version、Codex version 放在同一只读诊断入口，便于导出可用版本与排查协议初始化问题。
 - 已落地 Hosts / Settings Diagnostics 的 Codex failure 展示：`sadcoder-agent doctor --json` 中 command diagnostic failure 与 `AgentStatus.codexFailure` 会作为独立结构化行展示，避免 Node/NVM 运行时错误、非零退出、路径缺失等被压缩成模糊的“Codex 不可用”摘要。
 - 已落地 Hosts 探测结果的 backend readiness 展示：agent status 摘要会显示 backend kind 与 state，例如 SadCoder service / ready 或 stdio fallback / unavailable，避免只看到后端类型而不知道可用性。
 - 已落地 agent snapshot 缓存窗口诊断：`AgentStateSnapshot` 会暴露 `retainedCursorFloor` 与 `cursorGap`，当客户端 `sinceCursor` 早于 agent retained recent event 窗口或无法在窗口中确认时标记 gap，为后续触发更保守的 thread/read、turn/item 分页 reconciliation 做准备。

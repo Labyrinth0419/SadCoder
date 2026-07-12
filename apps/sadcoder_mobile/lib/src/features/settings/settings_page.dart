@@ -21,6 +21,7 @@ import '../../i18n/app_localizations.dart';
 import '../../models/model_labels.dart';
 import '../../models/model_list_controller.dart';
 import '../../models/model_list_reader.dart';
+import '../../protocol/codex_client_info.dart';
 import '../../security/permission_risk.dart';
 import '../appearance/app_color_palette_picker.dart';
 
@@ -38,6 +39,7 @@ class SettingsPage extends StatefulWidget {
     this.agentLogsController,
     this.agentSchemaController,
     this.diagnosticLogExportController,
+    this.appVersion = sadcoderMobileClientVersion,
   });
 
   final AppAppearanceController? appearanceController;
@@ -51,6 +53,7 @@ class SettingsPage extends StatefulWidget {
   final AgentLogsController? agentLogsController;
   final AgentSchemaController? agentSchemaController;
   final DiagnosticLogExportController? diagnosticLogExportController;
+  final String appVersion;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -205,32 +208,22 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
       ],
       _SettingsSection.diagnostics => [
-        if (widget.agentDoctorController == null &&
-            widget.agentCodexConfigureController == null &&
-            widget.agentLogsController == null &&
-            widget.agentSchemaController == null &&
-            widget.diagnosticLogExportController == null)
-          _SettingsUnavailableCard(
-            icon: Icons.article_outlined,
-            title: l10n.settingsSectionDiagnostics,
-          )
-        else ...[
-          if (widget.agentDoctorController != null)
-            _AgentDoctorSettingsCard(controller: widget.agentDoctorController!),
-          if (widget.agentCodexConfigureController != null)
-            _AgentCodexConfigureCard(
-              controller: widget.agentCodexConfigureController!,
-              doctorController: widget.agentDoctorController,
-            ),
-          if (widget.agentSchemaController != null)
-            _AgentSchemaSettingsCard(controller: widget.agentSchemaController!),
-          if (widget.agentLogsController != null)
-            _AgentLogsSettingsCard(controller: widget.agentLogsController!),
-          if (widget.diagnosticLogExportController != null)
-            _DiagnosticLogExportCard(
-              controller: widget.diagnosticLogExportController!,
-            ),
-        ],
+        _AppVersionDiagnosticsCard(appVersion: widget.appVersion),
+        if (widget.agentDoctorController != null)
+          _AgentDoctorSettingsCard(controller: widget.agentDoctorController!),
+        if (widget.agentCodexConfigureController != null)
+          _AgentCodexConfigureCard(
+            controller: widget.agentCodexConfigureController!,
+            doctorController: widget.agentDoctorController,
+          ),
+        if (widget.agentSchemaController != null)
+          _AgentSchemaSettingsCard(controller: widget.agentSchemaController!),
+        if (widget.agentLogsController != null)
+          _AgentLogsSettingsCard(controller: widget.agentLogsController!),
+        if (widget.diagnosticLogExportController != null)
+          _DiagnosticLogExportCard(
+            controller: widget.diagnosticLogExportController!,
+          ),
       ],
     };
   }
@@ -638,6 +631,42 @@ class _AgentDoctorSettingsCard extends StatelessWidget {
       animation: controller,
       builder: (context, _) =>
           _AgentDoctorSettingsContent(controller: controller),
+    );
+  }
+}
+
+class _AppVersionDiagnosticsCard extends StatelessWidget {
+  const _AppVersionDiagnosticsCard({required this.appVersion});
+
+  final String appVersion;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.info_outline),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    l10n.settingsSectionDiagnostics,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 6),
+                  _SettingsValueLine(label: l10n.appVersion, value: appVersion),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
