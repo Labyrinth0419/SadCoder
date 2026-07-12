@@ -1101,7 +1101,25 @@ void main() {
     expect(approval.rawParams['changes'], isA<List<Object?>>());
   });
 
-  testWidgets('high-risk fallback slash commands include risk state', (
+  testWidgets('/setup-default-sandbox reports guarded fallback diagnostic', (
+    tester,
+  ) async {
+    final harness = await _pumpConnectedChatPage(tester);
+
+    await _submitComposerText(tester, '/setup-default-sandbox');
+
+    expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(
+      find.text(
+        'Default sandbox setup is not wired in the mobile app yet. '
+        'It requires a guarded agent fallback and high-risk confirmation '
+        'on the selected host.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('/sandbox-add-read-dir reports guarded fallback diagnostic', (
     tester,
   ) async {
     final harness = await _pumpConnectedChatPage(tester);
@@ -1111,10 +1129,24 @@ void main() {
     expect(harness.turnRunner.startedTurns, isEmpty);
     expect(
       find.text(
-        '/sandbox-add-read-dir is registered but not available: Windows-only command. '
-        'Planned path: windows sandbox read directory configuration. '
-        'Risk: high.',
+        'Sandbox read-directory configuration is not wired in the mobile app '
+        'yet. It requires a guarded Windows agent fallback and high-risk '
+        'confirmation.',
       ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('/sandbox-add-read-dir rejects non-Windows paths locally', (
+    tester,
+  ) async {
+    final harness = await _pumpConnectedChatPage(tester);
+
+    await _submitComposerText(tester, '/sandbox-add-read-dir repo');
+
+    expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(
+      find.text('/sandbox-add-read-dir is unavailable right now.'),
       findsOneWidget,
     );
   });

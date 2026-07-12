@@ -126,6 +126,8 @@ enum SlashCommandActionEffect {
   appHandoff,
   importFlow,
   initFlow,
+  sandboxSetup,
+  sandboxReadDir,
   modelOverride,
   personalityOverride,
   permissionsOverride,
@@ -393,6 +395,10 @@ class SlashCommandActionDispatcher {
           action: configurePermissions,
           effect: SlashCommandActionEffect.permissionsOverride,
         );
+      case 'setup-default-sandbox':
+        return _setupDefaultSandboxDiagnostic(parsed);
+      case 'sandbox-add-read-dir':
+        return _sandboxReadDirDiagnostic(parsed);
       case 'ide':
         return _attachIdeContext(parsed);
       case 'plan':
@@ -900,6 +906,42 @@ class SlashCommandActionDispatcher {
       rawCommand: parsed.rawCommand,
       arguments: parsed.arguments,
       effect: SlashCommandActionEffect.initFlow,
+    );
+  }
+
+  SlashCommandActionResult _setupDefaultSandboxDiagnostic(
+    SlashCommandParseResult parsed,
+  ) {
+    if (parsed.arguments.trim().isNotEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    return SlashCommandActionResult.executed(
+      command: parsed.command!,
+      rawCommand: parsed.rawCommand,
+      arguments: parsed.arguments,
+      effect: SlashCommandActionEffect.sandboxSetup,
+    );
+  }
+
+  SlashCommandActionResult _sandboxReadDirDiagnostic(
+    SlashCommandParseResult parsed,
+  ) {
+    if (!_isWindowsAbsolutePath(parsed.arguments.trim())) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    return SlashCommandActionResult.executed(
+      command: parsed.command!,
+      rawCommand: parsed.rawCommand,
+      arguments: parsed.arguments,
+      effect: SlashCommandActionEffect.sandboxReadDir,
     );
   }
 
@@ -1478,4 +1520,29 @@ class SlashCommandActionDispatcher {
       );
     }
   }
+}
+
+bool _isWindowsAbsolutePath(String value) {
+  if (value.length >= 3 &&
+      _isAsciiLetter(value.codeUnitAt(0)) &&
+      value.codeUnitAt(1) == 0x3A &&
+      _isWindowsSeparator(value.codeUnitAt(2))) {
+    return true;
+  }
+  if (value.length >= 5 &&
+      _isWindowsSeparator(value.codeUnitAt(0)) &&
+      _isWindowsSeparator(value.codeUnitAt(1)) &&
+      !_isWindowsSeparator(value.codeUnitAt(2))) {
+    return true;
+  }
+  return false;
+}
+
+bool _isAsciiLetter(int codeUnit) {
+  return (codeUnit >= 0x41 && codeUnit <= 0x5A) ||
+      (codeUnit >= 0x61 && codeUnit <= 0x7A);
+}
+
+bool _isWindowsSeparator(int codeUnit) {
+  return codeUnit == 0x5C || codeUnit == 0x2F;
 }

@@ -2287,6 +2287,10 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandActionEffect.importFlow =>
           l10n.slashCommandImportUnavailable,
         SlashCommandActionEffect.initFlow => l10n.slashCommandInitUnavailable,
+        SlashCommandActionEffect.sandboxSetup =>
+          l10n.slashCommandSandboxSetupUnavailable,
+        SlashCommandActionEffect.sandboxReadDir =>
+          l10n.slashCommandSandboxReadDirUnavailable,
         SlashCommandActionEffect.modelOverride => l10n.slashCommandModelUpdated,
         SlashCommandActionEffect.personalityOverride =>
           l10n.slashCommandPersonalityUpdated,

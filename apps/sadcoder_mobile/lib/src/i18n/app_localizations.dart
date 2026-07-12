@@ -320,6 +320,10 @@ class AppLocalizations {
       _text('slashCommandImportUnavailable');
   String get slashCommandInitUnavailable =>
       _text('slashCommandInitUnavailable');
+  String get slashCommandSandboxSetupUnavailable =>
+      _text('slashCommandSandboxSetupUnavailable');
+  String get slashCommandSandboxReadDirUnavailable =>
+      _text('slashCommandSandboxReadDirUnavailable');
   String get slashCommandModelUpdated => _text('slashCommandModelUpdated');
   String get slashCommandPersonalityUpdated =>
       _text('slashCommandPersonalityUpdated');
@@ -1293,6 +1297,10 @@ const _values = <String, Map<String, String>>{
         'Claude Code import is not wired in the mobile app yet. It requires a guarded agent fallback on the selected host.',
     'slashCommandInitUnavailable':
         'AGENTS.md initialization is not wired in the mobile app yet. It requires a generated diff preview and approval before writing files.',
+    'slashCommandSandboxSetupUnavailable':
+        'Default sandbox setup is not wired in the mobile app yet. It requires a guarded agent fallback and high-risk confirmation on the selected host.',
+    'slashCommandSandboxReadDirUnavailable':
+        'Sandbox read-directory configuration is not wired in the mobile app yet. It requires a guarded Windows agent fallback and high-risk confirmation.',
     'slashCommandModelUpdated': 'Model override updated.',
     'slashCommandPersonalityUpdated': 'Personality override updated.',
     'slashCommandPermissionsUpdated': 'Permission override updated.',
@@ -2097,6 +2105,10 @@ const _values = <String, Map<String, String>>{
         '移动端尚未接入 Claude Code 导入流程。该能力需要在选中主机上通过受保护的 agent fallback 执行。',
     'slashCommandInitUnavailable':
         '移动端尚未接入 AGENTS.md 初始化流程。写入文件前必须先生成 diff 预览并完成审批。',
+    'slashCommandSandboxSetupUnavailable':
+        '移动端尚未接入默认沙箱设置流程。该能力需要在选中主机上通过受保护的 agent fallback 执行，并完成高风险确认。',
+    'slashCommandSandboxReadDirUnavailable':
+        '移动端尚未接入沙箱读取目录配置。该能力需要通过受保护的 Windows agent fallback 执行，并完成高风险确认。',
     'slashCommandModelUpdated': '已更新模型覆盖。',
     'slashCommandPersonalityUpdated': '已更新协作风格覆盖。',
     'slashCommandPermissionsUpdated': '已更新权限覆盖。',

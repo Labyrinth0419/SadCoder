@@ -389,6 +389,77 @@ void main() {
     expect(result.command?.command, 'init');
   });
 
+  test(
+    '/setup-default-sandbox reports the guarded fallback diagnostic',
+    () async {
+      const dispatcher = SlashCommandActionDispatcher();
+
+      final result = await dispatcher.dispatch(
+        registry.parseComposerText('/setup-default-sandbox'),
+        hasActiveTurn: false,
+      );
+
+      expect(result.outcome, SlashCommandActionOutcome.executed);
+      expect(result.effect, SlashCommandActionEffect.sandboxSetup);
+      expect(result.command?.command, 'setup-default-sandbox');
+    },
+  );
+
+  test('/setup-default-sandbox rejects unsupported inline arguments', () async {
+    const dispatcher = SlashCommandActionDispatcher();
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/setup-default-sandbox now'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'setup-default-sandbox');
+  });
+
+  test(
+    '/sandbox-add-read-dir reports the guarded fallback diagnostic',
+    () async {
+      const dispatcher = SlashCommandActionDispatcher();
+
+      final drivePath = await dispatcher.dispatch(
+        registry.parseComposerText(r'/sandbox-add-read-dir C:\repo'),
+        hasActiveTurn: false,
+      );
+      final uncPath = await dispatcher.dispatch(
+        registry.parseComposerText(r'/sandbox-add-read-dir \\server\share'),
+        hasActiveTurn: false,
+      );
+
+      expect(drivePath.outcome, SlashCommandActionOutcome.executed);
+      expect(drivePath.effect, SlashCommandActionEffect.sandboxReadDir);
+      expect(drivePath.command?.command, 'sandbox-add-read-dir');
+      expect(uncPath.outcome, SlashCommandActionOutcome.executed);
+      expect(uncPath.effect, SlashCommandActionEffect.sandboxReadDir);
+    },
+  );
+
+  test('/sandbox-add-read-dir requires a Windows absolute path', () async {
+    const dispatcher = SlashCommandActionDispatcher();
+
+    final relative = await dispatcher.dispatch(
+      registry.parseComposerText('/sandbox-add-read-dir repo'),
+      hasActiveTurn: false,
+    );
+    final unix = await dispatcher.dispatch(
+      registry.parseComposerText('/sandbox-add-read-dir /tmp'),
+      hasActiveTurn: false,
+    );
+    final missing = await dispatcher.dispatch(
+      registry.parseComposerText('/sandbox-add-read-dir'),
+      hasActiveTurn: false,
+    );
+
+    expect(relative.outcome, SlashCommandActionOutcome.unavailable);
+    expect(unix.outcome, SlashCommandActionOutcome.unavailable);
+    expect(missing.outcome, SlashCommandActionOutcome.unavailable);
+  });
+
   test('/debug-config returns the injected debug config summary', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(
@@ -1879,7 +1950,7 @@ void main() {
         hasActiveTurn: false,
       );
       final unsupported = await dispatcher.dispatch(
-        registry.parseComposerText('/setup-default-sandbox'),
+        registry.parseComposerText('/debug-m-drop'),
         hasActiveTurn: false,
       );
       final platformOnly = await dispatcher.dispatch(
@@ -1894,7 +1965,7 @@ void main() {
       expect(unknown.outcome, SlashCommandActionOutcome.unknown);
       expect(unknown.rawCommand, 'does-not-exist');
       expect(unsupported.outcome, SlashCommandActionOutcome.unsupported);
-      expect(unsupported.command?.command, 'setup-default-sandbox');
+      expect(unsupported.command?.command, 'debug-m-drop');
       expect(platformOnly.outcome, SlashCommandActionOutcome.unsupported);
       expect(
         platformOnly.command?.mappingType,
