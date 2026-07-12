@@ -18,6 +18,7 @@ import '../threads/thread_item_cache_store.dart';
 import '../threads/thread_timeline_cursor_store.dart';
 import '../theme/sadcoder_theme.dart';
 import '../usage/account_usage_snapshot_controller.dart';
+import '../usage/thread_token_usage_controller.dart';
 import 'app_shell.dart';
 
 class SadCoderApp extends StatefulWidget {
@@ -37,6 +38,7 @@ class SadCoderApp extends StatefulWidget {
     this.accountSnapshotController,
     this.accountUsageSnapshotController,
     this.mcpServerStatusController,
+    this.threadTokenUsageController,
     this.threadCacheStore,
     this.threadItemCacheStore,
     this.threadTimelineCursorStore,
@@ -56,6 +58,7 @@ class SadCoderApp extends StatefulWidget {
   final AccountSnapshotController? accountSnapshotController;
   final AccountUsageSnapshotController? accountUsageSnapshotController;
   final McpServerStatusController? mcpServerStatusController;
+  final ThreadTokenUsageController? threadTokenUsageController;
   final ThreadCacheStore? threadCacheStore;
   final ThreadItemCacheStore? threadItemCacheStore;
   final ThreadTimelineCursorStore? threadTimelineCursorStore;
@@ -138,6 +141,7 @@ class _SadCoderAppState extends State<SadCoderApp> {
             accountUsageSnapshotController:
                 widget.accountUsageSnapshotController,
             mcpServerStatusController: widget.mcpServerStatusController,
+            threadTokenUsageController: widget.threadTokenUsageController,
             threadCacheStore: widget.threadCacheStore,
             threadItemCacheStore: widget.threadItemCacheStore,
             threadTimelineCursorStore: widget.threadTimelineCursorStore,

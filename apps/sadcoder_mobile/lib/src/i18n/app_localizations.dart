@@ -652,6 +652,11 @@ class AppLocalizations {
   String get accountUsageRecentDaily => _text('accountUsageRecentDaily');
   String get accountUsageRateLimits => _text('accountUsageRateLimits');
   String get accountUsageResetCredits => _text('accountUsageResetCredits');
+  String get threadTokenUsageStatus => _text('threadTokenUsageStatus');
+  String get threadTokenUsageLast => _text('threadTokenUsageLast');
+  String get threadTokenUsageTotal => _text('threadTokenUsageTotal');
+  String get threadTokenUsageContextWindow =>
+      _text('threadTokenUsageContextWindow');
   String get threadGoalStatus => _text('threadGoalStatus');
   String get threadGoalEmpty => _text('threadGoalEmpty');
   String get threadGoalObjective => _text('threadGoalObjective');
@@ -797,6 +802,11 @@ class AppLocalizations {
   String get creditsAvailable => _text('creditsAvailable');
   String get creditsUnavailable => _text('creditsUnavailable');
   String get individualLimit => _text('individualLimit');
+  String get totalTokens => _text('totalTokens');
+  String get inputTokens => _text('inputTokens');
+  String get cachedInputTokens => _text('cachedInputTokens');
+  String get outputTokens => _text('outputTokens');
+  String get reasoningOutputTokens => _text('reasoningOutputTokens');
   String tokenCount(int count) =>
       _text('tokenCount').replaceAll('{count}', formatNumber(count));
   String dayCount(int count) =>
@@ -1578,6 +1588,10 @@ const _values = <String, Map<String, String>>{
     'accountUsageRecentDaily': 'Recent daily usage',
     'accountUsageRateLimits': 'Rate limits',
     'accountUsageResetCredits': 'Reset credits',
+    'threadTokenUsageStatus': 'Thread tokens',
+    'threadTokenUsageLast': 'Last turn',
+    'threadTokenUsageTotal': 'Thread total',
+    'threadTokenUsageContextWindow': 'Context window',
     'threadGoalStatus': 'Goal',
     'threadGoalEmpty': 'No goal set.',
     'threadGoalObjective': 'Objective',
@@ -1713,6 +1727,11 @@ const _values = <String, Map<String, String>>{
     'creditsAvailable': 'available',
     'creditsUnavailable': 'unavailable',
     'individualLimit': 'Monthly limit',
+    'totalTokens': 'total',
+    'inputTokens': 'input',
+    'cachedInputTokens': 'cached input',
+    'outputTokens': 'output',
+    'reasoningOutputTokens': 'reasoning',
     'tokenCount': '{count} tokens',
     'dayCount': '{count} days',
     'secondCount': '{count} sec',
@@ -2330,6 +2349,10 @@ const _values = <String, Map<String, String>>{
     'accountUsageRecentDaily': '最近每日使用量',
     'accountUsageRateLimits': '速率限制',
     'accountUsageResetCredits': '重置额度',
+    'threadTokenUsageStatus': '会话 token',
+    'threadTokenUsageLast': '上一回合',
+    'threadTokenUsageTotal': '会话累计',
+    'threadTokenUsageContextWindow': '上下文窗口',
     'threadGoalStatus': '目标',
     'threadGoalEmpty': '未设置目标。',
     'threadGoalObjective': '目标内容',
@@ -2465,6 +2488,11 @@ const _values = <String, Map<String, String>>{
     'creditsAvailable': '可用',
     'creditsUnavailable': '不可用',
     'individualLimit': '月度限制',
+    'totalTokens': '总计',
+    'inputTokens': '输入',
+    'cachedInputTokens': '缓存输入',
+    'outputTokens': '输出',
+    'reasoningOutputTokens': '推理输出',
     'tokenCount': '{count} 个 token',
     'dayCount': '{count} 天',
     'secondCount': '{count} 秒',

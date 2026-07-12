@@ -1,14 +1,17 @@
 import '../../i18n/app_localizations.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import '../../usage/account_usage_snapshot_reader.dart';
+import '../../usage/thread_token_usage_controller.dart';
 
 String buildAccountUsageSummary({
   required AppLocalizations l10n,
   AccountUsageSnapshotController? controller,
+  ThreadTokenUsageSnapshot? threadUsage,
 }) {
   final lines = <String>[l10n.accountUsageStatus];
   if (controller == null) {
     lines.add(l10n.accountUsageUnavailable);
+    lines.addAll(threadTokenUsageStatusLines(l10n, threadUsage));
     return lines.join('\n');
   }
 
@@ -17,12 +20,14 @@ String buildAccountUsageSummary({
     lines.add(
       '${l10n.accountUsageLoadFailed}${error == null ? '' : ': $error'}',
     );
+    lines.addAll(threadTokenUsageStatusLines(l10n, threadUsage));
     return lines.join('\n');
   }
 
   final snapshot = controller.snapshot;
   if (snapshot == null) {
     lines.add(l10n.accountUsageUnavailable);
+    lines.addAll(threadTokenUsageStatusLines(l10n, threadUsage));
     return lines.join('\n');
   }
 
@@ -48,7 +53,23 @@ String buildAccountUsageSummary({
   if (lines.length == 1) {
     lines.add(l10n.accountUsageUnavailable);
   }
+  lines.addAll(threadTokenUsageStatusLines(l10n, threadUsage));
   return lines.join('\n');
+}
+
+Iterable<String> threadTokenUsageStatusLines(
+  AppLocalizations l10n,
+  ThreadTokenUsageSnapshot? snapshot,
+) sync* {
+  if (snapshot == null) {
+    return;
+  }
+  yield '${l10n.threadTokenUsageStatus}: ${l10n.threadTokenUsageLast}: ${_threadTokenUsageBreakdownSummary(l10n, snapshot.usage.last)}';
+  yield '${l10n.threadTokenUsageStatus}: ${l10n.threadTokenUsageTotal}: ${_threadTokenUsageBreakdownSummary(l10n, snapshot.usage.total)}';
+  final modelContextWindow = snapshot.usage.modelContextWindow;
+  if (modelContextWindow != null) {
+    yield '${l10n.threadTokenUsageContextWindow}: ${l10n.tokenCount(modelContextWindow)}';
+  }
 }
 
 Iterable<String> accountUsageStatusLines(
@@ -94,6 +115,19 @@ String _tokenUsageSummary(
       '${l10n.longestRunningTurnSec}=${l10n.secondCount(summary.longestRunningTurnSec!)}',
   ];
   return parts.join(', ');
+}
+
+String _threadTokenUsageBreakdownSummary(
+  AppLocalizations l10n,
+  TokenUsageBreakdown breakdown,
+) {
+  return [
+    '${l10n.totalTokens}=${l10n.tokenCount(breakdown.totalTokens)}',
+    '${l10n.inputTokens}=${l10n.tokenCount(breakdown.inputTokens)}',
+    '${l10n.cachedInputTokens}=${l10n.tokenCount(breakdown.cachedInputTokens)}',
+    '${l10n.outputTokens}=${l10n.tokenCount(breakdown.outputTokens)}',
+    '${l10n.reasoningOutputTokens}=${l10n.tokenCount(breakdown.reasoningOutputTokens)}',
+  ].join(', ');
 }
 
 String _dailyUsageSummary(

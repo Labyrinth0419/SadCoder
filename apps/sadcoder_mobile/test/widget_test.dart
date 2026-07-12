@@ -62,6 +62,7 @@ import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
 import 'package:sadcoder_mobile/src/turns/turn_text_element.dart';
 import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_reader.dart';
+import 'package:sadcoder_mobile/src/usage/thread_token_usage_controller.dart';
 
 void main() {
   testWidgets('renders the SadCoder shell', (tester) async {
@@ -425,6 +426,68 @@ void main() {
       mcpServerStatusController.servers.single.startupFailureReason,
       'reauthenticationRequired',
     );
+  });
+
+  testWidgets('thread token usage events update active usage snapshot', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final starter = _RecordingStaticSessionStarter(
+      threads: const [],
+      detail: ThreadDetail(thread: _emptyThread),
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final threadTokenUsageController = ThreadTokenUsageController();
+    addTearDown(sessionController.dispose);
+    addTearDown(threadTokenUsageController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+
+    await tester.pumpWidget(
+      SadCoderApp(
+        approvalController: approvalController,
+        sessionController: sessionController,
+        threadTokenUsageController: threadTokenUsageController,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    starter.connections.single.emit(
+      CodexEvent.fromNotification({
+        'method': 'thread/tokenUsage/updated',
+        'params': {
+          'threadId': 'thr_1',
+          'turnId': 'turn_1',
+          'tokenUsage': {
+            'last': {
+              'cachedInputTokens': 2,
+              'inputTokens': 10,
+              'outputTokens': 5,
+              'reasoningOutputTokens': 1,
+              'totalTokens': 16,
+            },
+            'total': {
+              'cachedInputTokens': 4,
+              'inputTokens': 100,
+              'outputTokens': 50,
+              'reasoningOutputTokens': 10,
+              'totalTokens': 160,
+            },
+            'modelContextWindow': 200000,
+          },
+        },
+      }),
+    );
+    await tester.pump();
+
+    final snapshot = threadTokenUsageController.latestForThread('thr_1');
+    expect(snapshot?.turnId, 'turn_1');
+    expect(snapshot?.usage.last.totalTokens, 16);
+    expect(snapshot?.usage.total.totalTokens, 160);
+    expect(snapshot?.usage.modelContextWindow, 200000);
   });
 
   testWidgets('chat host selector restores per-host thread timeline state', (

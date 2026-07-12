@@ -35,6 +35,7 @@ import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
 import '../../turns/turn_text_element.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
+import '../../usage/thread_token_usage_controller.dart';
 import '../appearance/app_color_palette_picker.dart';
 import '../diffs/diff_text_block.dart';
 import '../files/file_search_sheet.dart';
@@ -75,6 +76,7 @@ class ChatPage extends StatefulWidget {
     this.accountSnapshotController,
     this.accountUsageSnapshotController,
     this.mcpServerStatusController,
+    this.threadTokenUsageController,
     this.modelListController,
     this.permissionProfileListController,
     this.profileStore,
@@ -95,6 +97,7 @@ class ChatPage extends StatefulWidget {
   final AccountSnapshotController? accountSnapshotController;
   final AccountUsageSnapshotController? accountUsageSnapshotController;
   final McpServerStatusController? mcpServerStatusController;
+  final ThreadTokenUsageController? threadTokenUsageController;
   final ModelListController? modelListController;
   final PermissionProfileListController? permissionProfileListController;
   final SshProfileStore? profileStore;
@@ -728,6 +731,7 @@ class _ChatPageState extends State<ChatPage> {
       configSnapshotController: widget.configSnapshotController,
       accountSnapshotController: widget.accountSnapshotController,
       accountUsageSnapshotController: widget.accountUsageSnapshotController,
+      threadTokenUsageController: widget.threadTokenUsageController,
     );
   }
 
@@ -737,7 +741,11 @@ class _ChatPageState extends State<ChatPage> {
     if (controller != null) {
       await controller.refresh();
     }
-    return buildAccountUsageSummary(l10n: l10n, controller: controller);
+    return buildAccountUsageSummary(
+      l10n: l10n,
+      controller: controller,
+      threadUsage: _currentThreadTokenUsage(),
+    );
   }
 
   Future<String?> _buildMcpSummary(String arguments) async {
@@ -1967,6 +1975,14 @@ class _ChatPageState extends State<ChatPage> {
       return activeThreadId;
     }
     return null;
+  }
+
+  ThreadTokenUsageSnapshot? _currentThreadTokenUsage() {
+    final controller = widget.threadTokenUsageController;
+    if (controller == null) {
+      return null;
+    }
+    return controller.latestForThread(_currentThreadId()) ?? controller.latest;
   }
 
   List<String> _currentWorkspaceCwds() {

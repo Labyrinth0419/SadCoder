@@ -11,6 +11,7 @@ import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_list_controller.dart';
 import '../../turns/turn_controller.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
+import '../../usage/thread_token_usage_controller.dart';
 import 'chat_timeline_controller.dart';
 import 'chat_usage_summary.dart';
 import 'config_override_labels.dart';
@@ -26,6 +27,7 @@ String buildChatStatusSummary({
   CodexConfigSnapshotController? configSnapshotController,
   AccountSnapshotController? accountSnapshotController,
   AccountUsageSnapshotController? accountUsageSnapshotController,
+  ThreadTokenUsageController? threadTokenUsageController,
 }) {
   final lines = <String>[
     '${l10n.connectionStatus}: ${sessionStatusLabel(l10n, sessionController?.status)}',
@@ -72,6 +74,11 @@ String buildChatStatusSummary({
   if (accountUsageSnapshotController != null) {
     lines.addAll(accountUsageStatusLines(l10n, accountUsageSnapshotController));
   }
+
+  final threadUsage =
+      threadTokenUsageController?.latestForThread(selectedThreadId) ??
+      threadTokenUsageController?.latest;
+  lines.addAll(threadTokenUsageStatusLines(l10n, threadUsage));
 
   return lines.join('\n');
 }

@@ -43,6 +43,7 @@ import '../threads/thread_list_controller.dart';
 import '../threads/thread_timeline_cursor_store.dart';
 import '../turns/turn_controller.dart';
 import '../usage/account_usage_snapshot_controller.dart';
+import '../usage/thread_token_usage_controller.dart';
 import 'agent_snapshot_cursor_provider.dart';
 import 'app_background_notification_coordinator.dart';
 import 'app_host_session_ui_state.dart';
@@ -96,6 +97,7 @@ class AppShell extends StatefulWidget {
     this.accountSnapshotController,
     this.accountUsageSnapshotController,
     this.mcpServerStatusController,
+    this.threadTokenUsageController,
     this.threadCacheStore,
     this.threadItemCacheStore,
     this.threadTimelineCursorStore,
@@ -114,6 +116,7 @@ class AppShell extends StatefulWidget {
   final AccountSnapshotController? accountSnapshotController;
   final AccountUsageSnapshotController? accountUsageSnapshotController;
   final McpServerStatusController? mcpServerStatusController;
+  final ThreadTokenUsageController? threadTokenUsageController;
   final ThreadCacheStore? threadCacheStore;
   final ThreadItemCacheStore? threadItemCacheStore;
   final ThreadTimelineCursorStore? threadTimelineCursorStore;
@@ -133,6 +136,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late CodexConfigSnapshotController _configSnapshotController;
   late AccountSnapshotController _accountSnapshotController;
   late AccountUsageSnapshotController _accountUsageSnapshotController;
+  late ThreadTokenUsageController _threadTokenUsageController;
   late AgentCodexConfigureController _agentCodexConfigureController;
   late AgentDoctorController _agentDoctorController;
   late AgentLogsController _agentLogsController;
@@ -152,6 +156,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late bool _ownsConfigOverrideController;
   late bool _ownsAccountSnapshotController;
   late bool _ownsAccountUsageSnapshotController;
+  late bool _ownsThreadTokenUsageController;
   late bool _ownsMcpServerStatusController;
   late bool _ownsBackgroundConnectionPreferences;
 
@@ -225,6 +230,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             widget.accountUsageSnapshotController ||
         oldWidget.mcpServerStatusController !=
             widget.mcpServerStatusController ||
+        oldWidget.threadTokenUsageController !=
+            widget.threadTokenUsageController ||
         oldWidget.threadCacheStore != widget.threadCacheStore ||
         oldWidget.threadItemCacheStore != widget.threadItemCacheStore ||
         oldWidget.threadTimelineCursorStore !=
@@ -378,6 +385,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         AccountUsageSnapshotController(
           readerProvider: () => _sessionController.accountUsageSnapshotReader,
         );
+    _ownsThreadTokenUsageController = widget.threadTokenUsageController == null;
+    _threadTokenUsageController =
+        widget.threadTokenUsageController ?? ThreadTokenUsageController();
     _agentCodexConfigureController = AgentCodexConfigureController(
       runnerProvider: () => _defaultAgentRemoteService,
       profileProvider: () => _sessionController.profile,
@@ -424,6 +434,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     }
     if (_ownsAccountUsageSnapshotController) {
       _accountUsageSnapshotController.dispose();
+    }
+    if (_ownsThreadTokenUsageController) {
+      _threadTokenUsageController.dispose();
     }
     _agentCodexConfigureController.dispose();
     _agentDoctorController.dispose();
@@ -491,6 +504,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         _accountUsageSnapshotController.ingestRateLimitsUpdated(payload);
       case CodexEventKind.mcpServerStartupStatusUpdated:
         _mcpServerStatusController.ingestStartupStatusUpdated(payload);
+      case CodexEventKind.threadTokenUsageUpdated:
+        _threadTokenUsageController.ingestTokenUsageUpdated(payload);
       case _:
         return;
     }
@@ -653,6 +668,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           accountSnapshotController: _accountSnapshotController,
           accountUsageSnapshotController: _accountUsageSnapshotController,
           mcpServerStatusController: _mcpServerStatusController,
+          threadTokenUsageController: _threadTokenUsageController,
           modelListController: _modelListController,
           permissionProfileListController: _permissionProfileListController,
           registry: _activeUiState.slashCommandRegistryController.registry,

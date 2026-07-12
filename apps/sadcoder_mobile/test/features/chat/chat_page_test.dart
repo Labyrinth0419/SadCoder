@@ -67,6 +67,7 @@ import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
 import 'package:sadcoder_mobile/src/turns/turn_text_element.dart';
 import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_reader.dart';
+import 'package:sadcoder_mobile/src/usage/thread_token_usage_controller.dart';
 
 void main() {
   testWidgets('shows command preview for known slash command aliases', (
@@ -2044,11 +2045,34 @@ void main() {
     final accountUsageSnapshotController = AccountUsageSnapshotController(
       readerProvider: () => usageReader,
     );
+    final threadTokenUsageController = ThreadTokenUsageController()
+      ..ingestTokenUsageUpdated({
+        'threadId': 'thr_new',
+        'turnId': 'turn_1',
+        'tokenUsage': {
+          'last': {
+            'cachedInputTokens': 1,
+            'inputTokens': 20,
+            'outputTokens': 8,
+            'reasoningOutputTokens': 2,
+            'totalTokens': 30,
+          },
+          'total': {
+            'cachedInputTokens': 3,
+            'inputTokens': 200,
+            'outputTokens': 80,
+            'reasoningOutputTokens': 20,
+            'totalTokens': 300,
+          },
+          'modelContextWindow': 200000,
+        },
+      });
     final turnController = TurnController(
       runnerProvider: () => sessionController.turnRunner,
       overrideLayersProvider: () => overrideController.layers,
     );
     addTearDown(turnController.dispose);
+    addTearDown(threadTokenUsageController.dispose);
     addTearDown(accountUsageSnapshotController.dispose);
     addTearDown(accountSnapshotController.dispose);
     addTearDown(configSnapshotController.dispose);
@@ -2068,6 +2092,7 @@ void main() {
       configSnapshotController: configSnapshotController,
       accountSnapshotController: accountSnapshotController,
       accountUsageSnapshotController: accountUsageSnapshotController,
+      threadTokenUsageController: threadTokenUsageController,
     );
 
     await tester.enterText(
@@ -2101,6 +2126,12 @@ void main() {
     );
     expect(
       find.textContaining('Rate limits: Primary: 25% used'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Thread tokens: Last turn'), findsOneWidget);
+    expect(find.textContaining('total=30 tokens'), findsOneWidget);
+    expect(
+      find.textContaining('Context window: 200,000 tokens'),
       findsOneWidget,
     );
   });
@@ -2536,6 +2567,69 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('Reset credits: 2 available'), findsOneWidget);
+  });
+
+  testWidgets('/usage includes latest thread token usage', (tester) async {
+    final usageReader = _RecordingAccountUsageSnapshotReader(
+      snapshot: const AccountUsageSnapshot(
+        summary: AccountTokenUsageSummary(lifetimeTokens: 1234),
+        dailyUsageBuckets: [],
+        rateLimits: null,
+        rateLimitsByLimitId: {},
+        rateLimitResetCredits: null,
+      ),
+    );
+    final accountUsageSnapshotController = AccountUsageSnapshotController(
+      readerProvider: () => usageReader,
+    );
+    final threadTokenUsageController = ThreadTokenUsageController()
+      ..ingestTokenUsageUpdated({
+        'threadId': 'thr_new',
+        'turnId': 'turn_1',
+        'tokenUsage': {
+          'last': {
+            'cachedInputTokens': 2,
+            'inputTokens': 10,
+            'outputTokens': 5,
+            'reasoningOutputTokens': 1,
+            'totalTokens': 16,
+          },
+          'total': {
+            'cachedInputTokens': 4,
+            'inputTokens': 100,
+            'outputTokens': 50,
+            'reasoningOutputTokens': 10,
+            'totalTokens': 160,
+          },
+          'modelContextWindow': 200000,
+        },
+      });
+    addTearDown(threadTokenUsageController.dispose);
+    addTearDown(accountUsageSnapshotController.dispose);
+
+    await _pumpChatPage(
+      tester,
+      accountUsageSnapshotController: accountUsageSnapshotController,
+      threadTokenUsageController: threadTokenUsageController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/usage',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    expect(usageReader.calls, 1);
+    expect(find.textContaining('Thread tokens: Last turn'), findsOneWidget);
+    expect(find.textContaining('total=16 tokens'), findsOneWidget);
+    expect(find.textContaining('Thread tokens: Thread total'), findsOneWidget);
+    expect(find.textContaining('total=160 tokens'), findsOneWidget);
+    expect(
+      find.textContaining('Context window: 200,000 tokens'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('/logout confirms and signs out account', (tester) async {
@@ -6668,6 +6762,7 @@ Future<void> _pumpChatPage(
   AccountSnapshotController? accountSnapshotController,
   AccountUsageSnapshotController? accountUsageSnapshotController,
   McpServerStatusController? mcpServerStatusController,
+  ThreadTokenUsageController? threadTokenUsageController,
   ModelListController? modelListController,
   PermissionProfileListController? permissionProfileListController,
   SshProfileStore? profileStore,
@@ -6703,6 +6798,7 @@ Future<void> _pumpChatPage(
           accountSnapshotController: accountSnapshotController,
           accountUsageSnapshotController: accountUsageSnapshotController,
           mcpServerStatusController: mcpServerStatusController,
+          threadTokenUsageController: threadTokenUsageController,
           modelListController: modelListController,
           permissionProfileListController: permissionProfileListController,
           profileStore: profileStore,
