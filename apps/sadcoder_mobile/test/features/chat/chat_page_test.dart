@@ -363,6 +363,11 @@ void main() {
   ) async {
     await _pumpChatPage(tester);
 
+    expect(find.text('Connect to a host to load sessions.'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
+    await tester.pumpAndSettle();
+
     expect(find.text('Sessions'), findsOneWidget);
     expect(find.text('Connect to a host to load sessions.'), findsOneWidget);
   });
@@ -390,6 +395,8 @@ void main() {
     await controller.refresh();
 
     await _pumpChatPage(tester, threadListController: controller);
+    await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
+    await tester.pumpAndSettle();
 
     expect(find.text('Fix login bug'), findsOneWidget);
     expect(find.text('/repo\nrunning / fork'), findsNothing);
@@ -449,6 +456,8 @@ void main() {
       sessionController: sessionController,
       threadListController: threadController,
     );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
     await tester.pumpAndSettle();
 
     expect(listReader.archivedFilters.last, false);
@@ -524,6 +533,8 @@ void main() {
       threadListController: listController,
       threadDetailController: detailController,
     );
+    await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Fix login bug'));
     await tester.tap(find.text('Fix login bug'));
     await tester.pumpAndSettle();
@@ -7039,6 +7050,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Local'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
+    await tester.pumpAndSettle();
     expect(find.text('Review patch'), findsOneWidget);
   });
 

@@ -1009,15 +1009,7 @@ void main() {
     await tester.pumpWidget(SadCoderApp(sessionController: sessionController));
     await tester.tap(find.text('Chat').last);
     await tester.pumpAndSettle();
-    final threadTile = find.byKey(const ValueKey('thread-summary-thr_1'));
-    await tester.scrollUntilVisible(
-      threadTile,
-      160,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(threadTile);
-    await tester.pumpAndSettle();
+    await _openThreadFromChat(tester, 'thr_1');
     await _scrollToTimeline(tester);
 
     expect(find.text('Codex'), findsOneWidget);
@@ -1100,15 +1092,7 @@ void main() {
     await tester.pumpWidget(SadCoderApp(sessionController: sessionController));
     await tester.tap(find.text('Chat').last);
     await tester.pumpAndSettle();
-    final threadTile = find.byKey(const ValueKey('thread-summary-thr_1'));
-    await tester.scrollUntilVisible(
-      threadTile,
-      160,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(threadTile);
-    await tester.pumpAndSettle();
+    await _openThreadFromChat(tester, 'thr_1');
     await tester.tap(find.text('Files').last);
     await tester.pumpAndSettle();
 
@@ -1358,11 +1342,19 @@ Future<void> _selectChatHost(WidgetTester tester, String profileId) async {
 }
 
 Future<void> _openThreadFromChat(WidgetTester tester, String threadId) async {
+  final sidebar = find.byKey(const ValueKey('chat-session-sidebar'));
+  if (sidebar.evaluate().isEmpty) {
+    await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
+    await tester.pumpAndSettle();
+  }
   final threadTile = find.byKey(ValueKey('thread-summary-$threadId'));
+  final sidebarScrollable = find
+      .descendant(of: sidebar, matching: find.byType(Scrollable))
+      .first;
   await tester.scrollUntilVisible(
     threadTile,
     160,
-    scrollable: find.byType(Scrollable).first,
+    scrollable: sidebarScrollable,
   );
   await tester.pumpAndSettle();
   await tester.tap(threadTile);

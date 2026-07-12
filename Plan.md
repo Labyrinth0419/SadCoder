@@ -841,7 +841,7 @@ MVP 可以简化为底部导航：
 当前实现状态：
 
 - 已收敛 Chat 顶部为左侧三横线会话侧栏按钮、中部 TUI 式状态词（idle/running/working/failed）+ 当前工作详情和右侧 host selector；活动条会从当前非终态 timeline item 提取命令/工具/文件变更详情，不暴露 thread/turn 内部 id。主区域优先显示 thread timeline 的用户/Codex 文本、工具调用、命令输出和 diff；用户/Codex 消息采用开放消息流，命令/工具/diff 采用执行块，推理等低频内容默认折叠，会话列表不再展示 cwd/status 详情，timeline item metadata 不进入默认主对话流。
-- 本轮 UI pass 已补强 Chat 主画布权重和 TUI 状态 marker/status chip，侧栏开关固定为左上三横线，timeline turn 作为主内容渲染并有 widget 测试覆盖；顶栏状态和主机选择器支持窄屏 flex 收缩，斜杠命令预览仍保留为输入附近的轻提示，不再抢占默认对话信息架构。
+- 本轮 UI pass 已补强 Chat 主画布权重和 TUI 状态 marker/status chip，侧栏开关固定为左上三横线且默认收起会话侧栏，timeline turn 作为主内容渲染并有 widget 测试覆盖；顶栏状态和主机选择器支持窄屏 flex 收缩，斜杠命令预览仍保留为输入附近的轻提示，不再抢占默认对话信息架构。
 
 ### 9.3 Approvals 页面
 
@@ -994,7 +994,7 @@ MVP 可以简化为底部导航：
 - 支持 system / light / dark。
 - 代码块、diff、terminal output 要有专门配色，不能只用普通文本颜色。
 - 配色方案可影响代码关键字、终端 accent 和标题区等语义 accent，但 diff added/removed、风险状态等角色必须保持可识别，不能随主题被简单染成同一种主色。
-- 已落地 system/light/dark、五档字号（极小/小/中/大/极大）和多配色方案；Candy palette 已从单一 Material seed 调整为参考 Pastel Candy 调色板的粉、天蓝、淡黄、薄荷、淡紫明确 hex 色板，并保留浅色模式深色主按钮/正文对比。
+- 已落地 system/light/dark、五档字号（极小/小/中/大/极大）和多配色方案；Candy palette 已从单一 Material seed 调整为参考 cotton-candy / bubblegum / mint / lemon / lavender 调色板的明确 hex 色板，并保留浅色模式深色主按钮/正文对比。
 
 ### 9.7.1 主机、设置与主题后续改造
 

@@ -125,7 +125,7 @@ class _ChatPageState extends State<ChatPage> {
   bool _showRawTranscript = false;
   bool _showAdvancedControls = false;
   bool _showArchivedThreads = false;
-  bool _showThreadSidebar = true;
+  bool _showThreadSidebar = false;
   List<SshProfile> _savedProfiles = const [];
   String? _selectedProfileId;
   Object? _profileLoadError;
@@ -4314,11 +4314,20 @@ class _ChatActivityStripBody extends StatelessWidget {
       if (hostState != status && hostState != turnStatus) hostState,
     ];
 
+    final active = busy || running;
     return Material(
-      color: colorScheme.surfaceContainerLowest,
+      color: active
+          ? indicator.withValues(alpha: 0.08)
+          : colorScheme.surfaceContainerLowest,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
+          border: Border(
+            bottom: BorderSide(
+              color: active
+                  ? indicator.withValues(alpha: 0.48)
+                  : colorScheme.outlineVariant,
+            ),
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -4342,7 +4351,7 @@ class _ChatActivityStripBody extends StatelessWidget {
                   _ChatTuiStatusMark(
                     key: const ValueKey('chat-tui-status-mark'),
                     color: indicator,
-                    active: busy || running,
+                    active: active,
                   ),
                   const SizedBox(width: 9),
                   Expanded(
@@ -4364,7 +4373,7 @@ class _ChatActivityStripBody extends StatelessWidget {
                 ],
               ),
             ),
-            if (busy || running)
+            if (active)
               DecoratedBox(
                 key: const ValueKey('chat-running-progress'),
                 decoration: BoxDecoration(

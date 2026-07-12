@@ -1035,9 +1035,9 @@ class _FilesToolbar extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final searchWidth = constraints.maxWidth < 280
+        final searchWidth = constraints.maxWidth < 260
             ? constraints.maxWidth
-            : 164.0;
+            : 136.0;
         return Row(
           children: [
             Flexible(
@@ -1045,27 +1045,27 @@ class _FilesToolbar extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: searchWidth),
                 child: SizedBox(
-                  height: 26,
+                  height: 24,
                   child: TextField(
                     key: const ValueKey('workspace-files-filter'),
                     controller: filterController,
                     textAlignVertical: TextAlignVertical.center,
                     style: Theme.of(context).textTheme.bodySmall,
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search, size: 15),
+                      prefixIcon: const Icon(Icons.search, size: 14),
                       prefixIconConstraints: const BoxConstraints(
-                        minWidth: 24,
-                        minHeight: 24,
+                        minWidth: 22,
+                        minHeight: 22,
                       ),
                       hintText: l10n.workspaceFilesSearchHint,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(7),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       isDense: true,
                       filled: true,
                       fillColor: colorScheme.surface,
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 6,
+                        horizontal: 5,
                         vertical: 1,
                       ),
                     ),
@@ -1126,7 +1126,7 @@ class _CompactFilesToolButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return SizedBox.square(
-      dimension: 28,
+      dimension: 26,
       child: IconButton.filledTonal(
         onPressed: onPressed,
         tooltip: tooltip,
@@ -1140,7 +1140,7 @@ class _CompactFilesToolButton extends StatelessWidget {
               ? selectedForeground
               : colorScheme.onSurfaceVariant,
         ),
-        icon: Icon(icon, size: 18),
+        icon: Icon(icon, size: 17),
       ),
     );
   }
