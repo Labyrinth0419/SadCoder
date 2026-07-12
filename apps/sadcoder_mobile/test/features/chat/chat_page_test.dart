@@ -4147,6 +4147,7 @@ void main() {
 
     expect(backgroundRunner.cleanCalls, ['thr_active']);
     expect(backgroundRunner.listCalls, isEmpty);
+    expect(turnRunner.startedTurns, isEmpty);
     expect(turnRunner.interruptedTurns, isEmpty);
     expect(
       find.textContaining('Stopping all background terminals.'),
