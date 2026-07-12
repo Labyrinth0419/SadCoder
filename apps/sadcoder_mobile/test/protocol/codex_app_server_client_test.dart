@@ -508,71 +508,96 @@ void main() {
     ]);
   });
 
-  test(
-    'startTurn omits unset overrides and sends explicit overrides',
-    () async {
-      final requests = <JsonRpcRequest>[];
-      final transport = MemoryJsonRpcTransport((request) {
-        requests.add(request);
-        return {};
-      });
+  test('thread and turn start omit unset overrides', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
 
-      final client = CodexAppServerClient(transport);
-      await client.startTurn(threadId: 'thr_1', text: 'Use server defaults');
-      await client.startTurn(
-        threadId: 'thr_1',
-        text: 'Override this turn',
-        overrides: const CodexConfigOverrides(
-          model: 'gpt-5-codex',
-          effort: 'high',
-          summary: 'detailed',
-          approvalPolicy: 'on-request',
-          permissionProfile: ':workspace',
-          cwd: '/repo',
-          personality: 'pragmatic',
-          sandboxPolicy: {'type': 'readOnly', 'networkAccess': false},
-        ),
-      );
-      await client.startTurn(
-        threadId: 'thr_1',
-        text: '@lib/main.dart explain',
-        textElements: const [TurnTextElement(start: 0, end: 14)],
-      );
+    final client = CodexAppServerClient(transport);
+    await client.startThread();
+    await client.startTurn(threadId: 'thr_1', text: 'Use server defaults');
+    await client.startTurn(
+      threadId: 'thr_1',
+      text: 'Override this turn',
+      overrides: const CodexConfigOverrides(
+        model: 'gpt-5-codex',
+        effort: 'high',
+        summary: 'detailed',
+        approvalPolicy: 'on-request',
+        permissionProfile: ':workspace',
+        cwd: '/repo',
+        personality: 'pragmatic',
+        sandboxPolicy: {'type': 'readOnly', 'networkAccess': false},
+      ),
+    );
+    await client.startTurn(
+      threadId: 'thr_1',
+      text: '@lib/main.dart explain',
+      textElements: const [TurnTextElement(start: 0, end: 14)],
+    );
 
-      expect(requests.first.params!.keys, ['threadId', 'input']);
-      expect(requests[1].params, {
-        'threadId': 'thr_1',
-        'input': [
-          {
-            'type': 'text',
-            'text': 'Override this turn',
-            'text_elements': <Object?>[],
-          },
-        ],
-        'model': 'gpt-5-codex',
-        'effort': 'high',
-        'summary': 'detailed',
-        'approvalPolicy': 'on-request',
-        'permissions': ':workspace',
-        'cwd': '/repo',
-        'personality': 'pragmatic',
-      });
-      expect(requests.last.params, {
-        'threadId': 'thr_1',
-        'input': [
-          {
-            'type': 'text',
-            'text': '@lib/main.dart explain',
-            'text_elements': [
-              {
-                'byte_range': {'start': 0, 'end': 14},
-              },
-            ],
-          },
-        ],
-      });
-    },
-  );
+    const overrideKeys = {
+      'model',
+      'effort',
+      'summary',
+      'approvalPolicy',
+      'permissions',
+      'cwd',
+      'personality',
+      'serviceTier',
+      'sandboxPolicy',
+    };
+    expect(requests[0].method, 'thread/start');
+    expect(requests[0].params, isEmpty);
+    expect(requests[1].method, 'turn/start');
+    expect(requests[1].params, {
+      'threadId': 'thr_1',
+      'input': [
+        {
+          'type': 'text',
+          'text': 'Use server defaults',
+          'text_elements': <Object?>[],
+        },
+      ],
+    });
+    expect(
+      requests[1].params!.keys.toSet().intersection(overrideKeys),
+      isEmpty,
+    );
+    expect(requests[2].params, {
+      'threadId': 'thr_1',
+      'input': [
+        {
+          'type': 'text',
+          'text': 'Override this turn',
+          'text_elements': <Object?>[],
+        },
+      ],
+      'model': 'gpt-5-codex',
+      'effort': 'high',
+      'summary': 'detailed',
+      'approvalPolicy': 'on-request',
+      'permissions': ':workspace',
+      'cwd': '/repo',
+      'personality': 'pragmatic',
+    });
+    expect(requests.last.params, {
+      'threadId': 'thr_1',
+      'input': [
+        {
+          'type': 'text',
+          'text': '@lib/main.dart explain',
+          'text_elements': [
+            {
+              'byte_range': {'start': 0, 'end': 14},
+            },
+          ],
+        },
+      ],
+    });
+  });
 
   test(
     'ordinary thread and turn overrides never write server config values',
