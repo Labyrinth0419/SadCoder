@@ -1729,6 +1729,14 @@ class _ProbeResultPanel extends StatelessWidget {
             if (report?.agentStatus != null) ...[
               const SizedBox(height: 8),
               Text(_agentStatusSummary(report!.agentStatus!)),
+              if (report.agentStatus!.codexFailure != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '${l10n.codexStatusFailure}: '
+                  '${report.agentStatus!.codexFailure!.message}',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
               const SizedBox(height: 4),
               Text(_backendSummary(l10n, report.agentStatus!)),
               if (report.agentStatus!.backendDetail != null) ...[

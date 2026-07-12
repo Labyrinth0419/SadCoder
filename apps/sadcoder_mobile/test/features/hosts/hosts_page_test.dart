@@ -174,6 +174,10 @@ void main() {
       find.text('linux/x86_64 - runtime-not-found: node: SyntaxError'),
       findsOneWidget,
     );
+    expect(
+      find.text('Codex status failure: runtime-not-found: node: SyntaxError'),
+      findsOneWidget,
+    );
     expect(find.text('Backend: unknown'), findsOneWidget);
   });
 
