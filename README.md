@@ -51,13 +51,13 @@ stops the proxy subscription, not the app-server process owned by the service.
 
 Backend selection is controlled by `--backend` or `SADCODER_BACKEND`:
 
-- `auto` uses the SadCoder service backend when it can be prepared and falls
-  back to stdio when the service path is unavailable; it does not call the
-  official Codex app-server daemon.
-- `auto` only falls back after the resolved Codex command passes the agent's
-  version/runtime probe. Missing Codex binaries, Node runtime errors,
-  permission failures, or malformed version output are reported as unavailable
-  instead of a ready stdio backend.
+- `auto` is the production backend and always targets the SadCoder service.
+  If the service cannot be started or reached, `start --json` and `proxy`
+  return a structured error instead of silently falling back to stdio.
+- `auto` only reports a ready backend after the resolved Codex command passes
+  the agent's version/runtime probe. Missing Codex binaries, Node runtime
+  errors, permission failures, or malformed version output are reported as
+  unavailable instead of a ready stdio backend.
 - `stdio` forces the direct stdio debug path; SSH disconnect can end that
   app-server process.
 - `daemon` is accepted for compatibility, but falls back to stdio because
@@ -65,9 +65,11 @@ Backend selection is controlled by `--backend` or `SADCODER_BACKEND`:
   standalone installer layout.
 
 `status` is non-mutating: in `auto` mode it reports the SadCoder service
-readiness and notes the stdio fallback path. `start --json` and `proxy` use the
-actual selected backend, falling back to stdio if the service cannot be
-prepared.
+readiness and, when the service is not running yet, reports that `auto` will
+start and connect to the SadCoder service. `start --json` and `proxy` use the
+same service-only production backend selected by `auto`; direct stdio remains
+available only when explicitly requested with `--backend stdio` or the
+compatibility `--backend daemon` mode.
 
 `doctor --json` combines the resolved Codex command diagnostic with the same
 agent status/backend/reconnect-cache shape used by `status --json`, so callers
