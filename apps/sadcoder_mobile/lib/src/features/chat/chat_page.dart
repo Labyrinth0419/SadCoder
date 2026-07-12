@@ -2284,6 +2284,8 @@ class _ChatPageState extends State<ChatPage> {
           l10n.slashCommandAgentThreadSelected,
         SlashCommandActionEffect.appHandoff =>
           l10n.slashCommandAppHandoffUnavailable,
+        SlashCommandActionEffect.importFlow =>
+          l10n.slashCommandImportUnavailable,
         SlashCommandActionEffect.modelOverride => l10n.slashCommandModelUpdated,
         SlashCommandActionEffect.personalityOverride =>
           l10n.slashCommandPersonalityUpdated,

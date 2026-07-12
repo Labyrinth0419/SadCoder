@@ -991,6 +991,21 @@ void main() {
     );
   });
 
+  testWidgets('/import reports guarded fallback diagnostic', (tester) async {
+    final harness = await _pumpConnectedChatPage(tester);
+
+    await _submitComposerText(tester, '/import');
+
+    expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(
+      find.text(
+        'Claude Code import is not wired in the mobile app yet. '
+        'It requires a guarded agent fallback on the selected host.',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('/rollout shows the TUI-compatible missing path diagnostic', (
     tester,
   ) async {

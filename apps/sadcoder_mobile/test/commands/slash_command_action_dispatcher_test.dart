@@ -250,6 +250,31 @@ void main() {
     expect(result.command?.command, 'plugins');
   });
 
+  test('/import reports the guarded mobile fallback diagnostic', () async {
+    const dispatcher = SlashCommandActionDispatcher();
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/import'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.importFlow);
+    expect(result.command?.command, 'import');
+  });
+
+  test('/import rejects unsupported inline arguments', () async {
+    const dispatcher = SlashCommandActionDispatcher();
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/import claude'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'import');
+  });
+
   test('/hooks returns the injected hook summary', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

@@ -124,6 +124,7 @@ enum SlashCommandActionEffect {
   sideConversation,
   agentTopology,
   appHandoff,
+  importFlow,
   modelOverride,
   personalityOverride,
   permissionsOverride,
@@ -411,6 +412,8 @@ class SlashCommandActionDispatcher {
         return _showSkills(parsed);
       case 'plugins':
         return _showPlugins(parsed);
+      case 'import':
+        return _importDiagnostic(parsed);
       case 'hooks':
         return _showHooks(parsed);
       case 'apps':
@@ -862,6 +865,22 @@ class SlashCommandActionDispatcher {
       rawCommand: parsed.rawCommand,
       arguments: parsed.arguments,
       effect: SlashCommandActionEffect.appHandoff,
+    );
+  }
+
+  SlashCommandActionResult _importDiagnostic(SlashCommandParseResult parsed) {
+    if (parsed.arguments.trim().isNotEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    return SlashCommandActionResult.executed(
+      command: parsed.command!,
+      rawCommand: parsed.rawCommand,
+      arguments: parsed.arguments,
+      effect: SlashCommandActionEffect.importFlow,
     );
   }
 
