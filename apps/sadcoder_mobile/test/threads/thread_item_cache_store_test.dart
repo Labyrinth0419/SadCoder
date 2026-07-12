@@ -80,6 +80,57 @@ void main() {
       isNull,
     );
   });
+
+  test('deletes all item caches for one profile only', () async {
+    SharedPreferences.setMockInitialValues({});
+    const store = SharedPreferencesThreadItemCacheStore();
+
+    await store.saveThreadItems(
+      profileId: 'local',
+      threadId: 'thr_1',
+      snapshot: ThreadItemCacheSnapshot(
+        threadId: 'thr_1',
+        items: [_item('item_local_1', 'Local 1')],
+        cachedAtMs: 1,
+      ),
+    );
+    await store.saveThreadItems(
+      profileId: 'local',
+      threadId: 'thr_2',
+      snapshot: ThreadItemCacheSnapshot(
+        threadId: 'thr_2',
+        items: [_item('item_local_2', 'Local 2')],
+        cachedAtMs: 2,
+      ),
+    );
+    await store.saveThreadItems(
+      profileId: 'remote',
+      threadId: 'thr_1',
+      snapshot: ThreadItemCacheSnapshot(
+        threadId: 'thr_1',
+        items: [_item('item_remote', 'Remote')],
+        cachedAtMs: 3,
+      ),
+    );
+
+    await store.deleteProfileItems('local');
+
+    expect(
+      await store.loadThreadItems(profileId: 'local', threadId: 'thr_1'),
+      isNull,
+    );
+    expect(
+      await store.loadThreadItems(profileId: 'local', threadId: 'thr_2'),
+      isNull,
+    );
+    expect(
+      (await store.loadThreadItems(
+        profileId: 'remote',
+        threadId: 'thr_1',
+      ))?.items.single.id,
+      'item_remote',
+    );
+  });
 }
 
 ThreadItemSummary _item(String id, String text, {String? turnId}) {

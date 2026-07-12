@@ -56,11 +56,14 @@ import 'package:sadcoder_mobile/src/ssh/ssh_key_generator.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile_store.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_public_key_exporter.dart';
+import 'package:sadcoder_mobile/src/threads/thread_cache_store.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
+import 'package:sadcoder_mobile/src/threads/thread_item_cache_store.dart';
 import 'package:sadcoder_mobile/src/threads/thread_item_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
+import 'package:sadcoder_mobile/src/threads/thread_timeline_cursor_store.dart';
 import 'package:sadcoder_mobile/src/threads/thread_turn_list_reader.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
 import 'package:sadcoder_mobile/src/turns/turn_text_element.dart';
@@ -961,6 +964,44 @@ secret-key-material
     );
   });
 
+  testWidgets('deleting a saved SSH profile clears per-host thread caches', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    const profile = SshProfile(
+      id: 'alice@srv.dev:22',
+      name: 'Dev',
+      host: 'srv.dev',
+      username: 'alice',
+    );
+    final store = _FakeProfileStore(initialProfiles: [profile]);
+    final threadCacheStore = _RecordingThreadCacheStore();
+    final itemCacheStore = _RecordingThreadItemCacheStore();
+    final cursorStore = _RecordingThreadTimelineCursorStore();
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      profileStore: store,
+      threadCacheStore: threadCacheStore,
+      threadItemCacheStore: itemCacheStore,
+      threadTimelineCursorStore: cursorStore,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey('saved-host-delete-alice@srv.dev:22')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete profile').last);
+    await tester.pumpAndSettle();
+
+    expect(store.profiles, isEmpty);
+    expect(threadCacheStore.deletedProfileIds, ['alice@srv.dev:22']);
+    expect(itemCacheStore.deletedProfileIds, ['alice@srv.dev:22']);
+    expect(cursorStore.deletedProfileIds, ['alice@srv.dev:22']);
+  });
+
   testWidgets('deleting an active saved SSH profile closes the host session', (
     tester,
   ) async {
@@ -1261,6 +1302,9 @@ Future<void> _pumpHostsPage(
   SshImportFileSource importFileSource = const _FakeImportFileSource(null),
   SshKeyGenerator? keyGenerator,
   SshPublicKeyExporter? publicKeyExporter,
+  ThreadCacheStore? threadCacheStore,
+  ThreadItemCacheStore? threadItemCacheStore,
+  ThreadTimelineCursorStore? threadTimelineCursorStore,
   List<HostSessionSummary> hostSessions = const [],
 }) {
   tester.view.physicalSize = const Size(800, 900);
@@ -1286,6 +1330,9 @@ Future<void> _pumpHostsPage(
           importFileSource: importFileSource,
           keyGenerator: keyGenerator ?? const DartSshKeyGenerator(),
           publicKeyExporter: publicKeyExporter ?? _FakePublicKeyExporter(null),
+          threadCacheStore: threadCacheStore,
+          threadItemCacheStore: threadItemCacheStore,
+          threadTimelineCursorStore: threadTimelineCursorStore,
           hostSessions: hostSessions,
         ),
       ),
@@ -1531,6 +1578,83 @@ class _FakeProfileStore implements SshProfileListStore {
   @override
   Future<void> deleteProfile(String profileId) async {
     profiles.removeWhere((profile) => profile.id == profileId);
+  }
+}
+
+class _RecordingThreadCacheStore
+    implements ThreadCacheStore, ThreadCacheProfileCleaner {
+  final deletedProfileIds = <String>[];
+
+  @override
+  Future<ThreadCacheSnapshot?> loadProfileCache(String profileId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> saveProfileCache(
+    String profileId,
+    ThreadCacheSnapshot snapshot,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteProfileCache(String profileId) async {
+    deletedProfileIds.add(profileId);
+  }
+}
+
+class _RecordingThreadItemCacheStore
+    implements ThreadItemCacheStore, ThreadItemCacheProfileCleaner {
+  final deletedProfileIds = <String>[];
+
+  @override
+  Future<ThreadItemCacheSnapshot?> loadThreadItems({
+    required String profileId,
+    required String threadId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> saveThreadItems({
+    required String profileId,
+    required String threadId,
+    required ThreadItemCacheSnapshot snapshot,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteProfileItems(String profileId) async {
+    deletedProfileIds.add(profileId);
+  }
+}
+
+class _RecordingThreadTimelineCursorStore
+    implements ThreadTimelineCursorStore, ThreadTimelineCursorProfileCleaner {
+  final deletedProfileIds = <String>[];
+
+  @override
+  Future<ThreadTimelineCursorSnapshot?> loadThreadCursor({
+    required String profileId,
+    required String threadId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> saveThreadCursor({
+    required String profileId,
+    required String threadId,
+    required ThreadTimelineCursorSnapshot snapshot,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteProfileCursors(String profileId) async {
+    deletedProfileIds.add(profileId);
   }
 }
 

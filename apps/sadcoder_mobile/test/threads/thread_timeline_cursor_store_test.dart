@@ -91,4 +91,58 @@ void main() {
       isNull,
     );
   });
+
+  test('deletes all timeline cursors for one profile only', () async {
+    SharedPreferences.setMockInitialValues({});
+    const store = SharedPreferencesThreadTimelineCursorStore();
+
+    await store.saveThreadCursor(
+      profileId: 'local',
+      threadId: 'thr_1',
+      snapshot: const ThreadTimelineCursorSnapshot(
+        threadId: 'thr_1',
+        turnIds: ['turn_local_1'],
+        itemIds: [],
+        cachedAtMs: 1,
+      ),
+    );
+    await store.saveThreadCursor(
+      profileId: 'local',
+      threadId: 'thr_2',
+      snapshot: const ThreadTimelineCursorSnapshot(
+        threadId: 'thr_2',
+        turnIds: [],
+        itemIds: ['item_local_2'],
+        cachedAtMs: 2,
+      ),
+    );
+    await store.saveThreadCursor(
+      profileId: 'remote',
+      threadId: 'thr_1',
+      snapshot: const ThreadTimelineCursorSnapshot(
+        threadId: 'thr_1',
+        turnIds: ['turn_remote'],
+        itemIds: [],
+        cachedAtMs: 3,
+      ),
+    );
+
+    await store.deleteProfileCursors('local');
+
+    expect(
+      await store.loadThreadCursor(profileId: 'local', threadId: 'thr_1'),
+      isNull,
+    );
+    expect(
+      await store.loadThreadCursor(profileId: 'local', threadId: 'thr_2'),
+      isNull,
+    );
+    expect(
+      (await store.loadThreadCursor(
+        profileId: 'remote',
+        threadId: 'thr_1',
+      ))?.turnIds,
+      ['turn_remote'],
+    );
+  });
 }

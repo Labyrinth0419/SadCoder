@@ -10,6 +10,10 @@ abstract interface class ThreadCacheStore {
   Future<void> saveProfileCache(String profileId, ThreadCacheSnapshot snapshot);
 }
 
+abstract interface class ThreadCacheProfileCleaner {
+  Future<void> deleteProfileCache(String profileId);
+}
+
 class ThreadCacheSnapshot {
   const ThreadCacheSnapshot({
     required this.threads,
@@ -58,7 +62,8 @@ class ThreadCacheSnapshot {
   }
 }
 
-class SharedPreferencesThreadCacheStore implements ThreadCacheStore {
+class SharedPreferencesThreadCacheStore
+    implements ThreadCacheStore, ThreadCacheProfileCleaner {
   const SharedPreferencesThreadCacheStore({
     this.preferencesProvider = SharedPreferences.getInstance,
   });
@@ -103,6 +108,16 @@ class SharedPreferencesThreadCacheStore implements ThreadCacheStore {
       _cacheKey(normalized),
       jsonEncode(snapshot.toJson()),
     );
+  }
+
+  @override
+  Future<void> deleteProfileCache(String profileId) async {
+    final normalized = _normalizedProfileId(profileId);
+    if (normalized == null) {
+      return;
+    }
+    final preferences = await preferencesProvider();
+    await preferences.remove(_cacheKey(normalized));
   }
 
   String _cacheKey(String profileId) {

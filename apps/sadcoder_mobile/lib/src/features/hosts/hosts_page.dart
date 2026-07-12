@@ -19,6 +19,9 @@ import '../../ssh/ssh_key_generator.dart';
 import '../../ssh/ssh_profile.dart';
 import '../../ssh/ssh_profile_store.dart';
 import '../../ssh/ssh_public_key_exporter.dart';
+import '../../threads/thread_cache_store.dart';
+import '../../threads/thread_item_cache_store.dart';
+import '../../threads/thread_timeline_cursor_store.dart';
 
 typedef HostProfileConnector = Future<void> Function(SshProfile profile);
 
@@ -44,6 +47,9 @@ class HostsPage extends StatefulWidget {
     this.importFileSource = const FilePickerSshImportFileSource(),
     this.keyGenerator = const DartSshKeyGenerator(),
     this.publicKeyExporter = const FilePickerSshPublicKeyExporter(),
+    this.threadCacheStore,
+    this.threadItemCacheStore,
+    this.threadTimelineCursorStore,
     this.hostSessions = const [],
     this.profileConnector,
   });
@@ -56,6 +62,9 @@ class HostsPage extends StatefulWidget {
   final SshImportFileSource importFileSource;
   final SshKeyGenerator keyGenerator;
   final SshPublicKeyExporter publicKeyExporter;
+  final ThreadCacheStore? threadCacheStore;
+  final ThreadItemCacheStore? threadItemCacheStore;
+  final ThreadTimelineCursorStore? threadTimelineCursorStore;
   final List<HostSessionSummary> hostSessions;
   final HostProfileConnector? profileConnector;
 
@@ -698,6 +707,7 @@ class _HostsPageState extends State<HostsPage> {
       } else if (widget.sessionController?.profile?.id == profile.id) {
         await widget.sessionController!.disconnect();
       }
+      await _deleteProfileCaches(profile.id);
       final profiles = await store.loadProfiles();
       if (!mounted) {
         return;
@@ -714,6 +724,33 @@ class _HostsPageState extends State<HostsPage> {
           _profileError = '${l10n.sshProfileDeleteFailed}: $error';
         });
       }
+    }
+  }
+
+  Future<void> _deleteProfileCaches(String profileId) async {
+    Future<void> deleteBestEffort(Future<void> Function() action) async {
+      try {
+        await action();
+      } on Object {
+        // Reconnect caches are best-effort local state; profile deletion should
+        // not fail after the primary profile store has already been updated.
+      }
+    }
+
+    final threadCacheStore = widget.threadCacheStore;
+    if (threadCacheStore is ThreadCacheProfileCleaner) {
+      final cleaner = threadCacheStore as ThreadCacheProfileCleaner;
+      await deleteBestEffort(() => cleaner.deleteProfileCache(profileId));
+    }
+    final threadItemCacheStore = widget.threadItemCacheStore;
+    if (threadItemCacheStore is ThreadItemCacheProfileCleaner) {
+      final cleaner = threadItemCacheStore as ThreadItemCacheProfileCleaner;
+      await deleteBestEffort(() => cleaner.deleteProfileItems(profileId));
+    }
+    final timelineCursorStore = widget.threadTimelineCursorStore;
+    if (timelineCursorStore is ThreadTimelineCursorProfileCleaner) {
+      final cleaner = timelineCursorStore as ThreadTimelineCursorProfileCleaner;
+      await deleteBestEffort(() => cleaner.deleteProfileCursors(profileId));
     }
   }
 

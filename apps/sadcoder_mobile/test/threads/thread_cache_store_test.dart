@@ -47,6 +47,34 @@ void main() {
     expect(await store.loadProfileCache('missing'), isNull);
     expect(await store.loadProfileCache('local'), isNull);
   });
+
+  test('deletes one profile cache without removing other profiles', () async {
+    SharedPreferences.setMockInitialValues({});
+    const store = SharedPreferencesThreadCacheStore();
+
+    await store.saveProfileCache(
+      'local',
+      ThreadCacheSnapshot(
+        threads: [_thread('thr_local', 'Local task')],
+        cachedAtMs: 1,
+      ),
+    );
+    await store.saveProfileCache(
+      'remote',
+      ThreadCacheSnapshot(
+        threads: [_thread('thr_remote', 'Remote task')],
+        cachedAtMs: 2,
+      ),
+    );
+
+    await store.deleteProfileCache('local');
+
+    expect(await store.loadProfileCache('local'), isNull);
+    expect(
+      (await store.loadProfileCache('remote'))?.threads.single.id,
+      'thr_remote',
+    );
+  });
 }
 
 ThreadSummary _thread(String id, String preview) {

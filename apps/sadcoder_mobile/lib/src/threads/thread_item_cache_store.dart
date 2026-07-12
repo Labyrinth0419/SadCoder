@@ -17,6 +17,10 @@ abstract interface class ThreadItemCacheStore {
   });
 }
 
+abstract interface class ThreadItemCacheProfileCleaner {
+  Future<void> deleteProfileItems(String profileId);
+}
+
 class ThreadItemCacheSnapshot {
   const ThreadItemCacheSnapshot({
     required this.threadId,
@@ -82,7 +86,8 @@ class ThreadItemCacheSnapshot {
   }
 }
 
-class SharedPreferencesThreadItemCacheStore implements ThreadItemCacheStore {
+class SharedPreferencesThreadItemCacheStore
+    implements ThreadItemCacheStore, ThreadItemCacheProfileCleaner {
   const SharedPreferencesThreadItemCacheStore({
     this.preferencesProvider = SharedPreferences.getInstance,
   });
@@ -133,6 +138,19 @@ class SharedPreferencesThreadItemCacheStore implements ThreadItemCacheStore {
     await preferences.setString(key, jsonEncode(snapshot.toJson()));
   }
 
+  @override
+  Future<void> deleteProfileItems(String profileId) async {
+    final normalizedProfileId = _normalized(profileId);
+    if (normalizedProfileId == null) {
+      return;
+    }
+    final preferences = await preferencesProvider();
+    final keys = preferences.getKeys().where(
+      (key) => _keyBelongsToProfile(key, normalizedProfileId),
+    );
+    await Future.wait(keys.map(preferences.remove));
+  }
+
   String? _cacheKey({required String profileId, required String threadId}) {
     final normalizedProfileId = _normalized(profileId);
     final normalizedThreadId = _normalized(threadId);
@@ -143,6 +161,19 @@ class SharedPreferencesThreadItemCacheStore implements ThreadItemCacheStore {
       utf8.encode('$normalizedProfileId\n$normalizedThreadId'),
     );
     return '$_keyPrefix$encoded';
+  }
+
+  bool _keyBelongsToProfile(String key, String profileId) {
+    if (!key.startsWith(_keyPrefix)) {
+      return false;
+    }
+    try {
+      final encoded = key.substring(_keyPrefix.length);
+      final decoded = utf8.decode(base64Url.decode(encoded));
+      return decoded.startsWith('$profileId\n');
+    } on FormatException {
+      return false;
+    }
   }
 }
 
