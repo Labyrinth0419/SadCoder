@@ -11,6 +11,7 @@ class PersistedAppAppearanceController extends AppAppearanceController {
        super(
          theme: settings.theme,
          colorPalette: settings.colorPalette,
+         fontSize: settings.fontSize,
          titleDisplay: settings.titleDisplay,
          statusLineDisplay: settings.statusLineDisplay,
          composerInputMode: settings.composerInputMode,
@@ -43,6 +44,15 @@ class PersistedAppAppearanceController extends AppAppearanceController {
     final previous = this.colorPalette;
     super.setColorPalette(colorPalette);
     if (previous != this.colorPalette) {
+      _persist();
+    }
+  }
+
+  @override
+  void setFontSize(AppFontSizePreference fontSize) {
+    final previous = this.fontSize;
+    super.setFontSize(fontSize);
+    if (previous != this.fontSize) {
       _persist();
     }
   }

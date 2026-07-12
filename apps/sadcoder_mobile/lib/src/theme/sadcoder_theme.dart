@@ -5,19 +5,65 @@ import '../appearance/app_appearance_controller.dart';
 ThemeData sadCoderThemeData({
   required AppColorPalette colorPalette,
   required Brightness brightness,
+  AppFontSizePreference fontSize = AppFontSizePreference.medium,
 }) {
-  return ThemeData(
+  final baseTextTheme = _sadCoderBaseTextTheme();
+  final theme = ThemeData(
     useMaterial3: true,
     colorScheme: sadCoderColorScheme(
       colorPalette: colorPalette,
       brightness: brightness,
     ),
+    textTheme: baseTextTheme,
+    primaryTextTheme: baseTextTheme,
     extensions: [
       SadCoderThemeColors.forPalette(
         colorPalette: colorPalette,
         brightness: brightness,
       ),
     ],
+  );
+  return _applyFontSize(theme, fontSize);
+}
+
+TextTheme _sadCoderBaseTextTheme() {
+  const zeroTracking = 0.0;
+  return const TextTheme(
+    displayLarge: TextStyle(fontSize: 57, letterSpacing: zeroTracking),
+    displayMedium: TextStyle(fontSize: 45, letterSpacing: zeroTracking),
+    displaySmall: TextStyle(fontSize: 36, letterSpacing: zeroTracking),
+    headlineLarge: TextStyle(fontSize: 32, letterSpacing: zeroTracking),
+    headlineMedium: TextStyle(fontSize: 28, letterSpacing: zeroTracking),
+    headlineSmall: TextStyle(fontSize: 24, letterSpacing: zeroTracking),
+    titleLarge: TextStyle(fontSize: 22, letterSpacing: zeroTracking),
+    titleMedium: TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+      letterSpacing: zeroTracking,
+    ),
+    titleSmall: TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+      letterSpacing: zeroTracking,
+    ),
+    bodyLarge: TextStyle(fontSize: 16, letterSpacing: zeroTracking),
+    bodyMedium: TextStyle(fontSize: 14, letterSpacing: zeroTracking),
+    bodySmall: TextStyle(fontSize: 12, letterSpacing: zeroTracking),
+    labelLarge: TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+      letterSpacing: zeroTracking,
+    ),
+    labelMedium: TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w500,
+      letterSpacing: zeroTracking,
+    ),
+    labelSmall: TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w500,
+      letterSpacing: zeroTracking,
+    ),
   );
 }
 
@@ -32,12 +78,36 @@ ColorScheme sadCoderColorScheme({
   return switch (colorPalette) {
     AppColorPalette.sadcoder => base,
     AppColorPalette.candy => base.copyWith(
+      primary: brightness == Brightness.dark
+          ? const Color(0xFFFF8DA1)
+          : const Color(0xFF9E2E74),
+      onPrimary: brightness == Brightness.dark
+          ? const Color(0xFF3C0028)
+          : const Color(0xFFFFFFFF),
+      primaryContainer: brightness == Brightness.dark
+          ? const Color(0xFF5F1748)
+          : const Color(0xFFFFD8E6),
+      onPrimaryContainer: brightness == Brightness.dark
+          ? const Color(0xFFFFD8E6)
+          : const Color(0xFF3D0028),
       secondary: brightness == Brightness.dark
-          ? const Color(0xFFFFC857)
-          : const Color(0xFF9C6B00),
+          ? const Color(0xFFADFFF5)
+          : const Color(0xFF006B61),
+      secondaryContainer: brightness == Brightness.dark
+          ? const Color(0xFF004D46)
+          : const Color(0xFFC7FFF8),
+      onSecondaryContainer: brightness == Brightness.dark
+          ? const Color(0xFFC7FFF8)
+          : const Color(0xFF00201D),
       tertiary: brightness == Brightness.dark
-          ? const Color(0xFF67E8F9)
-          : const Color(0xFF007C91),
+          ? const Color(0xFFE4B8F5)
+          : const Color(0xFF76508B),
+      tertiaryContainer: brightness == Brightness.dark
+          ? const Color(0xFF4D2F5E)
+          : const Color(0xFFF3D9FF),
+      onTertiaryContainer: brightness == Brightness.dark
+          ? const Color(0xFFF3D9FF)
+          : const Color(0xFF2E0C3D),
     ),
     AppColorPalette.lagoon => base.copyWith(
       secondary: brightness == Brightness.dark
@@ -137,24 +207,24 @@ class SadCoderThemeColors extends ThemeExtension<SadCoderThemeColors> {
     return switch ((colorPalette, brightness)) {
       (AppColorPalette.sadcoder, _) => base,
       (AppColorPalette.candy, Brightness.light) => base.copyWith(
-        codeBackground: const Color(0xFFFFF6FA),
-        codeForeground: const Color(0xFF261821),
-        codeKeyword: const Color(0xFFB0006D),
-        codeString: const Color(0xFF8B5E00),
-        codeComment: const Color(0xFF766575),
-        diffHeaderBackground: const Color(0xFFFFEDF7),
-        diffHeaderForeground: const Color(0xFF432338),
-        terminalAccent: const Color(0xFF67E8F9),
+        codeBackground: const Color(0xFFFFF7FB),
+        codeForeground: const Color(0xFF24151F),
+        codeKeyword: const Color(0xFF9E2E74),
+        codeString: const Color(0xFF7B5A00),
+        codeComment: const Color(0xFF766775),
+        diffHeaderBackground: const Color(0xFFFFE5EF),
+        diffHeaderForeground: const Color(0xFF432036),
+        terminalAccent: const Color(0xFFADFFF5),
       ),
       (AppColorPalette.candy, Brightness.dark) => base.copyWith(
         codeBackground: const Color(0xFF1B1218),
         codeForeground: const Color(0xFFFFF0F7),
-        codeKeyword: const Color(0xFFFF7AB6),
-        codeString: const Color(0xFFFFD166),
+        codeKeyword: const Color(0xFFFF8DA1),
+        codeString: const Color(0xFFF5F4A6),
         codeComment: const Color(0xFFBCA7B8),
         diffHeaderBackground: const Color(0xFF281722),
         diffHeaderForeground: const Color(0xFFFFD7EA),
-        terminalAccent: const Color(0xFF67E8F9),
+        terminalAccent: const Color(0xFFADFFF5),
       ),
       (AppColorPalette.lagoon, Brightness.light) => base.copyWith(
         codeBackground: const Color(0xFFF1F7FF),
@@ -301,4 +371,43 @@ class SadCoderThemeColors extends ThemeExtension<SadCoderThemeColors> {
       terminalAccent: Color.lerp(terminalAccent, other.terminalAccent, t)!,
     );
   }
+}
+
+ThemeData _applyFontSize(ThemeData theme, AppFontSizePreference fontSize) {
+  if (fontSize == AppFontSizePreference.medium) {
+    return theme;
+  }
+  final scale = fontSize.scale;
+  return theme.copyWith(
+    textTheme: _scaleTextTheme(theme.textTheme, scale),
+    primaryTextTheme: _scaleTextTheme(theme.primaryTextTheme, scale),
+  );
+}
+
+TextTheme _scaleTextTheme(TextTheme theme, double scale) {
+  return theme.copyWith(
+    displayLarge: _scaleTextStyle(theme.displayLarge, scale),
+    displayMedium: _scaleTextStyle(theme.displayMedium, scale),
+    displaySmall: _scaleTextStyle(theme.displaySmall, scale),
+    headlineLarge: _scaleTextStyle(theme.headlineLarge, scale),
+    headlineMedium: _scaleTextStyle(theme.headlineMedium, scale),
+    headlineSmall: _scaleTextStyle(theme.headlineSmall, scale),
+    titleLarge: _scaleTextStyle(theme.titleLarge, scale),
+    titleMedium: _scaleTextStyle(theme.titleMedium, scale),
+    titleSmall: _scaleTextStyle(theme.titleSmall, scale),
+    bodyLarge: _scaleTextStyle(theme.bodyLarge, scale),
+    bodyMedium: _scaleTextStyle(theme.bodyMedium, scale),
+    bodySmall: _scaleTextStyle(theme.bodySmall, scale),
+    labelLarge: _scaleTextStyle(theme.labelLarge, scale),
+    labelMedium: _scaleTextStyle(theme.labelMedium, scale),
+    labelSmall: _scaleTextStyle(theme.labelSmall, scale),
+  );
+}
+
+TextStyle? _scaleTextStyle(TextStyle? style, double scale) {
+  final fontSize = style?.fontSize;
+  if (style == null || fontSize == null) {
+    return style;
+  }
+  return style.copyWith(fontSize: fontSize * scale);
 }

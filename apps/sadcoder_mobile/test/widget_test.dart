@@ -793,14 +793,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(threadTile);
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Timeline'),
-      160,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
+    await _scrollToTimeline(tester);
 
-    expect(find.text('Timeline'), findsOneWidget);
     expect(find.text('Codex'), findsOneWidget);
     expect(find.text('History is visible'), findsOneWidget);
   });
@@ -1151,11 +1145,10 @@ Future<void> _openThreadFromChat(WidgetTester tester, String threadId) async {
 }
 
 Future<void> _scrollToTimeline(WidgetTester tester) async {
-  await tester.scrollUntilVisible(
-    find.text('Timeline'),
-    160,
-    scrollable: find.byType(Scrollable).first,
-  );
+  final conversation = find.byKey(const ValueKey('chat-main-conversation'));
+  if (conversation.evaluate().isNotEmpty) {
+    await tester.ensureVisible(conversation);
+  }
   await tester.pumpAndSettle();
 }
 

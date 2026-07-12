@@ -40,4 +40,21 @@ void main() {
     expect(ember.codeKeyword, isNot(ember.codeComment));
     expect(ember.terminalAccent, isNot(ember.terminalMuted));
   });
+
+  test('font size preference scales app text themes', () {
+    final medium = sadCoderThemeData(
+      colorPalette: AppColorPalette.sadcoder,
+      brightness: Brightness.light,
+    );
+    final extraLarge = sadCoderThemeData(
+      colorPalette: AppColorPalette.sadcoder,
+      brightness: Brightness.light,
+      fontSize: AppFontSizePreference.extraLarge,
+    );
+
+    expect(
+      extraLarge.textTheme.bodyMedium!.fontSize,
+      greaterThan(medium.textTheme.bodyMedium!.fontSize!),
+    );
+  });
 }

@@ -416,6 +416,34 @@ void main() {
     expect(appearanceController.colorPalette, AppColorPalette.candy);
   });
 
+  testWidgets('updates app font size from settings', (tester) async {
+    final overrideController = CodexConfigOverrideController();
+    final appearanceController = AppAppearanceController();
+    addTearDown(overrideController.dispose);
+    addTearDown(appearanceController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      appearanceController: appearanceController,
+    );
+    await _openSettingsSection(tester, 'appearance');
+
+    expect(appearanceController.fontSize, AppFontSizePreference.medium);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-font-size-extra-large')),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-font-size-extra-large')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(appearanceController.fontSize, AppFontSizePreference.extraLarge);
+  });
+
   testWidgets('toggles unavailable slash command display from settings', (
     tester,
   ) async {
@@ -432,6 +460,10 @@ void main() {
     await _openSettingsSection(tester, 'appearance');
 
     expect(appearanceController.showUnavailableSlashCommands, false);
+    await tester.tap(
+      find.byKey(const ValueKey('settings-appearance-advanced')),
+    );
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('settings-show-unavailable-slash-commands')),
       160,

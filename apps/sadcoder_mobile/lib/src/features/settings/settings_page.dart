@@ -1645,18 +1645,69 @@ class _AppearanceSettingsContent extends StatelessWidget {
               onSelected: controller.setColorPalette,
             ),
             const SizedBox(height: 12),
-            SwitchListTile(
-              key: const ValueKey('settings-show-unavailable-slash-commands'),
-              contentPadding: EdgeInsets.zero,
-              secondary: const Icon(Icons.bug_report_outlined),
-              title: Text(l10n.showUnavailableSlashCommands),
-              subtitle: Text(l10n.showUnavailableSlashCommandsBody),
-              value: controller.showUnavailableSlashCommands,
-              onChanged: controller.setShowUnavailableSlashCommands,
+            Text(l10n.fontSize, style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 4),
+            Text(
+              l10n.fontSizeBody,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            _FontSizePicker(
+              selected: controller.fontSize,
+              onSelected: controller.setFontSize,
+            ),
+            const SizedBox(height: 12),
+            ExpansionTile(
+              key: const ValueKey('settings-appearance-advanced'),
+              tilePadding: EdgeInsets.zero,
+              leading: const Icon(Icons.tune_outlined),
+              title: Text(l10n.advancedAppearance),
+              childrenPadding: EdgeInsets.zero,
+              children: [
+                SwitchListTile(
+                  key: const ValueKey(
+                    'settings-show-unavailable-slash-commands',
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.bug_report_outlined),
+                  title: Text(l10n.showUnavailableSlashCommands),
+                  subtitle: Text(l10n.showUnavailableSlashCommandsBody),
+                  value: controller.showUnavailableSlashCommands,
+                  onChanged: controller.setShowUnavailableSlashCommands,
+                ),
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _FontSizePicker extends StatelessWidget {
+  const _FontSizePicker({required this.selected, required this.onSelected});
+
+  final AppFontSizePreference selected;
+  final ValueChanged<AppFontSizePreference> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final size in AppFontSizePreference.values)
+          ChoiceChip(
+            key: ValueKey('settings-font-size-${size.commandValue}'),
+            selected: size == selected,
+            label: Text(context.l10n.fontSizeLabel(size.commandValue)),
+            onSelected: (selected) {
+              if (selected) {
+                onSelected(size);
+              }
+            },
+          ),
+      ],
     );
   }
 }

@@ -53,6 +53,38 @@ void main() {
     expect(notifications, 1);
   });
 
+  test('font size preference parses command values', () {
+    expect(
+      AppFontSizePreference.parse('extra-small'),
+      AppFontSizePreference.extraSmall,
+    );
+    expect(AppFontSizePreference.parse('xs'), AppFontSizePreference.extraSmall);
+    expect(AppFontSizePreference.parse('small'), AppFontSizePreference.small);
+    expect(
+      AppFontSizePreference.parse('default'),
+      AppFontSizePreference.medium,
+    );
+    expect(AppFontSizePreference.parse('large'), AppFontSizePreference.large);
+    expect(
+      AppFontSizePreference.parse('extra-large'),
+      AppFontSizePreference.extraLarge,
+    );
+    expect(AppFontSizePreference.parse('unknown'), isNull);
+  });
+
+  test('controller notifies when font size changes', () {
+    final controller = AppAppearanceController();
+    addTearDown(controller.dispose);
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+
+    controller.setFontSize(AppFontSizePreference.extraLarge);
+    controller.setFontSize(AppFontSizePreference.extraLarge);
+
+    expect(controller.fontSize, AppFontSizePreference.extraLarge);
+    expect(notifications, 1);
+  });
+
   test('controller notifies when title display changes', () {
     final controller = AppAppearanceController();
     addTearDown(controller.dispose);

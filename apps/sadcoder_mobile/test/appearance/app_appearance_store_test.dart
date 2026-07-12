@@ -11,6 +11,7 @@ void main() {
     const settings = AppAppearanceSettings(
       theme: AppThemePreference.dark,
       colorPalette: AppColorPalette.candy,
+      fontSize: AppFontSizePreference.large,
       titleDisplay: AppTitleDisplaySettings(
         showThreadTitle: true,
         showWorkingDirectory: true,
@@ -32,6 +33,7 @@ void main() {
 
     expect(loaded.theme, AppThemePreference.dark);
     expect(loaded.colorPalette, AppColorPalette.candy);
+    expect(loaded.fontSize, AppFontSizePreference.large);
     expect(loaded.titleDisplay.showThreadTitle, true);
     expect(loaded.titleDisplay.showWorkingDirectory, true);
     expect(loaded.statusLineDisplay.showConnection, true);
@@ -56,6 +58,7 @@ void main() {
 
       expect(loaded.theme, AppThemePreference.system);
       expect(loaded.colorPalette, AppColorPalette.sadcoder);
+      expect(loaded.fontSize, AppFontSizePreference.medium);
       expect(loaded.composerSendShortcut, AppComposerSendShortcut.enter);
     },
   );
@@ -65,6 +68,7 @@ void main() {
       const AppAppearanceSettings(
         theme: AppThemePreference.light,
         colorPalette: AppColorPalette.lagoon,
+        fontSize: AppFontSizePreference.small,
       ),
     );
 
@@ -75,14 +79,17 @@ void main() {
 
     expect(controller.theme, AppThemePreference.light);
     expect(controller.colorPalette, AppColorPalette.lagoon);
+    expect(controller.fontSize, AppFontSizePreference.small);
 
     controller.setTheme(AppThemePreference.dark);
     controller.setColorPalette(AppColorPalette.ember);
     controller.setColorPalette(AppColorPalette.ember);
+    controller.setFontSize(AppFontSizePreference.extraLarge);
 
-    expect(store.saved, hasLength(2));
+    expect(store.saved, hasLength(3));
     expect(store.saved.last.theme, AppThemePreference.dark);
     expect(store.saved.last.colorPalette, AppColorPalette.ember);
+    expect(store.saved.last.fontSize, AppFontSizePreference.extraLarge);
   });
 }
 

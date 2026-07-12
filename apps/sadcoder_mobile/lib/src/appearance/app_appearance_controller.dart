@@ -65,7 +65,7 @@ extension AppColorPaletteValues on AppColorPalette {
   Color get seedColor {
     return switch (this) {
       AppColorPalette.sadcoder => const Color(0xFF0F766E),
-      AppColorPalette.candy => const Color(0xFFE85D9E),
+      AppColorPalette.candy => const Color(0xFFB73D8A),
       AppColorPalette.lagoon => const Color(0xFF2563EB),
       AppColorPalette.ember => const Color(0xFFC2410C),
     };
@@ -79,9 +79,10 @@ extension AppColorPaletteValues on AppColorPalette {
         Color(0xFF334155),
       ],
       AppColorPalette.candy => const [
-        Color(0xFFE85D9E),
-        Color(0xFFFFB703),
-        Color(0xFF00B4D8),
+        Color(0xFFFF8DA1),
+        Color(0xFFADFFF5),
+        Color(0xFFE4B8F5),
+        Color(0xFFF5F4A6),
       ],
       AppColorPalette.lagoon => const [
         Color(0xFF2563EB),
@@ -93,6 +94,54 @@ extension AppColorPaletteValues on AppColorPalette {
         Color(0xFFF59E0B),
         Color(0xFF7C3AED),
       ],
+    };
+  }
+}
+
+enum AppFontSizePreference {
+  extraSmall,
+  small,
+  medium,
+  large,
+  extraLarge;
+
+  static AppFontSizePreference? parse(String value) {
+    return switch (value.trim().toLowerCase()) {
+      '' => null,
+      'extra-small' ||
+      'extrasmall' ||
+      'xs' ||
+      'tiny' => AppFontSizePreference.extraSmall,
+      'small' || 's' => AppFontSizePreference.small,
+      'medium' || 'm' || 'normal' || 'default' => AppFontSizePreference.medium,
+      'large' || 'l' => AppFontSizePreference.large,
+      'extra-large' ||
+      'extralarge' ||
+      'xl' ||
+      'huge' => AppFontSizePreference.extraLarge,
+      _ => null,
+    };
+  }
+}
+
+extension AppFontSizePreferenceValues on AppFontSizePreference {
+  String get commandValue {
+    return switch (this) {
+      AppFontSizePreference.extraSmall => 'extra-small',
+      AppFontSizePreference.small => 'small',
+      AppFontSizePreference.medium => 'medium',
+      AppFontSizePreference.large => 'large',
+      AppFontSizePreference.extraLarge => 'extra-large',
+    };
+  }
+
+  double get scale {
+    return switch (this) {
+      AppFontSizePreference.extraSmall => 0.86,
+      AppFontSizePreference.small => 0.94,
+      AppFontSizePreference.medium => 1.0,
+      AppFontSizePreference.large => 1.12,
+      AppFontSizePreference.extraLarge => 1.24,
     };
   }
 }
@@ -152,6 +201,7 @@ class AppAppearanceController extends ChangeNotifier {
   AppAppearanceController({
     AppThemePreference theme = AppThemePreference.system,
     AppColorPalette colorPalette = AppColorPalette.sadcoder,
+    AppFontSizePreference fontSize = AppFontSizePreference.medium,
     AppTitleDisplaySettings titleDisplay = AppTitleDisplaySettings.defaults,
     AppStatusLineDisplaySettings statusLineDisplay =
         AppStatusLineDisplaySettings.defaults,
@@ -163,6 +213,7 @@ class AppAppearanceController extends ChangeNotifier {
     bool showUnavailableSlashCommands = false,
   }) : _theme = theme,
        _colorPalette = colorPalette,
+       _fontSize = fontSize,
        _titleDisplay = titleDisplay,
        _statusLineDisplay = statusLineDisplay,
        _composerInputMode = composerInputMode,
@@ -172,6 +223,7 @@ class AppAppearanceController extends ChangeNotifier {
 
   AppThemePreference _theme;
   AppColorPalette _colorPalette;
+  AppFontSizePreference _fontSize;
   AppTitleDisplaySettings _titleDisplay;
   AppStatusLineDisplaySettings _statusLineDisplay;
   AppComposerInputMode _composerInputMode;
@@ -182,6 +234,8 @@ class AppAppearanceController extends ChangeNotifier {
   AppThemePreference get theme => _theme;
 
   AppColorPalette get colorPalette => _colorPalette;
+
+  AppFontSizePreference get fontSize => _fontSize;
 
   ThemeMode get themeMode => _theme.themeMode;
 
@@ -210,6 +264,14 @@ class AppAppearanceController extends ChangeNotifier {
       return;
     }
     _colorPalette = colorPalette;
+    notifyListeners();
+  }
+
+  void setFontSize(AppFontSizePreference fontSize) {
+    if (_fontSize == fontSize) {
+      return;
+    }
+    _fontSize = fontSize;
     notifyListeners();
   }
 

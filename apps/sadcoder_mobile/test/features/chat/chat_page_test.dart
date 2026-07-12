@@ -527,12 +527,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(detailReader.threadIds, ['thr_1']);
-    expect(find.text('Thread detail'), findsOneWidget);
-    expect(find.text('Thread: thr_1'), findsOneWidget);
-    expect(find.text('Working directory: /repo'), findsOneWidget);
-    expect(find.text('Turns: 1'), findsOneWidget);
-    expect(find.text('Turn: turn_1'), findsOneWidget);
-    expect(find.text('completed / 1 items / full'), findsOneWidget);
+    expect(find.text('Thread detail'), findsNothing);
+    expect(find.text('Working directory: /repo'), findsNothing);
+    expect(find.text('Turn: turn_1'), findsNothing);
   });
 
   testWidgets('sends normal prompt text through the turn controller', (
@@ -6101,7 +6098,6 @@ void main() {
       timelineController: timelineController,
     );
 
-    expect(find.text('Timeline'), findsOneWidget);
     expect(find.text('No events yet'), findsOneWidget);
 
     await tester.enterText(
@@ -6256,7 +6252,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Timeline'), findsOneWidget);
     expect(find.text('Codex'), findsOneWidget);
     expect(find.text('hello'), findsOneWidget);
   });

@@ -118,6 +118,7 @@ class _ChatPageState extends State<ChatPage> {
   bool _showRawTranscript = false;
   bool _showAdvancedControls = false;
   bool _showArchivedThreads = false;
+  bool _showThreadSidebar = true;
   List<SshProfile> _savedProfiles = const [];
   String? _selectedProfileId;
   Object? _profileLoadError;
@@ -222,38 +223,66 @@ class _ChatPageState extends State<ChatPage> {
               ),
               const Divider(height: 1),
             ],
+            if (!compactHeight) ...[
+              _ChatActivityStrip(
+                sidebarVisible: _showThreadSidebar,
+                onToggleSidebar: _toggleThreadSidebar,
+                sessionController: sessionController,
+                turnController: turnController,
+                timelineController: widget.timelineController,
+              ),
+              const Divider(height: 1),
+            ],
             Expanded(
-              child: ListView(
-                padding: EdgeInsets.all(compactHeight ? 8 : 16),
-                children: [
-                  if (_sideConversation != null)
-                    _SideConversationPanel(
-                      conversation: _sideConversation!,
-                      canReturn: turnController?.canSubmit == true,
-                      onReturn: _returnToMainThread,
-                    ),
-                  _ChatTimelinePanel(
-                    controller: widget.timelineController,
-                    showRaw: _showRawTranscript,
-                  ),
-                  _TurnStatusPanel(controller: turnController),
-                  _SlashCommandPreview(
-                    result: _slashCommand,
-                    sendAsText: _isSlashTextPrompt(
-                      _composerController.text,
-                      _slashCommand,
-                    ),
-                    onSendAsText: _markSlashInputAsText,
-                  ),
-                  _ThreadListPanel(
-                    controller: threadListController,
-                    detailController: threadDetailController,
-                    archived: _showArchivedThreads,
-                    onArchivedChanged: _setThreadArchiveView,
-                    onUnarchiveThread: _unarchiveThread,
-                  ),
-                  _ThreadDetailPanel(controller: threadDetailController),
-                ],
+              child: LayoutBuilder(
+                builder: (context, bodyConstraints) {
+                  final overlaySidebar = bodyConstraints.maxWidth < 720;
+                  final sidebarVisible = _showThreadSidebar && !compactHeight;
+                  final sidebarWidth = _sidebarWidthFor(
+                    bodyConstraints.maxWidth,
+                  );
+                  return Stack(
+                    children: [
+                      Positioned.fill(
+                        left: sidebarVisible && !overlaySidebar
+                            ? sidebarWidth
+                            : 0,
+                        child: _ChatMainConversation(
+                          compact: compactHeight,
+                          sideConversation: _sideConversation,
+                          canReturnToMain:
+                              widget.turnController?.canSubmit == true,
+                          onReturnToMain: _returnToMainThread,
+                          timelineController: widget.timelineController,
+                          showRawTranscript: _showRawTranscript,
+                          slashCommand: _slashCommand,
+                          sendSlashAsText: _isSlashTextPrompt(
+                            _composerController.text,
+                            _slashCommand,
+                          ),
+                          onSendSlashAsText: _markSlashInputAsText,
+                        ),
+                      ),
+                      if (sidebarVisible)
+                        Positioned(
+                          top: 0,
+                          bottom: 0,
+                          left: 0,
+                          width: sidebarWidth,
+                          child: _ChatThreadSidebar(
+                            overlay: overlaySidebar,
+                            child: _ThreadListPanel(
+                              controller: threadListController,
+                              detailController: threadDetailController,
+                              archived: _showArchivedThreads,
+                              onArchivedChanged: _setThreadArchiveView,
+                              onUnarchiveThread: _unarchiveThread,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
             SafeArea(
@@ -370,6 +399,10 @@ class _ChatPageState extends State<ChatPage> {
         );
       },
     );
+  }
+
+  void _toggleThreadSidebar() {
+    setState(() => _showThreadSidebar = !_showThreadSidebar);
   }
 
   void _handleComposerChanged(String value) {
@@ -4058,6 +4091,191 @@ IconData _chatAuthIcon(SshAuthType authType) {
   };
 }
 
+double _sidebarWidthFor(double maxWidth) {
+  if (maxWidth <= 320) {
+    return maxWidth;
+  }
+  if (maxWidth < 720) {
+    return maxWidth * 0.88;
+  }
+  return 320;
+}
+
+class _ChatActivityStrip extends StatelessWidget {
+  const _ChatActivityStrip({
+    required this.sidebarVisible,
+    required this.onToggleSidebar,
+    required this.sessionController,
+    required this.turnController,
+    required this.timelineController,
+  });
+
+  final bool sidebarVisible;
+  final VoidCallback onToggleSidebar;
+  final CodexSessionStateController? sessionController;
+  final TurnController? turnController;
+  final ChatTimelineController? timelineController;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final colorScheme = Theme.of(context).colorScheme;
+    final turn = turnController;
+    final failed = turn?.status == TurnControllerStatus.failed;
+    final busy = turn?.isBusy == true;
+    final running = turn?.activeTurnId?.trim().isNotEmpty == true;
+    final indicator = failed
+        ? colorScheme.error
+        : busy
+        ? colorScheme.tertiary
+        : running
+        ? colorScheme.primary
+        : colorScheme.outline;
+    final status = turn == null
+        ? sessionStatusLabel(l10n, sessionController?.status)
+        : turnStatusLabel(l10n, turn);
+    final threadId =
+        _nonEmptyStatusText(timelineController?.selectedThreadId) ??
+        _nonEmptyStatusText(turn?.activeThreadId);
+    final activeTurnId = _nonEmptyStatusText(turn?.activeTurnId);
+    final details = [
+      sessionStatusLabel(l10n, sessionController?.status),
+      ?threadId,
+      ?activeTurnId,
+    ];
+
+    return Material(
+      color: colorScheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
+        child: Row(
+          children: [
+            IconButton(
+              key: const ValueKey('chat-session-sidebar-toggle'),
+              tooltip: l10n.sessions,
+              onPressed: onToggleSidebar,
+              icon: Icon(sidebarVisible ? Icons.menu_open : Icons.menu),
+            ),
+            Container(
+              width: 4,
+              height: 28,
+              decoration: BoxDecoration(
+                color: indicator,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    status,
+                    key: const ValueKey('chat-activity-status'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  if (details.isNotEmpty)
+                    Text(
+                      details.join('  |  '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String? _nonEmptyStatusText(String? value) {
+  final trimmed = value?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}
+
+class _ChatMainConversation extends StatelessWidget {
+  const _ChatMainConversation({
+    required this.compact,
+    required this.sideConversation,
+    required this.canReturnToMain,
+    required this.onReturnToMain,
+    required this.timelineController,
+    required this.showRawTranscript,
+    required this.slashCommand,
+    required this.sendSlashAsText,
+    required this.onSendSlashAsText,
+  });
+
+  final bool compact;
+  final _SideConversation? sideConversation;
+  final bool canReturnToMain;
+  final VoidCallback onReturnToMain;
+  final ChatTimelineController? timelineController;
+  final bool showRawTranscript;
+  final SlashCommandParseResult slashCommand;
+  final bool sendSlashAsText;
+  final VoidCallback onSendSlashAsText;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      key: const ValueKey('chat-main-conversation'),
+      padding: EdgeInsets.all(compact ? 8 : 16),
+      children: [
+        if (sideConversation != null)
+          _SideConversationPanel(
+            conversation: sideConversation!,
+            canReturn: canReturnToMain,
+            onReturn: onReturnToMain,
+          ),
+        _ChatTimelinePanel(
+          controller: timelineController,
+          showRaw: showRawTranscript,
+        ),
+        _SlashCommandPreview(
+          result: slashCommand,
+          sendAsText: sendSlashAsText,
+          onSendAsText: onSendSlashAsText,
+        ),
+      ],
+    );
+  }
+}
+
+class _ChatThreadSidebar extends StatelessWidget {
+  const _ChatThreadSidebar({required this.overlay, required this.child});
+
+  final bool overlay;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      elevation: overlay ? 8 : 0,
+      color: colorScheme.surfaceContainerLow,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: BorderDirectional(
+            end: BorderSide(color: colorScheme.outlineVariant),
+          ),
+        ),
+        child: ListView(
+          key: const ValueKey('chat-session-sidebar'),
+          padding: const EdgeInsets.all(12),
+          children: [child],
+        ),
+      ),
+    );
+  }
+}
+
 class _ChatHeader extends StatelessWidget {
   const _ChatHeader({
     required this.title,
@@ -4417,153 +4635,6 @@ class _ThreadListTile extends StatelessWidget {
   }
 }
 
-class _ThreadDetailPanel extends StatelessWidget {
-  const _ThreadDetailPanel({required this.controller});
-
-  final ThreadDetailController? controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = this.controller;
-    if (controller == null) {
-      return const SizedBox.shrink();
-    }
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) => _ThreadDetailContent(controller: controller),
-    );
-  }
-}
-
-class _ThreadDetailContent extends StatelessWidget {
-  const _ThreadDetailContent({required this.controller});
-
-  final ThreadDetailController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return switch (controller.status) {
-      ThreadDetailStatus.idle => const SizedBox.shrink(),
-      ThreadDetailStatus.loading => _ThreadDetailCard(
-        title: l10n.threadDetail,
-        child: const LinearProgressIndicator(),
-      ),
-      ThreadDetailStatus.failed => _ThreadDetailCard(
-        title: l10n.threadDetail,
-        child: Text(
-          controller.error?.toString() ?? l10n.threadDetailFailed,
-          style: TextStyle(color: Theme.of(context).colorScheme.error),
-        ),
-      ),
-      ThreadDetailStatus.loaded => _LoadedThreadDetail(
-        detail: controller.detail!,
-      ),
-    };
-  }
-}
-
-class _LoadedThreadDetail extends StatelessWidget {
-  const _LoadedThreadDetail({required this.detail});
-
-  final ThreadDetail detail;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final thread = detail.thread;
-    return _ThreadDetailCard(
-      title: l10n.threadDetail,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(thread.title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Text('${l10n.approvalThread}: ${thread.id}'),
-          if (thread.cwd.isNotEmpty)
-            Text('${l10n.approvalWorkingDirectory}: ${thread.cwd}'),
-          Text(l10n.turnCount(thread.turns.length)),
-          const SizedBox(height: 8),
-          if (thread.turns.isEmpty)
-            Text(l10n.noTurns)
-          else
-            for (final turn in thread.turns) _TurnSummaryTile(turn: turn),
-        ],
-      ),
-    );
-  }
-}
-
-class _TurnStatusPanel extends StatelessWidget {
-  const _TurnStatusPanel({required this.controller});
-
-  final TurnController? controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = this.controller;
-    if (controller == null) {
-      return const SizedBox.shrink();
-    }
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) => _TurnStatusCard(controller: controller),
-    );
-  }
-}
-
-class _TurnStatusCard extends StatelessWidget {
-  const _TurnStatusCard({required this.controller});
-
-  final TurnController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final content = switch (controller.status) {
-      TurnControllerStatus.idle => null,
-      TurnControllerStatus.startingThread => l10n.startingThread,
-      TurnControllerStatus.resumingThread => l10n.resumingThread,
-      TurnControllerStatus.sendingTurn => l10n.sendingTurn,
-      TurnControllerStatus.submitted => l10n.turnSubmitted(
-        controller.activeTurnId ?? '',
-      ),
-      TurnControllerStatus.completed => l10n.turnCompleted,
-      TurnControllerStatus.interrupting => l10n.interruptingTurn,
-      TurnControllerStatus.interrupted => l10n.turnInterrupted,
-      TurnControllerStatus.failed =>
-        controller.error?.toString() ?? l10n.turnFailed,
-    };
-    if (content == null) {
-      return const SizedBox.shrink();
-    }
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            if (controller.isBusy) ...[
-              const SizedBox.square(
-                dimension: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              const SizedBox(width: 12),
-            ] else ...[
-              Icon(
-                controller.status == TurnControllerStatus.failed
-                    ? Icons.error_outline
-                    : Icons.task_alt,
-              ),
-              const SizedBox(width: 12),
-            ],
-            Expanded(child: Text(content)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _ChatTimelinePanel extends StatelessWidget {
   const _ChatTimelinePanel({required this.controller, required this.showRaw});
 
@@ -4594,23 +4665,40 @@ class _ChatTimelineContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final turns = controller.turns;
     if (turns.isEmpty) {
-      return const SizedBox.shrink();
+      return _TimelineEmptyState();
     }
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              context.l10n.timeline,
-              style: Theme.of(context).textTheme.titleMedium,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final turn in turns)
+          _TimelineTurnView(turn: turn, showRaw: showRaw),
+      ],
+    );
+  }
+}
+
+class _TimelineEmptyState extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 16),
+      child: Column(
+        children: [
+          Icon(
+            Icons.forum_outlined,
+            size: 36,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            context.l10n.noTimelineEvents,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 8),
-            for (final turn in turns)
-              _TimelineTurnView(turn: turn, showRaw: showRaw),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -4856,48 +4944,6 @@ class _TimelineDiffBlock extends StatelessWidget {
       key: ValueKey('timeline-diff-output-$label'),
       text: change.diff,
       label: label,
-    );
-  }
-}
-
-class _ThreadDetailCard extends StatelessWidget {
-  const _ThreadDetailCard({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            child,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TurnSummaryTile extends StatelessWidget {
-  const _TurnSummaryTile({required this.turn});
-
-  final TurnSummary turn;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: const Icon(Icons.notes_outlined),
-      title: Text('${context.l10n.approvalTurn}: ${turn.id}'),
-      subtitle: Text(
-        '${turn.status} / ${turn.itemCount} items / ${turn.itemsView}',
-      ),
     );
   }
 }

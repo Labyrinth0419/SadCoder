@@ -819,9 +819,20 @@ class AppLocalizations {
       _text('debugConfigLayer').replaceAll('{index}', formatNumber(index));
   String get theme => _text('theme');
   String get themeBody => _text('themeBody');
+  String get fontSize => _text('fontSize');
+  String get fontSizeBody => _text('fontSizeBody');
+  String fontSizeLabel(String value) => _text('fontSize.$value');
+  String get advancedAppearance => _text('advancedAppearance');
   String get workspaceFilesTitle => _text('workspaceFilesTitle');
   String workspaceFilesRoot(String root) =>
       _text('workspaceFilesRoot').replaceAll('{root}', root);
+  String get workspaceFilesRootLabel => _text('workspaceFilesRootLabel');
+  String get workspaceFilesUseRoot => _text('workspaceFilesUseRoot');
+  String get workspaceFilesUseDefaultRoot =>
+      _text('workspaceFilesUseDefaultRoot');
+  String get workspaceFilesSaveDefaultRoot =>
+      _text('workspaceFilesSaveDefaultRoot');
+  String get workspaceFilesSidebar => _text('workspaceFilesSidebar');
   String get workspaceFilesNotConnected => _text('workspaceFilesNotConnected');
   String get workspaceFilesNoCwd => _text('workspaceFilesNoCwd');
   String get workspaceFilesRefresh => _text('workspaceFilesRefresh');
@@ -1373,6 +1384,14 @@ const _values = <String, Map<String, String>>{
     'colorPalette.candy': 'Candy',
     'colorPalette.lagoon': 'Lagoon',
     'colorPalette.ember': 'Ember',
+    'fontSize': 'Font size',
+    'fontSizeBody': 'Scale app text for dense or comfortable reading.',
+    'fontSize.extra-small': 'Extra small',
+    'fontSize.small': 'Small',
+    'fontSize.medium': 'Medium',
+    'fontSize.large': 'Large',
+    'fontSize.extra-large': 'Extra large',
+    'advancedAppearance': 'Advanced appearance',
     'backgroundConnectionKeepActiveTurn':
         'Keep active turns connected in background',
     'backgroundConnectionKeepActiveTurnBody':
@@ -1693,6 +1712,11 @@ const _values = <String, Map<String, String>>{
     'themeBody': 'System, light, dark, and accent palettes are supported.',
     'workspaceFilesTitle': 'Workspace files',
     'workspaceFilesRoot': 'Root: {root}',
+    'workspaceFilesRootLabel': 'Workspace root',
+    'workspaceFilesUseRoot': 'Open root',
+    'workspaceFilesUseDefaultRoot': 'Use default',
+    'workspaceFilesSaveDefaultRoot': 'Save as default',
+    'workspaceFilesSidebar': 'File tree',
     'workspaceFilesNotConnected': 'Connect to a host to browse files.',
     'workspaceFilesNoCwd': 'Select a thread or set a working directory.',
     'workspaceFilesRefresh': 'Refresh',
@@ -2114,6 +2138,14 @@ const _values = <String, Map<String, String>>{
     'colorPalette.candy': '糖果',
     'colorPalette.lagoon': '泻湖',
     'colorPalette.ember': '余烬',
+    'fontSize': '字号',
+    'fontSizeBody': '按阅读密度或舒适度缩放 App 文本。',
+    'fontSize.extra-small': '极小',
+    'fontSize.small': '小',
+    'fontSize.medium': '中',
+    'fontSize.large': '大',
+    'fontSize.extra-large': '极大',
+    'advancedAppearance': '高级外观',
     'backgroundConnectionKeepActiveTurn': '后台保持 active turn 连接',
     'backgroundConnectionKeepActiveTurnBody':
         '开启后，App 进入后台时会尽量继续观察 active turn。关闭后会断开观察连接，下次连接时回填状态。',
@@ -2425,6 +2457,11 @@ const _values = <String, Map<String, String>>{
     'themeBody': '支持跟随系统、浅色、深色和强调配色方案。',
     'workspaceFilesTitle': '工作区文件',
     'workspaceFilesRoot': '根目录：{root}',
+    'workspaceFilesRootLabel': '工作区根目录',
+    'workspaceFilesUseRoot': '打开根目录',
+    'workspaceFilesUseDefaultRoot': '使用默认',
+    'workspaceFilesSaveDefaultRoot': '保存为默认',
+    'workspaceFilesSidebar': '文件树',
     'workspaceFilesNotConnected': '连接主机后浏览文件。',
     'workspaceFilesNoCwd': '请选择会话或设置工作目录。',
     'workspaceFilesRefresh': '刷新',

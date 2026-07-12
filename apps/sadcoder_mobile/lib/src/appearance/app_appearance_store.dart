@@ -14,6 +14,7 @@ class AppAppearanceSettings {
   const AppAppearanceSettings({
     this.theme = AppThemePreference.system,
     this.colorPalette = AppColorPalette.sadcoder,
+    this.fontSize = AppFontSizePreference.medium,
     this.titleDisplay = AppTitleDisplaySettings.defaults,
     this.statusLineDisplay = AppStatusLineDisplaySettings.defaults,
     this.composerInputMode = AppComposerInputMode.standard,
@@ -30,6 +31,7 @@ class AppAppearanceSettings {
     return AppAppearanceSettings(
       theme: controller.theme,
       colorPalette: controller.colorPalette,
+      fontSize: controller.fontSize,
       titleDisplay: controller.titleDisplay,
       statusLineDisplay: controller.statusLineDisplay,
       composerInputMode: controller.composerInputMode,
@@ -49,6 +51,9 @@ class AppAppearanceSettings {
       colorPalette:
           AppColorPalette.parse(_stringValue(json['colorPalette']) ?? '') ??
           AppColorPalette.sadcoder,
+      fontSize:
+          AppFontSizePreference.parse(_stringValue(json['fontSize']) ?? '') ??
+          AppFontSizePreference.medium,
       titleDisplay: AppTitleDisplaySettings(
         showThreadTitle:
             _boolValue(titleDisplay['showThreadTitle']) ??
@@ -96,6 +101,7 @@ class AppAppearanceSettings {
 
   final AppThemePreference theme;
   final AppColorPalette colorPalette;
+  final AppFontSizePreference fontSize;
   final AppTitleDisplaySettings titleDisplay;
   final AppStatusLineDisplaySettings statusLineDisplay;
   final AppComposerInputMode composerInputMode;
@@ -107,6 +113,7 @@ class AppAppearanceSettings {
     return AppAppearanceController(
       theme: theme,
       colorPalette: colorPalette,
+      fontSize: fontSize,
       titleDisplay: titleDisplay,
       statusLineDisplay: statusLineDisplay,
       composerInputMode: composerInputMode,
@@ -119,6 +126,7 @@ class AppAppearanceSettings {
   Map<String, Object?> toJson() => {
     'theme': theme.commandValue,
     'colorPalette': colorPalette.commandValue,
+    'fontSize': fontSize.commandValue,
     'titleDisplay': {
       'showThreadTitle': titleDisplay.showThreadTitle,
       'showWorkingDirectory': titleDisplay.showWorkingDirectory,

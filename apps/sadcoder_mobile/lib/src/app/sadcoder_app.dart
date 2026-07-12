@@ -90,6 +90,7 @@ class _SadCoderAppState extends State<SadCoderApp> {
       animation: _appearanceController,
       builder: (context, _) {
         final colorPalette = _appearanceController.colorPalette;
+        final fontSize = _appearanceController.fontSize;
         return MaterialApp(
           onGenerateTitle: (context) => context.l10n.appTitle,
           debugShowCheckedModeBanner: false,
@@ -105,10 +106,12 @@ class _SadCoderAppState extends State<SadCoderApp> {
           theme: sadCoderThemeData(
             colorPalette: colorPalette,
             brightness: Brightness.light,
+            fontSize: fontSize,
           ),
           darkTheme: sadCoderThemeData(
             colorPalette: colorPalette,
             brightness: Brightness.dark,
+            fontSize: fontSize,
           ),
           home: AppShell(
             appearanceController: _appearanceController,

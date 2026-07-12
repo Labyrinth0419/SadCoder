@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../config/codex_config_override_controller.dart';
+import '../../config/codex_config_overrides.dart';
 import '../../files/file_search_reader.dart';
 import '../../files/workspace_directory_reader.dart';
 import '../../files/workspace_file_failure.dart';
@@ -51,14 +52,17 @@ class WorkspaceFilesPage extends StatefulWidget {
 
 class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
   final TextEditingController _filterController = TextEditingController();
+  final TextEditingController _rootController = TextEditingController();
   final Map<String, _DirectoryLoadState> _directories = {};
   final Map<String, int> _directoryRequestIds = {};
   final Set<String> _expandedDirectories = {''};
   int _nextDirectoryRequestId = 0;
   int _nextFileRequestId = 0;
   String _filter = '';
+  String? _manualRoot;
   String? _activeRoot;
   bool _includeHidden = false;
+  bool _showFileSidebar = true;
   _FilePreviewState _preview = const _FilePreviewState.idle();
 
   @override
@@ -67,6 +71,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     _filterController.addListener(_handleFilterChanged);
     _attachListeners();
     _activeRoot = _resolvedRoot();
+    _setRootControllerText(_activeRoot ?? '');
     unawaited(_loadDirectory(''));
   }
 
@@ -97,6 +102,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     _filterController
       ..removeListener(_handleFilterChanged)
       ..dispose();
+    _rootController.dispose();
     super.dispose();
   }
 
@@ -116,46 +122,102 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
       _scheduleDirectoryLoad('');
     }
 
-    return ListView(
-      key: const ValueKey('workspace-files-page'),
-      padding: const EdgeInsets.all(16),
-      children: [
-        _FilesHeader(root: root),
-        const SizedBox(height: 12),
-        if (directoryReader == null || fileReader == null)
-          _StatusPanel(
-            icon: Icons.link_off,
-            title: l10n.workspaceFilesNotConnected,
-          )
-        else if (root == null)
-          _StatusPanel(
-            icon: Icons.folder_off_outlined,
-            title: l10n.workspaceFilesNoCwd,
-          )
-        else ...[
-          _FilesToolbar(
-            filterController: _filterController,
-            includeHidden: _includeHidden,
-            onIncludeHiddenChanged: _setIncludeHidden,
-            onSearch: _fileSearchReader == null ? null : _searchWorkspace,
-            onRefresh: _refreshWorkspace,
-          ),
-          const SizedBox(height: 12),
-          _DirectoryPanel(
-            root: root,
-            rows: _directoryRows(l10n, root: root, path: '', depth: 0),
-          ),
-          const SizedBox(height: 12),
-          _PreviewPanel(
-            preview: _preview,
-            onModeChanged: _setPreviewMode,
-            onLoadMore: _loadMorePreview,
-            errorText: _preview.error == null
-                ? null
-                : _workspaceFailureMessage(l10n, _preview.error!),
-          ),
-        ],
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final overlaySidebar = constraints.maxWidth < 720;
+        final sidebarVisible = _showFileSidebar;
+        final sidebarWidth = _filesSidebarWidthFor(constraints.maxWidth);
+        return Column(
+          key: const ValueKey('workspace-files-page'),
+          children: [
+            _FilesTopBar(
+              root: root,
+              sidebarVisible: sidebarVisible,
+              onToggleSidebar: _toggleFileSidebar,
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    left: sidebarVisible && !overlaySidebar ? sidebarWidth : 0,
+                    child: ListView(
+                      key: const ValueKey('workspace-files-main'),
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        if (directoryReader == null || fileReader == null)
+                          _StatusPanel(
+                            icon: Icons.link_off,
+                            title: l10n.workspaceFilesNotConnected,
+                          )
+                        else if (root == null)
+                          _StatusPanel(
+                            icon: Icons.folder_off_outlined,
+                            title: l10n.workspaceFilesNoCwd,
+                          )
+                        else
+                          _PreviewPanel(
+                            preview: _preview,
+                            onModeChanged: _setPreviewMode,
+                            onLoadMore: _loadMorePreview,
+                            errorText: _preview.error == null
+                                ? null
+                                : _workspaceFailureMessage(
+                                    l10n,
+                                    _preview.error!,
+                                  ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (sidebarVisible)
+                    Positioned(
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      width: sidebarWidth,
+                      child: _FilesSidebar(
+                        overlay: overlaySidebar,
+                        root: root,
+                        rootController: _rootController,
+                        canSaveDefaultRoot:
+                            widget.configOverrideController != null,
+                        onUseRoot: _setWorkspaceRoot,
+                        onUseDefaultRoot: _useDefaultWorkspaceRoot,
+                        onSaveDefaultRoot: _saveDefaultWorkspaceRoot,
+                        toolbar: directoryReader == null || fileReader == null
+                            ? null
+                            : _FilesToolbar(
+                                filterController: _filterController,
+                                includeHidden: _includeHidden,
+                                onIncludeHiddenChanged: _setIncludeHidden,
+                                onSearch: _fileSearchReader == null
+                                    ? null
+                                    : _searchWorkspace,
+                                onRefresh: _refreshWorkspace,
+                              ),
+                        directory:
+                            root == null ||
+                                directoryReader == null ||
+                                fileReader == null
+                            ? null
+                            : _DirectoryPanel(
+                                root: root,
+                                rows: _directoryRows(
+                                  l10n,
+                                  root: root,
+                                  path: '',
+                                  depth: 0,
+                                ),
+                              ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -185,6 +247,10 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     final explicitRoot = _normalizedText(widget.root);
     if (explicitRoot != null) {
       return explicitRoot;
+    }
+    final manualRoot = _normalizedText(_manualRoot);
+    if (manualRoot != null) {
+      return manualRoot;
     }
     final overrideRoot = _normalizedText(
       widget.configOverrideController?.resolved.cwd,
@@ -220,6 +286,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
         ..clear()
         ..add('');
       _preview = const _FilePreviewState.idle();
+      _setRootControllerText(nextRoot ?? '');
     }
     if (mounted) {
       setState(() {});
@@ -245,6 +312,50 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
         unawaited(_loadDirectory(path));
       }
     });
+  }
+
+  void _toggleFileSidebar() {
+    setState(() => _showFileSidebar = !_showFileSidebar);
+  }
+
+  void _setWorkspaceRoot() {
+    final nextRoot = _normalizedText(_rootController.text);
+    if (nextRoot == _manualRoot) {
+      return;
+    }
+    _manualRoot = nextRoot;
+    _handleSourcesChanged(forceReload: true);
+  }
+
+  void _useDefaultWorkspaceRoot() {
+    if (_manualRoot == null) {
+      _setRootControllerText(_resolvedRoot() ?? '');
+      return;
+    }
+    _manualRoot = null;
+    _handleSourcesChanged(forceReload: true);
+  }
+
+  void _saveDefaultWorkspaceRoot() {
+    final nextRoot = _normalizedText(_rootController.text);
+    final controller = widget.configOverrideController;
+    if (nextRoot == null || controller == null) {
+      return;
+    }
+    _manualRoot = null;
+    controller.setAppDefault(
+      _copyOverridesWithCwd(controller.layers.appDefault, nextRoot),
+    );
+  }
+
+  void _setRootControllerText(String value) {
+    if (_rootController.text == value) {
+      return;
+    }
+    _rootController.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
+    );
   }
 
   Future<void> _loadDirectory(
@@ -657,37 +768,211 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
   }
 }
 
-class _FilesHeader extends StatelessWidget {
-  const _FilesHeader({required this.root});
+double _filesSidebarWidthFor(double maxWidth) {
+  if (maxWidth <= 320) {
+    return maxWidth;
+  }
+  if (maxWidth < 720) {
+    return maxWidth * 0.88;
+  }
+  return 340;
+}
+
+CodexConfigOverrides _copyOverridesWithCwd(
+  CodexConfigOverrides overrides,
+  String cwd,
+) {
+  return CodexConfigOverrides(
+    model: overrides.model,
+    effort: overrides.effort,
+    summary: overrides.summary,
+    approvalPolicy: overrides.approvalPolicy,
+    sandboxPolicy: overrides.sandboxPolicy,
+    permissionProfile: overrides.permissionProfile,
+    cwd: cwd,
+    personality: overrides.personality,
+    serviceTier: overrides.serviceTier,
+    collaborationMode: overrides.collaborationMode,
+  );
+}
+
+class _FilesTopBar extends StatelessWidget {
+  const _FilesTopBar({
+    required this.root,
+    required this.sidebarVisible,
+    required this.onToggleSidebar,
+  });
 
   final String? root;
+  final bool sidebarVisible;
+  final VoidCallback onToggleSidebar;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 10, 16, 10),
+        child: Row(
           children: [
+            IconButton(
+              key: const ValueKey('workspace-files-sidebar-toggle'),
+              tooltip: l10n.workspaceFilesSidebar,
+              onPressed: onToggleSidebar,
+              icon: Icon(sidebarVisible ? Icons.menu_open : Icons.menu),
+            ),
+            const SizedBox(width: 4),
             const Icon(Icons.folder_copy_outlined),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                l10n.workspaceFilesTitle,
-                style: Theme.of(context).textTheme.headlineMedium,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.workspaceFilesTitle,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  if (root != null)
+                    Text(
+                      l10n.workspaceFilesRoot(root!),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
               ),
             ),
           ],
         ),
-        if (root != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            l10n.workspaceFilesRoot(root!),
-            style: Theme.of(context).textTheme.bodySmall,
+      ),
+    );
+  }
+}
+
+class _FilesSidebar extends StatelessWidget {
+  const _FilesSidebar({
+    required this.overlay,
+    required this.root,
+    required this.rootController,
+    required this.canSaveDefaultRoot,
+    required this.onUseRoot,
+    required this.onUseDefaultRoot,
+    required this.onSaveDefaultRoot,
+    required this.toolbar,
+    required this.directory,
+  });
+
+  final bool overlay;
+  final String? root;
+  final TextEditingController rootController;
+  final bool canSaveDefaultRoot;
+  final VoidCallback onUseRoot;
+  final VoidCallback onUseDefaultRoot;
+  final VoidCallback onSaveDefaultRoot;
+  final Widget? toolbar;
+  final Widget? directory;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      elevation: overlay ? 8 : 0,
+      color: colorScheme.surfaceContainerLow,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: BorderDirectional(
+            end: BorderSide(color: colorScheme.outlineVariant),
+          ),
+        ),
+        child: ListView(
+          key: const ValueKey('workspace-files-sidebar'),
+          padding: const EdgeInsets.all(12),
+          children: [
+            _WorkspaceRootSelector(
+              controller: rootController,
+              canSaveDefaultRoot: canSaveDefaultRoot,
+              onUseRoot: onUseRoot,
+              onUseDefaultRoot: onUseDefaultRoot,
+              onSaveDefaultRoot: onSaveDefaultRoot,
+            ),
+            if (toolbar != null) ...[const SizedBox(height: 12), toolbar!],
+            if (directory != null) ...[const SizedBox(height: 12), directory!],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WorkspaceRootSelector extends StatelessWidget {
+  const _WorkspaceRootSelector({
+    required this.controller,
+    required this.canSaveDefaultRoot,
+    required this.onUseRoot,
+    required this.onUseDefaultRoot,
+    required this.onSaveDefaultRoot,
+  });
+
+  final TextEditingController controller;
+  final bool canSaveDefaultRoot;
+  final VoidCallback onUseRoot;
+  final VoidCallback onUseDefaultRoot;
+  final VoidCallback onSaveDefaultRoot;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(8),
+      child: ExpansionTile(
+        key: const ValueKey('workspace-files-root-selector'),
+        initiallyExpanded: false,
+        leading: const Icon(Icons.workspaces_outline),
+        title: Text(l10n.workspaceFilesRootLabel),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        children: [
+          TextField(
+            key: const ValueKey('workspace-files-root-field'),
+            controller: controller,
+            onSubmitted: (_) => onUseRoot(),
+            minLines: 1,
+            maxLines: 1,
+            decoration: InputDecoration(
+              labelText: l10n.workspaceFilesRootLabel,
+              isDense: true,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.tonalIcon(
+                key: const ValueKey('workspace-files-use-root'),
+                onPressed: onUseRoot,
+                icon: const Icon(Icons.folder_open_outlined),
+                label: Text(l10n.workspaceFilesUseRoot),
+              ),
+              IconButton.outlined(
+                key: const ValueKey('workspace-files-use-default-root'),
+                onPressed: onUseDefaultRoot,
+                tooltip: l10n.workspaceFilesUseDefaultRoot,
+                icon: const Icon(Icons.restore),
+              ),
+              IconButton.outlined(
+                key: const ValueKey('workspace-files-save-default-root'),
+                onPressed: canSaveDefaultRoot ? onSaveDefaultRoot : null,
+                tooltip: l10n.workspaceFilesSaveDefaultRoot,
+                icon: const Icon(Icons.push_pin_outlined),
+              ),
+            ],
           ),
         ],
-      ],
+      ),
     );
   }
 }
@@ -710,10 +995,13 @@ class _FilesToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Card(
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
               key: const ValueKey('workspace-files-filter'),
@@ -723,21 +1011,24 @@ class _FilesToolbar extends StatelessWidget {
                 hintText: l10n.workspaceFilesSearchHint,
                 border: const OutlineInputBorder(),
                 isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
+                ),
               ),
             ),
             const SizedBox(height: 8),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Expanded(
-                  child: CheckboxListTile(
-                    key: const ValueKey('workspace-files-hidden-toggle'),
-                    contentPadding: EdgeInsets.zero,
-                    value: includeHidden,
-                    onChanged: (value) =>
-                        onIncludeHiddenChanged(value ?? false),
-                    title: Text(l10n.workspaceFilesShowHidden),
-                    controlAffinity: ListTileControlAffinity.leading,
-                  ),
+                FilterChip(
+                  key: const ValueKey('workspace-files-hidden-toggle'),
+                  selected: includeHidden,
+                  onSelected: onIncludeHiddenChanged,
+                  label: Text(l10n.workspaceFilesShowHidden),
+                  avatar: const Icon(Icons.visibility_outlined),
                 ),
                 IconButton.filledTonal(
                   key: const ValueKey('workspace-files-remote-search'),
@@ -745,7 +1036,6 @@ class _FilesToolbar extends StatelessWidget {
                   tooltip: l10n.mentionSearchHint,
                   icon: const Icon(Icons.manage_search),
                 ),
-                const SizedBox(width: 8),
                 IconButton.filledTonal(
                   key: const ValueKey('workspace-files-refresh'),
                   onPressed: onRefresh,
@@ -774,6 +1064,8 @@ class _DirectoryPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ListTile(
+            dense: true,
+            visualDensity: VisualDensity.compact,
             leading: const Icon(Icons.account_tree_outlined),
             title: Text(root),
           ),
@@ -818,6 +1110,8 @@ class _WorkspaceEntryRow extends StatelessWidget {
         l10n.workspaceFilesModifiedAt(entry.modifiedAt!),
     ];
     return ListTile(
+      dense: true,
+      visualDensity: VisualDensity.compact,
       contentPadding: EdgeInsetsDirectional.only(
         start: 16.0 + depth * 20,
         end: 8,
@@ -881,6 +1175,8 @@ class _IndentedStatusRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      dense: true,
+      visualDensity: VisualDensity.compact,
       contentPadding: EdgeInsetsDirectional.only(
         start: 16.0 + depth * 20,
         end: 16,
@@ -906,6 +1202,8 @@ class _IndentedErrorRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return ListTile(
+      dense: true,
+      visualDensity: VisualDensity.compact,
       contentPadding: EdgeInsetsDirectional.only(
         start: 16.0 + depth * 20,
         end: 8,
