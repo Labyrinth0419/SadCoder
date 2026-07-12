@@ -1152,6 +1152,7 @@ MVP 可以简化为底部导航：
 - 验证别名 `/clean -> /stop`、`/pet -> /pets`、`/approve -> AutoReview`、`/subagents -> MultiAgents`。
 - 验证 active turn 中不可用的斜杠命令被禁用，不会触发隐式 `turn/interrupt`。
 - 验证 `/quit`、`/exit` 只断开 App/proxy，不停止服务器上的 active turn。
+  - 已补充 Chat widget 层覆盖：`/quit` 和 `/exit` 都通过真实 composer 提交流程断开 mobile proxy，session 回到 idle，且 fake turn runner 未记录任何 `turn/interrupt`。
 - 验证 `/stop` 只作用于后台 terminal/process，不等价于 `turn/interrupt`。
 - 验证 unknown slash command 被显示为未支持或需要 raw fallback，不会静默作为普通 prompt 发送。
 - 验证 `/side`、`/btw` 创建 ephemeral fork 时不会 interrupt main thread，side 返回/丢弃不会影响 main thread active turn。

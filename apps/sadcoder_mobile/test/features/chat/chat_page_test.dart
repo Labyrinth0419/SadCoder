@@ -1915,53 +1915,50 @@ void main() {
     expect(find.text('Plan mode applied.'), findsOneWidget);
   });
 
-  testWidgets('/quit disconnects without interrupting an active turn', (
-    tester,
-  ) async {
-    final approvalController = ApprovalStateController();
-    final turnRunner = _FakeTurnRunner();
-    final starter = _FakeSessionStarter(
-      threadListReader: const _FakeThreadListReader(
-        page: ThreadListPage(threads: []),
-      ),
-      turnRunner: turnRunner,
-    );
-    final sessionController = CodexSessionStateController(
-      connector: starter,
-      approvalController: approvalController,
-    );
-    final turnController = TurnController(
-      runnerProvider: () => sessionController.turnRunner,
-    );
-    addTearDown(turnController.dispose);
-    addTearDown(sessionController.dispose);
-    addTearDown(approvalController.dispose);
-
-    await sessionController.connect(_profile);
-    await turnController.submitText('Run long task');
-    await _pumpChatPage(
+  for (final slash in ['/quit', '/exit']) {
+    testWidgets('$slash disconnects without interrupting an active turn', (
       tester,
-      sessionController: sessionController,
-      turnController: turnController,
-    );
+    ) async {
+      final approvalController = ApprovalStateController();
+      final turnRunner = _FakeTurnRunner();
+      final starter = _FakeSessionStarter(
+        threadListReader: const _FakeThreadListReader(
+          page: ThreadListPage(threads: []),
+        ),
+        turnRunner: turnRunner,
+      );
+      final sessionController = CodexSessionStateController(
+        connector: starter,
+        approvalController: approvalController,
+      );
+      final turnController = TurnController(
+        runnerProvider: () => sessionController.turnRunner,
+      );
+      addTearDown(turnController.dispose);
+      addTearDown(sessionController.dispose);
+      addTearDown(approvalController.dispose);
 
-    await tester.enterText(
-      find.byKey(const ValueKey('chat-composer-field')),
-      '/quit',
-    );
-    await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
-    await tester.pumpAndSettle();
+      await sessionController.connect(_profile);
+      await turnController.submitText('Run long task');
+      await _pumpChatPage(
+        tester,
+        sessionController: sessionController,
+        turnController: turnController,
+      );
 
-    expect(sessionController.status, CodexSessionStatus.idle);
-    expect(turnRunner.interruptedTurns, isEmpty);
-    expect(
-      find.text(
-        'Disconnected from the mobile proxy. Server tasks were not interrupted.',
-      ),
-      findsOneWidget,
-    );
-  });
+      await _submitComposerText(tester, slash);
+
+      expect(sessionController.status, CodexSessionStatus.idle, reason: slash);
+      expect(turnRunner.interruptedTurns, isEmpty, reason: slash);
+      expect(
+        find.text(
+          'Disconnected from the mobile proxy. Server tasks were not interrupted.',
+        ),
+        findsOneWidget,
+        reason: slash,
+      );
+    });
+  }
 
   testWidgets('/copy copies the latest assistant message', (tester) async {
     final timelineController = ChatTimelineController();
