@@ -194,14 +194,12 @@ class _ChatPageState extends State<ChatPage> {
         return Column(
           children: [
             if (!compactHeight) ...[
-              _ChatHeader(
-                title: _chatHeaderTitle(l10n),
-                connectionLabel: _connectionLabel(
-                  l10n,
-                  sessionController?.status,
-                ),
-                connected:
-                    sessionController?.status == CodexSessionStatus.connected,
+              _ChatActivityStrip(
+                sidebarVisible: _showThreadSidebar,
+                onToggleSidebar: _toggleThreadSidebar,
+                sessionController: sessionController,
+                turnController: turnController,
+                timelineController: widget.timelineController,
                 statusLineParts: _chatStatusLineParts(l10n),
                 connectionControls: _ChatConnectionControls(
                   profiles: _headerProfiles(),
@@ -220,16 +218,6 @@ class _ChatPageState extends State<ChatPage> {
                       ? null
                       : _selectHeaderProfile,
                 ),
-              ),
-              const Divider(height: 1),
-            ],
-            if (!compactHeight) ...[
-              _ChatActivityStrip(
-                sidebarVisible: _showThreadSidebar,
-                onToggleSidebar: _toggleThreadSidebar,
-                sessionController: sessionController,
-                turnController: turnController,
-                timelineController: widget.timelineController,
               ),
               const Divider(height: 1),
             ],
@@ -2369,25 +2357,6 @@ class _ChatPageState extends State<ChatPage> {
     _refreshVisibleThreads();
   }
 
-  String _chatHeaderTitle(AppLocalizations l10n) {
-    final settings =
-        widget.appearanceController?.titleDisplay ??
-        AppTitleDisplaySettings.defaults;
-    final parts = <String>[l10n.chat];
-    final threadTitle = widget.threadDetailController?.detail?.thread.title
-        .trim();
-    if (settings.showThreadTitle &&
-        threadTitle != null &&
-        threadTitle.isNotEmpty) {
-      parts.add(threadTitle);
-    }
-    final cwd = _currentWorkspaceCwd();
-    if (settings.showWorkingDirectory && cwd != null) {
-      parts.add(cwd);
-    }
-    return parts.join(' / ');
-  }
-
   List<String> _chatStatusLineParts(AppLocalizations l10n) {
     final settings =
         widget.appearanceController?.statusLineDisplay ??
@@ -3822,21 +3791,6 @@ CodexConfigOverrides _overridesForScope(
   };
 }
 
-class _StateChip extends StatelessWidget {
-  const _StateChip({required this.label, required this.connected});
-
-  final String label;
-  final bool connected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      avatar: Icon(connected ? Icons.link : Icons.link_off, size: 18),
-      label: Text(label),
-    );
-  }
-}
-
 class _ChatConnectionControls extends StatelessWidget {
   const _ChatConnectionControls({
     required this.profiles,
@@ -4108,6 +4062,8 @@ class _ChatActivityStrip extends StatelessWidget {
     required this.sessionController,
     required this.turnController,
     required this.timelineController,
+    required this.statusLineParts,
+    required this.connectionControls,
   });
 
   final bool sidebarVisible;
@@ -4115,6 +4071,8 @@ class _ChatActivityStrip extends StatelessWidget {
   final CodexSessionStateController? sessionController;
   final TurnController? turnController;
   final ChatTimelineController? timelineController;
+  final List<String> statusLineParts;
+  final Widget connectionControls;
 
   @override
   Widget build(BuildContext context) {
@@ -4145,9 +4103,9 @@ class _ChatActivityStrip extends StatelessWidget {
     ];
 
     return Material(
-      color: colorScheme.surface,
+      color: colorScheme.surfaceContainerLow,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
+        padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
         child: Row(
           children: [
             IconButton(
@@ -4184,9 +4142,26 @@ class _ChatActivityStrip extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                  if (statusLineParts.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Wrap(
+                      key: const ValueKey('chat-status-line'),
+                      spacing: 8,
+                      runSpacing: 2,
+                      children: [
+                        for (final part in statusLineParts)
+                          Text(
+                            part,
+                            style: Theme.of(context).textTheme.labelMedium,
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
+            const SizedBox(width: 8),
+            Flexible(flex: 0, child: connectionControls),
           ],
         ),
       ),
@@ -4271,59 +4246,6 @@ class _ChatThreadSidebar extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           children: [child],
         ),
-      ),
-    );
-  }
-}
-
-class _ChatHeader extends StatelessWidget {
-  const _ChatHeader({
-    required this.title,
-    required this.connectionLabel,
-    required this.connected,
-    required this.statusLineParts,
-    this.connectionControls,
-  });
-
-  final String title;
-  final String connectionLabel;
-  final bool connected;
-  final List<String> statusLineParts;
-  final Widget? connectionControls;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  key: const ValueKey('chat-display-title'),
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-              ),
-              connectionControls ??
-                  _StateChip(label: connectionLabel, connected: connected),
-            ],
-          ),
-          if (statusLineParts.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Wrap(
-              key: const ValueKey('chat-status-line'),
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                for (final part in statusLineParts)
-                  Text(part, style: Theme.of(context).textTheme.labelMedium),
-              ],
-            ),
-          ],
-        ],
       ),
     );
   }
@@ -4504,8 +4426,15 @@ class _ThreadListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      color: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -4602,23 +4531,15 @@ class _ThreadListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final badges = <String>[
-      thread.status,
-      if (thread.isFork) context.l10n.forkedThread,
-      if (thread.isSubagent) context.l10n.subagentThread,
-    ];
+    final selected = detailController?.selectedThreadId == thread.id;
     return ListTile(
       key: ValueKey('thread-summary-${thread.id}'),
       contentPadding: EdgeInsets.zero,
+      dense: true,
+      visualDensity: VisualDensity.compact,
+      selected: selected,
       leading: const Icon(Icons.forum_outlined),
       title: Text(thread.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        [
-          thread.cwd,
-          badges.join(' / '),
-        ].where((value) => value.isNotEmpty).join('\n'),
-      ),
-      isThreeLine: thread.cwd.isNotEmpty && badges.isNotEmpty,
       trailing: archived
           ? IconButton(
               tooltip: context.l10n.unarchiveThread,
@@ -4761,7 +4682,7 @@ class _TimelineItemView extends StatelessWidget {
                 ),
                 if (details.isNotEmpty) ...[
                   const SizedBox(height: 2),
-                  Text(details.join('\n')),
+                  _TimelineItemDetails(itemId: item.itemId, details: details),
                 ],
                 if (body.isNotEmpty) ...[
                   const SizedBox(height: 6),
@@ -4876,6 +4797,48 @@ class _TimelineItemView extends StatelessWidget {
       'plan' => Icons.checklist,
       _ => Icons.notes_outlined,
     };
+  }
+}
+
+class _TimelineItemDetails extends StatelessWidget {
+  const _TimelineItemDetails({required this.itemId, required this.details});
+
+  final String itemId;
+  final List<String> details;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        key: ValueKey('timeline-details-$itemId'),
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        dense: true,
+        visualDensity: VisualDensity.compact,
+        leading: Icon(
+          Icons.info_outline,
+          size: 18,
+          color: colorScheme.onSurfaceVariant,
+        ),
+        title: Text(
+          context.l10n.timelineStatus,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        children: [
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: SelectableText(
+              details.join('\n'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

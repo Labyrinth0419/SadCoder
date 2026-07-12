@@ -390,7 +390,7 @@ void main() {
     await _pumpChatPage(tester, threadListController: controller);
 
     expect(find.text('Fix login bug'), findsOneWidget);
-    expect(find.text('/repo\nrunning / fork'), findsOneWidget);
+    expect(find.text('/repo\nrunning / fork'), findsNothing);
   });
 
   testWidgets('shows archived threads and restores an archived thread', (
@@ -2783,7 +2783,7 @@ void main() {
 
     expect(appearanceController.titleDisplay.showThreadTitle, isTrue);
     expect(appearanceController.titleDisplay.showWorkingDirectory, isTrue);
-    expect(find.text('Chat / Selected thread / /repo'), findsOneWidget);
+    expect(find.text('Chat / Selected thread / /repo'), findsNothing);
     expect(find.text('Title display updated.'), findsOneWidget);
   });
 
@@ -6315,6 +6315,9 @@ void main() {
     await _pumpChatPage(tester, timelineController: timelineController);
 
     expect(find.text('cargo test'), findsOneWidget);
+    expect(find.textContaining('Working directory: /repo'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('timeline-details-cmd_1')));
+    await tester.pumpAndSettle();
     expect(find.textContaining('Working directory: /repo'), findsOneWidget);
     expect(find.textContaining('Exit code: 0'), findsOneWidget);
     expect(find.textContaining('Duration: 1,200 ms'), findsOneWidget);
@@ -6360,6 +6363,12 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('github/search_issues'), findsOneWidget);
+    expect(find.textContaining('Tool: search_issues'), findsNothing);
+    final mcpDetails = find.byKey(const ValueKey('timeline-details-mcp_1'));
+    await tester.ensureVisible(mcpDetails);
+    await tester.pumpAndSettle();
+    await tester.tap(mcpDetails);
+    await tester.pumpAndSettle();
     expect(find.textContaining('Tool: search_issues'), findsOneWidget);
   });
 

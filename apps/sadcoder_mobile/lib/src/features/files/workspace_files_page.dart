@@ -995,54 +995,68 @@ class _FilesToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final colorScheme = Theme.of(context).colorScheme;
     return Material(
       color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        padding: const EdgeInsets.all(8),
+        child: Row(
           children: [
-            TextField(
-              key: const ValueKey('workspace-files-filter'),
-              controller: filterController,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search),
-                hintText: l10n.workspaceFilesSearchHint,
-                border: const OutlineInputBorder(),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 8,
+            Expanded(
+              child: SizedBox(
+                height: 40,
+                child: TextField(
+                  key: const ValueKey('workspace-files-filter'),
+                  controller: filterController,
+                  textAlignVertical: TextAlignVertical.center,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search, size: 18),
+                    prefixIconConstraints: const BoxConstraints(
+                      minWidth: 36,
+                      minHeight: 36,
+                    ),
+                    hintText: l10n.workspaceFilesSearchHint,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                FilterChip(
-                  key: const ValueKey('workspace-files-hidden-toggle'),
-                  selected: includeHidden,
-                  onSelected: onIncludeHiddenChanged,
-                  label: Text(l10n.workspaceFilesShowHidden),
-                  avatar: const Icon(Icons.visibility_outlined),
-                ),
-                IconButton.filledTonal(
-                  key: const ValueKey('workspace-files-remote-search'),
-                  onPressed: onSearch,
-                  tooltip: l10n.mentionSearchHint,
-                  icon: const Icon(Icons.manage_search),
-                ),
-                IconButton.filledTonal(
-                  key: const ValueKey('workspace-files-refresh'),
-                  onPressed: onRefresh,
-                  tooltip: l10n.workspaceFilesRefresh,
-                  icon: const Icon(Icons.refresh),
-                ),
-              ],
+            const SizedBox(width: 6),
+            IconButton.filledTonal(
+              key: const ValueKey('workspace-files-hidden-toggle'),
+              onPressed: () => onIncludeHiddenChanged(!includeHidden),
+              tooltip: l10n.workspaceFilesShowHidden,
+              style: IconButton.styleFrom(
+                backgroundColor: includeHidden
+                    ? colorScheme.secondaryContainer
+                    : colorScheme.surfaceContainerHighest,
+                foregroundColor: includeHidden
+                    ? colorScheme.onSecondaryContainer
+                    : colorScheme.onSurfaceVariant,
+              ),
+              icon: Icon(
+                includeHidden
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+              ),
+            ),
+            IconButton.filledTonal(
+              key: const ValueKey('workspace-files-remote-search'),
+              onPressed: onSearch,
+              tooltip: l10n.mentionSearchHint,
+              icon: const Icon(Icons.manage_search),
+            ),
+            IconButton.filledTonal(
+              key: const ValueKey('workspace-files-refresh'),
+              onPressed: onRefresh,
+              tooltip: l10n.workspaceFilesRefresh,
+              icon: const Icon(Icons.refresh),
             ),
           ],
         ),
