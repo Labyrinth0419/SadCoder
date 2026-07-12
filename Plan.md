@@ -986,6 +986,7 @@ MVP 可以简化为底部导航：
 - 已落地本地多 SSH profile 保存、按 host 分组折叠、保存项删除、OpenSSH config 导入、私钥文件导入、RSA / ED25519 密钥生成和 public key 复制/导出；私钥走 secure profile store 持久化，不放普通 cache。
 - 已统一主机显示原则：保存主机和会话状态优先显示用户别名；无别名时显示 host/IP，不把 `user@host:port` 当作默认标题。
 - 已落地 Chat 顶栏主机选择器、Settings 二级菜单、candy/lagoon/ember palette 和斜杠命令高级可见性开关。
+- 已落地配置覆盖三层恢复入口：Settings 可一键清除 App 默认覆盖、会话覆盖和本次覆盖并回到服务器默认来源；本地恢复动作不伪造 `thread/settings/update` 普通字段显式清理语义。
 - 已落地 per-host pending approval 聚合与动作路由：Approvals 页面展示所有已连接 host 的待审批项，审批响应回到所属 host 的 `ApprovalStateController`。
 - 已落地 per-host thread summary/detail cache 持久化/恢复：每个 host 的最近线程列表、选中 threadId 和当前 thread detail 通过 `ThreadCacheStore` 独立保存，重建 host UI state 时优先恢复缓存，再由远端权威 thread/detail 读取刷新。
 - 已落地 per-host thread item cache reader、timeline 恢复和 reconnect fallback：`ThreadItemCacheStore` 按 profile/thread 隔离保存 item summaries 和分页游标，`local_data` schema 已补 `item_cache.profile_id` 与 profile/thread 索引；`CodexSessionStateController.threadItemListReader` 已通过缓存 decorator 保存/回退 canonical thread item 读取，host UI state 恢复选中 thread 时会从 item cache 回填 timeline；重连时 `thread/turns/list(itemsView: full)` 会有界分页回填当前 thread，若 turn list 不可用或失败，会尝试 `thread/items/list` 有界分页回填 timeline；turn/item 分页边界按 id 去重，优先保留新页数据。

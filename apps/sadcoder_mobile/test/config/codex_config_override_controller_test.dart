@@ -26,6 +26,61 @@ void main() {
     });
   });
 
+  test('clearTurn clears only the turn override layer', () {
+    final controller = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        appDefault: CodexConfigOverrides(model: 'gpt-5'),
+        session: CodexConfigOverrides(cwd: '/repo'),
+        turn: CodexConfigOverrides(effort: 'high', personality: 'concise'),
+      ),
+    );
+    addTearDown(controller.dispose);
+    var notifications = 0;
+    controller.addListener(() {
+      notifications += 1;
+    });
+
+    controller.clearTurn();
+
+    expect(notifications, 1);
+    expect(controller.layers.appDefault.toTurnStartParams(), {
+      'model': 'gpt-5',
+    });
+    expect(controller.layers.session.toTurnStartParams(), {'cwd': '/repo'});
+    expect(controller.layers.turn.toTurnStartParams(), isEmpty);
+    expect(controller.resolved.toTurnStartParams(), {
+      'model': 'gpt-5',
+      'cwd': '/repo',
+    });
+  });
+
+  test('restoreServerDefaults clears every override layer', () {
+    final controller = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        appDefault: CodexConfigOverrides(model: 'gpt-5'),
+        session: CodexConfigOverrides(cwd: '/repo'),
+        turn: CodexConfigOverrides(effort: 'high'),
+      ),
+    );
+    addTearDown(controller.dispose);
+    var notifications = 0;
+    controller.addListener(() {
+      notifications += 1;
+    });
+
+    controller.restoreServerDefaults();
+
+    expect(notifications, 1);
+    expect(controller.layers.appDefault.toTurnStartParams(), isEmpty);
+    expect(controller.layers.session.toTurnStartParams(), isEmpty);
+    expect(controller.layers.turn.toTurnStartParams(), isEmpty);
+    expect(controller.resolved.toTurnStartParams(), isEmpty);
+    expect(
+      controller.sourceFor('model'),
+      CodexConfigOverrideSource.serverDefault,
+    );
+  });
+
   test('model effort helpers preserve unrelated override fields', () {
     final controller = CodexConfigOverrideController(
       initialLayers: const CodexConfigOverrideLayers(

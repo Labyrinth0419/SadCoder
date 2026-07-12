@@ -2088,6 +2088,12 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
                       icon: const Icon(Icons.restore),
                       label: Text(l10n.clearOverrides),
                     ),
+                    TextButton.icon(
+                      key: const ValueKey('settings-restore-server-defaults'),
+                      onPressed: _restoreServerDefaults,
+                      icon: const Icon(Icons.restart_alt),
+                      label: Text(l10n.restoreServerDefaults),
+                    ),
                     FilledButton.icon(
                       onPressed: _apply,
                       icon: const Icon(Icons.check),
@@ -2126,6 +2132,17 @@ class _AppDefaultOverridesCardState extends State<_AppDefaultOverridesCard> {
     _approvalPolicyController.clear();
     _permissionProfileController.clear();
     widget.controller.setAppDefault(CodexConfigOverrides.empty);
+  }
+
+  void _restoreServerDefaults() {
+    _modelController.clear();
+    _effortController.clear();
+    _cwdController.clear();
+    _personalityController.clear();
+    _serviceTierController.clear();
+    _approvalPolicyController.clear();
+    _permissionProfileController.clear();
+    widget.controller.restoreServerDefaults();
   }
 }
 

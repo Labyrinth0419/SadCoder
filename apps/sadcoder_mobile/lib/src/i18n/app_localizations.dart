@@ -412,6 +412,7 @@ class AppLocalizations {
   String get cwdOverride => _text('cwdOverride');
   String get applyOverrides => _text('applyOverrides');
   String get clearOverrides => _text('clearOverrides');
+  String get restoreServerDefaults => _text('restoreServerDefaults');
   String get overrideSource => _text('overrideSource');
   String get sourceServerDefault => _text('sourceServerDefault');
   String get sourceAppDefault => _text('sourceAppDefault');
@@ -1325,6 +1326,7 @@ const _values = <String, Map<String, String>>{
     'cwdOverride': 'Working directory',
     'applyOverrides': 'Apply overrides',
     'clearOverrides': 'Clear overrides',
+    'restoreServerDefaults': 'Restore server defaults',
     'overrideSource': 'Source',
     'sourceServerDefault': 'server default',
     'sourceAppDefault': 'app default',
@@ -2084,6 +2086,7 @@ const _values = <String, Map<String, String>>{
     'cwdOverride': '工作目录',
     'applyOverrides': '应用覆盖',
     'clearOverrides': '清除覆盖',
+    'restoreServerDefaults': '恢复服务器默认',
     'overrideSource': '来源',
     'sourceServerDefault': '服务器默认',
     'sourceAppDefault': 'App 默认',

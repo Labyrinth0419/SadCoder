@@ -119,6 +119,10 @@ class CodexConfigOverrideController extends ChangeNotifier {
     setSession(CodexConfigOverrides.empty);
   }
 
+  void restoreServerDefaults() {
+    _setLayers(const CodexConfigOverrideLayers());
+  }
+
   CodexConfigOverrideSource sourceFor(String fieldName) {
     return _layers.sourceFor(fieldName);
   }

@@ -19,6 +19,7 @@ import 'package:sadcoder_mobile/src/agent/agent_status.dart';
 import 'package:sadcoder_mobile/src/appearance/app_appearance_controller.dart';
 import 'package:sadcoder_mobile/src/background/background_connection_policy.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
+import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
@@ -137,7 +138,7 @@ void main() {
 
     await _pumpSettings(tester, controller);
 
-    expect(find.textContaining('server default'), findsNWidgets(7));
+    expect(find.textContaining('Source: server default'), findsNWidgets(7));
 
     await tester.enterText(
       find.byKey(const ValueKey('settings-model-override')),
@@ -181,7 +182,7 @@ void main() {
       'approvalPolicy': 'on-request',
       'permissions': 'trusted-workspace',
     });
-    expect(find.textContaining('app default'), findsNWidgets(7));
+    expect(find.textContaining('Source: app default'), findsNWidgets(7));
 
     await tester.drag(find.byType(ListView).last, const Offset(0, -720));
     await tester.pumpAndSettle();
@@ -189,7 +190,46 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(controller.layers.appDefault.toTurnStartParams(), isEmpty);
-    expect(find.textContaining('server default'), findsNWidgets(7));
+    expect(find.textContaining('Source: server default'), findsNWidgets(7));
+  });
+
+  testWidgets('restores every config override layer to server defaults', (
+    tester,
+  ) async {
+    final controller = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        appDefault: CodexConfigOverrides(model: 'gpt-5'),
+        session: CodexConfigOverrides(effort: 'high'),
+        turn: CodexConfigOverrides(cwd: '/repo', personality: 'concise'),
+      ),
+    );
+    addTearDown(controller.dispose);
+
+    await _pumpSettings(tester, controller);
+
+    expect(controller.resolved.toTurnStartParams(), {
+      'model': 'gpt-5',
+      'effort': 'high',
+      'cwd': '/repo',
+      'personality': 'concise',
+    });
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-restore-server-defaults')),
+      320,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-restore-server-defaults')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(controller.layers.appDefault.toTurnStartParams(), isEmpty);
+    expect(controller.layers.session.toTurnStartParams(), isEmpty);
+    expect(controller.layers.turn.toTurnStartParams(), isEmpty);
+    expect(controller.resolved.toTurnStartParams(), isEmpty);
+    expect(find.textContaining('Source: server default'), findsNWidgets(7));
   });
 
   testWidgets('refreshes and renders server config snapshot read-only', (
