@@ -6,6 +6,8 @@ class AgentSnapshot {
     required this.pendingApprovals,
     required this.recentEvents,
     this.deliveredCursor,
+    this.retainedCursorFloor,
+    this.cursorGap = false,
   });
 
   factory AgentSnapshot.fromJson(Map<String, Object?> json) {
@@ -31,6 +33,11 @@ class AgentSnapshot {
         'deliveredCursor',
         'delivered_cursor',
       ]),
+      retainedCursorFloor: _stringField(json, [
+        'retainedCursorFloor',
+        'retained_cursor_floor',
+      ]),
+      cursorGap: _boolField(json, ['cursorGap', 'cursor_gap']) ?? false,
     );
   }
 
@@ -38,6 +45,8 @@ class AgentSnapshot {
   final List<JsonRpcServerRequest> pendingApprovals;
   final List<AgentCachedEvent> recentEvents;
   final String? deliveredCursor;
+  final String? retainedCursorFloor;
+  final bool cursorGap;
 }
 
 class AgentCachedEvent {
@@ -95,6 +104,16 @@ String? _stringField(Map<String, Object?> map, List<String> keys) {
     final value = map[key];
     if (value is String && value.trim().isNotEmpty) {
       return value.trim();
+    }
+  }
+  return null;
+}
+
+bool? _boolField(Map<String, Object?> map, List<String> keys) {
+  for (final key in keys) {
+    final value = map[key];
+    if (value is bool) {
+      return value;
     }
   }
   return null;

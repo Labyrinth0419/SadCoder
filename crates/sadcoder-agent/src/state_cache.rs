@@ -52,15 +52,17 @@ impl AgentStateCache {
     }
 
     pub(crate) fn into_snapshot(self) -> AgentStateSnapshot {
-        self.snapshot
+        snapshot_with_cursor_window(self.snapshot, false)
     }
 
     pub(crate) fn snapshot_since_cursor(&self, since_cursor: Option<&str>) -> AgentStateSnapshot {
         let Some(since_cursor) = normalized_cursor(since_cursor) else {
-            return self.snapshot.clone();
+            return snapshot_with_cursor_window(self.snapshot.clone(), false);
         };
-        let mut snapshot = self.snapshot.clone();
-        snapshot.recent_events = events_after_cursor(&snapshot.recent_events, since_cursor);
+        let mut snapshot = snapshot_with_cursor_window(self.snapshot.clone(), false);
+        let filtered = events_after_cursor(&snapshot.recent_events, since_cursor);
+        snapshot.recent_events = filtered.events;
+        snapshot.cursor_gap = filtered.cursor_gap;
         snapshot
     }
 
@@ -189,28 +191,59 @@ impl AgentStateCache {
     }
 }
 
-fn events_after_cursor(events: &[AgentCachedEvent], since_cursor: &str) -> Vec<AgentCachedEvent> {
+#[derive(Debug, Clone)]
+struct CursorFilteredEvents {
+    events: Vec<AgentCachedEvent>,
+    cursor_gap: bool,
+}
+
+fn events_after_cursor(events: &[AgentCachedEvent], since_cursor: &str) -> CursorFilteredEvents {
     if let Ok(since) = since_cursor.parse::<u64>() {
-        return events
+        let retained_floor = events
             .iter()
-            .filter(|event| {
-                event
-                    .cursor
-                    .as_deref()
-                    .and_then(|cursor| cursor.parse::<u64>().ok())
-                    .is_some_and(|cursor| cursor > since)
-            })
-            .cloned()
-            .collect();
+            .find_map(|event| event.cursor.as_deref()?.parse::<u64>().ok());
+        let cursor_gap = retained_floor.is_some_and(|floor| floor > since.saturating_add(1));
+        return CursorFilteredEvents {
+            events: events
+                .iter()
+                .filter(|event| {
+                    event
+                        .cursor
+                        .as_deref()
+                        .and_then(|cursor| cursor.parse::<u64>().ok())
+                        .is_some_and(|cursor| cursor > since)
+                })
+                .cloned()
+                .collect(),
+            cursor_gap,
+        };
     }
 
     let Some(index) = events
         .iter()
         .position(|event| event.cursor.as_deref() == Some(since_cursor))
     else {
-        return events.to_vec();
+        return CursorFilteredEvents {
+            events: events.to_vec(),
+            cursor_gap: !events.is_empty(),
+        };
     };
-    events.iter().skip(index + 1).cloned().collect()
+    CursorFilteredEvents {
+        events: events.iter().skip(index + 1).cloned().collect(),
+        cursor_gap: false,
+    }
+}
+
+fn snapshot_with_cursor_window(
+    mut snapshot: AgentStateSnapshot,
+    cursor_gap: bool,
+) -> AgentStateSnapshot {
+    snapshot.retained_cursor_floor = snapshot
+        .recent_events
+        .iter()
+        .find_map(|event| normalized_cursor(event.cursor.as_deref()).map(str::to_string));
+    snapshot.cursor_gap = cursor_gap;
+    snapshot
 }
 
 fn normalized_cursor(cursor: Option<&str>) -> Option<&str> {
@@ -436,6 +469,28 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(methods, vec!["event/two", "event/three"]);
         assert_eq!(snapshot.delivered_cursor.as_deref(), Some("3"));
+        assert_eq!(snapshot.retained_cursor_floor.as_deref(), Some("1"));
+        assert!(!snapshot.cursor_gap);
+    }
+
+    #[test]
+    fn marks_cursor_gap_when_numeric_cursor_is_before_retained_window() {
+        let mut cache = AgentStateCache::empty();
+        cache.recent_event_limit = 2;
+        cache.observe_server_line(r#"{"jsonrpc":"2.0","method":"event/one"}"#);
+        cache.observe_server_line(r#"{"jsonrpc":"2.0","method":"event/two"}"#);
+        cache.observe_server_line(r#"{"jsonrpc":"2.0","method":"event/three"}"#);
+
+        let snapshot = cache.snapshot_since_cursor(Some("0"));
+
+        let methods = snapshot
+            .recent_events
+            .iter()
+            .map(|event| event.method.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(methods, vec!["event/two", "event/three"]);
+        assert_eq!(snapshot.retained_cursor_floor.as_deref(), Some("2"));
+        assert!(snapshot.cursor_gap);
     }
 
     #[test]
@@ -460,6 +515,8 @@ mod tests {
         assert_eq!(snapshot.recent_events.len(), 1);
         assert_eq!(snapshot.recent_events[0].method, "event/two");
         assert_eq!(snapshot.delivered_cursor.as_deref(), Some("event-2"));
+        assert_eq!(snapshot.retained_cursor_floor.as_deref(), Some("event-1"));
+        assert!(!snapshot.cursor_gap);
     }
 
     #[test]
@@ -476,6 +533,8 @@ mod tests {
 
         assert_eq!(snapshot.recent_events.len(), 1);
         assert_eq!(snapshot.recent_events[0].method, "event/one");
+        assert_eq!(snapshot.retained_cursor_floor.as_deref(), Some("event-1"));
+        assert!(snapshot.cursor_gap);
     }
 
     #[test]

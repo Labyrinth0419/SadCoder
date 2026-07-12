@@ -80,6 +80,14 @@ pub struct AgentStateSnapshot {
         skip_serializing_if = "Option::is_none"
     )]
     pub delivered_cursor: Option<String>,
+    #[serde(
+        default,
+        alias = "retained_cursor_floor",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub retained_cursor_floor: Option<String>,
+    #[serde(default, alias = "cursor_gap", skip_serializing_if = "is_false")]
+    pub cursor_gap: bool,
 }
 
 impl Default for AgentStateSnapshot {
@@ -89,8 +97,14 @@ impl Default for AgentStateSnapshot {
             pending_approvals: Vec::new(),
             recent_events: Vec::new(),
             delivered_cursor: None,
+            retained_cursor_floor: None,
+            cursor_gap: false,
         }
     }
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -378,6 +392,8 @@ mod tests {
                 cursor: Some("42".to_string()),
             }],
             delivered_cursor: Some("42".to_string()),
+            retained_cursor_floor: Some("40".to_string()),
+            cursor_gap: true,
         };
 
         let encoded = serde_json::to_value(snapshot).expect("serialize snapshot");
@@ -390,10 +406,12 @@ mod tests {
         assert_eq!(encoded["recentEvents"][0]["params"]["threadId"], "thr_1");
         assert_eq!(encoded["recentEvents"][0]["cursor"], "42");
         assert_eq!(encoded["deliveredCursor"], "42");
+        assert_eq!(encoded["retainedCursorFloor"], "40");
+        assert_eq!(encoded["cursorGap"], true);
     }
 
     #[test]
-    fn agent_state_snapshot_accepts_snake_case_delivered_cursor() {
+    fn agent_state_snapshot_accepts_snake_case_cursor_metadata() {
         let snapshot: AgentStateSnapshot = serde_json::from_value(serde_json::json!({
             "schemaVersion": 1,
             "pendingApprovals": [],
@@ -403,11 +421,15 @@ mod tests {
                     "cursor": "event-7"
                 }
             ],
-            "delivered_cursor": "event-7"
+            "delivered_cursor": "event-7",
+            "retained_cursor_floor": "event-4",
+            "cursor_gap": true
         }))
         .expect("deserialize snapshot");
 
         assert_eq!(snapshot.delivered_cursor.as_deref(), Some("event-7"));
+        assert_eq!(snapshot.retained_cursor_floor.as_deref(), Some("event-4"));
+        assert!(snapshot.cursor_gap);
         assert_eq!(snapshot.recent_events[0].cursor.as_deref(), Some("event-7"));
     }
 

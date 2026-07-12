@@ -533,7 +533,9 @@ void main() {
       "params": { "threadId": "thr_1" }
     }
   ],
-  "deliveredCursor": "event-1"
+  "deliveredCursor": "event-1",
+  "retainedCursorFloor": "event-1",
+  "cursorGap": true
 }
 ''',
         stderr: '',
@@ -553,6 +555,8 @@ void main() {
     expect(snapshot.recentEvents.single.method, 'thread/item');
     expect(snapshot.recentEvents.single.cursor, 'event-1');
     expect(snapshot.deliveredCursor, 'event-1');
+    expect(snapshot.retainedCursorFloor, 'event-1');
+    expect(snapshot.cursorGap, true);
   });
 
   test('readSnapshot passes since cursor to the agent command', () async {
@@ -610,7 +614,9 @@ void main() {
       "params": { "thread_id": "thr_2" }
     }
   ],
-  "delivered_cursor": "event-2"
+  "delivered_cursor": "event-2",
+  "retained_cursor_floor": "event-1",
+  "cursor_gap": true
 }
 ''',
         stderr: '',
@@ -629,6 +635,8 @@ void main() {
     expect(snapshot.recentEvents.single.method, 'thread/turn/completed');
     expect(snapshot.recentEvents.single.cursor, 'event-2');
     expect(snapshot.deliveredCursor, 'event-2');
+    expect(snapshot.retainedCursorFloor, 'event-1');
+    expect(snapshot.cursorGap, true);
   });
 }
 

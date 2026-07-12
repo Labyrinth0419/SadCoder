@@ -1948,6 +1948,8 @@ mod tests {
         assert_eq!(response["result"]["recentEvents"][0]["method"], "event/two");
         assert_eq!(response["result"]["recentEvents"][0]["cursor"], "2");
         assert_eq!(response["result"]["deliveredCursor"], "2");
+        assert_eq!(response["result"]["retainedCursorFloor"], "1");
+        assert!(response["result"].get("cursorGap").is_none());
     }
 
     #[test]
