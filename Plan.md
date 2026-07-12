@@ -352,6 +352,10 @@ agent 负责：
 - agent 不允许因为 App 离线、SSH 断开、App 后台、代理连接超时而自动返回 `decline` 或 `cancel`。
 - 只有用户明确选择“取消本轮/中断任务”时，才映射为 `cancel` 或 `turn/interrupt`。
 
+当前实现状态：
+
+- 已支持未知 app-server server request 的保守通用表示：`ApprovalCoordinator` 将未知 method 映射为 `PendingApprovalKind.unknown` 并保留 raw params；Approvals 页面展示 request id、thread、method、reason 和非标准参数 key 摘要，但不直接渲染未知 payload 值、不提供批准/拒绝按钮，避免客户端版本落后时丢失 pending request 或误发错误响应。
+
 ### 5.5 能力探测与版本兼容
 
 每次连接后执行：

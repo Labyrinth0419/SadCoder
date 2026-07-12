@@ -102,6 +102,8 @@ void main() {
     expect(zh.colorPaletteLabel('candy'), '糖果');
     expect(zh.colorPaletteLabel('pastel-candy'), '粉彩糖果');
     expect(zh.colorPaletteLabel('candy-pop'), '糖果汽水');
+    expect(zh.approvalMethod, '方法');
+    expect(zh.approvalParameterKeys, '参数键');
     expect(zh.fontSizeLabel('extra-small'), '极小');
     expect(zh.fontSizeLabel('small'), '小');
     expect(zh.fontSizeLabel('medium'), '中');

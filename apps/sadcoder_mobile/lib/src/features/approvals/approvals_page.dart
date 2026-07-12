@@ -482,6 +482,13 @@ List<Widget> _detailRows(AppLocalizations l10n, PendingApproval approval) {
   add(l10n.approvalRequestId, approval.requestId);
   add(l10n.approvalThread, approval.threadId);
   add(l10n.approvalTurn, approval.turnId);
+  if (approval.kind == PendingApprovalKind.unknown) {
+    add(l10n.approvalMethod, approval.method);
+    add(
+      l10n.approvalParameterKeys,
+      _unknownParameterKeySummary(approval.rawParams),
+    );
+  }
   add(l10n.approvalCommand, approval.command);
   add(l10n.approvalWorkingDirectory, approval.cwd);
   add(l10n.approvalReason, approval.reason);
@@ -525,3 +532,23 @@ Map<String, Object?>? _mapOrNull(Object? value) {
   }
   return null;
 }
+
+String? _unknownParameterKeySummary(Map<String, Object?> params) {
+  final keys =
+      params.keys
+          .where((key) => !_standardApprovalParamKeys.contains(key))
+          .toList()
+        ..sort();
+  if (keys.isEmpty) {
+    return null;
+  }
+  return keys.join(', ');
+}
+
+const _standardApprovalParamKeys = {
+  'threadId',
+  'turnId',
+  'itemId',
+  'startedAtMs',
+  'reason',
+};

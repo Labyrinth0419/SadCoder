@@ -73,6 +73,43 @@ void main() {
     expect(find.text('Cancel'), findsWidgets);
   });
 
+  testWidgets(
+    'renders unknown server requests as read-only generic approvals',
+    (tester) async {
+      await _pumpApprovalsPage(tester, const [
+        PendingApproval(
+          requestId: 'future-1',
+          method: 'future/request',
+          kind: PendingApprovalKind.unknown,
+          rawParams: {
+            'threadId': 'thr_future',
+            'reason': 'Current app does not recognize this request type.',
+            'payload': {'enabled': true},
+            'severity': 'medium',
+          },
+          title: 'future/request',
+          threadId: 'thr_future',
+          reason: 'Current app does not recognize this request type.',
+        ),
+      ]);
+
+      expect(find.text('future/request'), findsWidgets);
+      expect(find.text('Unknown request'), findsOneWidget);
+      expect(find.text('Request: future-1'), findsOneWidget);
+      expect(find.text('Thread: thr_future'), findsOneWidget);
+      expect(find.text('Method: future/request'), findsOneWidget);
+      expect(find.text('Parameter keys: payload, severity'), findsOneWidget);
+      expect(
+        find.text('Reason: Current app does not recognize this request type.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('enabled'), findsNothing);
+      expect(find.text('No direct actions available'), findsOneWidget);
+      expect(find.text('Approve once'), findsNothing);
+      expect(find.text('Deny'), findsNothing);
+    },
+  );
+
   testWidgets('renders pending approvals grouped by host', (tester) async {
     await _pumpApprovalsPage(
       tester,

@@ -66,6 +66,30 @@ void main() {
     expect(notifications, 1);
   });
 
+  test('routes unknown server requests into generic approval state', () async {
+    final transport = MemoryJsonRpcTransport((_) async => {});
+    final session = CodexAppSession(transport);
+    addTearDown(session.close);
+
+    transport.emitServerRequest(
+      const JsonRpcServerRequest(
+        id: 'future-1',
+        method: 'future/request',
+        params: {
+          'threadId': 'thr_future',
+          'payload': {'enabled': true},
+        },
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    final approval = session.approvalController.approvals.single;
+    expect(approval.kind, PendingApprovalKind.unknown);
+    expect(approval.method, 'future/request');
+    expect(approval.threadId, 'thr_future');
+    expect(approval.rawParams['payload'], {'enabled': true});
+  });
+
   test('maps app-server notifications into session events', () async {
     final transport = MemoryJsonRpcTransport((_) async => {});
     final session = CodexAppSession(transport);

@@ -393,6 +393,8 @@ class AppLocalizations {
   String get approvalRequestId => _text('approvalRequestId');
   String get approvalThread => _text('approvalThread');
   String get approvalTurn => _text('approvalTurn');
+  String get approvalMethod => _text('approvalMethod');
+  String get approvalParameterKeys => _text('approvalParameterKeys');
   String get approvalCommand => _text('approvalCommand');
   String get approvalWorkingDirectory => _text('approvalWorkingDirectory');
   String get approvalReason => _text('approvalReason');
@@ -1367,6 +1369,8 @@ const _values = <String, Map<String, String>>{
     'approvalRequestId': 'Request',
     'approvalThread': 'Thread',
     'approvalTurn': 'Turn',
+    'approvalMethod': 'Method',
+    'approvalParameterKeys': 'Parameter keys',
     'approvalCommand': 'Command',
     'approvalWorkingDirectory': 'Working directory',
     'approvalReason': 'Reason',
@@ -2185,6 +2189,8 @@ const _values = <String, Map<String, String>>{
     'approvalRequestId': '请求',
     'approvalThread': '会话',
     'approvalTurn': '回合',
+    'approvalMethod': '方法',
+    'approvalParameterKeys': '参数键',
     'approvalCommand': '命令',
     'approvalWorkingDirectory': '工作目录',
     'approvalReason': '原因',
