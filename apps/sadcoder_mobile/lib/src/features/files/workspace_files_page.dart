@@ -1035,9 +1035,9 @@ class _FilesToolbar extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final searchWidth = constraints.maxWidth < 260
+        final searchWidth = constraints.maxWidth < 220
             ? constraints.maxWidth
-            : 112.0;
+            : 96.0;
         return Row(
           children: [
             Flexible(
@@ -1045,7 +1045,7 @@ class _FilesToolbar extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: searchWidth),
                 child: SizedBox(
-                  height: 22,
+                  height: 20,
                   child: TextField(
                     key: const ValueKey('workspace-files-filter'),
                     controller: filterController,

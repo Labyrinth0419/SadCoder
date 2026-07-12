@@ -154,6 +154,39 @@ void main() {
     expect(find.byKey(const ValueKey('chat-raw-rpc-panel')), findsOneWidget);
   });
 
+  testWidgets('advanced chat controls tolerate raw RPC without overrides', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final sessionController = CodexSessionStateController(
+      connector: const _FakeSessionStarter(
+        threadListReader: _FakeThreadListReader(
+          page: ThreadListPage(threads: []),
+        ),
+      ),
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await _pumpChatPage(tester, sessionController: sessionController);
+
+    await tester.tap(
+      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('chat-session-overrides-edit')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('chat-turn-overrides-edit')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('chat-raw-rpc-panel')), findsOneWidget);
+  });
+
   testWidgets('host selector connects a saved SSH profile', (tester) async {
     const remoteProfile = SshProfile(
       id: 'remote',

@@ -100,6 +100,7 @@ void main() {
     expect(zh.slashCommandRiskLevelLabel('high'), '高');
     expect(zh.slashCommandGroupLabel('filesAndCommands'), '文件/命令');
     expect(zh.colorPaletteLabel('candy'), '糖果');
+    expect(zh.colorPaletteLabel('pastel-candy'), '粉彩糖果');
     expect(zh.colorPaletteLabel('candy-pop'), '糖果汽水');
     expect(zh.fontSizeLabel('extra-small'), '极小');
     expect(zh.fontSizeLabel('small'), '小');

@@ -297,7 +297,8 @@ class _ChatPageState extends State<ChatPage> {
                           () => _showAdvancedControls = !_showAdvancedControls,
                         ),
                       ),
-                      if (_showAdvancedControls) ...[
+                      if (_showAdvancedControls &&
+                          widget.configOverrideController != null) ...[
                         const SizedBox(height: 8),
                         SessionOverrideControls(
                           controller: widget.configOverrideController!,

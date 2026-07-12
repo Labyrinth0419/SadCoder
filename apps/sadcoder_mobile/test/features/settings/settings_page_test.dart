@@ -500,6 +500,12 @@ void main() {
     await _openSettingsSection(tester, 'appearance');
 
     expect(appearanceController.showUnavailableSlashCommands, false);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-appearance-advanced')),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey('settings-appearance-advanced')),
     );

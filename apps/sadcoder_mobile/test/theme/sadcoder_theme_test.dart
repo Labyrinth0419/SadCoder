@@ -23,16 +23,24 @@ void main() {
         colorPalette: AppColorPalette.candyPop,
         brightness: Brightness.light,
       ).extension<SadCoderThemeColors>()!;
+      final pastelCandy = sadCoderThemeData(
+        colorPalette: AppColorPalette.pastelCandy,
+        brightness: Brightness.light,
+      ).extension<SadCoderThemeColors>()!;
 
       expect(candy.codeKeyword, isNot(sadcoder.codeKeyword));
       expect(candy.terminalAccent, isNot(sadcoder.terminalAccent));
       expect(lagoon.codeKeyword, isNot(candy.codeKeyword));
       expect(candyPop.codeKeyword, isNot(candy.codeKeyword));
       expect(candyPop.terminalAccent, isNot(candy.terminalAccent));
+      expect(pastelCandy.codeKeyword, isNot(candy.codeKeyword));
+      expect(pastelCandy.terminalAccent, isNot(candy.terminalAccent));
       expect(candy.diffAddedForeground, sadcoder.diffAddedForeground);
       expect(candy.diffRemovedForeground, sadcoder.diffRemovedForeground);
       expect(candyPop.diffAddedForeground, sadcoder.diffAddedForeground);
       expect(candyPop.diffRemovedForeground, sadcoder.diffRemovedForeground);
+      expect(pastelCandy.diffAddedForeground, sadcoder.diffAddedForeground);
+      expect(pastelCandy.diffRemovedForeground, sadcoder.diffRemovedForeground);
       expect(lagoon.diffAddedForeground, sadcoder.diffAddedForeground);
       expect(lagoon.diffRemovedForeground, sadcoder.diffRemovedForeground);
     },
@@ -53,6 +61,24 @@ void main() {
     expect(scheme.secondaryContainer, const Color(0xFFB8F2E6));
     expect(scheme.tertiaryContainer, const Color(0xFFA0C4FF));
     expect(scheme.outlineVariant, const Color(0xFFEACFE3));
+    expect(scheme.primary, isNot(nativeSeed.primary));
+  });
+
+  test('pastel candy color scheme uses bespoke soft candy tones', () {
+    final scheme = sadCoderColorScheme(
+      colorPalette: AppColorPalette.pastelCandy,
+      brightness: Brightness.light,
+    );
+    final nativeSeed = ColorScheme.fromSeed(
+      seedColor: AppColorPalette.pastelCandy.seedColor,
+      brightness: Brightness.light,
+    );
+
+    expect(scheme.primary, const Color(0xFF944253));
+    expect(scheme.primaryContainer, const Color(0xFFF4BCC7));
+    expect(scheme.secondaryContainer, const Color(0xFF9EDEF2));
+    expect(scheme.tertiaryContainer, const Color(0xFFC6F2AF));
+    expect(scheme.surfaceContainerHighest, const Color(0xFFF1EBFF));
     expect(scheme.primary, isNot(nativeSeed.primary));
   });
 
