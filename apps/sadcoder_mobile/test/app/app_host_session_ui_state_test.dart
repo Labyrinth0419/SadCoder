@@ -13,10 +13,12 @@ import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/threads/thread_cache_store.dart';
+import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_item_cache_store.dart';
 import 'package:sadcoder_mobile/src/threads/thread_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 import 'package:sadcoder_mobile/src/threads/thread_timeline_cursor_store.dart';
+import 'package:sadcoder_mobile/src/threads/thread_turn_list_reader.dart';
 
 void main() {
   test('restores cached thread list and selection for its host', () async {
@@ -247,6 +249,103 @@ void main() {
     expect(threadListReader.limits, [20]);
     expect(state.threadListController.threads.single.id, 'thr_connected');
   });
+
+  test(
+    'conservatively recovers a thread selected after snapshot cursor gap',
+    () async {
+      final threadStore = _MemoryThreadCacheStore();
+      final cursorStore = _MemoryThreadTimelineCursorStore({
+        'profile-a::thr_gap': const ThreadTimelineCursorSnapshot(
+          threadId: 'thr_gap',
+          turnIds: ['turn_seen'],
+          itemIds: [],
+          lastTurnId: 'turn_seen',
+          cachedAtMs: 1,
+        ),
+      });
+      final detailReader = _RecordingThreadDetailReader();
+      final turnListReader = _RecordingThreadTurnListReader.pages([
+        ThreadTurnsPage(
+          turns: [_turn('turn_new', 'new'), _turn('turn_seen', 'seen updated')],
+          nextCursor: 'older_turns',
+        ),
+        ThreadTurnsPage(turns: [_turn('turn_old', 'old')]),
+      ]);
+      final approvalController = ApprovalStateController();
+      final configOverrideController = CodexConfigOverrideController();
+      final sessionController = CodexSessionStateController(
+        connector: _RecoverySnapshotSessionStarter(
+          snapshot: const AgentSnapshot(
+            schemaVersion: 1,
+            pendingApprovals: [],
+            recentEvents: [
+              AgentCachedEvent(
+                method: 'turn/started',
+                cursor: 'event-9',
+                params: {
+                  'threadId': 'thr_gap',
+                  'turn': {
+                    'id': 'turn_new',
+                    'status': 'completed',
+                    'items': <Object?>[],
+                  },
+                },
+              ),
+            ],
+            deliveredCursor: 'event-9',
+            cursorGap: true,
+          ),
+          threadDetailReader: detailReader,
+          threadTurnListReader: turnListReader,
+        ),
+        approvalController: approvalController,
+      );
+      final state = AppHostSessionUiState(
+        sessionController: sessionController,
+        configOverrideController: configOverrideController,
+        threadCacheProfileId: 'profile-a',
+        threadCacheStore: threadStore,
+        threadTimelineCursorStore: cursorStore,
+      );
+      addTearDown(state.dispose);
+      addTearDown(sessionController.dispose);
+      addTearDown(configOverrideController.dispose);
+      addTearDown(approvalController.dispose);
+
+      await sessionController.connect(_profileA);
+      await _flushMicrotasks();
+
+      expect(detailReader.calls, isEmpty);
+
+      await state.threadDetailController.readThread('thr_gap');
+      await _flushMicrotasks();
+
+      expect(detailReader.calls, [
+        (threadId: 'thr_gap', includeTurns: true),
+        (threadId: 'thr_gap', includeTurns: false),
+      ]);
+      expect(turnListReader.calls, [
+        (
+          threadId: 'thr_gap',
+          cursor: null,
+          limit: 50,
+          sortDirection: 'desc',
+          itemsView: 'full',
+        ),
+        (
+          threadId: 'thr_gap',
+          cursor: 'older_turns',
+          limit: 50,
+          sortDirection: 'desc',
+          itemsView: 'full',
+        ),
+      ]);
+      expect(
+        state.threadDetailController.detail?.turns.map((turn) => turn.id),
+        ['turn_old', 'turn_seen', 'turn_new'],
+      );
+    },
+  );
 }
 
 class _UiStateFixture {
@@ -380,6 +479,31 @@ class _SnapshotSessionStarter implements CodexSessionConnectionStarter {
   }
 }
 
+class _RecoverySnapshotSessionStarter implements CodexSessionConnectionStarter {
+  const _RecoverySnapshotSessionStarter({
+    required this.snapshot,
+    required this.threadDetailReader,
+    required this.threadTurnListReader,
+  });
+
+  final AgentSnapshot snapshot;
+  final ThreadDetailReader threadDetailReader;
+  final ThreadTurnListReader threadTurnListReader;
+
+  @override
+  Future<CodexSessionConnectionHandle> connect(
+    SshProfile profile, {
+    ApprovalStateController? approvalController,
+  }) async {
+    return _RecoverySnapshotConnection(
+      profile: profile,
+      snapshotReader: _StaticAgentSnapshotReader(snapshot),
+      threadDetailReader: threadDetailReader,
+      threadTurnListReader: threadTurnListReader,
+    );
+  }
+}
+
 class _SnapshotConnection
     implements CodexSessionConnectionHandle, AgentSnapshotConnectionHandle {
   _SnapshotConnection({required this.profile, required this.snapshotReader});
@@ -437,6 +561,62 @@ class _ThreadListSessionStarter implements CodexSessionConnectionStarter {
       threadListReader: threadListReader,
     );
   }
+}
+
+class _RecoverySnapshotConnection
+    implements CodexSessionConnectionHandle, AgentSnapshotConnectionHandle {
+  _RecoverySnapshotConnection({
+    required this.profile,
+    required this.snapshotReader,
+    required this.threadDetailReader,
+    required this.threadTurnListReader,
+  });
+
+  final _events = StreamController<CodexEvent>.broadcast();
+  final _done = Completer<void>();
+
+  @override
+  final SshProfile profile;
+
+  final AgentSnapshotReader snapshotReader;
+
+  @override
+  AgentSnapshotReader? get agentSnapshotReader => snapshotReader;
+
+  @override
+  ThreadListReader get threadListReader => const _EmptyThreadListReader();
+
+  @override
+  final ThreadDetailReader threadDetailReader;
+
+  @override
+  final ThreadTurnListReader threadTurnListReader;
+
+  @override
+  SlashCommandManifestReader get slashCommandManifestReader =>
+      const _EmptySlashCommandManifestReader();
+
+  @override
+  Stream<CodexEvent> get events => _events.stream;
+
+  @override
+  Future<void> get done => _done.future;
+
+  @override
+  Future<Map<String, Object?>> stopBackend() async {
+    return {'stopped': true};
+  }
+
+  @override
+  Future<void> close({bool notifyApprovalController = true}) async {
+    await _events.close();
+    if (!_done.isCompleted) {
+      _done.complete();
+    }
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _ThreadListConnection implements CodexSessionConnectionHandle {
@@ -506,6 +686,57 @@ class _RecordingThreadListReader implements ThreadListReader {
   }) async {
     limits.add(limit);
     return ThreadListPage(threads: threads);
+  }
+}
+
+class _RecordingThreadDetailReader implements ThreadDetailReader {
+  final calls = <({String threadId, bool includeTurns})>[];
+
+  @override
+  Future<ThreadDetail> readThread({
+    required String threadId,
+    bool includeTurns = true,
+  }) async {
+    calls.add((threadId: threadId, includeTurns: includeTurns));
+    return ThreadDetail(thread: _thread(threadId, threadId));
+  }
+}
+
+class _RecordingThreadTurnListReader implements ThreadTurnListReader {
+  _RecordingThreadTurnListReader.pages(this.pages);
+
+  final List<ThreadTurnsPage> pages;
+  final calls =
+      <
+        ({
+          String threadId,
+          String? cursor,
+          int? limit,
+          String? sortDirection,
+          String? itemsView,
+        })
+      >[];
+
+  @override
+  Future<ThreadTurnsPage> listTurns({
+    required String threadId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+    String? itemsView,
+  }) async {
+    calls.add((
+      threadId: threadId,
+      cursor: cursor,
+      limit: limit,
+      sortDirection: sortDirection,
+      itemsView: itemsView,
+    ));
+    final pageIndex = calls.length - 1;
+    if (pageIndex >= pages.length) {
+      return const ThreadTurnsPage(turns: []);
+    }
+    return pages[pageIndex];
   }
 }
 
@@ -601,6 +832,17 @@ ThreadItemSummary _item(String id, String text, {String? turnId}) {
     json['turnId'] = turnId;
   }
   return ThreadItemSummary.fromJson(json);
+}
+
+TurnSummary _turn(String id, String text) {
+  return TurnSummary.fromJson({
+    'id': id,
+    'status': 'completed',
+    'itemsView': 'full',
+    'items': [
+      {'id': 'item_$id', 'type': 'agentMessage', 'text': text},
+    ],
+  });
 }
 
 Future<void> _flushMicrotasks() async {

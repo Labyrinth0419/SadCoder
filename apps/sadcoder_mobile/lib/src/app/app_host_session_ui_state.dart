@@ -276,12 +276,24 @@ class AppHostSessionUiState {
         if (detail != null) {
           timelineController.showThread(detail.thread);
         }
+        _recoverCurrentThreadIfCursorGapPending();
       case ThreadDetailStatus.idle:
         timelineController.clear();
       case ThreadDetailStatus.failed:
         break;
     }
     _persistThreadCache();
+  }
+
+  void _recoverCurrentThreadIfCursorGapPending() {
+    if (sessionController.status != CodexSessionStatus.connected) {
+      return;
+    }
+    final threadId = _normalized(threadDetailController.selectedThreadId);
+    if (threadId == null || !_cursorGapThreadIds.contains(threadId)) {
+      return;
+    }
+    _sessionRecoveryCoordinator.recoverCurrentThread();
   }
 
   void _handleThreadListChanged() {
