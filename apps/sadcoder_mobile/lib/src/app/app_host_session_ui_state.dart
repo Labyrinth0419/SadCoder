@@ -590,10 +590,11 @@ Map<String, _AgentSnapshotThreadCursor> _threadCursorsForAgentSnapshot(
     final threadId = _threadIdFromParams(event.params);
     final cursor = _normalized(event.cursor) ?? deliveredCursor;
     if (threadId != null && cursor != null) {
+      final existing = threadCursors[threadId];
       threadCursors[threadId] = _AgentSnapshotThreadCursor(
         deliveredCursor: cursor,
-        lastTurnId: _turnIdFromParams(event.params),
-        lastItemId: _itemIdFromParams(event.params),
+        lastTurnId: _turnIdFromParams(event.params) ?? existing?.lastTurnId,
+        lastItemId: _itemIdFromParams(event.params) ?? existing?.lastItemId,
       );
     }
   }

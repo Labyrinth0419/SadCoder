@@ -295,6 +295,56 @@ void main() {
     },
   );
 
+  test('merges recent event cursor with agent thread boundaries', () async {
+    final threadStore = _MemoryThreadCacheStore();
+    final cursorStore = _MemoryThreadTimelineCursorStore();
+    final approvalController = ApprovalStateController();
+    final configOverrideController = CodexConfigOverrideController();
+    final sessionController = CodexSessionStateController(
+      connector: _SnapshotSessionStarter(
+        snapshot: const AgentSnapshot(
+          schemaVersion: 1,
+          pendingApprovals: [],
+          recentEvents: [
+            AgentCachedEvent(
+              method: 'thread/item',
+              cursor: 'event-8',
+              params: {'threadId': 'thr_a'},
+            ),
+          ],
+          threads: [
+            AgentCachedThread(
+              threadId: 'thr_a',
+              lastTurnId: 'turn_snapshot',
+              lastItemId: 'item_snapshot',
+              lastEventCursor: 'event-7',
+            ),
+          ],
+        ),
+      ),
+      approvalController: approvalController,
+    );
+    final state = AppHostSessionUiState(
+      sessionController: sessionController,
+      configOverrideController: configOverrideController,
+      threadCacheProfileId: 'profile-a',
+      threadCacheStore: threadStore,
+      threadTimelineCursorStore: cursorStore,
+    );
+    addTearDown(state.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(configOverrideController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profileA);
+    await _flushMicrotasks();
+
+    final snapshot = cursorStore.snapshots['profile-a::thr_a'];
+    expect(snapshot?.deliveredCursor, 'event-8');
+    expect(snapshot?.lastTurnId, 'turn_snapshot');
+    expect(snapshot?.lastItemId, 'item_snapshot');
+  });
+
   test('loads agent snapshot cursor from cached selected thread', () async {
     final threadStore = _MemoryThreadCacheStore({
       'profile-a': ThreadCacheSnapshot(
