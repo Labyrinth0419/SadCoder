@@ -357,6 +357,7 @@ agent 负责：
 当前实现状态：
 
 - 已支持未知 app-server server request 的保守通用表示：`ApprovalCoordinator` 将未知 method 映射为 `PendingApprovalKind.unknown` 并保留 raw params；Approvals 页面展示 request id、thread、method、reason 和非标准参数 key 摘要，但不直接渲染未知 payload 值、不提供批准/拒绝按钮，避免客户端版本落后时丢失 pending request 或误发错误响应。
+- 已补强 Approvals 页面权限范围展示：command approval 的 `additionalPermissions` 与 permissions approval 的 `permissions` 会显示顶层/次级权限 scope 摘要（例如 `fileSystem.write, network.enabled`），不直接渲染深层未知 payload 值。
 
 ### 5.5 能力探测与版本兼容
 

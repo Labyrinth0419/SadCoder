@@ -405,6 +405,7 @@ class AppLocalizations {
   String get approvalParameterKeys => _text('approvalParameterKeys');
   String get approvalCommand => _text('approvalCommand');
   String get approvalWorkingDirectory => _text('approvalWorkingDirectory');
+  String get approvalPermissionScope => _text('approvalPermissionScope');
   String get approvalReason => _text('approvalReason');
   String get approvalGrantRoot => _text('approvalGrantRoot');
   String get approvalServer => _text('approvalServer');
@@ -1381,6 +1382,7 @@ const _values = <String, Map<String, String>>{
     'approvalParameterKeys': 'Parameter keys',
     'approvalCommand': 'Command',
     'approvalWorkingDirectory': 'Working directory',
+    'approvalPermissionScope': 'Permission scope',
     'approvalReason': 'Reason',
     'approvalGrantRoot': 'Grant root',
     'approvalServer': 'Server',
@@ -2206,6 +2208,7 @@ const _values = <String, Map<String, String>>{
     'approvalParameterKeys': '参数键',
     'approvalCommand': '命令',
     'approvalWorkingDirectory': '工作目录',
+    'approvalPermissionScope': '权限范围',
     'approvalReason': '原因',
     'approvalGrantRoot': '授权根目录',
     'approvalServer': '服务器',

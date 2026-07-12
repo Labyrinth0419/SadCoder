@@ -491,6 +491,11 @@ List<Widget> _detailRows(AppLocalizations l10n, PendingApproval approval) {
   }
   add(l10n.approvalCommand, approval.command);
   add(l10n.approvalWorkingDirectory, approval.cwd);
+  add(
+    l10n.approvalPermissionScope,
+    _permissionScopeSummary(approval.permissions) ??
+        _permissionScopeSummary(approval.additionalPermissions),
+  );
   add(l10n.approvalReason, approval.reason);
   add(l10n.approvalGrantRoot, approval.grantRoot);
   add(l10n.approvalServer, approval.serverName);
@@ -543,6 +548,41 @@ String? _unknownParameterKeySummary(Map<String, Object?> params) {
     return null;
   }
   return keys.join(', ');
+}
+
+String? _permissionScopeSummary(Object? permissions) {
+  final map = _mapOrNull(permissions);
+  if (map == null || map.isEmpty) {
+    return null;
+  }
+  final scopes = <String>[];
+  for (final entry in map.entries) {
+    final key = entry.key.trim();
+    if (key.isEmpty) {
+      continue;
+    }
+    final nested = _mapOrNull(entry.value);
+    if (nested == null || nested.isEmpty) {
+      scopes.add(key);
+      continue;
+    }
+    final nestedKeys = nested.keys
+        .map((nestedKey) => nestedKey.trim())
+        .where((nestedKey) => nestedKey.isNotEmpty)
+        .toList();
+    if (nestedKeys.isEmpty) {
+      scopes.add(key);
+      continue;
+    }
+    for (final nestedKey in nestedKeys) {
+      scopes.add('$key.$nestedKey');
+    }
+  }
+  if (scopes.isEmpty) {
+    return null;
+  }
+  scopes.sort();
+  return scopes.join(', ');
 }
 
 const _standardApprovalParamKeys = {

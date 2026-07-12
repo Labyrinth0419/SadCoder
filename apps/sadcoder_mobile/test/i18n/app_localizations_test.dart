@@ -109,6 +109,7 @@ void main() {
     expect(zh.modelAnnouncementSummary('new'), '公告：new');
     expect(zh.approvalMethod, '方法');
     expect(zh.approvalParameterKeys, '参数键');
+    expect(zh.approvalPermissionScope, '权限范围');
     expect(zh.fontSizeLabel('extra-small'), '极小');
     expect(zh.fontSizeLabel('small'), '小');
     expect(zh.fontSizeLabel('medium'), '中');

@@ -44,6 +44,9 @@ void main() {
         command: 'cargo test --workspace',
         cwd: '/repo',
         reason: 'Run tests',
+        additionalPermissions: {
+          'network': {'enabled': true},
+        },
       ),
       PendingApproval(
         requestId: 'mcp-1',
@@ -64,6 +67,7 @@ void main() {
     expect(find.text('Thread: thr_1'), findsOneWidget);
     expect(find.text('Turn: turn_1'), findsOneWidget);
     expect(find.text('Working directory: /repo'), findsOneWidget);
+    expect(find.text('Permission scope: network.enabled'), findsOneWidget);
     expect(find.text('Reason: Run tests'), findsOneWidget);
     expect(find.text('Choose repository'), findsWidgets);
     expect(find.text('MCP elicitation'), findsOneWidget);
@@ -349,6 +353,7 @@ void main() {
             'fileSystem': {
               'write': ['/repo'],
             },
+            'network': {'enabled': true},
           },
         ),
       ],
@@ -361,6 +366,11 @@ void main() {
       },
     );
 
+    expect(
+      find.text('Permission scope: fileSystem.write, network.enabled'),
+      findsOneWidget,
+    );
+
     await tester.tap(find.text('Allow turn'));
 
     expect(responses.single.requestId, 61);
@@ -369,6 +379,7 @@ void main() {
       'fileSystem': {
         'write': ['/repo'],
       },
+      'network': {'enabled': true},
     });
   });
 
