@@ -53,6 +53,37 @@ void main() {
     expect(requests.single.params?['capabilities'], {'experimentalApi': false});
   });
 
+  test('requestRaw forwards unknown app-server methods', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {'ok': true, 'echoMethod': request.method};
+    });
+
+    final client = CodexAppServerClient(transport);
+    final result = await client.requestRaw(
+      method: ' experimental/newMethod ',
+      params: {'threadId': 'thr_1', 'feature': 'future-schema'},
+    );
+
+    expect(result, {'ok': true, 'echoMethod': 'experimental/newMethod'});
+    expect(requests.single.method, 'experimental/newMethod');
+    expect(requests.single.params, {
+      'threadId': 'thr_1',
+      'feature': 'future-schema',
+    });
+  });
+
+  test('requestRaw rejects blank method names', () async {
+    final transport = MemoryJsonRpcTransport((_) => {});
+    final client = CodexAppServerClient(transport);
+
+    expect(
+      () => client.requestRaw(method: '  '),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
   test('model and thread methods use app-server method names', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {

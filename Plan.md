@@ -282,6 +282,8 @@ agent 负责：
 
 所有 Codex 方法都通过通用 dispatcher 支持，避免客户端版本落后时无法调用新方法。UI 层可以先实现常用功能，开发者/高级界面保留“原始 RPC 调用”能力。
 
+- 已在 `CodexAppServerClient` 暴露低层 `requestRaw`，允许传入非空 method 与 object params 直通同一 JSON-RPC request path；协议测试覆盖未知 app-server 方法转发和空 method 拒绝。后续仍需把它接到受保护的开发者/高级 UI，而不是默认暴露给普通流程。
+
 ### 5.3 事件映射
 
 不要直接把 app-server 原始 JSON 塞给 UI。需要映射为 UI 状态：

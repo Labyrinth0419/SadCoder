@@ -12,6 +12,17 @@ class CodexAppServerClient {
 
   Stream<Map<String, Object?>> get notifications => _transport.notifications;
 
+  Future<Map<String, Object?>> requestRaw({
+    required String method,
+    Map<String, Object?>? params,
+  }) {
+    final normalizedMethod = method.trim();
+    if (normalizedMethod.isEmpty) {
+      throw ArgumentError.value(method, 'method', 'method must not be blank');
+    }
+    return _request(normalizedMethod, params);
+  }
+
   Future<Map<String, Object?>> initialize({
     String clientName = sadcoderMobileClientName,
     String clientVersion = sadcoderMobileClientVersion,
