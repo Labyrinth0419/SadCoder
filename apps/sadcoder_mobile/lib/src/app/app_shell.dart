@@ -425,17 +425,19 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _activeUiState.handleSessionStatus(_sessionController.status);
   }
 
-  void _detachActiveSessionBindings() {
+  void _detachActiveSessionBindings({bool detachEvents = true}) {
     unawaited(_lifecycleConnectionCoordinator?.dispose());
     _lifecycleConnectionCoordinator = null;
     _sessionController.removeListener(_handleSessionChanged);
-    _activeUiState.detachEvents();
+    if (detachEvents) {
+      _activeUiState.detachEvents();
+    }
   }
 
   void _startLifecycleConnectionCoordinator() {
     _lifecycleConnectionCoordinator = AppLifecycleConnectionCoordinator(
       sessionListenable: _sessionController,
-      turnListenable: _turnController,
+      turnListenable: _backgroundTurnListenable(),
       preferences: _backgroundConnectionPreferences,
       keeper:
           widget.backgroundConnectionKeeper ??
@@ -451,6 +453,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       disconnect: _sessionController.disconnect,
       resume: _sessionController.resumeConnection,
     )..start();
+  }
+
+  Listenable _backgroundTurnListenable() {
+    final listenables = <Listenable>{
+      _turnController,
+      for (final uiState in _hostUiStates.values) uiState.turnController,
+    };
+    return Listenable.merge(listenables.toList(growable: false));
   }
 
   BackgroundConnectionContext? _backgroundActiveTurnContext() {
@@ -668,7 +678,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       previousUiState,
     );
 
-    _detachActiveSessionBindings();
+    final keepPreviousUiStateEvents = _hostUiStates.containsValue(
+      previousUiState,
+    );
+    _detachActiveSessionBindings(detachEvents: !keepPreviousUiStateEvents);
     _sessionController = entry.sessionController;
     _approvalController = entry.approvalController;
     _activeUiState = nextUiState;

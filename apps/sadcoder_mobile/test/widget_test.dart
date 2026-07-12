@@ -412,6 +412,91 @@ void main() {
   });
 
   testWidgets(
+    'background retention reacts when inactive host starts a turn after backgrounding',
+    (tester) async {
+      const remoteProfile = SshProfile(
+        id: 'remote',
+        name: 'Remote Linux',
+        host: 'remote.example.com',
+        username: 'dev',
+      );
+      final starter = _ProfileStaticSessionStarter({
+        _profile.id: _StaticSessionData(
+          threads: [_thread('local_thread', 'Local task')],
+          detail: _threadDetail(
+            id: 'local_thread',
+            preview: 'Local task',
+            message: 'Local idle history',
+          ),
+        ),
+        remoteProfile.id: _StaticSessionData(
+          threads: [_thread('remote_thread', 'Remote task')],
+          detail: _threadDetail(
+            id: 'remote_thread',
+            preview: 'Remote task',
+            message: 'Remote idle history',
+          ),
+        ),
+      });
+      final manager = HostSessionManager(
+        controllerFactory: (approvalController) => CodexSessionStateController(
+          connector: starter,
+          approvalController: approvalController,
+        ),
+      );
+      final keeper = _RecordingBackgroundConnectionKeeper();
+      addTearDown(manager.dispose);
+
+      await tester.pumpWidget(
+        SadCoderApp(
+          hostSessionManager: manager,
+          profileStore: const _FakeProfileStore([_profile, remoteProfile]),
+          backgroundConnectionKeeper: keeper,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Chat').last);
+      await tester.pumpAndSettle();
+      await _selectChatHost(tester, remoteProfile.id);
+      await _openThreadFromChat(tester, 'remote_thread');
+      await _selectChatHost(tester, _profile.id);
+      await _openThreadFromChat(tester, 'local_thread');
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pumpAndSettle();
+      expect(keeper.contexts, isEmpty);
+
+      starter.connections
+          .where((connection) => connection.profile.id == remoteProfile.id)
+          .single
+          .emit(
+            CodexEvent.fromNotification({
+              'method': 'turn/started',
+              'params': {
+                'threadId': 'remote_thread',
+                'turn': {
+                  'id': 'turn_remote_background',
+                  'status': 'running',
+                  'items': <Object?>[],
+                },
+              },
+            }),
+          );
+      await tester.pumpAndSettle();
+
+      expect(keeper.contexts, hasLength(1));
+      expect(keeper.contexts.single.profileId, remoteProfile.id);
+      expect(keeper.contexts.single.threadId, 'remote_thread');
+      expect(keeper.contexts.single.turnId, 'turn_remote_background');
+      expect(
+        manager.sessionFor(remoteProfile.id)?.sessionController.status,
+        CodexSessionStatus.connected,
+      );
+    },
+  );
+
+  testWidgets(
     'background notification restores its host and opens its thread',
     (tester) async {
       const remoteProfile = SshProfile(
