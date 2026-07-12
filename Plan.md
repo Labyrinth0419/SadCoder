@@ -9,7 +9,7 @@ SadCoder 的目标不是在手机上“模拟一个终端”，而是让移动 A
 1. App 端兼顾 Android 和 iOS；Android 是主要发布目标，iOS 用户可以自行编译安装。
 2. 服务端兼顾 Linux 和 Windows；为跨平台保活与生命周期管理，引入 `sadcoder-agent` 作为轻量 Rust 常驻层。
 3. Codex 业务协议仍以官方 `app-server` JSON-RPC 为核心；`sadcoder-agent` 负责启动、持有、代理和恢复 app-server 连接。
-4. Linux/Windows 统一由 `sadcoder-agent service` 管理长期 app-server；调试或 service 启动失败时才使用 direct stdio fallback，不依赖官方 standalone daemon。
+4. Linux/Windows 统一由 `sadcoder-agent service` 管理长期 app-server；direct stdio 只作为显式调试/兼容 backend，不作为 `auto` 隐式降级，不依赖官方 standalone daemon。
 5. SSH 只做认证、加密、远程命令启动和字节传输，不做业务协议。
 
 一句话架构：
@@ -125,7 +125,7 @@ sadcoder-agent proxy
 
 平台实现：
 
-- Linux：`sadcoder-agent service` 独立于 SSH channel 启动并长期持有 `codex app-server --listen unix://...`；`proxy` 只连接 service socket，direct stdio 仅作为调试/降级 fallback。
+- Linux：`sadcoder-agent service` 独立于 SSH channel 启动并长期持有 `codex app-server --listen unix://...`；`proxy` 在 `auto` 模式只连接 service socket，direct stdio 仅作为显式调试/兼容 backend。
 - Windows：`sadcoder-agent service` 使用用户级后台进程/计划任务等方式管理 `codex app-server` 子进程，并通过 named pipe 或 localhost control channel 给 `proxy` 连接。
 
 这比完全依赖官方 daemon 多一个 SadCoder 二进制，但换来 Windows/Linux 一致的保活、诊断、重连和能力探测。Codex 本体仍然不 fork，仍然安装官方 `codex`，但 Codex 路径、Node/PATH 运行时和版本检测都由 agent 统一解析。
@@ -140,9 +140,9 @@ sadcoder-agent proxy
 2. 建立 SSH 连接并完成 host key 校验。
 3. 检查远端 shell 可以执行非交互命令。
 4. 执行 `sadcoder-agent status --json`，从 agent status 获取 Codex path、availability、version、backend 状态。
-5. 如 service 未运行，执行 `sadcoder-agent start`；若 start 失败且是调试/降级场景，agent 可返回 direct stdio fallback。
+5. 如 service 未运行，执行 `sadcoder-agent start`；若 start 失败，生产 `auto` 流程必须返回结构化错误，不能隐式降级到 direct stdio。
 6. 新开一个 SSH exec channel，执行 `sadcoder-agent proxy`。
-7. App 在该 channel 上发送 app-server JSON-RPC；agent 连接本地 service socket 或 fallback app-server，并做 id 重写、转发、事件缓存和恢复。
+7. App 在该 channel 上发送 app-server JSON-RPC；agent 在 `auto` 模式连接本地 service socket，并做 id 重写、转发、事件缓存和恢复；只有显式 debug/compat backend 才直连 stdio app-server。
 8. App 发送 `initialize`，随后发送 `initialized` notification。
 9. 后续 Codex 功能都优先走 app-server JSON-RPC；agent 自身能力走 `agent/*` RPC。
 
@@ -205,13 +205,13 @@ sadcoder-agent proxy
 
 `sadcoder-agent start` 负责启动或复用长期 service；service 再启动并持有 `codex app-server --listen unix://...` 或平台等价本地监听。`sadcoder-agent configure` 负责持久化 Codex program、args 和 PATH prepend，供后续 `status` / `doctor` / `start` / `proxy` 统一复用同一份解析结果。`sadcoder-agent proxy` 只连接本地 service socket，因此手机 SSH channel 断开不会终止 app-server。
 
-direct stdio fallback 只用于调试或 service 启动失败后的临时降级：
+direct stdio fallback 只用于显式调试或兼容 backend：
 
 ```sh
 codex app-server --listen stdio://
 ```
 
-fallback 不满足“手机断线不影响任务继续执行”的生产硬约束，UI 必须明确标识风险。官方 `codex app-server daemon/proxy` 不作为 SadCoder 生产依赖，避免 npm/NVM CLI 与 standalone daemon 路径要求不一致。
+fallback 不满足“手机断线不影响任务继续执行”的生产硬约束，UI 必须明确标识风险，`--backend auto` 不得在 service 启动或 proxy 失败时静默退到 fallback。官方 `codex app-server daemon/proxy` 不作为 SadCoder 生产依赖，避免 npm/NVM CLI 与 standalone daemon 路径要求不一致。
 
 fallback 的前置条件是 agent 已经用同一个 `ResolvedCodexCommand` 成功完成 Codex 版本/运行时 probe；如果 Codex 程序缺失、Node 运行时错误、权限错误或版本输出异常，`auto` 只能返回 unavailable 诊断，不能把 direct stdio 标成可用后端。
 
@@ -770,7 +770,7 @@ App 内部存储使用加密数据库；导入/导出时明确提示敏感信息
 4. Auth 成功。
 5. 远端 shell 可执行。
 6. `sadcoder-agent status --json` 可执行，并返回 Codex path/availability/version/backend。
-7. 必要时 `sadcoder-agent start` 可启动 service 或明确返回 fallback/失败原因。
+7. 必要时 `sadcoder-agent start` 可启动 service 或明确返回失败原因；direct stdio 只在显式 debug/compat backend 下单独诊断。
 8. `sadcoder-agent proxy` 可连接。
 9. JSON-RPC `initialize` 成功。
 10. `account/read`。
@@ -785,7 +785,7 @@ App 内部存储使用加密数据库；导入/导出时明确提示敏感信息
 - Codex 版本过低。
 - agent 未安装或未运行。
 - Windows service/计划任务未启动。
-- SadCoder service 不可用，agent fallback 失败。
+- SadCoder service 不可用或启动失败。
 - ChatGPT/API key 未登录。
 - 权限不足或 cwd 不存在。
 
@@ -999,6 +999,7 @@ MVP 可以简化为底部导航：
 - 已落地 reconnect cache cursor 诊断：`AgentReconnectCacheStatus` / `agent status` / `doctor` 会暴露最新 `deliveredCursor`，移动端 agent status 解析与 Hosts/Settings 诊断页会在存在 cursor 时展示该值，便于确认重连增量 snapshot 使用的事实来源。
 - 已落地 agent snapshot 缓存窗口诊断：`AgentStateSnapshot` 会暴露 `retainedCursorFloor` 与 `cursorGap`，当客户端 `sinceCursor` 早于 agent retained recent event 窗口或无法在窗口中确认时标记 gap，为后续触发更保守的 thread/read、turn/item 分页 reconciliation 做准备。
 - 已落地 cursor gap 驱动的移动端保守恢复：`AppHostSessionUiState` 会把 agent snapshot 的 `cursorGap` 映射到对应 thread 的一次性 recovery hint；`AppSessionRecoveryCoordinator` 在 gap 存在时不再用本地 lastTurnId/lastItemId 提前截断 turn/item 有界回填，并会在 snapshot 晚于 connected 状态到达时主动对当前 thread 再触发一次恢复。
+- 已落地 agent `--backend auto` 的 service-only 生产语义：auto 会启动并连接 SadCoder service，service 启动或 proxy 连接失败时返回错误，不再静默降级到 direct stdio；direct stdio 仅保留给显式 `--backend stdio` 或兼容 `--backend daemon` 路径。
 - 已落地后台 active-turn retention 的上下文刷新：App 后台且 active turn 仍需保活时，如果 host/thread/turn context 变化，会释放旧 foreground retention 并用新 context 重新 retain，避免 Android 通知和保活上下文停留在旧 turn。
 - 后续仍需完整多 host 同时连接架构：`HostSessionManager` 已作为基础控制器引入，但完整后台保活策略、断线期间事件 cursor/分页增量回填和更完整的 reconnect turn/item reconciliation 还需要继续拆分完善。
 

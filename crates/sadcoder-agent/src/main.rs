@@ -742,7 +742,7 @@ fn collect_auto_backend_status(service_paths: &AgentServicePaths) -> BackendStat
         kind: service_status.kind,
         state: service_status.state,
         detail: Some(format!(
-            "{service_detail}; auto will try to start the SadCoder service and use direct stdio fallback if the service cannot be prepared"
+            "{service_detail}; auto will start and connect to the SadCoder service"
         )),
     }
 }
@@ -804,12 +804,6 @@ fn start_backend(
                 Ok(()) => Ok(ResolvedBackend {
                     selection: SelectedBackend::Service,
                     status: collect_service_backend_status(&service_paths),
-                }),
-                Err(error) if backend_mode == BackendMode::Auto => Ok(ResolvedBackend {
-                    selection: SelectedBackend::Stdio,
-                    status: stdio_backend_status(format!(
-                        "SadCoder service backend unavailable; using direct stdio fallback: {error}"
-                    )),
                 }),
                 Err(error) => Err(error),
             }
@@ -1019,16 +1013,9 @@ fn proxy_app_server(
     state_path: PathBuf,
 ) -> anyhow::Result<()> {
     let backend = start_backend(codex, backend_mode, &state_path)?;
-    let fallback_state_path = state_path.clone();
     match backend.selection {
         SelectedBackend::Service => {
-            proxy_service_app_server(codex, state_path, SelectedBackend::Service).or_else(|error| {
-                if backend_mode == BackendMode::Auto {
-                    proxy_stdio_app_server(codex, fallback_state_path)
-                } else {
-                    Err(error)
-                }
-            })
+            proxy_service_app_server(codex, state_path, SelectedBackend::Service)
         }
         SelectedBackend::Stdio => proxy_stdio_app_server(codex, state_path),
     }
@@ -1552,9 +1539,9 @@ mod tests {
     }
 
     #[test]
-    fn auto_backend_falls_back_to_stdio_when_service_start_fails() {
+    fn auto_backend_errors_when_service_start_fails() {
         let blocked_base = std::env::temp_dir().join(format!(
-            "sadcoder-agent-auto-backend-fallback-test-{}-{}",
+            "sadcoder-agent-auto-backend-service-error-test-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -1563,24 +1550,15 @@ mod tests {
         ));
         std::fs::write(&blocked_base, b"not a directory").expect("write blocked service base");
         let state_path = blocked_base.join("agent-state.json");
-        let backend = start_backend(
+        let error = start_backend(
             &available_codex_version_command(),
             BackendMode::Auto,
             &state_path,
         )
-        .expect("auto backend should fall back");
+        .expect_err("auto backend should require the SadCoder service");
         let _ = std::fs::remove_file(&blocked_base);
 
-        assert_eq!(backend.selection, SelectedBackend::Stdio);
-        assert_eq!(backend.status.kind, BackendKind::CodexAppServerStdio);
-        assert_eq!(backend.status.state, BackendState::Ready);
-        assert!(
-            backend
-                .status
-                .detail
-                .as_deref()
-                .is_some_and(|detail| detail.contains("fallback"))
-        );
+        assert!(!error.to_string().is_empty());
     }
 
     #[test]
@@ -1725,7 +1703,7 @@ mod tests {
     }
 
     #[test]
-    fn auto_backend_reports_not_started_service_with_stdio_fallback_detail() {
+    fn auto_backend_reports_not_started_service_without_stdio_fallback_detail() {
         let base = std::env::temp_dir().join(format!(
             "sadcoder-agent-service-status-test-{}-{}",
             std::process::id(),
@@ -1740,12 +1718,9 @@ mod tests {
 
         assert_eq!(status.kind, BackendKind::SadcoderAgentService);
         assert_eq!(status.state, BackendState::NotStarted);
-        assert!(
-            status
-                .detail
-                .as_deref()
-                .is_some_and(|detail| detail.contains("stdio fallback"))
-        );
+        let detail = status.detail.as_deref().expect("detail");
+        assert!(detail.contains("auto will start and connect"));
+        assert!(!detail.contains("stdio fallback"));
     }
 
     #[test]
