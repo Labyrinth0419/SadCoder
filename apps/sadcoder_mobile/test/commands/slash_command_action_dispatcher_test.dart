@@ -409,6 +409,64 @@ void main() {
     expect(result.command?.command, 'experimental');
   });
 
+  test('/memories returns the injected memory summary', () async {
+    final arguments = <String>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      showMemories: (argument) {
+        arguments.add(argument);
+        return 'Memories\nThread memory mode: disabled';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/memories'),
+      hasActiveTurn: false,
+    );
+
+    expect(arguments, ['']);
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.memories);
+    expect(result.message, contains('Thread memory mode'));
+  });
+
+  test('/memories rejects unsupported inline arguments', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      showMemories: (arguments) {
+        calls++;
+        return arguments.trim().isEmpty ? 'Memories' : null;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/memories reset'),
+      hasActiveTurn: false,
+    );
+
+    expect(calls, 1);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'memories');
+  });
+
+  test('/memories is unavailable during an active turn', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      showMemories: (_) {
+        calls++;
+        return 'Memories';
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/memories'),
+      hasActiveTurn: true,
+    );
+
+    expect(calls, 0);
+    expect(result.outcome, SlashCommandActionOutcome.unavailable);
+    expect(result.command?.command, 'memories');
+  });
+
   test('/rollout returns the injected rollout summary', () async {
     final arguments = <String>[];
     final dispatcher = SlashCommandActionDispatcher(

@@ -16,6 +16,7 @@ typedef SlashCommandShowDebugConfig =
     FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowExperimental =
     FutureOr<String?> Function(String arguments);
+typedef SlashCommandShowMemories = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowRollout = FutureOr<String?> Function(String arguments);
 typedef SlashCommandTestApproval = FutureOr<String?> Function(String arguments);
 typedef SlashCommandShowDiff = FutureOr<String?> Function(String arguments);
@@ -91,6 +92,7 @@ enum SlashCommandActionEffect {
   apps,
   debugConfig,
   experimental,
+  memories,
   rollout,
   testApproval,
   diff,
@@ -240,6 +242,7 @@ class SlashCommandActionDispatcher {
     this.showApps,
     this.showDebugConfig,
     this.showExperimental,
+    this.showMemories,
     this.showRollout,
     this.testApproval,
     this.showDiff,
@@ -288,6 +291,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandShowApps? showApps;
   final SlashCommandShowDebugConfig? showDebugConfig;
   final SlashCommandShowExperimental? showExperimental;
+  final SlashCommandShowMemories? showMemories;
   final SlashCommandShowRollout? showRollout;
   final SlashCommandTestApproval? testApproval;
   final SlashCommandShowDiff? showDiff;
@@ -414,6 +418,8 @@ class SlashCommandActionDispatcher {
         return _showDebugConfig(parsed);
       case 'experimental':
         return _showExperimental(parsed);
+      case 'memories':
+        return _showMemories(parsed);
       case 'rollout':
         return _showRollout(parsed);
       case 'test-approval':
@@ -688,6 +694,16 @@ class SlashCommandActionDispatcher {
       parsed,
       action: showExperimental,
       effect: SlashCommandActionEffect.experimental,
+    );
+  }
+
+  Future<SlashCommandActionResult> _showMemories(
+    SlashCommandParseResult parsed,
+  ) async {
+    return _showMessageWithArguments(
+      parsed,
+      action: showMemories,
+      effect: SlashCommandActionEffect.memories,
     );
   }
 

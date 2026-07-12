@@ -2441,6 +2441,122 @@ void main() {
     );
   });
 
+  testWidgets('/memories refreshes config and shows memory values', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final configReader = _RecordingConfigSnapshotReader(
+      snapshot: CodexConfigSnapshot.fromJson({
+        'config': {
+          'memories': {
+            'generate_memories': false,
+            'use_memories': true,
+            'extract_model': 'gpt-5-mini',
+          },
+          'features': {'memories': true, 'agentGraph': true},
+          'model': 'gpt-5-codex',
+        },
+        'origins': {
+          'memories': {
+            'name': {'type': 'user', 'file': '~/.codex/config.toml'},
+          },
+          'features': {
+            'name': {'type': 'project', 'dot_codex_folder': '/repo/.codex'},
+          },
+        },
+        'layers': <Object?>[],
+      }),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_selected',
+            'sessionId': 'sess_1',
+            'preview': 'Selected thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+            'memoryMode': 'disabled',
+            'turns': <Object?>[],
+          }),
+        ),
+      ),
+    );
+    final configSnapshotController = CodexConfigSnapshotController(
+      readerProvider: () => configReader,
+    );
+    addTearDown(configSnapshotController.dispose);
+    addTearDown(detailController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_selected');
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+      configSnapshotController: configSnapshotController,
+    );
+
+    await _submitComposerText(tester, '/memories');
+
+    expect(configReader.cwdValues, ['/repo']);
+    expect(find.textContaining('Memories'), findsOneWidget);
+    expect(find.textContaining('Thread memory mode: disabled'), findsOneWidget);
+    expect(find.textContaining('generate_memories: false'), findsOneWidget);
+    expect(find.textContaining('use_memories: true'), findsOneWidget);
+    expect(find.textContaining('extract_model: gpt-5-mini'), findsOneWidget);
+    expect(find.textContaining('features.memories: true'), findsOneWidget);
+    expect(find.textContaining('agentGraph'), findsNothing);
+    expect(find.textContaining('model: gpt-5-codex'), findsNothing);
+  });
+
+  testWidgets('/memories unsupported arguments do not refresh', (tester) async {
+    final approvalController = ApprovalStateController();
+    final configReader = _RecordingConfigSnapshotReader(
+      snapshot: const CodexConfigSnapshot(config: {}, origins: {}, layers: []),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final configSnapshotController = CodexConfigSnapshotController(
+      readerProvider: () => configReader,
+    );
+    addTearDown(configSnapshotController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      configSnapshotController: configSnapshotController,
+    );
+
+    await _submitComposerText(tester, '/memories reset');
+
+    expect(configReader.cwdValues, isEmpty);
+    expect(find.text('/memories is unavailable right now.'), findsOneWidget);
+  });
+
   testWidgets('/diff renders selected workspace git diff', (tester) async {
     final approvalController = ApprovalStateController();
     final diffReader = _RecordingGitDiffReader(

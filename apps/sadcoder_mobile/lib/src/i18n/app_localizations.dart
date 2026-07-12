@@ -795,6 +795,14 @@ class AppLocalizations {
   String get experimentalApiCapability => _text('experimentalApiCapability');
   String get experimentalConfigValues => _text('experimentalConfigValues');
   String get experimentalNoConfigValues => _text('experimentalNoConfigValues');
+  String get memoriesTitle => _text('memoriesTitle');
+  String get memoriesUnavailable => _text('memoriesUnavailable');
+  String get memoriesLoadFailed => _text('memoriesLoadFailed');
+  String get memoriesNoSnapshot => _text('memoriesNoSnapshot');
+  String get memoriesConfigValues => _text('memoriesConfigValues');
+  String get memoriesNoConfigValues => _text('memoriesNoConfigValues');
+  String get memoriesThreadMode => _text('memoriesThreadMode');
+  String get memoriesUnknownThreadMode => _text('memoriesUnknownThreadMode');
   String get lifetimeTokens => _text('lifetimeTokens');
   String get peakDailyTokens => _text('peakDailyTokens');
   String get currentStreakDays => _text('currentStreakDays');
@@ -1727,6 +1735,14 @@ const _values = <String, Map<String, String>>{
     'experimentalApiCapability': 'App-server experimental API',
     'experimentalConfigValues': 'Experimental config values',
     'experimentalNoConfigValues': 'No experimental config values found.',
+    'memoriesTitle': 'Memories',
+    'memoriesUnavailable': 'Connect to a host, then run /memories.',
+    'memoriesLoadFailed': 'Failed to load memory config',
+    'memoriesNoSnapshot': 'No config snapshot loaded.',
+    'memoriesConfigValues': 'Memory config values',
+    'memoriesNoConfigValues': 'No memory config values found.',
+    'memoriesThreadMode': 'Thread memory mode',
+    'memoriesUnknownThreadMode': 'unknown',
     'lifetimeTokens': 'Lifetime tokens',
     'peakDailyTokens': 'Peak daily tokens',
     'currentStreakDays': 'Current streak',
@@ -2495,6 +2511,14 @@ const _values = <String, Map<String, String>>{
     'experimentalApiCapability': 'App-server 实验 API',
     'experimentalConfigValues': '实验配置值',
     'experimentalNoConfigValues': '未找到实验配置值。',
+    'memoriesTitle': '记忆',
+    'memoriesUnavailable': '连接主机后运行 /memories。',
+    'memoriesLoadFailed': '记忆配置加载失败',
+    'memoriesNoSnapshot': '尚未加载配置快照。',
+    'memoriesConfigValues': '记忆配置值',
+    'memoriesNoConfigValues': '未找到记忆配置值。',
+    'memoriesThreadMode': '线程记忆模式',
+    'memoriesUnknownThreadMode': '未知',
     'lifetimeTokens': '累计 token',
     'peakDailyTokens': '单日峰值 token',
     'currentStreakDays': '当前连续天数',

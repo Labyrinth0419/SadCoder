@@ -917,6 +917,7 @@ MVP 可以简化为底部导航：
 - 已将 `/rollout` 接成只读 UI 诊断命令：有参数时不可用；无线程 raw path 时按 Codex TUI 语义显示 `Rollout path is not available yet.`，如果 thread raw 后续暴露 rollout path，则显示当前路径。
 - 已将 `/test-approval` 接成移动端本地 debug-only 审批链路测试：注入一条 file-change `PendingApproval` 到当前 session 的 `ApprovalStateController`，不调用 app-server、不修改服务器状态。
 - 已将 `/experimental` 接成只读配置摘要：刷新当前 cwd 的 `config/read` snapshot，显示 app-server experimental API 已启用，并列出 config 中 experimental/feature 相关键；写服务器配置和 toggle 仍留待后续确认流程。
+- 已将 `/memories` 接成只读配置摘要：刷新当前 cwd 的 `config/read` snapshot，展示 `[memories]` / memory feature 相关配置和当前 thread memory mode；`thread/memoryMode/set`、`memory/reset` 等写操作仍留待后续带确认流程实现。
 
 ### 9.6 工作区文件浏览与只读查看
 
