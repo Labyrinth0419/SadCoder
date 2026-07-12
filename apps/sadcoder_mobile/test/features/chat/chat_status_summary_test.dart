@@ -9,6 +9,8 @@ import 'package:sadcoder_mobile/src/config/codex_config_snapshot_controller.dart
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_status_summary.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/threads/thread_detail_controller.dart';
+import 'package:sadcoder_mobile/src/usage/thread_token_usage_controller.dart';
 
 void main() {
   test('buildChatStatusSummary reports disconnected config sources', () {
@@ -103,6 +105,46 @@ void main() {
       ).allMatches(summary),
       hasLength(2),
     );
+  });
+
+  test('buildChatStatusSummary does not show usage for another thread', () {
+    final l10n = AppLocalizations(const Locale('en'));
+    final threadDetailController = ThreadDetailController(
+      readerProvider: () => null,
+    )..restoreCachedSelection('thr_selected');
+    final threadTokenUsageController = ThreadTokenUsageController()
+      ..ingestTokenUsageUpdated({
+        'threadId': 'thr_other',
+        'turnId': 'turn_1',
+        'tokenUsage': {
+          'last': {
+            'cachedInputTokens': 0,
+            'inputTokens': 10,
+            'outputTokens': 5,
+            'reasoningOutputTokens': 1,
+            'totalTokens': 16,
+          },
+          'total': {
+            'cachedInputTokens': 0,
+            'inputTokens': 100,
+            'outputTokens': 50,
+            'reasoningOutputTokens': 10,
+            'totalTokens': 160,
+          },
+        },
+      });
+    addTearDown(threadTokenUsageController.dispose);
+    addTearDown(threadDetailController.dispose);
+
+    final summary = buildChatStatusSummary(
+      l10n: l10n,
+      threadDetailController: threadDetailController,
+      threadTokenUsageController: threadTokenUsageController,
+    );
+
+    expect(summary, contains('Thread: thr_selected'));
+    expect(summary, isNot(contains('Thread tokens')));
+    expect(summary, isNot(contains('160 tokens')));
   });
 }
 

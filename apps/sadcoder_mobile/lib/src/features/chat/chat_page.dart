@@ -1982,7 +1982,11 @@ class _ChatPageState extends State<ChatPage> {
     if (controller == null) {
       return null;
     }
-    return controller.latestForThread(_currentThreadId()) ?? controller.latest;
+    final threadId = _currentThreadId();
+    if (threadId != null) {
+      return controller.latestForThread(threadId);
+    }
+    return controller.latest;
   }
 
   List<String> _currentWorkspaceCwds() {

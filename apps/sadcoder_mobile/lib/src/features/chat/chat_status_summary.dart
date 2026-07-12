@@ -75,9 +75,9 @@ String buildChatStatusSummary({
     lines.addAll(accountUsageStatusLines(l10n, accountUsageSnapshotController));
   }
 
-  final threadUsage =
-      threadTokenUsageController?.latestForThread(selectedThreadId) ??
-      threadTokenUsageController?.latest;
+  final threadUsage = selectedThreadId == null || selectedThreadId.isEmpty
+      ? threadTokenUsageController?.latest
+      : threadTokenUsageController?.latestForThread(selectedThreadId);
   lines.addAll(threadTokenUsageStatusLines(l10n, threadUsage));
 
   return lines.join('\n');
