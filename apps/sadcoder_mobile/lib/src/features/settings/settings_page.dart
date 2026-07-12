@@ -39,7 +39,7 @@ class SettingsPage extends StatefulWidget {
     this.agentLogsController,
     this.agentSchemaController,
     this.diagnosticLogExportController,
-    this.appVersion = sadcoderMobileClientVersion,
+    this.appVersion = sadcoderMobileAppVersion,
   });
 
   final AppAppearanceController? appearanceController;

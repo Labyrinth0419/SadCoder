@@ -642,7 +642,7 @@ void main() {
     await _openSettingsSection(tester, 'diagnostics');
 
     expect(find.text('Agent doctor'), findsOneWidget);
-    expect(find.text('Version: 1.0.0'), findsOneWidget);
+    expect(find.text('Version: 1.0.0+1'), findsOneWidget);
     expect(
       find.text('Connect to a host, then run agent doctor.'),
       findsOneWidget,
@@ -1197,7 +1197,7 @@ Future<void> _pumpSettings(
   AgentLogsController? agentLogsController,
   AgentSchemaController? agentSchemaController,
   DiagnosticLogExportController? diagnosticLogExportController,
-  String appVersion = '1.0.0',
+  String appVersion = '1.0.0+1',
 }) {
   return tester.pumpWidget(
     MaterialApp(
