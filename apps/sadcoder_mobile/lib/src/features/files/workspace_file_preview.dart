@@ -16,13 +16,17 @@ class _PreviewPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    if (preview.status == _PreviewStatus.idle) {
+      return _StatusPanel(
+        icon: Icons.description_outlined,
+        title: l10n.workspaceFilesPreviewEmpty,
+      );
+    }
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: switch (preview.status) {
-          _PreviewStatus.idle => _PreviewEmpty(
-            text: l10n.workspaceFilesPreviewEmpty,
-          ),
+          _PreviewStatus.idle => const SizedBox.shrink(),
           _PreviewStatus.loading => _PreviewLoading(
             root: preview.root,
             path: preview.path,
@@ -43,23 +47,6 @@ class _PreviewPanel extends StatelessWidget {
           ),
         },
       ),
-    );
-  }
-}
-
-class _PreviewEmpty extends StatelessWidget {
-  const _PreviewEmpty({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const Icon(Icons.description_outlined, size: 36),
-        const SizedBox(height: 12),
-        Text(text, textAlign: TextAlign.center),
-      ],
     );
   }
 }

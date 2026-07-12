@@ -584,7 +584,11 @@ void main() {
     expect(timelineController.turns.single.items.single.text, 'Fix login bug');
     expect(find.text('You'), findsOneWidget);
     expect(find.text('Fix login bug'), findsOneWidget);
-    expect(find.text('Sending turn'), findsOneWidget);
+    expect(find.text('Running'), findsOneWidget);
+    final detail = tester.widget<Text>(
+      find.byKey(const ValueKey('chat-activity-detail')),
+    );
+    expect(detail.data, contains('Sending turn'));
     expect(find.textContaining('turn_1'), findsNothing);
     expect(find.text(' Fix login bug '), findsNothing);
   });
@@ -2903,6 +2907,7 @@ void main() {
       timelineController: timelineController,
     );
 
+    expect(find.text('Running'), findsOneWidget);
     expect(find.byKey(const ValueKey('chat-running-progress')), findsOneWidget);
     final detail = tester.widget<Text>(
       find.byKey(const ValueKey('chat-activity-detail')),

@@ -163,6 +163,9 @@ class AppLocalizations {
   String get restartBackend => _text('restartBackend');
   String get restartingBackend => _text('restartingBackend');
   String get statusIdle => _text('statusIdle');
+  String get statusRunning => _text('statusRunning');
+  String get statusWorking => _text('statusWorking');
+  String get statusFailed => _text('statusFailed');
   String get disconnect => _text('disconnect');
   String get disconnecting => _text('disconnecting');
   String get connectionStatus => _text('connectionStatus');
@@ -1128,6 +1131,9 @@ const _values = <String, Map<String, String>>{
     'restartBackend': 'Restart backend',
     'restartingBackend': 'Restarting backend',
     'statusIdle': 'Idle',
+    'statusRunning': 'Running',
+    'statusWorking': 'Working',
+    'statusFailed': 'Failed',
     'disconnect': 'Disconnect',
     'disconnecting': 'Disconnecting',
     'connectionStatus': 'Connection status',
@@ -1903,6 +1909,9 @@ const _values = <String, Map<String, String>>{
     'restartBackend': '重启后端',
     'restartingBackend': '正在重启后端',
     'statusIdle': '空闲',
+    'statusRunning': '运行中',
+    'statusWorking': '工作中',
+    'statusFailed': '失败',
     'disconnect': '断开',
     'disconnecting': '断开中',
     'connectionStatus': '连接状态',

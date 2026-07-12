@@ -4133,12 +4133,21 @@ class _ChatActivityStripBody extends StatelessWidget {
         : running
         ? colorScheme.primary
         : colorScheme.outline;
-    final status = turn == null
-        ? sessionStatusLabel(l10n, sessionController?.status)
-        : _chatActivityTurnStatusLabel(l10n, turn);
+    final status = _chatActivityStateLabel(
+      l10n,
+      turn,
+      sessionController?.status,
+    );
     final hostState = sessionStatusLabel(l10n, sessionController?.status);
+    final turnStatus = turn == null
+        ? null
+        : _chatActivityTurnStatusLabel(l10n, turn);
     final activityDetail = _timelineActivityDetail(l10n, timelineController);
-    final details = [?activityDetail, if (hostState != status) hostState];
+    final details = [
+      if (turnStatus != null && turnStatus != status) turnStatus,
+      ?activityDetail,
+      if (hostState != status && hostState != turnStatus) hostState,
+    ];
 
     return Material(
       color: colorScheme.surfaceContainerLow,
@@ -4153,7 +4162,7 @@ class _ChatActivityStripBody extends StatelessWidget {
                   key: const ValueKey('chat-session-sidebar-toggle'),
                   tooltip: l10n.sessions,
                   onPressed: onToggleSidebar,
-                  icon: Icon(sidebarVisible ? Icons.menu_open : Icons.menu),
+                  icon: const Icon(Icons.menu),
                 ),
                 Container(
                   width: 4,
@@ -4174,7 +4183,9 @@ class _ChatActivityStripBody extends StatelessWidget {
                         key: const ValueKey('chat-activity-status'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelLarge,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       if (details.isNotEmpty)
                         Text(
@@ -4279,6 +4290,26 @@ String? _timelineActivityItemTitle(
     'plan' => l10n.timelinePlan,
     _ => null,
   };
+}
+
+String _chatActivityStateLabel(
+  AppLocalizations l10n,
+  TurnController? controller,
+  CodexSessionStatus? sessionStatus,
+) {
+  if (controller == null) {
+    return sessionStatusLabel(l10n, sessionStatus);
+  }
+  if (controller.status == TurnControllerStatus.failed) {
+    return l10n.statusFailed;
+  }
+  if (controller.isBusy) {
+    return l10n.statusWorking;
+  }
+  if (controller.activeTurnId?.trim().isNotEmpty == true) {
+    return l10n.statusRunning;
+  }
+  return sessionStatusLabel(l10n, sessionStatus);
 }
 
 String _chatActivityTurnStatusLabel(
@@ -4550,35 +4581,49 @@ class _ThreadListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        border: Border.all(color: colorScheme.outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(10, 8, 8, 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
+                Icon(
+                  Icons.forum_outlined,
+                  size: 18,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     title,
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 ?action,
               ],
             ),
-            const SizedBox(height: 8),
             if (modeControl != null) ...[
-              modeControl!,
               const SizedBox(height: 8),
+              modeControl!,
             ],
+            const SizedBox(height: 6),
             child,
           ],
         ),
@@ -4659,11 +4704,10 @@ class _ThreadListTile extends StatelessWidget {
     final selected = detailController?.selectedThreadId == thread.id;
     return ListTile(
       key: ValueKey('thread-summary-${thread.id}'),
-      contentPadding: EdgeInsets.zero,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 6),
       dense: true,
       visualDensity: VisualDensity.compact,
       selected: selected,
-      leading: const Icon(Icons.forum_outlined),
       title: Text(thread.title, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: archived
           ? IconButton(

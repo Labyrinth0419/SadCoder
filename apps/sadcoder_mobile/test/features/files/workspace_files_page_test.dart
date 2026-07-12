@@ -369,6 +369,21 @@ void main() {
     );
   });
 
+  testWidgets('shows a status page before a file is opened', (tester) async {
+    await _pumpFilesPage(
+      tester,
+      directoryReader: const _FakeWorkspaceDirectoryReader({'': []}),
+      fileReader: const _FakeWorkspaceFileReader(),
+    );
+
+    expect(
+      find.byKey(const ValueKey('workspace-files-status-page')),
+      findsOneWidget,
+    );
+    expect(find.text('Select a text file to preview it.'), findsOneWidget);
+    expect(find.text('Root: /repo'), findsOneWidget);
+  });
+
   testWidgets('opens remote file search results from the current root', (
     tester,
   ) async {
