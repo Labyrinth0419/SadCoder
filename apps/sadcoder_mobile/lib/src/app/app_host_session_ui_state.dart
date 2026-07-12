@@ -339,13 +339,15 @@ class AppHostSessionUiState {
     if (threadCursors.isEmpty) {
       return;
     }
-    for (final MapEntry(key: threadId, value: deliveredCursor)
+    for (final MapEntry(key: threadId, value: threadCursor)
         in threadCursors.entries) {
-      _deliveredCursorByThreadId[threadId] = deliveredCursor;
+      _deliveredCursorByThreadId[threadId] = threadCursor.deliveredCursor;
       unawaited(
         _persistDeliveredCursor(
           threadId: threadId,
-          deliveredCursor: deliveredCursor,
+          deliveredCursor: threadCursor.deliveredCursor,
+          lastTurnId: threadCursor.lastTurnId,
+          lastItemId: threadCursor.lastItemId,
         ),
       );
     }
@@ -454,6 +456,8 @@ class AppHostSessionUiState {
   Future<void> _persistDeliveredCursor({
     required String threadId,
     required String deliveredCursor,
+    String? lastTurnId,
+    String? lastItemId,
   }) async {
     if (_disposed) {
       return;
@@ -483,11 +487,15 @@ class AppHostSessionUiState {
         currentMatchesThread ? current.itemIds : null,
       ),
       lastTurnId: currentMatchesThread
-          ? current.lastTurnId ?? existing?.lastTurnId
-          : existing?.lastTurnId,
+          ? current.lastTurnId ??
+                _normalized(lastTurnId) ??
+                existing?.lastTurnId
+          : _normalized(lastTurnId) ?? existing?.lastTurnId,
       lastItemId: currentMatchesThread
-          ? current.lastItemId ?? existing?.lastItemId
-          : existing?.lastItemId,
+          ? current.lastItemId ??
+                _normalized(lastItemId) ??
+                existing?.lastItemId
+          : _normalized(lastItemId) ?? existing?.lastItemId,
       deliveredCursor: deliveredCursor,
       cachedAtMs: DateTime.now().millisecondsSinceEpoch,
     );
@@ -562,21 +570,31 @@ Set<String> _threadIdsForAgentSnapshot(AgentSnapshot snapshot) {
   return threadIds;
 }
 
-Map<String, String> _threadCursorsForAgentSnapshot(AgentSnapshot snapshot) {
-  final threadCursors = <String, String>{};
+Map<String, _AgentSnapshotThreadCursor> _threadCursorsForAgentSnapshot(
+  AgentSnapshot snapshot,
+) {
+  final threadCursors = <String, _AgentSnapshotThreadCursor>{};
   final deliveredCursor = _normalized(snapshot.deliveredCursor);
   for (final thread in snapshot.threads) {
     final threadId = _normalized(thread.threadId);
     final cursor = _normalized(thread.lastEventCursor);
     if (threadId != null && cursor != null) {
-      threadCursors[threadId] = cursor;
+      threadCursors[threadId] = _AgentSnapshotThreadCursor(
+        deliveredCursor: cursor,
+        lastTurnId: _normalized(thread.lastTurnId),
+        lastItemId: _normalized(thread.lastItemId),
+      );
     }
   }
   for (final event in snapshot.recentEvents) {
     final threadId = _threadIdFromParams(event.params);
     final cursor = _normalized(event.cursor) ?? deliveredCursor;
     if (threadId != null && cursor != null) {
-      threadCursors[threadId] = cursor;
+      threadCursors[threadId] = _AgentSnapshotThreadCursor(
+        deliveredCursor: cursor,
+        lastTurnId: _turnIdFromParams(event.params),
+        lastItemId: _itemIdFromParams(event.params),
+      );
     }
   }
   return threadCursors;
@@ -587,7 +605,39 @@ String? _threadIdFromParams(Object? params) {
     return null;
   }
   return _normalized(params['threadId']?.toString()) ??
-      _normalized(params['thread_id']?.toString());
+      _normalized(params['thread_id']?.toString()) ??
+      _nestedNormalized(params['thread'], ['id', 'threadId', 'thread_id']);
+}
+
+String? _turnIdFromParams(Object? params) {
+  if (params is! Map) {
+    return null;
+  }
+  return _normalized(params['turnId']?.toString()) ??
+      _normalized(params['turn_id']?.toString()) ??
+      _nestedNormalized(params['turn'], ['id', 'turnId', 'turn_id']);
+}
+
+String? _itemIdFromParams(Object? params) {
+  if (params is! Map) {
+    return null;
+  }
+  return _normalized(params['itemId']?.toString()) ??
+      _normalized(params['item_id']?.toString()) ??
+      _nestedNormalized(params['item'], ['id', 'itemId', 'item_id']);
+}
+
+String? _nestedNormalized(Object? value, List<String> keys) {
+  if (value is! Map) {
+    return null;
+  }
+  for (final key in keys) {
+    final normalized = _normalized(value[key]?.toString());
+    if (normalized != null) {
+      return normalized;
+    }
+  }
+  return null;
 }
 
 List<String> _mergedIds(List<String>? first, List<String>? second) {
@@ -620,4 +670,16 @@ ThreadTimelineCursorSnapshot _withDeliveredCursor(
     deliveredCursor: deliveredCursor,
     cachedAtMs: snapshot.cachedAtMs,
   );
+}
+
+class _AgentSnapshotThreadCursor {
+  const _AgentSnapshotThreadCursor({
+    required this.deliveredCursor,
+    this.lastTurnId,
+    this.lastItemId,
+  });
+
+  final String deliveredCursor;
+  final String? lastTurnId;
+  final String? lastItemId;
 }
