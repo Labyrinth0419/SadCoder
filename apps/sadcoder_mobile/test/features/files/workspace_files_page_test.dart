@@ -387,6 +387,86 @@ void main() {
     );
   });
 
+  testWidgets('opens manual roots and saves a default workspace root', (
+    tester,
+  ) async {
+    final calls = <_DirectoryListCall>[];
+    final directoryReader = _FakeWorkspaceDirectoryReader({'': []}, calls);
+    final configOverrideController = CodexConfigOverrideController();
+    addTearDown(configOverrideController.dispose);
+
+    await _pumpFilesPage(
+      tester,
+      root: null,
+      directoryReader: directoryReader,
+      fileReader: const _FakeWorkspaceFileReader(),
+      configOverrideController: configOverrideController,
+    );
+
+    expect(
+      find.text('Select a thread or set a working directory.'),
+      findsOneWidget,
+    );
+    expect(calls, isEmpty);
+
+    Future<void> expandRootSelector() async {
+      if (find
+          .byKey(const ValueKey('workspace-files-root-field'))
+          .evaluate()
+          .isNotEmpty) {
+        return;
+      }
+      await tester.tap(
+        find.byKey(const ValueKey('workspace-files-root-selector')),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await expandRootSelector();
+    await tester.enterText(
+      find.byKey(const ValueKey('workspace-files-root-field')),
+      '/manual',
+    );
+    await tester.tap(find.byKey(const ValueKey('workspace-files-use-root')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Root: /manual'), findsOneWidget);
+    expect(calls.last.root, '/manual');
+
+    await expandRootSelector();
+    await tester.enterText(
+      find.byKey(const ValueKey('workspace-files-root-field')),
+      '/default',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-save-default-root')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(configOverrideController.layers.appDefault.cwd, '/default');
+    expect(find.text('Root: /default'), findsOneWidget);
+    expect(calls.last.root, '/default');
+
+    await expandRootSelector();
+    await tester.enterText(
+      find.byKey(const ValueKey('workspace-files-root-field')),
+      '/temporary',
+    );
+    await tester.tap(find.byKey(const ValueKey('workspace-files-use-root')));
+    await tester.pumpAndSettle();
+    expect(find.text('Root: /temporary'), findsOneWidget);
+    expect(calls.last.root, '/temporary');
+
+    await expandRootSelector();
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-use-default-root')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Root: /default'), findsOneWidget);
+    expect(calls.last.root, '/default');
+  });
+
   testWidgets('keeps the file tree collapsed by default on compact widths', (
     tester,
   ) async {
