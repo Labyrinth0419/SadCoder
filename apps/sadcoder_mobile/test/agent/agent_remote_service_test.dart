@@ -565,6 +565,14 @@ void main() {
       "params": { "threadId": "thr_1" }
     }
   ],
+  "threads": [
+    {
+      "threadId": "thr_1",
+      "lastTurnId": "turn_1",
+      "lastItemId": "item_1",
+      "lastEventCursor": "event-1"
+    }
+  ],
   "deliveredCursor": "event-1",
   "retainedCursorFloor": "event-1",
   "cursorGap": true
@@ -586,6 +594,10 @@ void main() {
     );
     expect(snapshot.recentEvents.single.method, 'thread/item');
     expect(snapshot.recentEvents.single.cursor, 'event-1');
+    expect(snapshot.threads.single.threadId, 'thr_1');
+    expect(snapshot.threads.single.lastTurnId, 'turn_1');
+    expect(snapshot.threads.single.lastItemId, 'item_1');
+    expect(snapshot.threads.single.lastEventCursor, 'event-1');
     expect(snapshot.deliveredCursor, 'event-1');
     expect(snapshot.retainedCursorFloor, 'event-1');
     expect(snapshot.cursorGap, true);
@@ -646,6 +658,14 @@ void main() {
       "params": { "thread_id": "thr_2" }
     }
   ],
+  "threads": [
+    {
+      "thread_id": "thr_2",
+      "last_turn_id": "turn_2",
+      "last_item_id": "item_2",
+      "last_event_cursor": "event-2"
+    }
+  ],
   "delivered_cursor": "event-2",
   "retained_cursor_floor": "event-1",
   "cursor_gap": true
@@ -666,6 +686,10 @@ void main() {
     );
     expect(snapshot.recentEvents.single.method, 'thread/turn/completed');
     expect(snapshot.recentEvents.single.cursor, 'event-2');
+    expect(snapshot.threads.single.threadId, 'thr_2');
+    expect(snapshot.threads.single.lastTurnId, 'turn_2');
+    expect(snapshot.threads.single.lastItemId, 'item_2');
+    expect(snapshot.threads.single.lastEventCursor, 'event-2');
     expect(snapshot.deliveredCursor, 'event-2');
     expect(snapshot.retainedCursorFloor, 'event-1');
     expect(snapshot.cursorGap, true);

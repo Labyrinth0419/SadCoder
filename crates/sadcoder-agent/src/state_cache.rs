@@ -1,18 +1,22 @@
 use anyhow::Context;
 use sadcoder_protocol::AgentCachedEvent;
 use sadcoder_protocol::AgentCachedServerRequest;
+use sadcoder_protocol::AgentCachedThread;
 use sadcoder_protocol::AgentStateSnapshot;
+use serde_json::Map;
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
 const DEFAULT_RECENT_EVENT_LIMIT: usize = 100;
+const DEFAULT_THREAD_SNAPSHOT_LIMIT: usize = 100;
 
 #[derive(Debug, Clone)]
 pub(crate) struct AgentStateCache {
     pub(crate) snapshot: AgentStateSnapshot,
     recent_event_limit: usize,
+    thread_snapshot_limit: usize,
 }
 
 impl AgentStateCache {
@@ -20,6 +24,7 @@ impl AgentStateCache {
         Self {
             snapshot: AgentStateSnapshot::default(),
             recent_event_limit: DEFAULT_RECENT_EVENT_LIMIT,
+            thread_snapshot_limit: DEFAULT_THREAD_SNAPSHOT_LIMIT,
         }
     }
 
@@ -34,6 +39,7 @@ impl AgentStateCache {
         Ok(Self {
             snapshot,
             recent_event_limit: DEFAULT_RECENT_EVENT_LIMIT,
+            thread_snapshot_limit: DEFAULT_THREAD_SNAPSHOT_LIMIT,
         })
     }
 
@@ -135,6 +141,7 @@ impl AgentStateCache {
     }
 
     fn upsert_pending_approval(&mut self, request: AgentCachedServerRequest) {
+        self.observe_thread_context(request.params.as_ref(), None);
         if let Some(existing) = self
             .snapshot
             .pending_approvals
@@ -170,6 +177,7 @@ impl AgentStateCache {
         let cursor = self.next_delivered_cursor();
         event.cursor = Some(cursor.clone());
         self.snapshot.delivered_cursor = Some(cursor);
+        self.observe_thread_context(event.params.as_ref(), event.cursor.as_deref());
         self.snapshot.recent_events.push(event);
         let overflow = self
             .snapshot
@@ -189,6 +197,85 @@ impl AgentStateCache {
             .map_or(1, |cursor| cursor.saturating_add(1))
             .to_string()
     }
+
+    fn observe_thread_context(&mut self, params: Option<&Value>, cursor: Option<&str>) {
+        let Some(params) = params.and_then(Value::as_object) else {
+            return;
+        };
+        let Some(thread_id) = string_param(params, &["threadId", "thread_id"])
+            .or_else(|| nested_string_param(params, "thread", &["id", "threadId", "thread_id"]))
+        else {
+            return;
+        };
+        let turn_id = string_param(params, &["turnId", "turn_id"]);
+        let item_id = string_param(params, &["itemId", "item_id"]);
+        self.upsert_thread_context(thread_id, turn_id, item_id, cursor.map(str::to_string));
+    }
+
+    fn upsert_thread_context(
+        &mut self,
+        thread_id: String,
+        turn_id: Option<String>,
+        item_id: Option<String>,
+        cursor: Option<String>,
+    ) {
+        let thread = self
+            .snapshot
+            .threads
+            .iter_mut()
+            .find(|thread| thread.thread_id == thread_id);
+        let thread = match thread {
+            Some(thread) => thread,
+            None => {
+                self.snapshot.threads.push(AgentCachedThread {
+                    thread_id,
+                    last_turn_id: None,
+                    last_item_id: None,
+                    last_event_cursor: None,
+                });
+                let overflow = self
+                    .snapshot
+                    .threads
+                    .len()
+                    .saturating_sub(self.thread_snapshot_limit);
+                if overflow > 0 {
+                    self.snapshot.threads.drain(0..overflow);
+                }
+                self.snapshot.threads.last_mut().expect("inserted thread")
+            }
+        };
+        if turn_id.is_some() {
+            thread.last_turn_id = turn_id;
+        }
+        if item_id.is_some() {
+            thread.last_item_id = item_id;
+        }
+        if cursor.is_some() {
+            thread.last_event_cursor = cursor;
+        }
+    }
+}
+
+fn string_param(params: &Map<String, Value>, keys: &[&str]) -> Option<String> {
+    keys.iter().find_map(|key| {
+        params
+            .get(*key)
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
+    })
+}
+
+fn nested_string_param(
+    params: &Map<String, Value>,
+    object_key: &str,
+    keys: &[&str],
+) -> Option<String> {
+    params
+        .get(object_key)
+        .and_then(Value::as_object)
+        .and_then(|nested| string_param(nested, keys))
 }
 
 #[derive(Debug, Clone)]
@@ -381,6 +468,64 @@ mod tests {
             "Yes (Recommended)"
         );
         assert_eq!(params["autoResolutionMs"], 60000);
+    }
+
+    #[test]
+    fn tracks_thread_context_from_server_events_and_requests() {
+        let mut cache = AgentStateCache::empty();
+
+        cache.observe_server_line(
+            r#"{"jsonrpc":"2.0","method":"thread/turn/completed","params":{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1"}}"#,
+        );
+        cache.observe_server_line(
+            r#"{"jsonrpc":"2.0","id":"input-1","method":"item/tool/requestUserInput","params":{"threadId":"thread-1","turnId":"turn-2","itemId":"item-2","questions":[]}}"#,
+        );
+        cache.observe_server_line(
+            r#"{"jsonrpc":"2.0","method":"thread/created","params":{"thread":{"id":"thread-2"}}}"#,
+        );
+
+        assert_eq!(cache.snapshot.threads.len(), 2);
+        let first = cache
+            .snapshot
+            .threads
+            .iter()
+            .find(|thread| thread.thread_id == "thread-1")
+            .expect("thread-1");
+        assert_eq!(first.last_turn_id.as_deref(), Some("turn-2"));
+        assert_eq!(first.last_item_id.as_deref(), Some("item-2"));
+        assert_eq!(first.last_event_cursor.as_deref(), Some("1"));
+        let second = cache
+            .snapshot
+            .threads
+            .iter()
+            .find(|thread| thread.thread_id == "thread-2")
+            .expect("thread-2");
+        assert_eq!(second.last_turn_id, None);
+        assert_eq!(second.last_event_cursor.as_deref(), Some("2"));
+    }
+
+    #[test]
+    fn caps_thread_contexts() {
+        let mut cache = AgentStateCache::empty();
+        cache.thread_snapshot_limit = 2;
+
+        cache.observe_server_line(
+            r#"{"jsonrpc":"2.0","method":"thread/created","params":{"threadId":"thread-1"}}"#,
+        );
+        cache.observe_server_line(
+            r#"{"jsonrpc":"2.0","method":"thread/created","params":{"threadId":"thread-2"}}"#,
+        );
+        cache.observe_server_line(
+            r#"{"jsonrpc":"2.0","method":"thread/created","params":{"threadId":"thread-3"}}"#,
+        );
+
+        let thread_ids = cache
+            .snapshot
+            .threads
+            .iter()
+            .map(|thread| thread.thread_id.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(thread_ids, vec!["thread-2", "thread-3"]);
     }
 
     #[test]

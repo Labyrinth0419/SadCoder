@@ -5,6 +5,7 @@ class AgentSnapshot {
     required this.schemaVersion,
     required this.pendingApprovals,
     required this.recentEvents,
+    this.threads = const [],
     this.deliveredCursor,
     this.retainedCursorFloor,
     this.cursorGap = false,
@@ -29,6 +30,10 @@ class AgentSnapshot {
       recentEvents: _listOfMaps(
         _valueField(json, ['recentEvents', 'recent_events']),
       ).map(AgentCachedEvent.fromJson).toList(growable: false),
+      threads: _listOfMaps(_valueField(json, ['threads']))
+          .map(AgentCachedThread.fromJson)
+          .where((thread) => thread.threadId.isNotEmpty)
+          .toList(growable: false),
       deliveredCursor: _stringField(json, [
         'deliveredCursor',
         'delivered_cursor',
@@ -44,6 +49,7 @@ class AgentSnapshot {
   final int schemaVersion;
   final List<JsonRpcServerRequest> pendingApprovals;
   final List<AgentCachedEvent> recentEvents;
+  final List<AgentCachedThread> threads;
   final String? deliveredCursor;
   final String? retainedCursorFloor;
   final bool cursorGap;
@@ -67,6 +73,32 @@ class AgentCachedEvent {
   Map<String, Object?> toNotification() {
     return {'method': method, if (params != null) 'params': params};
   }
+}
+
+class AgentCachedThread {
+  const AgentCachedThread({
+    required this.threadId,
+    this.lastTurnId,
+    this.lastItemId,
+    this.lastEventCursor,
+  });
+
+  factory AgentCachedThread.fromJson(Map<String, Object?> json) {
+    return AgentCachedThread(
+      threadId: _stringField(json, ['threadId', 'thread_id']) ?? '',
+      lastTurnId: _stringField(json, ['lastTurnId', 'last_turn_id']),
+      lastItemId: _stringField(json, ['lastItemId', 'last_item_id']),
+      lastEventCursor: _stringField(json, [
+        'lastEventCursor',
+        'last_event_cursor',
+      ]),
+    );
+  }
+
+  final String threadId;
+  final String? lastTurnId;
+  final String? lastItemId;
+  final String? lastEventCursor;
 }
 
 List<Map<String, Object?>> _listOfMaps(Object? value) {

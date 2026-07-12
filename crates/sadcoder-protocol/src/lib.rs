@@ -74,6 +74,8 @@ pub struct AgentStateSnapshot {
     pub schema_version: u32,
     pub pending_approvals: Vec<AgentCachedServerRequest>,
     pub recent_events: Vec<AgentCachedEvent>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub threads: Vec<AgentCachedThread>,
     #[serde(
         default,
         alias = "delivered_cursor",
@@ -96,6 +98,7 @@ impl Default for AgentStateSnapshot {
             schema_version: 1,
             pending_approvals: Vec::new(),
             recent_events: Vec::new(),
+            threads: Vec::new(),
             delivered_cursor: None,
             retained_cursor_floor: None,
             cursor_gap: false,
@@ -124,6 +127,31 @@ pub struct AgentCachedEvent {
     pub params: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentCachedThread {
+    #[serde(alias = "thread_id")]
+    pub thread_id: String,
+    #[serde(
+        default,
+        alias = "last_turn_id",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_turn_id: Option<String>,
+    #[serde(
+        default,
+        alias = "last_item_id",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_item_id: Option<String>,
+    #[serde(
+        default,
+        alias = "last_event_cursor",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_event_cursor: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -391,6 +419,12 @@ mod tests {
                 params: Some(serde_json::json!({ "threadId": "thr_1" })),
                 cursor: Some("42".to_string()),
             }],
+            threads: vec![AgentCachedThread {
+                thread_id: "thr_1".to_string(),
+                last_turn_id: Some("turn_1".to_string()),
+                last_item_id: Some("item_1".to_string()),
+                last_event_cursor: Some("42".to_string()),
+            }],
             delivered_cursor: Some("42".to_string()),
             retained_cursor_floor: Some("40".to_string()),
             cursor_gap: true,
@@ -405,6 +439,10 @@ mod tests {
         );
         assert_eq!(encoded["recentEvents"][0]["params"]["threadId"], "thr_1");
         assert_eq!(encoded["recentEvents"][0]["cursor"], "42");
+        assert_eq!(encoded["threads"][0]["threadId"], "thr_1");
+        assert_eq!(encoded["threads"][0]["lastTurnId"], "turn_1");
+        assert_eq!(encoded["threads"][0]["lastItemId"], "item_1");
+        assert_eq!(encoded["threads"][0]["lastEventCursor"], "42");
         assert_eq!(encoded["deliveredCursor"], "42");
         assert_eq!(encoded["retainedCursorFloor"], "40");
         assert_eq!(encoded["cursorGap"], true);
@@ -423,7 +461,15 @@ mod tests {
             ],
             "delivered_cursor": "event-7",
             "retained_cursor_floor": "event-4",
-            "cursor_gap": true
+            "cursor_gap": true,
+            "threads": [
+                {
+                    "thread_id": "thr_1",
+                    "last_turn_id": "turn_1",
+                    "last_item_id": "item_1",
+                    "last_event_cursor": "event-7"
+                }
+            ]
         }))
         .expect("deserialize snapshot");
 
@@ -431,6 +477,13 @@ mod tests {
         assert_eq!(snapshot.retained_cursor_floor.as_deref(), Some("event-4"));
         assert!(snapshot.cursor_gap);
         assert_eq!(snapshot.recent_events[0].cursor.as_deref(), Some("event-7"));
+        assert_eq!(snapshot.threads[0].thread_id, "thr_1");
+        assert_eq!(snapshot.threads[0].last_turn_id.as_deref(), Some("turn_1"));
+        assert_eq!(snapshot.threads[0].last_item_id.as_deref(), Some("item_1"));
+        assert_eq!(
+            snapshot.threads[0].last_event_cursor.as_deref(),
+            Some("event-7")
+        );
     }
 
     #[test]
