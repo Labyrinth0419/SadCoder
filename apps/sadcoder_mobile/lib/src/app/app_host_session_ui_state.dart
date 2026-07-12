@@ -324,6 +324,7 @@ class AppHostSessionUiState {
 
   void _handleAgentSnapshot(AgentSnapshot snapshot) {
     final threadIds = _threadIdsForAgentSnapshot(snapshot);
+    final threadCursors = _threadCursorsForAgentSnapshot(snapshot);
     if (snapshot.cursorGap) {
       final gapThreadIds = threadIds.isEmpty
           ? _fallbackThreadIdsForSnapshotGap()
@@ -335,14 +336,11 @@ class AppHostSessionUiState {
       }
     }
 
-    final deliveredCursor = _normalized(snapshot.deliveredCursor);
-    if (deliveredCursor == null) {
+    if (threadCursors.isEmpty) {
       return;
     }
-    if (threadIds.isEmpty) {
-      return;
-    }
-    for (final threadId in threadIds) {
+    for (final MapEntry(key: threadId, value: deliveredCursor)
+        in threadCursors.entries) {
       _deliveredCursorByThreadId[threadId] = deliveredCursor;
       unawaited(
         _persistDeliveredCursor(
@@ -549,6 +547,12 @@ String _timelineCursorFingerprint(ThreadTimelineCursorSnapshot snapshot) {
 
 Set<String> _threadIdsForAgentSnapshot(AgentSnapshot snapshot) {
   final threadIds = <String>{};
+  for (final thread in snapshot.threads) {
+    final threadId = _normalized(thread.threadId);
+    if (threadId != null) {
+      threadIds.add(threadId);
+    }
+  }
   for (final event in snapshot.recentEvents) {
     final threadId = _threadIdFromParams(event.params);
     if (threadId != null) {
@@ -556,6 +560,26 @@ Set<String> _threadIdsForAgentSnapshot(AgentSnapshot snapshot) {
     }
   }
   return threadIds;
+}
+
+Map<String, String> _threadCursorsForAgentSnapshot(AgentSnapshot snapshot) {
+  final threadCursors = <String, String>{};
+  final deliveredCursor = _normalized(snapshot.deliveredCursor);
+  for (final thread in snapshot.threads) {
+    final threadId = _normalized(thread.threadId);
+    final cursor = _normalized(thread.lastEventCursor);
+    if (threadId != null && cursor != null) {
+      threadCursors[threadId] = cursor;
+    }
+  }
+  for (final event in snapshot.recentEvents) {
+    final threadId = _threadIdFromParams(event.params);
+    final cursor = _normalized(event.cursor) ?? deliveredCursor;
+    if (threadId != null && cursor != null) {
+      threadCursors[threadId] = cursor;
+    }
+  }
+  return threadCursors;
 }
 
 String? _threadIdFromParams(Object? params) {

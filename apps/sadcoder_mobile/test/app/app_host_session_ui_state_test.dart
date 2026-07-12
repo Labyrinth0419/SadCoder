@@ -192,6 +192,62 @@ void main() {
     expect(snapshot?.lastItemId, 'item_existing');
   });
 
+  test('persists per-thread cursor from agent thread snapshot', () async {
+    final threadStore = _MemoryThreadCacheStore();
+    final cursorStore = _MemoryThreadTimelineCursorStore({
+      'profile-a::thr_a': const ThreadTimelineCursorSnapshot(
+        threadId: 'thr_a',
+        turnIds: ['turn_existing'],
+        itemIds: ['item_existing'],
+        lastTurnId: 'turn_existing',
+        lastItemId: 'item_existing',
+        cachedAtMs: 1,
+      ),
+    });
+    final approvalController = ApprovalStateController();
+    final configOverrideController = CodexConfigOverrideController();
+    final sessionController = CodexSessionStateController(
+      connector: _SnapshotSessionStarter(
+        snapshot: const AgentSnapshot(
+          schemaVersion: 1,
+          pendingApprovals: [],
+          recentEvents: [],
+          threads: [
+            AgentCachedThread(
+              threadId: 'thr_a',
+              lastTurnId: 'turn_existing',
+              lastItemId: 'item_existing',
+              lastEventCursor: 'event-7',
+            ),
+          ],
+          deliveredCursor: 'event-9',
+        ),
+      ),
+      approvalController: approvalController,
+    );
+    final state = AppHostSessionUiState(
+      sessionController: sessionController,
+      configOverrideController: configOverrideController,
+      threadCacheProfileId: 'profile-a',
+      threadCacheStore: threadStore,
+      threadTimelineCursorStore: cursorStore,
+    );
+    addTearDown(state.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(configOverrideController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profileA);
+    await _flushMicrotasks();
+
+    final snapshot = cursorStore.snapshots['profile-a::thr_a'];
+    expect(snapshot?.deliveredCursor, 'event-7');
+    expect(snapshot?.turnIds, ['turn_existing']);
+    expect(snapshot?.itemIds, ['item_existing']);
+    expect(snapshot?.lastTurnId, 'turn_existing');
+    expect(snapshot?.lastItemId, 'item_existing');
+  });
+
   test('loads agent snapshot cursor from cached selected thread', () async {
     final threadStore = _MemoryThreadCacheStore({
       'profile-a': ThreadCacheSnapshot(
