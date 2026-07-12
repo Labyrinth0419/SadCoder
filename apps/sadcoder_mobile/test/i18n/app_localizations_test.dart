@@ -117,6 +117,17 @@ void main() {
     expect(zh.fontSizeLabel('extra-large'), '极大');
     expect(zh.settingsSectionDiagnostics, '诊断');
     expect(zh.slashCommandArgs('<名称>'), '参数：<名称>');
+    expect(
+      en.slashCommandRolloutCurrentPath('/tmp/rollout.jsonl'),
+      'Current rollout path: /tmp/rollout.jsonl',
+    );
+    expect(
+      zh.slashCommandRolloutCurrentPath('/tmp/rollout.jsonl'),
+      '当前 rollout 路径：/tmp/rollout.jsonl',
+    );
+    expect(zh.slashCommandRolloutPathUnavailable, '暂时无法获取 rollout 路径。');
+    expect(zh.slashCommandTestApprovalReason, 'SadCoder 测试审批请求');
+    expect(zh.slashCommandTestApprovalQueued, '已加入测试审批请求。');
     expect(zh.slashCommandArgumentHint('rename'), '<名称>');
     expect(en.slashCommandArgumentHint('rename'), '<name>');
 

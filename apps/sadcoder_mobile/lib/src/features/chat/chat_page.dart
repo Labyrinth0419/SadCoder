@@ -1012,13 +1012,14 @@ class _ChatPageState extends State<ChatPage> {
     if (arguments.trim().isNotEmpty) {
       return null;
     }
+    final l10n = context.l10n;
     final rolloutPath = _rolloutPathFromRaw(
       widget.threadDetailController?.detail?.thread.raw ?? const {},
     );
     if (rolloutPath != null) {
-      return 'Current rollout path: $rolloutPath';
+      return l10n.slashCommandRolloutCurrentPath(rolloutPath);
     }
-    return 'Rollout path is not available yet.';
+    return l10n.slashCommandRolloutPathUnavailable;
   }
 
   Future<String?> _testApprovalRequest(String arguments) async {
@@ -1029,14 +1030,16 @@ class _ChatPageState extends State<ChatPage> {
     if (approvalController == null) {
       return null;
     }
+    final l10n = context.l10n;
     final now = DateTime.now();
     final threadId = _currentThreadId();
     final turnId = widget.turnController?.activeTurnId ?? 'turn-1';
+    final reason = l10n.slashCommandTestApprovalReason;
     final rawParams = <String, Object?>{
       'turnId': turnId,
       'startedAtMs': now.millisecondsSinceEpoch,
       'grantRoot': '/tmp',
-      'reason': 'SadCoder test approval request',
+      'reason': reason,
       'changes': [
         {'path': '/tmp/test.txt', 'kind': 'add', 'content': 'test'},
         {
@@ -1055,15 +1058,15 @@ class _ChatPageState extends State<ChatPage> {
         method: fileChangeApprovalMethod,
         kind: PendingApprovalKind.fileChange,
         rawParams: rawParams,
-        title: 'File change approval: /tmp',
+        title: '${l10n.approvalKindFileChange}: /tmp',
         threadId: threadId,
         turnId: turnId,
         startedAtMs: now.millisecondsSinceEpoch,
-        reason: 'SadCoder test approval request',
+        reason: reason,
         grantRoot: '/tmp',
       ),
     );
-    return 'Test approval request queued.';
+    return l10n.slashCommandTestApprovalQueued;
   }
 
   Future<String?> _buildDiffSummary(String arguments) async {

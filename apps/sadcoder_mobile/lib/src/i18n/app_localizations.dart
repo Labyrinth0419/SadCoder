@@ -344,6 +344,14 @@ class AppLocalizations {
       _text('slashCommandSandboxSetupUnavailable');
   String get slashCommandSandboxReadDirUnavailable =>
       _text('slashCommandSandboxReadDirUnavailable');
+  String slashCommandRolloutCurrentPath(String path) =>
+      _text('slashCommandRolloutCurrentPath').replaceAll('{path}', path);
+  String get slashCommandRolloutPathUnavailable =>
+      _text('slashCommandRolloutPathUnavailable');
+  String get slashCommandTestApprovalReason =>
+      _text('slashCommandTestApprovalReason');
+  String get slashCommandTestApprovalQueued =>
+      _text('slashCommandTestApprovalQueued');
   String get slashCommandModelUpdated => _text('slashCommandModelUpdated');
   String get slashCommandPersonalityUpdated =>
       _text('slashCommandPersonalityUpdated');
@@ -1339,6 +1347,10 @@ const _values = <String, Map<String, String>>{
         'Default sandbox setup is not wired in the mobile app yet. It requires a guarded agent fallback and high-risk confirmation on the selected host.',
     'slashCommandSandboxReadDirUnavailable':
         'Sandbox read-directory configuration is not wired in the mobile app yet. It requires a guarded Windows agent fallback and high-risk confirmation.',
+    'slashCommandRolloutCurrentPath': 'Current rollout path: {path}',
+    'slashCommandRolloutPathUnavailable': 'Rollout path is not available yet.',
+    'slashCommandTestApprovalReason': 'SadCoder test approval request',
+    'slashCommandTestApprovalQueued': 'Test approval request queued.',
     'slashCommandModelUpdated': 'Model override updated.',
     'slashCommandPersonalityUpdated': 'Personality override updated.',
     'slashCommandPermissionsUpdated': 'Permission override updated.',
@@ -2171,6 +2183,10 @@ const _values = <String, Map<String, String>>{
         '移动端尚未接入默认沙箱设置流程。该能力需要在选中主机上通过受保护的 agent fallback 执行，并完成高风险确认。',
     'slashCommandSandboxReadDirUnavailable':
         '移动端尚未接入沙箱读取目录配置。该能力需要通过受保护的 Windows agent fallback 执行，并完成高风险确认。',
+    'slashCommandRolloutCurrentPath': '当前 rollout 路径：{path}',
+    'slashCommandRolloutPathUnavailable': '暂时无法获取 rollout 路径。',
+    'slashCommandTestApprovalReason': 'SadCoder 测试审批请求',
+    'slashCommandTestApprovalQueued': '已加入测试审批请求。',
     'slashCommandModelUpdated': '已更新模型覆盖。',
     'slashCommandPersonalityUpdated': '已更新协作风格覆盖。',
     'slashCommandPermissionsUpdated': '已更新权限覆盖。',
