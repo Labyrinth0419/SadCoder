@@ -145,8 +145,11 @@ class ChatTimelineController extends ChangeNotifier {
       clear();
       return;
     }
+    if (_selectedThreadId == normalizedThreadId) {
+      return;
+    }
     _selectedThreadId = normalizedThreadId;
-    _turns.clear();
+    _turns.removeWhere((turn) => turn.threadId != normalizedThreadId);
     notifyListeners();
   }
 
@@ -163,6 +166,34 @@ class ChatTimelineController extends ChangeNotifier {
       ChatTimelineTurn.fromTurnSummary(
         threadId: normalizedThreadId,
         turn: turn,
+      ),
+    );
+    notifyListeners();
+  }
+
+  void showLocalUserMessage({
+    required String threadId,
+    required String turnId,
+    required String text,
+  }) {
+    final normalizedThreadId = threadId.trim();
+    final normalizedTurnId = turnId.trim();
+    final normalizedText = text.trim();
+    if (normalizedThreadId.isEmpty ||
+        normalizedTurnId.isEmpty ||
+        normalizedText.isEmpty) {
+      return;
+    }
+    if (_selectedThreadId != normalizedThreadId) {
+      _selectedThreadId = normalizedThreadId;
+      _turns.removeWhere((turn) => turn.threadId != normalizedThreadId);
+    }
+    _mergeCachedItemIntoTurn(
+      threadId: normalizedThreadId,
+      turnId: normalizedTurnId,
+      item: ChatTimelineItem.localUserMessage(
+        turnId: normalizedTurnId,
+        text: normalizedText,
       ),
     );
     notifyListeners();
@@ -225,6 +256,7 @@ class ChatTimelineController extends ChangeNotifier {
     if (threadId == null || turnId == null || turnId.isEmpty) {
       return;
     }
+    _selectLiveThread(threadId);
     final index = _turns.indexWhere((turn) => turn.turnId == turnId);
     if (index == -1) {
       _turns.add(
@@ -373,8 +405,13 @@ class ChatTimelineController extends ChangeNotifier {
     }
     final turn = _turns[turnIndex];
     final items = List<ChatTimelineItem>.from(turn.items);
-    final itemIndex = items.indexWhere((item) => item.itemId == itemId);
     final item = ChatTimelineItem.fromEvent(event);
+    if (item.itemType == 'userMessage' && !item.isLocalUserMessage) {
+      items.removeWhere(
+        (existing) => existing.itemId == _localUserMessageItemId(turn.turnId),
+      );
+    }
+    final itemIndex = items.indexWhere((item) => item.itemId == itemId);
     if (itemIndex == -1) {
       items.add(item);
     } else {
@@ -489,6 +526,7 @@ class ChatTimelineController extends ChangeNotifier {
     if (threadId == null || turnId == null || turnId.isEmpty) {
       return null;
     }
+    _selectLiveThread(threadId);
     var index = _turns.indexWhere((turn) => turn.turnId == turnId);
     if (index == -1) {
       _turns.add(
@@ -502,6 +540,14 @@ class ChatTimelineController extends ChangeNotifier {
       index = _turns.length - 1;
     }
     return index;
+  }
+
+  void _selectLiveThread(String threadId) {
+    final normalizedThreadId = threadId.trim();
+    if (normalizedThreadId.isEmpty || _selectedThreadId != null) {
+      return;
+    }
+    _selectedThreadId = normalizedThreadId;
   }
 }
 
@@ -546,6 +592,18 @@ class ChatTimelineTurn {
   ChatTimelineTurn mergeLive(ChatTimelineTurn liveTurn) {
     final mergedItems = List<ChatTimelineItem>.from(items);
     for (final liveItem in liveTurn.items) {
+      if (liveItem.isLocalUserMessage &&
+          mergedItems.any(
+            (item) =>
+                item.itemType == 'userMessage' && !item.isLocalUserMessage,
+          )) {
+        continue;
+      }
+      if (liveItem.itemType == 'userMessage' && !liveItem.isLocalUserMessage) {
+        mergedItems.removeWhere(
+          (item) => item.itemId == _localUserMessageItemId(turnId),
+        );
+      }
       final index = mergedItems.indexWhere(
         (item) => item.itemId == liveItem.itemId,
       );
@@ -669,6 +727,20 @@ class ChatTimelineItem {
     );
   }
 
+  factory ChatTimelineItem.localUserMessage({
+    required String turnId,
+    required String text,
+  }) {
+    final itemId = _localUserMessageItemId(turnId);
+    return ChatTimelineItem(
+      itemId: itemId,
+      itemType: 'userMessage',
+      text: text,
+      output: '',
+      raw: {'id': itemId, 'type': 'userMessage', 'text': text, 'local': true},
+    );
+  }
+
   final String itemId;
   final String itemType;
   final String text;
@@ -682,6 +754,9 @@ class ChatTimelineItem {
   final String? tool;
   final List<ThreadFileChangeSummary> fileChanges;
   final Map<String, Object?> raw;
+
+  bool get isLocalUserMessage =>
+      itemType == 'userMessage' && raw['local'] == true;
 
   ChatTimelineItem copyWith({
     String? text,
@@ -776,3 +851,5 @@ String? _normalized(String? value) {
   final trimmed = value?.trim();
   return trimmed == null || trimmed.isEmpty ? null : trimmed;
 }
+
+String _localUserMessageItemId(String turnId) => 'local_user_$turnId';

@@ -817,8 +817,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Timeline'), findsOneWidget);
-    expect(find.text('Turn: turn_1 / completed'), findsOneWidget);
-    expect(find.text('Item: agentMessage'), findsOneWidget);
+    expect(find.text('Codex'), findsOneWidget);
     expect(find.text('History is visible'), findsOneWidget);
   });
 

@@ -226,14 +226,6 @@ class _ChatPageState extends State<ChatPage> {
               child: ListView(
                 padding: EdgeInsets.all(compactHeight ? 8 : 16),
                 children: [
-                  _ThreadListPanel(
-                    controller: threadListController,
-                    detailController: threadDetailController,
-                    archived: _showArchivedThreads,
-                    onArchivedChanged: _setThreadArchiveView,
-                    onUnarchiveThread: _unarchiveThread,
-                  ),
-                  _ThreadDetailPanel(controller: threadDetailController),
                   if (_sideConversation != null)
                     _SideConversationPanel(
                       conversation: _sideConversation!,
@@ -253,6 +245,14 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                     onSendAsText: _markSlashInputAsText,
                   ),
+                  _ThreadListPanel(
+                    controller: threadListController,
+                    detailController: threadDetailController,
+                    archived: _showArchivedThreads,
+                    onArchivedChanged: _setThreadArchiveView,
+                    onUnarchiveThread: _unarchiveThread,
+                  ),
+                  _ThreadDetailPanel(controller: threadDetailController),
                 ],
               ),
             ),
@@ -450,6 +450,7 @@ class _ChatPageState extends State<ChatPage> {
     final textElements = _composerTextElements(text);
     await turnController.submitText(text, textElements: textElements);
     if (turnController.status != TurnControllerStatus.failed) {
+      _syncActiveTurnToTimeline(submittedText: text);
       widget.configOverrideController?.clearTurn();
       _composerMentions.clear();
       _slashTextPrompt = null;
@@ -1351,6 +1352,7 @@ class _ChatPageState extends State<ChatPage> {
     if (turnController.status == TurnControllerStatus.failed) {
       return SlashCommandCallbackResult.unavailable;
     }
+    _syncActiveTurnToTimeline(submittedText: prompt);
     controller.clearTurn();
     return SlashCommandCallbackResult.executed;
   }
@@ -1520,6 +1522,9 @@ class _ChatPageState extends State<ChatPage> {
     final initialPrompt = arguments.trim();
     if (initialPrompt.isNotEmpty) {
       await turnController.submitText(initialPrompt);
+      if (turnController.status != TurnControllerStatus.failed) {
+        _syncActiveTurnToTimeline(submittedText: initialPrompt);
+      }
     }
     return SlashCommandCallbackResult.executed;
   }
@@ -2277,9 +2282,35 @@ class _ChatPageState extends State<ChatPage> {
         activeThreadId != sideConversation.sideThreadId) {
       _sideConversation = null;
     }
+    _syncActiveTurnToTimeline();
     if (mounted) {
       setState(() {});
     }
+  }
+
+  void _syncActiveTurnToTimeline({String? submittedText}) {
+    final timelineController = widget.timelineController;
+    final turnController = widget.turnController;
+    final activeThreadId = _nonEmptyText(turnController?.activeThreadId);
+    if (timelineController == null ||
+        turnController == null ||
+        activeThreadId == null) {
+      return;
+    }
+    final lastTurn = turnController.lastTurn;
+    if (lastTurn != null && lastTurn.id.trim().isNotEmpty) {
+      timelineController.showTurn(threadId: activeThreadId, turn: lastTurn);
+      final text = _nonEmptyText(submittedText);
+      if (text != null) {
+        timelineController.showLocalUserMessage(
+          threadId: activeThreadId,
+          turnId: lastTurn.id,
+          text: text,
+        );
+      }
+      return;
+    }
+    timelineController.selectThread(activeThreadId);
   }
 
   void _refreshThreadsIfConnected() {
@@ -4593,10 +4624,18 @@ class _TimelineTurnView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final showTurnStatus = !_isTerminalTurnStatus(turn.status);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('${context.l10n.approvalTurn}: ${turn.turnId} / ${turn.status}'),
+        if (showTurnStatus)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              '${context.l10n.timelineStatus}: ${turn.status}',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ),
         if (turn.items.isEmpty)
           Text(context.l10n.noTimelineEvents)
         else
@@ -4617,33 +4656,47 @@ class _TimelineItemView extends StatelessWidget {
   Widget build(BuildContext context) {
     final details = _details(context);
     final body = _body;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(_iconFor(item.itemType)),
-      title: Text(_title(context)),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (details.isNotEmpty) Text(details.join('\n')),
-          if (body.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            _TimelineBodyBlock(item: item, body: body),
-          ],
-          if (item.fileChanges.any(
-            (change) => change.diff.trim().isNotEmpty,
-          )) ...[
-            const SizedBox(height: 8),
-            for (final change in item.fileChanges)
-              if (change.diff.trim().isNotEmpty)
-                _TimelineDiffBlock(change: change),
-          ],
-          if (showRaw) ...[
-            const SizedBox(height: 8),
-            SelectableText(
-              _rawJson,
-              key: ValueKey('timeline-raw-${item.itemId}'),
+          Icon(_iconFor(item.itemType), size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  _title(context),
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                if (details.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(details.join('\n')),
+                ],
+                if (body.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  _TimelineBodyBlock(item: item, body: body),
+                ],
+                if (item.fileChanges.any(
+                  (change) => change.diff.trim().isNotEmpty,
+                )) ...[
+                  const SizedBox(height: 8),
+                  for (final change in item.fileChanges)
+                    if (change.diff.trim().isNotEmpty)
+                      _TimelineDiffBlock(change: change),
+                ],
+                if (showRaw) ...[
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    _rawJson,
+                    key: ValueKey('timeline-raw-${item.itemId}'),
+                  ),
+                ],
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -4665,11 +4718,19 @@ class _TimelineItemView extends StatelessWidget {
   String _title(BuildContext context) {
     final l10n = context.l10n;
     return switch (item.itemType) {
+      'userMessage' => l10n.timelineUser,
+      'agentMessage' => l10n.timelineCodex,
+      'reasoning' => l10n.timelineReasoning,
+      'plan' => l10n.timelinePlan,
       'commandExecution' when item.command != null => item.command!,
+      'commandExecution' => l10n.timelineCommand,
       'fileChange' => l10n.timelineFileChanges,
       'mcpToolCall' when item.server != null && item.tool != null =>
         '${item.server}/${item.tool}',
       'mcpToolCall' when item.tool != null => item.tool!,
+      'mcpToolCall' ||
+      'dynamicToolCall' ||
+      'collabAgentToolCall' => l10n.timelineToolCall,
       _ => '${l10n.timelineItem}: ${item.itemType}',
     };
   }
@@ -4718,14 +4779,20 @@ class _TimelineItemView extends StatelessWidget {
 
   IconData _iconFor(String itemType) {
     return switch (itemType) {
+      'userMessage' => Icons.person_outline,
       'agentMessage' => Icons.smart_toy_outlined,
       'commandExecution' => Icons.terminal,
       'fileChange' => Icons.difference_outlined,
       'mcpToolCall' => Icons.extension_outlined,
+      'reasoning' => Icons.psychology_outlined,
       'plan' => Icons.checklist,
       _ => Icons.notes_outlined,
     };
   }
+}
+
+bool _isTerminalTurnStatus(String status) {
+  return status == 'completed' || status == 'failed' || status == 'interrupted';
 }
 
 class _TimelineBodyBlock extends StatelessWidget {
@@ -4745,7 +4812,7 @@ class _TimelineBodyBlock extends StatelessWidget {
         text: body,
       );
     }
-    return Text(body);
+    return SelectableText(body);
   }
 }
 

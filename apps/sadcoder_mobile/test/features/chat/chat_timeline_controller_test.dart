@@ -183,6 +183,70 @@ void main() {
     expect(controller.cursor.isEmpty, true);
   });
 
+  test('selectThread preserves live events for the active thread', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.ingest(_turnStarted(threadId: 'thr_1', turnId: 'turn_1'));
+    controller.ingest(_agentDelta('item_1', 'streamed'));
+
+    expect(controller.selectedThreadId, 'thr_1');
+    controller.selectThread('thr_1');
+
+    expect(controller.turns.single.items.single.text, 'streamed');
+
+    controller.selectThread('thr_2');
+
+    expect(controller.selectedThreadId, 'thr_2');
+    expect(controller.turns, isEmpty);
+  });
+
+  test('local user message is replaced by real user item', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.showTurn(
+      threadId: 'thr_1',
+      turn: TurnSummary.fromJson({
+        'id': 'turn_1',
+        'status': 'inProgress',
+        'itemsView': 'notLoaded',
+        'items': <Object?>[],
+      }),
+    );
+    controller.showLocalUserMessage(
+      threadId: 'thr_1',
+      turnId: 'turn_1',
+      text: 'Fix login bug',
+    );
+
+    expect(controller.turns.single.items.single.itemType, 'userMessage');
+    expect(controller.turns.single.items.single.text, 'Fix login bug');
+    expect(controller.turns.single.items.single.isLocalUserMessage, true);
+
+    controller.ingest(
+      _itemStarted(
+        itemId: 'real_user',
+        itemType: 'userMessage',
+        raw: {
+          'id': 'real_user',
+          'type': 'userMessage',
+          'content': [
+            {
+              'type': 'text',
+              'text': 'Fix login bug',
+              'text_elements': <Object?>[],
+            },
+          ],
+        },
+      ),
+    );
+
+    expect(controller.turns.single.items, hasLength(1));
+    expect(controller.turns.single.items.single.itemId, 'real_user');
+    expect(controller.turns.single.items.single.isLocalUserMessage, false);
+  });
+
   test('selected thread filters displayed live events only', () {
     ({String threadId, TurnSummary turn})? completed;
     final controller = ChatTimelineController(

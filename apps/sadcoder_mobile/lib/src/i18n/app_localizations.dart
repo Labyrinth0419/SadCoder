@@ -209,6 +209,12 @@ class AppLocalizations {
   String get shellCommandFailed => _text('shellCommandFailed');
   String get timeline => _text('timeline');
   String get noTimelineEvents => _text('noTimelineEvents');
+  String get timelineUser => _text('timelineUser');
+  String get timelineCodex => _text('timelineCodex');
+  String get timelineReasoning => _text('timelineReasoning');
+  String get timelinePlan => _text('timelinePlan');
+  String get timelineCommand => _text('timelineCommand');
+  String get timelineToolCall => _text('timelineToolCall');
   String get timelineItem => _text('timelineItem');
   String get timelineStatus => _text('timelineStatus');
   String get timelineExitCode => _text('timelineExitCode');
@@ -1145,6 +1151,12 @@ const _values = <String, Map<String, String>>{
     'shellCommandFailed': 'Shell command failed',
     'timeline': 'Timeline',
     'noTimelineEvents': 'No events yet',
+    'timelineUser': 'You',
+    'timelineCodex': 'Codex',
+    'timelineReasoning': 'Reasoning',
+    'timelinePlan': 'Plan',
+    'timelineCommand': 'Command',
+    'timelineToolCall': 'Tool call',
     'timelineItem': 'Item',
     'timelineStatus': 'Status',
     'timelineExitCode': 'Exit code',
@@ -1896,6 +1908,12 @@ const _values = <String, Map<String, String>>{
     'shellCommandFailed': 'Shell 命令执行失败',
     'timeline': '事件流',
     'noTimelineEvents': '暂无事件',
+    'timelineUser': '你',
+    'timelineCodex': 'Codex',
+    'timelineReasoning': '推理',
+    'timelinePlan': '计划',
+    'timelineCommand': '命令',
+    'timelineToolCall': '工具调用',
     'timelineItem': '条目',
     'timelineStatus': '状态',
     'timelineExitCode': '退出码',

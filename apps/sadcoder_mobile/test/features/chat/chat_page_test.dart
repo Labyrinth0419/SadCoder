@@ -553,7 +553,9 @@ void main() {
     final turnController = TurnController(
       runnerProvider: () => sessionController.turnRunner,
     );
+    final timelineController = ChatTimelineController();
     addTearDown(turnController.dispose);
+    addTearDown(timelineController.dispose);
     addTearDown(sessionController.dispose);
     addTearDown(approvalController.dispose);
 
@@ -562,6 +564,7 @@ void main() {
       tester,
       sessionController: sessionController,
       turnController: turnController,
+      timelineController: timelineController,
     );
 
     await tester.enterText(
@@ -576,6 +579,14 @@ void main() {
     expect(turnRunner.startedTurns, [
       (threadId: 'thr_new', text: 'Fix login bug'),
     ]);
+    expect(timelineController.selectedThreadId, 'thr_new');
+    expect(
+      timelineController.turns.single.items.single.itemType,
+      'userMessage',
+    );
+    expect(timelineController.turns.single.items.single.text, 'Fix login bug');
+    expect(find.text('You'), findsOneWidget);
+    expect(find.text('Fix login bug'), findsOneWidget);
     expect(find.text('Turn submitted: turn_1'), findsOneWidget);
     expect(find.text(' Fix login bug '), findsNothing);
   });
@@ -6091,7 +6102,7 @@ void main() {
     );
 
     expect(find.text('Timeline'), findsOneWidget);
-    expect(find.text('Turn: turn_1 / completed'), findsOneWidget);
+    expect(find.text('No events yet'), findsOneWidget);
 
     await tester.enterText(
       find.byKey(const ValueKey('chat-composer-field')),
@@ -6246,8 +6257,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Timeline'), findsOneWidget);
-    expect(find.text('Turn: turn_1 / completed'), findsOneWidget);
-    expect(find.text('Item: agentMessage'), findsOneWidget);
+    expect(find.text('Codex'), findsOneWidget);
     expect(find.text('hello'), findsOneWidget);
   });
 

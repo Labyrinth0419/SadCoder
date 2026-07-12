@@ -289,7 +289,21 @@ class AppHostSessionUiState {
   }
 
   void _handleTurnChanged() {
+    _syncActiveTurnToTimeline();
     _persistThreadCache();
+  }
+
+  void _syncActiveTurnToTimeline() {
+    final activeThreadId = _normalized(turnController.activeThreadId);
+    if (activeThreadId == null) {
+      return;
+    }
+    final lastTurn = turnController.lastTurn;
+    if (lastTurn != null && lastTurn.id.trim().isNotEmpty) {
+      timelineController.showTurn(threadId: activeThreadId, turn: lastTurn);
+      return;
+    }
+    timelineController.selectThread(activeThreadId);
   }
 
   void _handleTimelineChanged() {
