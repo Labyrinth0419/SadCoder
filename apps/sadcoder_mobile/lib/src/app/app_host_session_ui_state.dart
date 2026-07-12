@@ -39,6 +39,9 @@ class AppHostSessionUiState {
       overrideLayersProvider: () => configOverrideController.layers,
     );
     timelineController = ChatTimelineController(
+      onTurnStarted: ({required threadId, required turn}) {
+        turnController.trackStartedTurn(threadId: threadId, turn: turn);
+      },
       onTurnCompleted: ({required threadId, required turn}) {
         turnController.finishTurn(threadId: threadId, turn: turn);
       },

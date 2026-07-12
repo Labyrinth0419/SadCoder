@@ -1001,6 +1001,7 @@ MVP 可以简化为底部导航：
 - 已落地 cursor gap 驱动的移动端保守恢复：`AppHostSessionUiState` 会把 agent snapshot 的 `cursorGap` 映射到对应 thread 的一次性 recovery hint；`AppSessionRecoveryCoordinator` 在 gap 存在时不再用本地 lastTurnId/lastItemId 提前截断 turn/item 有界回填，并会在 snapshot 晚于 connected 状态到达时主动对当前 thread 再触发一次恢复。
 - 已落地 agent `--backend auto` 的 service-only 生产语义：auto 会启动并连接 SadCoder service，service 启动或 proxy 连接失败时返回错误，不再静默降级到 direct stdio；direct stdio 仅保留给显式 `--backend stdio` 或兼容 `--backend daemon` 路径。
 - 已落地后台 active-turn retention 的上下文刷新：App 后台且 active turn 仍需保活时，如果 host/thread/turn context 变化，会释放旧 foreground retention 并用新 context 重新 retain，避免 Android 通知和保活上下文停留在旧 turn。
+- 已落地服务端 turn/started 事件驱动的 active turn 跟踪：`ChatTimelineController` 会把 `turn/started` 通知传给 host UI state，`TurnController` 可据此跟踪非本机提交但正在运行的 turn；AppShell 后台保活 context 会优先当前 host，必要时扫描已连接 host UI states，确保切到其他 host 后仍能为已有 active turn 建立 foreground retention。
 - 后续仍需完整多 host 同时连接架构：`HostSessionManager` 已作为基础控制器引入，但完整后台保活策略、断线期间事件 cursor/分页增量回填和更完整的 reconnect turn/item reconciliation 还需要继续拆分完善。
 
 ### 9.8 i18n

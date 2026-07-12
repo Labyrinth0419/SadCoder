@@ -66,6 +66,21 @@ void main() {
     expect(completed?.turn.id, 'turn_1');
   });
 
+  test('turn start calls start handler', () {
+    ({String threadId, TurnSummary turn})? started;
+    final controller = ChatTimelineController(
+      onTurnStarted: ({required threadId, required turn}) {
+        started = (threadId: threadId, turn: turn);
+      },
+    );
+    addTearDown(controller.dispose);
+
+    controller.ingest(_turnStarted());
+
+    expect(started?.threadId, 'thr_1');
+    expect(started?.turn.id, 'turn_1');
+  });
+
   test('lastAssistantMessageMarkdown returns the latest assistant text', () {
     final controller = ChatTimelineController();
     addTearDown(controller.dispose);

@@ -8,12 +8,18 @@ import '../../threads/thread_summary.dart';
 
 typedef TurnCompletedHandler =
     void Function({required String threadId, required TurnSummary turn});
+typedef TurnStartedHandler =
+    void Function({required String threadId, required TurnSummary turn});
 
 class ChatTimelineController extends ChangeNotifier {
-  ChatTimelineController({TurnCompletedHandler? onTurnCompleted})
-    : _onTurnCompleted = onTurnCompleted;
+  ChatTimelineController({
+    TurnCompletedHandler? onTurnCompleted,
+    TurnStartedHandler? onTurnStarted,
+  }) : _onTurnCompleted = onTurnCompleted,
+       _onTurnStarted = onTurnStarted;
 
   final TurnCompletedHandler? _onTurnCompleted;
+  final TurnStartedHandler? _onTurnStarted;
   final List<ChatTimelineTurn> _turns = [];
   final RecentAutoReviewDenials _recentAutoReviewDenials =
       RecentAutoReviewDenials();
@@ -67,6 +73,7 @@ class ChatTimelineController extends ChangeNotifier {
 
   void ingest(CodexEvent event) {
     _ingestGuardianAssessment(event);
+    _handleTurnStart(event);
     _handleTurnCompletion(event);
     if (!_acceptsEvent(event)) {
       return;
@@ -315,6 +322,18 @@ class ChatTimelineController extends ChangeNotifier {
       return true;
     }
     return selectedThreadId == eventThreadId;
+  }
+
+  void _handleTurnStart(CodexEvent event) {
+    if (event.kind != CodexEventKind.turnStarted) {
+      return;
+    }
+    final threadId = event.threadId;
+    final turn = event.turn;
+    if (threadId == null || turn == null) {
+      return;
+    }
+    _onTurnStarted?.call(threadId: threadId, turn: turn);
   }
 
   void _handleTurnCompletion(CodexEvent event) {

@@ -440,18 +440,58 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       keeper:
           widget.backgroundConnectionKeeper ??
           const NoopBackgroundConnectionKeeper(),
-      isConnected: () => _sessionController.isConnected,
-      hasActiveTurn: () => _turnController.activeTurnId != null,
-      profileIdProvider: () {
-        final profile = _sessionController.profile;
-        return profile == null ? null : hostSessionProfileId(profile);
-      },
-      endpointProvider: () => _sessionController.profile?.endpoint,
-      activeThreadIdProvider: () => _turnController.activeThreadId,
-      activeTurnIdProvider: () => _turnController.activeTurnId,
+      isConnected: () =>
+          _sessionController.isConnected ||
+          _backgroundActiveTurnContext() != null,
+      hasActiveTurn: () => _backgroundActiveTurnContext() != null,
+      profileIdProvider: () => _backgroundActiveTurnContext()?.profileId,
+      endpointProvider: () => _backgroundActiveTurnContext()?.endpoint,
+      activeThreadIdProvider: () => _backgroundActiveTurnContext()?.threadId,
+      activeTurnIdProvider: () => _backgroundActiveTurnContext()?.turnId,
       disconnect: _sessionController.disconnect,
       resume: _sessionController.resumeConnection,
     )..start();
+  }
+
+  BackgroundConnectionContext? _backgroundActiveTurnContext() {
+    final activeContext = _backgroundContextForUiState(_activeUiState);
+    if (activeContext != null) {
+      return activeContext;
+    }
+    final manager = _hostSessionManager;
+    if (manager == null) {
+      return null;
+    }
+    for (final entry in manager.sessions) {
+      final uiState = _hostUiStates[entry.profileId];
+      if (uiState == null || identical(uiState, _activeUiState)) {
+        continue;
+      }
+      final context = _backgroundContextForUiState(uiState);
+      if (context != null) {
+        return context;
+      }
+    }
+    return null;
+  }
+
+  BackgroundConnectionContext? _backgroundContextForUiState(
+    AppHostSessionUiState uiState,
+  ) {
+    if (!uiState.sessionController.isConnected) {
+      return null;
+    }
+    final turnId = uiState.turnController.activeTurnId;
+    if (turnId == null) {
+      return null;
+    }
+    final profile = uiState.sessionController.profile;
+    return BackgroundConnectionContext(
+      profileId: profile == null ? null : hostSessionProfileId(profile),
+      endpoint: profile?.endpoint,
+      threadId: uiState.turnController.activeThreadId,
+      turnId: turnId,
+    );
   }
 
   Widget _pageForIndex(int index) {
