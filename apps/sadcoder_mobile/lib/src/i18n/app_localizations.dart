@@ -111,6 +111,8 @@ class AppLocalizations {
   String get accountRead => _text('accountRead');
   String get modelList => _text('modelList');
   String get modelDefaultBadge => _text('modelDefaultBadge');
+  String modelDefaultValueSummary(String value) =>
+      _text('modelDefaultValueSummary').replaceAll('{value}', value);
   String modelReasoningSummary(String summary) =>
       _text('modelReasoningSummary').replaceAll('{summary}', summary);
   String modelServiceTierSummary(String summary) =>
@@ -1658,6 +1660,7 @@ const _values = <String, Map<String, String>>{
     'availableModels': 'Available models: {count}',
     'modelListMore': '{count} more models available.',
     'modelDefaultBadge': 'default',
+    'modelDefaultValueSummary': 'default: {value}',
     'modelReasoningSummary': 'Reasoning: {summary}',
     'modelServiceTierSummary': 'Service tiers: {summary}',
     'modelAnnouncementSummary': 'Announcement: {message}',
@@ -2465,6 +2468,7 @@ const _values = <String, Map<String, String>>{
     'availableModels': '可用模型：{count}',
     'modelListMore': '还有 {count} 个模型可用。',
     'modelDefaultBadge': '默认',
+    'modelDefaultValueSummary': '默认：{value}',
     'modelReasoningSummary': '推理：{summary}',
     'modelServiceTierSummary': '服务档位：{summary}',
     'modelAnnouncementSummary': '公告：{message}',

@@ -382,6 +382,7 @@ agent 负责：
 - 已补强移动端 model catalog 解析：`supportedReasoningEfforts` / `supported_reasoning_levels` 和 `serviceTiers` / `service_tiers` 同时支持对象数组与紧凑字符串数组，避免不同 Codex 版本或缓存来源把 reasoning/service tier 能力信息丢失。
 - 已将 model catalog 能力摘要接入 Settings 模型列表：每个可见模型除 label/default/provider 外，可显示 reasoning levels（含默认值）、service tiers（含默认值）和 availability announcement，避免 `model/list` 返回的能力信息只停留在解析层。
 - 已将同一 model catalog 能力摘要接入 Chat `/model` 选择器：下拉菜单展开时显示 reasoning/service tier/announcement，选中态仍保持单行模型 label，避免影响输入区密度。
+- 已将 model catalog 能力摘要中的默认值片段资源化，英文显示 `default: ...`，中文显示 `默认：...`，避免 UI helper 内硬编码可见文案。
 
 ### 5.6 Codex 配置策略
 

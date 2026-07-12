@@ -43,8 +43,8 @@ String? _modelReasoningSummary(AppLocalizations l10n, CodexModelSummary model) {
   final defaultReasoning = model.defaultReasoningEffort?.trim();
   if (defaultReasoning != null && defaultReasoning.isNotEmpty) {
     final summary = levels.isEmpty
-        ? '${l10n.modelDefaultBadge}: $defaultReasoning'
-        : '${levels.join(', ')} (${l10n.modelDefaultBadge}: $defaultReasoning)';
+        ? l10n.modelDefaultValueSummary(defaultReasoning)
+        : '${levels.join(', ')} (${l10n.modelDefaultValueSummary(defaultReasoning)})';
     return l10n.modelReasoningSummary(summary);
   }
   if (levels.isEmpty) {
@@ -70,8 +70,8 @@ String? _modelServiceTierSummary(
   final defaultTier = model.defaultServiceTier?.trim();
   if (defaultTier != null && defaultTier.isNotEmpty) {
     final summary = tiers.isEmpty
-        ? '${l10n.modelDefaultBadge}: $defaultTier'
-        : '${tiers.join(', ')} (${l10n.modelDefaultBadge}: $defaultTier)';
+        ? l10n.modelDefaultValueSummary(defaultTier)
+        : '${tiers.join(', ')} (${l10n.modelDefaultValueSummary(defaultTier)})';
     return l10n.modelServiceTierSummary(summary);
   }
   if (tiers.isEmpty) {
