@@ -283,6 +283,7 @@ agent 负责：
 所有 Codex 方法都通过通用 dispatcher 支持，避免客户端版本落后时无法调用新方法。UI 层可以先实现常用功能，开发者/高级界面保留“原始 RPC 调用”能力。
 
 - 已在 `CodexAppServerClient` 暴露低层 `requestRaw`，允许传入非空 method 与 object params 直通同一 JSON-RPC request path；协议测试覆盖未知 app-server 方法转发和空 method 拒绝。该能力已通过 `CodexSessionStateController.requestRaw` 接到 Chat 高级折叠区的 Raw RPC 面板：默认不出现在主对话面，展开后仍需用户勾选确认，params 只接受 JSON object，不走 SSH command fallback。
+- 已接入 `currentTime/read` server request 的自动响应：`CodexAppSession` 组装独立的 `ServerRequestAutoResponder`，返回 `currentTimeAt` Unix 秒；该方法不会进入 approval state，也不会在重连 snapshot 回填时显示为未知审批。
 
 ### 5.3 事件映射
 

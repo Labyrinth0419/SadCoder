@@ -5,6 +5,7 @@ import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval_store.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
+import 'package:sadcoder_mobile/src/protocol/server_request_auto_responder.dart';
 
 void main() {
   test('stores and replaces pending approvals', () {
@@ -88,6 +89,36 @@ void main() {
       'id': 'approval-1',
       'result': {'decision': 'accept'},
     });
+  });
+
+  test('snapshot ingestion ignores auto-handled current-time requests', () {
+    final controller = ApprovalStateController();
+    addTearDown(controller.dispose);
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+
+    controller.ingestServerRequests(const [
+      JsonRpcServerRequest(
+        id: 'time-1',
+        method: currentTimeReadMethod,
+        params: {'threadId': 'thr_1'},
+      ),
+    ]);
+    expect(controller.approvals, isEmpty);
+    expect(notifications, 0);
+
+    controller.reconcileServerRequestSnapshot(
+      const [
+        JsonRpcServerRequest(
+          id: 'time-1',
+          method: currentTimeReadMethod,
+          params: {'threadId': 'thr_1'},
+        ),
+      ],
+      pruneRequestIds: const {'time-1'},
+    );
+    expect(controller.approvals, isEmpty);
+    expect(notifications, 0);
   });
 
   test('sends tool user input answers through attached coordinator', () async {

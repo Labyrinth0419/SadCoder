@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../protocol/json_rpc.dart';
+import '../protocol/server_request_auto_responder.dart';
 import 'approval_request_mapper.dart';
 import 'pending_approval.dart';
 import 'pending_approval_store.dart';
@@ -87,6 +88,9 @@ class ApprovalCoordinator {
   }
 
   void _handleServerRequest(JsonRpcServerRequest request) {
+    if (request.method == currentTimeReadMethod) {
+      return;
+    }
     store.ingestServerRequest(request);
     _emitChanges();
   }

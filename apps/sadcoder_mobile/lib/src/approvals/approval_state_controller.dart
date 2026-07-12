@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../protocol/json_rpc.dart';
+import '../protocol/server_request_auto_responder.dart';
 import 'approval_action_dispatcher.dart';
 import 'approval_coordinator.dart';
 import 'pending_approval.dart';
@@ -69,6 +70,9 @@ class ApprovalStateController extends ChangeNotifier {
   void ingestServerRequests(Iterable<JsonRpcServerRequest> requests) {
     var changed = false;
     for (final request in requests) {
+      if (_isAutoHandledServerRequest(request)) {
+        continue;
+      }
       _store.ingestServerRequest(request);
       changed = true;
     }
@@ -81,8 +85,11 @@ class ApprovalStateController extends ChangeNotifier {
     Iterable<JsonRpcServerRequest> requests, {
     required Set<Object> pruneRequestIds,
   }) {
+    final pendingRequests = requests.where(
+      (request) => !_isAutoHandledServerRequest(request),
+    );
     final changed = _store.reconcileServerRequestSnapshot(
-      requests,
+      pendingRequests,
       pruneRequestIds: pruneRequestIds,
     );
     if (changed) {
@@ -147,4 +154,8 @@ class ApprovalStateController extends ChangeNotifier {
     unawaited(detachCoordinator(notify: false));
     super.dispose();
   }
+}
+
+bool _isAutoHandledServerRequest(JsonRpcServerRequest request) {
+  return request.method == currentTimeReadMethod;
 }

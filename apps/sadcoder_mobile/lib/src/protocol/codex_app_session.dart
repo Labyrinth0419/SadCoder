@@ -4,6 +4,7 @@ import '../events/codex_event.dart';
 import 'codex_app_server_client.dart';
 import 'codex_client_info.dart';
 import 'json_rpc.dart';
+import 'server_request_auto_responder.dart';
 
 class CodexAppSession {
   factory CodexAppSession(
@@ -15,11 +16,13 @@ class CodexAppSession {
       transport: transport,
       store: controller.store,
     );
+    final autoResponder = ServerRequestAutoResponder(transport: transport);
     controller.attachCoordinator(coordinator);
     return CodexAppSession._(
       transport,
       CodexAppServerClient(transport),
       coordinator,
+      autoResponder,
       controller,
       events: transport.notifications
           .map(CodexEvent.fromNotification)
@@ -32,6 +35,7 @@ class CodexAppSession {
     this._transport,
     this.client,
     this.approvalCoordinator,
+    this.serverRequestAutoResponder,
     this.approvalController, {
     required this.events,
     required bool ownsApprovalController,
@@ -41,6 +45,7 @@ class CodexAppSession {
   final bool _ownsApprovalController;
   final CodexAppServerClient client;
   final ApprovalCoordinator approvalCoordinator;
+  final ServerRequestAutoResponder serverRequestAutoResponder;
   final ApprovalStateController approvalController;
   final Stream<CodexEvent> events;
 
@@ -60,6 +65,7 @@ class CodexAppSession {
     await approvalController.detachCoordinator(
       notify: notifyApprovalController,
     );
+    await serverRequestAutoResponder.close();
     await approvalCoordinator.close();
     if (_ownsApprovalController) {
       approvalController.dispose();

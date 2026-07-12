@@ -4,6 +4,7 @@ import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_session.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
+import 'package:sadcoder_mobile/src/protocol/server_request_auto_responder.dart';
 
 void main() {
   test('initializes app-server and exposes client methods', () async {
@@ -89,6 +90,33 @@ void main() {
     expect(approval.threadId, 'thr_future');
     expect(approval.rawParams['payload'], {'enabled': true});
   });
+
+  test(
+    'responds to current-time server requests without approval state',
+    () async {
+      final transport = MemoryJsonRpcTransport((_) async => {});
+      final session = CodexAppSession(transport);
+      addTearDown(session.close);
+
+      final before = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+      transport.emitServerRequest(
+        const JsonRpcServerRequest(
+          id: 'time-1',
+          method: currentTimeReadMethod,
+          params: {'threadId': 'thr_1'},
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final after = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+
+      expect(session.approvalController.approvals, isEmpty);
+      expect(transport.responses, hasLength(1));
+      expect(transport.responses.single.id, 'time-1');
+      final result = transport.responses.single.result as Map<String, Object?>;
+      expect(result['currentTimeAt'], isA<int>());
+      expect(result['currentTimeAt'] as int, inInclusiveRange(before, after));
+    },
+  );
 
   test('maps app-server notifications into session events', () async {
     final transport = MemoryJsonRpcTransport((_) async => {});

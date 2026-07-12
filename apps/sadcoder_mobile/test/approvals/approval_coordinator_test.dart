@@ -6,6 +6,7 @@ import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval_store.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
+import 'package:sadcoder_mobile/src/protocol/server_request_auto_responder.dart';
 
 void main() {
   test('ingests server requests and publishes approval snapshots', () async {
@@ -65,6 +66,32 @@ void main() {
       expect(snapshots, hasLength(2));
       expect(snapshots.first.single.requestId, 9);
       expect(snapshots.last, isEmpty);
+      expect(coordinator.approvals, isEmpty);
+    },
+  );
+
+  test(
+    'ignores current-time server requests handled outside approvals',
+    () async {
+      final transport = _FakeJsonRpcTransport();
+      final coordinator = ApprovalCoordinator(transport: transport);
+      addTearDown(coordinator.close);
+      addTearDown(transport.close);
+
+      final snapshots = <List<PendingApproval>>[];
+      final subscription = coordinator.changes.listen(snapshots.add);
+      addTearDown(subscription.cancel);
+
+      transport.emitServerRequest(
+        const JsonRpcServerRequest(
+          id: 'time-1',
+          method: currentTimeReadMethod,
+          params: {'threadId': 'thr_1'},
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(snapshots, isEmpty);
       expect(coordinator.approvals, isEmpty);
     },
   );
