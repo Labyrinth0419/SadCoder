@@ -43,6 +43,23 @@ class AccountUsageSnapshot {
   final AccountRateLimitsSnapshot? rateLimits;
   final Map<String, AccountRateLimitsSnapshot> rateLimitsByLimitId;
   final AccountRateLimitResetCreditsSummary? rateLimitResetCredits;
+
+  AccountUsageSnapshot copyWith({
+    AccountTokenUsageSummary? summary,
+    List<AccountTokenUsageDailyBucket>? dailyUsageBuckets,
+    AccountRateLimitsSnapshot? rateLimits,
+    Map<String, AccountRateLimitsSnapshot>? rateLimitsByLimitId,
+    AccountRateLimitResetCreditsSummary? rateLimitResetCredits,
+  }) {
+    return AccountUsageSnapshot(
+      summary: summary ?? this.summary,
+      dailyUsageBuckets: dailyUsageBuckets ?? this.dailyUsageBuckets,
+      rateLimits: rateLimits ?? this.rateLimits,
+      rateLimitsByLimitId: rateLimitsByLimitId ?? this.rateLimitsByLimitId,
+      rateLimitResetCredits:
+          rateLimitResetCredits ?? this.rateLimitResetCredits,
+    );
+  }
 }
 
 class AccountTokenUsageSummary {
@@ -164,6 +181,38 @@ class AccountRateLimitsSnapshot {
       individualLimit != null ||
       _hasText(planType) ||
       _hasText(rateLimitReachedType);
+
+  AccountRateLimitsSnapshot mergeSparse(AccountRateLimitsSnapshot update) {
+    return AccountRateLimitsSnapshot(
+      limitId: _nonEmptyOr(update.limitId, limitId),
+      limitName: _nonEmptyOr(update.limitName, limitName),
+      primary: primary == null
+          ? update.primary
+          : update.primary == null
+          ? primary
+          : primary!.mergeSparse(update.primary!),
+      secondary: secondary == null
+          ? update.secondary
+          : update.secondary == null
+          ? secondary
+          : secondary!.mergeSparse(update.secondary!),
+      credits: credits == null
+          ? update.credits
+          : update.credits == null
+          ? credits
+          : credits!.mergeSparse(update.credits!),
+      individualLimit: individualLimit == null
+          ? update.individualLimit
+          : update.individualLimit == null
+          ? individualLimit
+          : individualLimit!.mergeSparse(update.individualLimit!),
+      planType: _nonEmptyOr(update.planType, planType),
+      rateLimitReachedType: _nonEmptyOr(
+        update.rateLimitReachedType,
+        rateLimitReachedType,
+      ),
+    );
+  }
 }
 
 class AccountRateLimitWindow {
@@ -195,6 +244,14 @@ class AccountRateLimitWindow {
 
   bool get hasData =>
       usedPercent != null || windowDurationMins != null || resetsAt != null;
+
+  AccountRateLimitWindow mergeSparse(AccountRateLimitWindow update) {
+    return AccountRateLimitWindow(
+      usedPercent: update.usedPercent ?? usedPercent,
+      windowDurationMins: update.windowDurationMins ?? windowDurationMins,
+      resetsAt: update.resetsAt ?? resetsAt,
+    );
+  }
 }
 
 class AccountCreditsSnapshot {
@@ -219,6 +276,14 @@ class AccountCreditsSnapshot {
   final bool hasCredits;
   final bool unlimited;
   final String? balance;
+
+  AccountCreditsSnapshot mergeSparse(AccountCreditsSnapshot update) {
+    return AccountCreditsSnapshot(
+      hasCredits: update.hasCredits,
+      unlimited: update.unlimited,
+      balance: _nonEmptyOr(update.balance, balance),
+    );
+  }
 }
 
 class AccountSpendControlLimitSnapshot {
@@ -256,6 +321,17 @@ class AccountSpendControlLimitSnapshot {
       _hasText(used) ||
       remainingPercent != null ||
       resetsAt != null;
+
+  AccountSpendControlLimitSnapshot mergeSparse(
+    AccountSpendControlLimitSnapshot update,
+  ) {
+    return AccountSpendControlLimitSnapshot(
+      limit: _nonEmptyOr(update.limit, limit),
+      used: _nonEmptyOr(update.used, used),
+      remainingPercent: update.remainingPercent ?? remainingPercent,
+      resetsAt: update.resetsAt ?? resetsAt,
+    );
+  }
 }
 
 class AccountRateLimitResetCreditsSummary {
@@ -424,3 +500,7 @@ Object? _valueField(Map<String, Object?> map, List<String> keys) {
 }
 
 bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
+
+String? _nonEmptyOr(String? preferred, String? fallback) {
+  return _hasText(preferred) ? preferred!.trim() : fallback;
+}
