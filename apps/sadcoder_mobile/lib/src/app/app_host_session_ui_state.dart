@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../agent/agent_snapshot.dart';
 import '../commands/slash_command_manifest_reader.dart';
+import '../commands/slash_command_manifest_store.dart';
 import '../commands/slash_command_registry_controller.dart';
 import '../config/codex_config_override_controller.dart';
 import '../features/chat/chat_timeline_controller.dart';
@@ -25,6 +26,7 @@ class AppHostSessionUiState {
     this.threadCacheStore,
     this.threadItemCacheStore,
     this.threadTimelineCursorStore,
+    this.slashCommandManifestStore,
     SlashCommandManifestReader? fallbackSlashCommandManifestReader,
   }) {
     threadListController = ThreadListController(
@@ -50,6 +52,7 @@ class AppHostSessionUiState {
       readerProvider: () =>
           sessionController.slashCommandManifestReader ??
           fallbackSlashCommandManifestReader,
+      cacheStore: slashCommandManifestStore,
     );
     _agentSnapshotCursorProvider = AppAgentSnapshotCursorProvider(
       profileId: threadCacheProfileId,
@@ -90,6 +93,7 @@ class AppHostSessionUiState {
   final ThreadCacheStore? threadCacheStore;
   final ThreadItemCacheStore? threadItemCacheStore;
   final ThreadTimelineCursorStore? threadTimelineCursorStore;
+  final SlashCommandManifestStore? slashCommandManifestStore;
   late final ThreadListController threadListController;
   late final ThreadDetailController threadDetailController;
   late final TurnController turnController;

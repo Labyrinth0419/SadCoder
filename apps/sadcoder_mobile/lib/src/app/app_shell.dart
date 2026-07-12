@@ -13,6 +13,7 @@ import '../approvals/approval_state_controller.dart';
 import '../background/background_connection_policy.dart';
 import '../background/background_notification_router.dart';
 import '../commands/slash_command_manifest_reader.dart';
+import '../commands/slash_command_manifest_store.dart';
 import '../config/codex_config_override_controller.dart';
 import '../config/codex_config_snapshot_controller.dart';
 import '../diagnostics/diagnostic_log_export_controller.dart';
@@ -94,6 +95,7 @@ class AppShell extends StatefulWidget {
     this.backgroundNotificationRouter,
     this.profileStore,
     this.slashCommandManifestReader,
+    this.slashCommandManifestStore,
     this.accountSnapshotController,
     this.accountUsageSnapshotController,
     this.mcpServerStatusController,
@@ -113,6 +115,7 @@ class AppShell extends StatefulWidget {
   final BackgroundNotificationRouter? backgroundNotificationRouter;
   final SshProfileStore? profileStore;
   final SlashCommandManifestReader? slashCommandManifestReader;
+  final SlashCommandManifestStore? slashCommandManifestStore;
   final AccountSnapshotController? accountSnapshotController;
   final AccountUsageSnapshotController? accountUsageSnapshotController;
   final McpServerStatusController? mcpServerStatusController;
@@ -192,6 +195,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         const SharedPreferencesThreadTimelineCursorStore();
   }
 
+  SlashCommandManifestStore get _resolvedSlashCommandManifestStore {
+    return widget.slashCommandManifestStore ??
+        const SharedPreferencesSlashCommandManifestStore();
+  }
+
   bool get _usesHostApprovalGroups =>
       _hostSessionManager != null && _hostSessionManager!.sessions.isNotEmpty;
 
@@ -224,6 +232,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             widget.backgroundConnectionKeeper ||
         oldWidget.slashCommandManifestReader !=
             widget.slashCommandManifestReader ||
+        oldWidget.slashCommandManifestStore !=
+            widget.slashCommandManifestStore ||
         oldWidget.accountSnapshotController !=
             widget.accountSnapshotController ||
         oldWidget.accountUsageSnapshotController !=
@@ -368,6 +378,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       threadItemCacheStore: _resolvedThreadItemCacheStore,
       threadTimelineCursorStore: _resolvedThreadTimelineCursorStore,
       fallbackSlashCommandManifestReader: _resolvedSlashCommandManifestReader,
+      slashCommandManifestStore: _resolvedSlashCommandManifestStore,
     );
     _configSnapshotController = CodexConfigSnapshotController(
       readerProvider: () => _sessionController.configSnapshotReader,
@@ -651,6 +662,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         threadCacheStore: _resolvedThreadCacheStore,
         threadItemCacheStore: _resolvedThreadItemCacheStore,
         threadTimelineCursorStore: _resolvedThreadTimelineCursorStore,
+        slashCommandManifestStore: _resolvedSlashCommandManifestStore,
         hostSessions: _hostSessions(),
         profileConnector: _connectProfile,
       ),
@@ -721,6 +733,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         threadCacheStore: _resolvedThreadCacheStore,
         threadItemCacheStore: _resolvedThreadItemCacheStore,
         threadTimelineCursorStore: _resolvedThreadTimelineCursorStore,
+        slashCommandManifestStore: _resolvedSlashCommandManifestStore,
         hostSessions: _hostSessions(),
         profileConnector: _connectProfile,
       ),
@@ -870,6 +883,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         threadItemCacheStore: _resolvedThreadItemCacheStore,
         threadTimelineCursorStore: _resolvedThreadTimelineCursorStore,
         fallbackSlashCommandManifestReader: _resolvedSlashCommandManifestReader,
+        slashCommandManifestStore: _resolvedSlashCommandManifestStore,
       ),
     );
   }

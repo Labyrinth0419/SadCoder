@@ -912,6 +912,7 @@ MVP 可以简化为底部导航：
 
 - 已落地 `SlashCommandRegistry`、命令解析、unknown slash 不默认作为普通 prompt 发送、移动端 `/quit`/`/exit` 仅断开 App/proxy 语义、以及命令面板高级可见性开关。
 - 已落地与 `refs/codex/codex-rs/tui/src/slash_command.rs` 的防漂移测试：自动校验命令名、展示顺序、alias、inline args、side conversation 可用性和 active turn 可用性；SadCoder 自有扩展 `/duplicate`、`/rewind`、`/plugins` 的差异需要显式白名单。
+- 已接入 `agent/slashCommands/list` 远端 manifest 的 reconnect cache：`SlashCommandRegistryController` 按 host/profile 加载远端 manifest，成功后写入本地 cache；远端加载失败时优先回退同 profile/cache 的 manifest，再回退内置 registry。
 
 ### 9.6 工作区文件浏览与只读查看
 

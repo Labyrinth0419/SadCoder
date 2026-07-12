@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../agent/agent_remote_service.dart';
 import '../../agent/agent_status.dart';
+import '../../commands/slash_command_manifest_store.dart';
 import '../../i18n/app_localizations.dart';
 import '../../probe/m0_probe_coordinator.dart';
 import '../../probe/ssh_connection_probe.dart';
@@ -50,6 +51,7 @@ class HostsPage extends StatefulWidget {
     this.threadCacheStore,
     this.threadItemCacheStore,
     this.threadTimelineCursorStore,
+    this.slashCommandManifestStore,
     this.hostSessions = const [],
     this.profileConnector,
   });
@@ -65,6 +67,7 @@ class HostsPage extends StatefulWidget {
   final ThreadCacheStore? threadCacheStore;
   final ThreadItemCacheStore? threadItemCacheStore;
   final ThreadTimelineCursorStore? threadTimelineCursorStore;
+  final SlashCommandManifestStore? slashCommandManifestStore;
   final List<HostSessionSummary> hostSessions;
   final HostProfileConnector? profileConnector;
 
@@ -751,6 +754,12 @@ class _HostsPageState extends State<HostsPage> {
     if (timelineCursorStore is ThreadTimelineCursorProfileCleaner) {
       final cleaner = timelineCursorStore as ThreadTimelineCursorProfileCleaner;
       await deleteBestEffort(() => cleaner.deleteProfileCursors(profileId));
+    }
+    final slashCommandManifestStore = widget.slashCommandManifestStore;
+    if (slashCommandManifestStore is SlashCommandManifestProfileCleaner) {
+      final cleaner =
+          slashCommandManifestStore as SlashCommandManifestProfileCleaner;
+      await deleteBestEffort(() => cleaner.deleteProfileManifests(profileId));
     }
   }
 

@@ -71,6 +71,23 @@ class SlashCommandSpec {
     );
   }
 
+  Map<String, Object?> toJson() {
+    return {
+      'command': command,
+      'aliases': aliases,
+      'description': description,
+      'supportsInlineArgs': supportsInlineArgs,
+      'availableDuringTask': availableDuringTask,
+      'availableInSideConversation': availableInSideConversation,
+      'platformVisibility': platformVisibility.name,
+      if (featureFlag != null) 'featureFlag': featureFlag,
+      'mappingType': mappingType.name,
+      'mappingTarget': mappingTarget,
+      'phase': phase.name,
+      'riskLevel': riskLevel.name,
+    };
+  }
+
   final String command;
   final List<String> aliases;
   final String description;
@@ -115,6 +132,14 @@ class SlashCommandManifest {
           SlashCommandSpec.fromJson(command as Map<String, Object?>),
       ],
     );
+  }
+
+  Map<String, Object?> toJson() {
+    return {
+      'schemaVersion': schemaVersion,
+      'source': source,
+      'commands': [for (final command in commands) command.toJson()],
+    };
   }
 
   final int schemaVersion;

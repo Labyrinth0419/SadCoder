@@ -14,6 +14,7 @@ import 'package:sadcoder_mobile/src/apps/app_list_reader.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal.dart';
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal_runner.dart';
 import 'package:sadcoder_mobile/src/commands/slash_command_manifest_reader.dart';
+import 'package:sadcoder_mobile/src/commands/slash_command_manifest_store.dart';
 import 'package:sadcoder_mobile/src/commands/slash_command_registry.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
@@ -978,6 +979,7 @@ secret-key-material
     final threadCacheStore = _RecordingThreadCacheStore();
     final itemCacheStore = _RecordingThreadItemCacheStore();
     final cursorStore = _RecordingThreadTimelineCursorStore();
+    final slashCommandManifestStore = _RecordingSlashCommandManifestStore();
 
     await _pumpHostsPage(
       tester,
@@ -986,6 +988,7 @@ secret-key-material
       threadCacheStore: threadCacheStore,
       threadItemCacheStore: itemCacheStore,
       threadTimelineCursorStore: cursorStore,
+      slashCommandManifestStore: slashCommandManifestStore,
     );
     await tester.pumpAndSettle();
 
@@ -1000,6 +1003,7 @@ secret-key-material
     expect(threadCacheStore.deletedProfileIds, ['alice@srv.dev:22']);
     expect(itemCacheStore.deletedProfileIds, ['alice@srv.dev:22']);
     expect(cursorStore.deletedProfileIds, ['alice@srv.dev:22']);
+    expect(slashCommandManifestStore.deletedProfileIds, ['alice@srv.dev:22']);
   });
 
   testWidgets('deleting an active saved SSH profile closes the host session', (
@@ -1305,6 +1309,7 @@ Future<void> _pumpHostsPage(
   ThreadCacheStore? threadCacheStore,
   ThreadItemCacheStore? threadItemCacheStore,
   ThreadTimelineCursorStore? threadTimelineCursorStore,
+  SlashCommandManifestStore? slashCommandManifestStore,
   List<HostSessionSummary> hostSessions = const [],
 }) {
   tester.view.physicalSize = const Size(800, 900);
@@ -1333,6 +1338,7 @@ Future<void> _pumpHostsPage(
           threadCacheStore: threadCacheStore,
           threadItemCacheStore: threadItemCacheStore,
           threadTimelineCursorStore: threadTimelineCursorStore,
+          slashCommandManifestStore: slashCommandManifestStore,
           hostSessions: hostSessions,
         ),
       ),
@@ -1655,6 +1661,34 @@ class _RecordingThreadTimelineCursorStore
 
   @override
   Future<void> deleteProfileCursors(String profileId) async {
+    deletedProfileIds.add(profileId);
+  }
+}
+
+class _RecordingSlashCommandManifestStore
+    implements SlashCommandManifestStore, SlashCommandManifestProfileCleaner {
+  final deletedProfileIds = <String>[];
+
+  @override
+  Future<SlashCommandManifest?> loadManifest({
+    required String profileId,
+    String? cwd,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> saveManifest({
+    required String profileId,
+    String? cwd,
+    required SlashCommandManifest manifest,
+    required int cachedAtMs,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteProfileManifests(String profileId) async {
     deletedProfileIds.add(profileId);
   }
 }

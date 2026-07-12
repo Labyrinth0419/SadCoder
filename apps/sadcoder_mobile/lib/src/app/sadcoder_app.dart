@@ -7,6 +7,7 @@ import '../approvals/approval_state_controller.dart';
 import '../background/background_connection_policy.dart';
 import '../background/background_notification_router.dart';
 import '../commands/slash_command_manifest_reader.dart';
+import '../commands/slash_command_manifest_store.dart';
 import '../config/codex_config_override_controller.dart';
 import '../i18n/app_localizations.dart';
 import '../mcp/mcp_server_status_controller.dart';
@@ -35,6 +36,7 @@ class SadCoderApp extends StatefulWidget {
     this.backgroundNotificationRouter,
     this.profileStore,
     this.slashCommandManifestReader,
+    this.slashCommandManifestStore,
     this.accountSnapshotController,
     this.accountUsageSnapshotController,
     this.mcpServerStatusController,
@@ -55,6 +57,7 @@ class SadCoderApp extends StatefulWidget {
   final BackgroundNotificationRouter? backgroundNotificationRouter;
   final SshProfileStore? profileStore;
   final SlashCommandManifestReader? slashCommandManifestReader;
+  final SlashCommandManifestStore? slashCommandManifestStore;
   final AccountSnapshotController? accountSnapshotController;
   final AccountUsageSnapshotController? accountUsageSnapshotController;
   final McpServerStatusController? mcpServerStatusController;
@@ -137,6 +140,7 @@ class _SadCoderAppState extends State<SadCoderApp> {
             backgroundNotificationRouter: widget.backgroundNotificationRouter,
             profileStore: widget.profileStore,
             slashCommandManifestReader: widget.slashCommandManifestReader,
+            slashCommandManifestStore: widget.slashCommandManifestStore,
             accountSnapshotController: widget.accountSnapshotController,
             accountUsageSnapshotController:
                 widget.accountUsageSnapshotController,
