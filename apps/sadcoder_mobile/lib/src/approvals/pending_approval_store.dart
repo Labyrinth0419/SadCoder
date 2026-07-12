@@ -25,6 +25,8 @@ class PendingApprovalStore {
 
   List<PendingApproval> get approvals => List.unmodifiable(_byRequestId.values);
 
+  Set<Object> get requestIds => Set.unmodifiable(_byRequestId.keys);
+
   PendingApproval? byRequestId(Object requestId) => _byRequestId[requestId];
 
   PendingApproval upsert(PendingApproval approval) {
@@ -34,6 +36,31 @@ class PendingApprovalStore {
 
   PendingApproval ingestServerRequest(JsonRpcServerRequest request) {
     return upsert(pendingApprovalFromServerRequest(request));
+  }
+
+  bool reconcileServerRequestSnapshot(
+    Iterable<JsonRpcServerRequest> requests, {
+    required Set<Object> pruneRequestIds,
+  }) {
+    var changed = false;
+    final snapshotRequestIds = <Object>{};
+
+    for (final request in requests) {
+      snapshotRequestIds.add(request.id);
+      upsert(pendingApprovalFromServerRequest(request));
+      changed = true;
+    }
+
+    for (final requestId in pruneRequestIds) {
+      if (snapshotRequestIds.contains(requestId)) {
+        continue;
+      }
+      if (resolveRequest(requestId) != null) {
+        changed = true;
+      }
+    }
+
+    return changed;
   }
 
   PendingApproval? resolveRequest(Object requestId) {

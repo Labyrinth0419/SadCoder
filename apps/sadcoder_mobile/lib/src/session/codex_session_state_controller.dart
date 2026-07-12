@@ -641,6 +641,7 @@ class CodexSessionStateController extends ChangeNotifier {
 
     try {
       final sinceCursor = await _readAgentSnapshotCursor(profile);
+      final approvalsBeforeSnapshot = approvalController.requestIds;
       final snapshot = await _readAgentSnapshot(
         profile,
         connection,
@@ -654,7 +655,10 @@ class CodexSessionStateController extends ChangeNotifier {
         return;
       }
       _agentSnapshotsController.add(snapshot);
-      approvalController.ingestServerRequests(snapshot.pendingApprovals);
+      approvalController.reconcileServerRequestSnapshot(
+        snapshot.pendingApprovals,
+        pruneRequestIds: approvalsBeforeSnapshot,
+      );
       for (final cachedEvent in snapshot.recentEvents) {
         if (cachedEvent.method.isEmpty) {
           continue;

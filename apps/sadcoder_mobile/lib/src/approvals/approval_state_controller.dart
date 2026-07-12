@@ -30,6 +30,8 @@ class ApprovalStateController extends ChangeNotifier {
 
   List<PendingApproval> get approvals => _store.approvals;
 
+  Set<Object> get requestIds => _store.requestIds;
+
   bool get canRespond => _dispatcher != null;
 
   void attachCoordinator(
@@ -70,6 +72,19 @@ class ApprovalStateController extends ChangeNotifier {
       _store.ingestServerRequest(request);
       changed = true;
     }
+    if (changed) {
+      notifyListeners();
+    }
+  }
+
+  void reconcileServerRequestSnapshot(
+    Iterable<JsonRpcServerRequest> requests, {
+    required Set<Object> pruneRequestIds,
+  }) {
+    final changed = _store.reconcileServerRequestSnapshot(
+      requests,
+      pruneRequestIds: pruneRequestIds,
+    );
     if (changed) {
       notifyListeners();
     }

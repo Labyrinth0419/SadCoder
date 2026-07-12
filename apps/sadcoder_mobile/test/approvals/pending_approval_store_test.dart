@@ -163,4 +163,39 @@ void main() {
     expect(store.resolveRequest('future-1'), approval);
     expect(store.isEmpty, isTrue);
   });
+
+  test('reconciles authoritative server request snapshots', () {
+    final store = PendingApprovalStore();
+    store.ingestServerRequest(
+      const JsonRpcServerRequest(
+        id: 'stale-1',
+        method: commandExecutionApprovalMethod,
+        params: {'command': 'old'},
+      ),
+    );
+    store.ingestServerRequest(
+      const JsonRpcServerRequest(
+        id: 'live-after-boundary',
+        method: commandExecutionApprovalMethod,
+        params: {'command': 'keep live'},
+      ),
+    );
+
+    final changed = store.reconcileServerRequestSnapshot(
+      const [
+        JsonRpcServerRequest(
+          id: 'snapshot-1',
+          method: commandExecutionApprovalMethod,
+          params: {'command': 'new'},
+        ),
+      ],
+      pruneRequestIds: {'stale-1'},
+    );
+
+    expect(changed, isTrue);
+    expect(store.byRequestId('stale-1'), isNull);
+    expect(store.byRequestId('snapshot-1')?.command, 'new');
+    expect(store.byRequestId('live-after-boundary')?.command, 'keep live');
+    expect(store.requestIds, {'live-after-boundary', 'snapshot-1'});
+  });
 }

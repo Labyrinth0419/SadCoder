@@ -176,6 +176,86 @@ void main() {
     expect(approvalController.approvals.single.command, 'cargo test');
   });
 
+  test('snapshot backfill prunes stale pending approvals', () async {
+    final approvalController = ApprovalStateController(
+      initialApprovals: const [
+        PendingApproval(
+          requestId: 'stale-approval',
+          method: commandExecutionApprovalMethod,
+          kind: PendingApprovalKind.commandExecution,
+          rawParams: {},
+        ),
+      ],
+    );
+    final snapshotReader = _FakeAgentSnapshotReader(
+      outcomes: [
+        _snapshotWithApproval(
+          requestId: 'current-approval',
+          command: 'dart test',
+        ),
+      ],
+    );
+    final controller = CodexSessionStateController(
+      connector: _FakeSessionStarter(),
+      approvalController: approvalController,
+      snapshotReader: snapshotReader,
+    );
+    addTearDown(controller.dispose);
+    addTearDown(approvalController.dispose);
+
+    await controller.connect(_profile);
+    await _flushMicrotasks();
+
+    expect(approvalController.approvals.map((approval) => approval.requestId), [
+      'current-approval',
+    ]);
+    expect(approvalController.approvals.single.command, 'dart test');
+  });
+
+  test(
+    'snapshot backfill preserves approvals created while snapshot is pending',
+    () async {
+      final approvalController = ApprovalStateController(
+        initialApprovals: const [
+          PendingApproval(
+            requestId: 'stale-before-snapshot',
+            method: commandExecutionApprovalMethod,
+            kind: PendingApprovalKind.commandExecution,
+            rawParams: {},
+          ),
+        ],
+      );
+      final snapshotReader = _PendingAgentSnapshotReader();
+      final controller = CodexSessionStateController(
+        connector: _FakeSessionStarter(),
+        approvalController: approvalController,
+        snapshotReader: snapshotReader,
+      );
+      addTearDown(controller.dispose);
+      addTearDown(approvalController.dispose);
+
+      await controller.connect(_profile);
+      await _flushMicrotasks();
+      expect(snapshotReader.pendingCount, 1);
+
+      approvalController.ingestServerRequests(const [
+        JsonRpcServerRequest(
+          id: 'live-during-snapshot',
+          method: commandExecutionApprovalMethod,
+          params: {'command': 'keep me'},
+        ),
+      ]);
+      snapshotReader.completeAt(0, _emptySnapshot);
+      await _flushMicrotasks();
+
+      expect(
+        approvalController.approvals.map((approval) => approval.requestId),
+        ['live-during-snapshot'],
+      );
+      expect(approvalController.approvals.single.command, 'keep me');
+    },
+  );
+
   test(
     'connect prefers proxy agent snapshot over ssh snapshot command',
     () async {
