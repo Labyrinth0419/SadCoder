@@ -984,7 +984,7 @@ MVP 可以简化为底部导航：
 - 支持 system / light / dark。
 - 代码块、diff、terminal output 要有专门配色，不能只用普通文本颜色。
 - 配色方案可影响代码关键字、终端 accent 和标题区等语义 accent，但 diff added/removed、风险状态等角色必须保持可识别，不能随主题被简单染成同一种主色。
-- 已落地 system/light/dark、五档字号（极小/小/中/大/极大）和多配色方案；Candy palette 已从单一 Material seed 调整为参考糖果粉彩调色板的天蓝、薄荷、粉、淡紫、淡黄明确 hex 色板，并保留浅色模式深色主按钮/正文对比。
+- 已落地 system/light/dark、五档字号（极小/小/中/大/极大）和多配色方案；Candy palette 已从单一 Material seed 调整为参考 Pastel Candy 调色板的粉、天蓝、淡黄、薄荷、淡紫明确 hex 色板，并保留浅色模式深色主按钮/正文对比。
 
 ### 9.7.1 主机、设置与主题后续改造
 

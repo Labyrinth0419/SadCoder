@@ -68,6 +68,14 @@ void main() {
       find.byKey(const ValueKey('workspace-files-entry-README.md')),
     );
     await tester.pumpAndSettle();
+    final previewSurface = find.byKey(
+      const ValueKey('workspace-files-preview-surface'),
+    );
+    expect(previewSurface, findsOneWidget);
+    expect(
+      find.descendant(of: previewSurface, matching: find.byType(Card)),
+      findsNothing,
+    );
     expect(find.text('Guide'), findsOneWidget);
     expect(find.text('# Guide'), findsNothing);
 

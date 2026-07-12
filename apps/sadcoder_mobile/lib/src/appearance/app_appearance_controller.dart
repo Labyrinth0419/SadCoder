@@ -65,7 +65,7 @@ extension AppColorPaletteValues on AppColorPalette {
   Color get seedColor {
     return switch (this) {
       AppColorPalette.sadcoder => const Color(0xFF0F766E),
-      AppColorPalette.candy => const Color(0xFFFFA0F8),
+      AppColorPalette.candy => const Color(0xFFF4BCC7),
       AppColorPalette.lagoon => const Color(0xFF2563EB),
       AppColorPalette.ember => const Color(0xFFC2410C),
     };
@@ -79,11 +79,11 @@ extension AppColorPaletteValues on AppColorPalette {
         Color(0xFF334155),
       ],
       AppColorPalette.candy => const [
-        Color(0xFFB5EEF1),
-        Color(0xFFA5F1A5),
-        Color(0xFFFFA0F8),
-        Color(0xFFE4B8F5),
-        Color(0xFFF5F4A6),
+        Color(0xFFF4BCC7),
+        Color(0xFF9EDEF2),
+        Color(0xFFF2E1B1),
+        Color(0xFFC6F2AF),
+        Color(0xFFD5CAF9),
       ],
       AppColorPalette.lagoon => const [
         Color(0xFF2563EB),

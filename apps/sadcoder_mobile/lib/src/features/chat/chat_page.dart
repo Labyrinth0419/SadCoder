@@ -5046,13 +5046,6 @@ class _TimelineExecutionItem extends StatelessWidget {
         color: colorScheme.surfaceContainerLow,
         border: Border.all(color: colorScheme.outlineVariant),
         borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.shadow.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

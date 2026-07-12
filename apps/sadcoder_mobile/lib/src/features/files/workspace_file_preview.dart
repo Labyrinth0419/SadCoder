@@ -22,30 +22,40 @@ class _PreviewPanel extends StatelessWidget {
         title: l10n.workspaceFilesPreviewEmpty,
       );
     }
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: switch (preview.status) {
-          _PreviewStatus.idle => const SizedBox.shrink(),
-          _PreviewStatus.loading => _PreviewLoading(
-            root: preview.root,
-            path: preview.path,
-          ),
-          _PreviewStatus.failed => _PreviewError(
-            root: preview.root,
-            path: preview.path,
-            stat: preview.stat,
-            text: errorText ?? l10n.workspaceFilesReadFailed,
-          ),
-          _PreviewStatus.loaded => _PreviewContent(
-            preview: preview,
-            onModeChanged: onModeChanged,
-            onLoadMore: onLoadMore,
-            loadMoreErrorText: preview.loadMoreError == null
-                ? null
-                : _workspaceFailureMessage(l10n, preview.loadMoreError!),
-          ),
-        },
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      key: const ValueKey('workspace-files-preview-surface'),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border.all(color: colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 260),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: switch (preview.status) {
+            _PreviewStatus.idle => const SizedBox.shrink(),
+            _PreviewStatus.loading => _PreviewLoading(
+              root: preview.root,
+              path: preview.path,
+            ),
+            _PreviewStatus.failed => _PreviewError(
+              root: preview.root,
+              path: preview.path,
+              stat: preview.stat,
+              text: errorText ?? l10n.workspaceFilesReadFailed,
+            ),
+            _PreviewStatus.loaded => _PreviewContent(
+              preview: preview,
+              onModeChanged: onModeChanged,
+              onLoadMore: onLoadMore,
+              loadMoreErrorText: preview.loadMoreError == null
+                  ? null
+                  : _workspaceFailureMessage(l10n, preview.loadMoreError!),
+            ),
+          },
+        ),
       ),
     );
   }
