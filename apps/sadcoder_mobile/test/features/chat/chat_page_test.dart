@@ -6324,9 +6324,47 @@ void main() {
     expect(find.text('Selected agent thread.'), findsOneWidget);
   });
 
-  testWidgets('/subagents shows only subagent entries', (tester) async {
+  testWidgets('/subagents shows only subagent topology entries', (
+    tester,
+  ) async {
     final approvalController = ApprovalStateController();
     final turnRunner = _FakeTurnRunner();
+    final activeThreadWithActivity = ThreadSummary.fromJson({
+      'id': 'thr_main',
+      'sessionId': 'sess_1',
+      'preview': 'Main thread',
+      'ephemeral': false,
+      'status': 'idle',
+      'cwd': '/repo',
+      'updatedAt': 1,
+      'turns': [
+        {
+          'id': 'turn_1',
+          'status': 'completed',
+          'itemsView': 'full',
+          'items': [
+            {
+              'id': 'item_spawn',
+              'type': 'collabAgentToolCall',
+              'tool': 'spawnAgent',
+              'status': 'completed',
+              'senderThreadId': 'thr_main',
+              'receiverThreadIds': ['thr_worker'],
+              'agentsStates': {
+                'thr_worker': {'status': 'running', 'message': null},
+              },
+            },
+            {
+              'id': 'item_path',
+              'type': 'subAgentActivity',
+              'kind': 'started',
+              'agentThreadId': 'thr_worker',
+              'agentPath': 'agents/build',
+            },
+          ],
+        },
+      ],
+    });
     final threads = [
       ThreadSummary.fromJson({
         'id': 'thr_main',
@@ -6352,6 +6390,9 @@ void main() {
         'turns': <Object?>[],
       }),
     ];
+    final detailReader = _FakeThreadDetailReader(
+      detail: ThreadDetail(thread: activeThreadWithActivity),
+    );
     final starter = _FakeSessionStarter(
       threadListReader: _FakeThreadListReader(
         page: ThreadListPage(threads: threads),
@@ -6366,8 +6407,7 @@ void main() {
       readerProvider: () => sessionController.threadListReader,
     );
     final threadDetailController = ThreadDetailController(
-      readerProvider: () =>
-          _FakeThreadDetailReader(detail: ThreadDetail(thread: threads.first)),
+      readerProvider: () => detailReader,
     );
     final turnController = TurnController(
       runnerProvider: () => sessionController.turnRunner,
@@ -6404,12 +6444,23 @@ void main() {
       find.byKey(const ValueKey('agent-thread-thr_review')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const ValueKey('agent-thread-thr_worker')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Status: closed'), findsOneWidget);
+    expect(find.textContaining('Status: running'), findsOneWidget);
+    expect(find.textContaining('Agent: reviewer'), findsOneWidget);
+    expect(find.textContaining('Agent path: agents/build'), findsOneWidget);
+    expect(find.textContaining('Parent thread: thr_main'), findsWidgets);
+    expect(find.textContaining('Ancestor thread: thr_main'), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey('agent-thread-thr_review')));
     await tester.pumpAndSettle();
 
     expect(turnController.activeThreadId, 'thr_review');
     expect(timelineController.selectedThreadId, 'thr_review');
+    expect(detailReader.threadIds, ['thr_main', 'thr_review']);
     expect(turnRunner.startedTurns, isEmpty);
     expect(turnRunner.interruptedTurns, isEmpty);
   });
