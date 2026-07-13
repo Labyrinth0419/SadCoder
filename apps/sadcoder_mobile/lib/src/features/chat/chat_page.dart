@@ -49,6 +49,7 @@ import 'chat_experimental_summary.dart';
 import 'chat_feedback_sheet.dart';
 import 'chat_goal_command.dart';
 import 'chat_hooks_summary.dart';
+import 'chat_layout_metrics.dart';
 import 'chat_memories_summary.dart';
 import 'chat_model_override_sheet.dart';
 import 'chat_override_scope.dart';
@@ -250,9 +251,11 @@ class _ChatPageState extends State<ChatPage> {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, bodyConstraints) {
-                  final overlaySidebar = bodyConstraints.maxWidth < 720;
+                  final overlaySidebar =
+                      bodyConstraints.maxWidth <
+                      chatThreadSidebarOverlayBreakpoint;
                   final sidebarVisible = _showThreadSidebar && !compactHeight;
-                  final sidebarWidth = _sidebarWidthFor(
+                  final sidebarWidth = chatThreadSidebarWidthFor(
                     bodyConstraints.maxWidth,
                   );
                   return Stack(
@@ -2976,14 +2979,4 @@ String? _normalizedText(String? value) {
     return null;
   }
   return value.trim();
-}
-
-double _sidebarWidthFor(double maxWidth) {
-  if (maxWidth <= 320) {
-    return maxWidth;
-  }
-  if (maxWidth < 720) {
-    return maxWidth * 0.88;
-  }
-  return 320;
 }
