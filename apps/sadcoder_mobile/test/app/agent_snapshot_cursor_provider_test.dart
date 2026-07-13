@@ -132,6 +132,35 @@ void main() {
     expect(cursor, 'event-cached');
   });
 
+  test(
+    'clears the last resolved thread when no cursor target exists',
+    () async {
+      final cursorStore = _MemoryThreadTimelineCursorStore({
+        'profile-a::thr_live': const ThreadTimelineCursorSnapshot(
+          threadId: 'thr_live',
+          turnIds: [],
+          itemIds: [],
+          deliveredCursor: 'event-live',
+          cachedAtMs: 1,
+        ),
+      });
+      var selectedThreadId = 'thr_live';
+      final provider = AppAgentSnapshotCursorProvider(
+        profileId: 'profile-a',
+        threadCacheStore: null,
+        threadTimelineCursorStore: cursorStore,
+        selectedThreadIdProvider: () => selectedThreadId,
+      );
+
+      expect(await provider.load(_profileA), 'event-live');
+      expect(provider.lastResolvedThreadId, 'thr_live');
+
+      selectedThreadId = ' ';
+      expect(await provider.load(_profileA), isNull);
+      expect(provider.lastResolvedThreadId, isNull);
+    },
+  );
+
   test('prefers in-memory delivered cursor over stored cursor', () async {
     final cursorStore = _MemoryThreadTimelineCursorStore({
       'profile-a::thr_live': const ThreadTimelineCursorSnapshot(

@@ -27,6 +27,7 @@ class AppAgentSnapshotCursorProvider {
   String? _lastResolvedThreadId;
 
   Future<String?> load(SshProfile profile) async {
+    _lastResolvedThreadId = null;
     final resolvedProfileId =
         _normalized(profileId) ?? _normalized(hostSessionProfileId(profile));
     if (resolvedProfileId == null) {
