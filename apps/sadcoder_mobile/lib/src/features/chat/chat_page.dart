@@ -61,6 +61,7 @@ import 'chat_timeline_controller.dart';
 import 'chat_goal_summary.dart';
 import 'chat_mcp_summary.dart';
 import 'chat_review_summary.dart';
+import 'chat_rollout_diagnostics.dart';
 import 'chat_side_conversation_panel.dart';
 import 'chat_slash_command_preview.dart';
 import 'chat_summary_formatting.dart';
@@ -1136,7 +1137,7 @@ class _ChatPageState extends State<ChatPage> {
       return null;
     }
     final l10n = context.l10n;
-    final rolloutPath = _rolloutPathFromRaw(
+    final rolloutPath = rolloutPathFromThreadRaw(
       widget.threadDetailController?.detail?.thread.raw ?? const {},
     );
     if (rolloutPath != null) {
@@ -2975,32 +2976,6 @@ String? _normalizedText(String? value) {
     return null;
   }
   return value.trim();
-}
-
-String? _rolloutPathFromRaw(Map<String, Object?> raw) {
-  String? fromValue(Object? value) {
-    if (value is String) {
-      return _normalizedText(value);
-    }
-    if (value is Map) {
-      return fromValue(value['path']);
-    }
-    return null;
-  }
-
-  for (final key in const [
-    'rolloutPath',
-    'rollout_path',
-    'currentRolloutPath',
-    'current_rollout_path',
-    'rollout',
-  ]) {
-    final path = fromValue(raw[key]);
-    if (path != null) {
-      return path;
-    }
-  }
-  return null;
 }
 
 double _sidebarWidthFor(double maxWidth) {

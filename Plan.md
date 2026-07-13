@@ -886,6 +886,7 @@ MVP 可以简化为底部导航：
 - 本轮结构整理将 side conversation inline banner 从 `ChatPage` 拆到 `features/chat/chat_side_conversation_panel.dart`，公开 `ChatSideConversation` / `ChatSideConversationPanel` 并保留 compact 状态、`/side`/`/btw` 命令提示、不显示 parent/side thread id、返回主线按钮启停契约；`ChatPage` 只保留侧聊生命周期和 thread 切换逻辑。
 - 本轮结构整理将 `/goal` inline argument parser 从 `ChatPage` 拆到 `features/chat/chat_goal_command.dart`，公开 `ChatGoalCommand` 及 get/clear/set 子类型和 `parseChatGoalCommand`，覆盖 get/show/clear/status/budget/set/default objective 与无效参数边界；`ChatPage` 只保留 thread goal runner 调用和本地化 summary 生成。
 - 本轮结构整理将 composer file mention 的 range 跟踪、重叠清理、剪枝和 `TurnTextElement` byte-range 转换从 `ChatPage` 拆到 `features/chat/chat_composer_mention.dart`，公开 `ChatComposerMention` 与 helper；`ChatPage` 只负责选择文件、计算插入区间和更新输入框文本。
+- 本轮结构整理将 `/rollout` 只读诊断的 raw thread path 解析从 `ChatPage` 拆到 `features/chat/chat_rollout_diagnostics.dart`，公开 `rolloutPathFromThreadRaw` 并覆盖 camel/snake key、嵌套 `rollout.path`、空值跳过和稳定优先级；`ChatPage` 只负责命令参数校验和本地化提示。
 - 已补齐 active turn 文本追加路径：`CodexAppServerClient`、`CodexTurnRunner`、`TurnController` 和 Chat composer 已支持 `turn/steer`，active turn 中发送普通文本会带 `expectedTurnId` steer 当前回合，而不是启动新 turn 或禁用输入；本次 turn overrides 仍只随 `turn/start` 消耗，不会被 steer 清掉。
 
 ### 9.3 Approvals 页面
