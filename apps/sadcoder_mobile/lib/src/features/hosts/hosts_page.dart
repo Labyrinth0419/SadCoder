@@ -364,7 +364,7 @@ class _HostsPageState extends State<HostsPage> {
         setState(
           () => _profileError = l10n.messageWithDetail(
             l10n.privateKeyImportFailed,
-            error,
+            _privateKeyImportErrorDetail(l10n, error),
           ),
         );
       }
@@ -856,6 +856,15 @@ class _HostsPageState extends State<HostsPage> {
     messenger
       ..clearSnackBars()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Object _privateKeyImportErrorDetail(AppLocalizations l10n, Object error) {
+    if (error is SshPrivateKeyParseException) {
+      return switch (error.code) {
+        SshPrivateKeyParseFailure.noPemBlock => l10n.privateKeyImportNoPemBlock,
+      };
+    }
+    return error;
   }
 
   Future<T> _runWithKnownHostConfirmation<T>({

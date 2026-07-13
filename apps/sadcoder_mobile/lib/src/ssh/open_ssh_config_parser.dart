@@ -125,9 +125,20 @@ String parseSshPrivateKeyPem(String text) {
     multiLine: true,
   ).firstMatch(normalized);
   if (match == null) {
-    throw const FormatException('No PEM private key block found.');
+    throw const SshPrivateKeyParseException(
+      SshPrivateKeyParseFailure.noPemBlock,
+      'No PEM private key block found.',
+    );
   }
   return match.group(0)!.trimRight();
+}
+
+enum SshPrivateKeyParseFailure { noPemBlock }
+
+class SshPrivateKeyParseException extends FormatException {
+  const SshPrivateKeyParseException(this.code, super.message);
+
+  final SshPrivateKeyParseFailure code;
 }
 
 String _stripComment(String line) {

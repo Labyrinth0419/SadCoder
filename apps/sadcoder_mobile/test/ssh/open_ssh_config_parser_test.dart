@@ -108,7 +108,19 @@ notes after
   test('rejects files without private key blocks', () {
     expect(
       () => parseSshPrivateKeyPem('not a key'),
-      throwsA(isA<FormatException>()),
+      throwsA(
+        isA<SshPrivateKeyParseException>()
+            .having(
+              (error) => error.code,
+              'code',
+              SshPrivateKeyParseFailure.noPemBlock,
+            )
+            .having(
+              (error) => error,
+              'format exception',
+              isA<FormatException>(),
+            ),
+      ),
     );
   });
 }

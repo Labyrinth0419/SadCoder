@@ -687,6 +687,37 @@ secret-key-material
     );
   });
 
+  testWidgets('localizes private key files without PEM blocks', (tester) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final store = _FakeProfileStore();
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      profileStore: store,
+      importFileSource: const _FakeImportFileSource('not a private key'),
+      locale: const Locale('zh', 'CN'),
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('host-import-private-key-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(store.savedProfile, isNull);
+    await tester.scrollUntilVisible(
+      find.textContaining('私钥导入失败：', skipOffstage: false),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('私钥导入失败：'), findsOneWidget);
+    expect(find.textContaining('所选文件中未找到 PEM 私钥块。'), findsOneWidget);
+    expect(find.textContaining('No PEM private key block'), findsNothing);
+    expect(find.textContaining('FormatException'), findsNothing);
+  });
+
   testWidgets('generates an ED25519 key and saves the current profile', (
     tester,
   ) async {

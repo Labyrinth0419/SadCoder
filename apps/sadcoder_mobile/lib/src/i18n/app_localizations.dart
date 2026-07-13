@@ -74,6 +74,7 @@ class AppLocalizations {
   String get privateKeyImportNeedsProfile =>
       _text('privateKeyImportNeedsProfile');
   String get privateKeyImportFailed => _text('privateKeyImportFailed');
+  String get privateKeyImportNoPemBlock => _text('privateKeyImportNoPemBlock');
   String get generateEd25519Key => _text('generateEd25519Key');
   String get generateRsaKey => _text('generateRsaKey');
   String get generatingSshKey => _text('generatingSshKey');
@@ -1122,6 +1123,8 @@ const _values = <String, Map<String, String>>{
     'privateKeyImportNeedsProfile':
         'Private key imported. Complete host and username, then save the profile to store it securely.',
     'privateKeyImportFailed': 'Private key import failed',
+    'privateKeyImportNoPemBlock':
+        'No PEM private key block was found in the selected file.',
     'generateEd25519Key': 'Generate ED25519',
     'generateRsaKey': 'Generate RSA',
     'generatingSshKey': 'Generating key',
@@ -1982,6 +1985,7 @@ const _values = <String, Map<String, String>>{
     'privateKeyImportedAndSaved': '私钥已导入，配置已安全保存。',
     'privateKeyImportNeedsProfile': '私钥已导入。补全主机和用户名后保存配置，即可安全持久化。',
     'privateKeyImportFailed': '私钥导入失败',
+    'privateKeyImportNoPemBlock': '所选文件中未找到 PEM 私钥块。',
     'generateEd25519Key': '生成 ED25519',
     'generateRsaKey': '生成 RSA',
     'generatingSshKey': '正在生成密钥',
