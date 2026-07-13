@@ -37,9 +37,9 @@ import '../../usage/thread_token_usage_controller.dart';
 import '../files/file_search_sheet.dart';
 import 'chat_advanced_controls_sheet.dart';
 import 'chat_agent_topology_sheet.dart';
-import 'chat_apps_summary.dart';
 import 'chat_activity_strip.dart';
 import 'chat_background_terminal_summary.dart';
+import 'chat_catalog_summary_commands.dart';
 import 'chat_connection_controls.dart';
 import 'chat_composer_mention.dart';
 import 'chat_debug_config_summary.dart';
@@ -48,7 +48,6 @@ import 'chat_diff_summary.dart';
 import 'chat_experimental_summary.dart';
 import 'chat_feedback_sheet.dart';
 import 'chat_goal_command.dart';
-import 'chat_hooks_summary.dart';
 import 'chat_layout_metrics.dart';
 import 'chat_mcp_command.dart';
 import 'chat_memories_summary.dart';
@@ -58,7 +57,6 @@ import 'chat_personality_override_sheet.dart';
 import 'chat_permissions_override_sheet.dart';
 import 'chat_plugins_command.dart';
 import 'chat_plugins_summary.dart';
-import 'chat_skills_summary.dart';
 import 'chat_status_summary.dart';
 import 'chat_timeline_controller.dart';
 import 'chat_goal_summary.dart';
@@ -919,34 +917,12 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<String?> _buildSkillsSummary(String arguments) async {
-    final normalized = arguments.trim().toLowerCase();
-    final forceReload = normalized == 'reload' || normalized == 'refresh';
-    if (normalized.isNotEmpty && !forceReload) {
-      return null;
-    }
-
-    final l10n = context.l10n;
-    final reader = widget.sessionController?.skillListReader;
-    if (reader == null) {
-      return [l10n.skillsTitle, l10n.skillsUnavailable].join('\n');
-    }
-
-    try {
-      final page = await reader.listSkills(
-        cwds: _currentWorkspaceCwds(),
-        forceReload: forceReload,
-      );
-      return buildSkillsSummary(l10n: l10n, page: page);
-    } on Object catch (error) {
-      return [
-        l10n.skillsTitle,
-        chatSummaryMessageWithOptionalDetail(
-          l10n,
-          l10n.skillsLoadFailed,
-          error,
-        ),
-      ].join('\n');
-    }
+    return buildSkillsSummaryFromCommand(
+      l10n: context.l10n,
+      reader: widget.sessionController?.skillListReader,
+      cwds: _currentWorkspaceCwds(),
+      arguments: arguments,
+    );
   }
 
   Future<String?> _buildPluginsSummary(String arguments) async {
@@ -1049,50 +1025,21 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<String?> _buildHooksSummary(String arguments) async {
-    if (arguments.trim().isNotEmpty) {
-      return null;
-    }
-
-    final l10n = context.l10n;
-    final reader = widget.sessionController?.hookListReader;
-    if (reader == null) {
-      return [l10n.hooksTitle, l10n.hooksUnavailable].join('\n');
-    }
-
-    try {
-      final page = await reader.listHooks(cwds: _currentWorkspaceCwds());
-      return buildHooksSummary(l10n: l10n, page: page);
-    } on Object catch (error) {
-      return [
-        l10n.hooksTitle,
-        chatSummaryMessageWithOptionalDetail(l10n, l10n.hooksLoadFailed, error),
-      ].join('\n');
-    }
+    return buildHooksSummaryFromCommand(
+      l10n: context.l10n,
+      reader: widget.sessionController?.hookListReader,
+      cwds: _currentWorkspaceCwds(),
+      arguments: arguments,
+    );
   }
 
   Future<String?> _buildAppsSummary(String arguments) async {
-    if (arguments.trim().isNotEmpty) {
-      return null;
-    }
-
-    final l10n = context.l10n;
-    final reader = widget.sessionController?.appListReader;
-    if (reader == null) {
-      return [l10n.appsTitle, l10n.appsUnavailable].join('\n');
-    }
-
-    try {
-      final page = await reader.listApps(
-        threadId: _currentThreadId(),
-        limit: 25,
-      );
-      return buildAppsSummary(l10n: l10n, page: page);
-    } on Object catch (error) {
-      return [
-        l10n.appsTitle,
-        chatSummaryMessageWithOptionalDetail(l10n, l10n.appsLoadFailed, error),
-      ].join('\n');
-    }
+    return buildAppsSummaryFromCommand(
+      l10n: context.l10n,
+      reader: widget.sessionController?.appListReader,
+      threadId: _currentThreadId(),
+      arguments: arguments,
+    );
   }
 
   Future<String?> _buildDebugConfigSummary(String arguments) async {
