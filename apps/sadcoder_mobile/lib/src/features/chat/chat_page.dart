@@ -33,12 +33,12 @@ import '../files/file_search_sheet.dart';
 import 'chat_advanced_controls_sheet.dart';
 import 'chat_agent_topology_sheet.dart';
 import 'chat_activity_strip.dart';
+import 'chat_appearance_command_handler.dart';
 import 'chat_background_terminal_commands.dart';
 import 'chat_catalog_summary_commands.dart';
 import 'chat_config_summary_commands.dart';
 import 'chat_connection_controls.dart';
 import 'chat_composer_mention.dart';
-import 'chat_display_settings_sheets.dart';
 import 'chat_diff_command.dart';
 import 'chat_feedback_sheet.dart';
 import 'chat_goal_command.dart';
@@ -61,7 +61,6 @@ import 'chat_slash_command_preview.dart';
 import 'chat_summary_formatting.dart';
 import 'chat_thread_command_handler.dart';
 import 'chat_thread_sidebar.dart';
-import 'chat_theme_sheet.dart';
 import 'chat_timeline_renderer.dart';
 import 'chat_usage_summary.dart';
 import 'chat_timeline_view.dart';
@@ -815,12 +814,17 @@ class _ChatPageState extends State<ChatPage> {
           renameThread: (name) => _threadCommandHandler().renameThread(name),
           logout: _logoutAccount,
           submitFeedback: _submitFeedback,
-          configureTheme: _configureTheme,
-          configureTitleDisplay: _configureTitleDisplay,
-          configureStatusLineDisplay: _configureStatusLineDisplay,
-          configureKeymap: _configureKeymap,
-          toggleComposerVimMode: _toggleComposerVimMode,
-          configureTerminalPets: _configureTerminalPets,
+          configureTheme: () => _appearanceCommandHandler().configureTheme(),
+          configureTitleDisplay: () =>
+              _appearanceCommandHandler().configureTitleDisplay(),
+          configureStatusLineDisplay: () =>
+              _appearanceCommandHandler().configureStatusLineDisplay(),
+          configureKeymap: (arguments) =>
+              _appearanceCommandHandler().configureKeymap(arguments),
+          toggleComposerVimMode: () =>
+              _appearanceCommandHandler().toggleComposerVimMode(),
+          configureTerminalPets: (arguments) =>
+              _appearanceCommandHandler().configureTerminalPets(arguments),
           attachIdeContext: _attachIdeContext,
           configurePlanMode: _configurePlanMode,
           mentionFile: _mentionFile,
@@ -853,6 +857,14 @@ class _ChatPageState extends State<ChatPage> {
       clearLocalTranscript: _clearLocalTranscript,
       refreshVisibleThreads: _refreshVisibleThreads,
       showSnackBar: _showChatSnackBar,
+    );
+  }
+
+  ChatAppearanceCommandHandler _appearanceCommandHandler() {
+    return ChatAppearanceCommandHandler(
+      context: context,
+      mounted: () => mounted,
+      controller: widget.appearanceController,
     );
   }
 
@@ -1646,145 +1658,6 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
     _showChatSnackBar(context.l10n.slashCommandReturnedToMainThread);
-  }
-
-  Future<SlashCommandCallbackResult> _configureTheme() async {
-    final controller = widget.appearanceController;
-    if (controller == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    final selection = await showModalBottomSheet<ChatThemeSheetResult>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => ChatThemeSheet(
-        initialTheme: controller.theme,
-        initialColorPalette: controller.colorPalette,
-      ),
-    );
-    if (!mounted || selection == null) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-
-    controller.setTheme(selection.theme);
-    controller.setColorPalette(selection.colorPalette);
-    return SlashCommandCallbackResult.executed;
-  }
-
-  Future<SlashCommandCallbackResult> _configureTitleDisplay() async {
-    final controller = widget.appearanceController;
-    if (controller == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    final settings = await showModalBottomSheet<AppTitleDisplaySettings>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) =>
-          TitleDisplaySheet(initialSettings: controller.titleDisplay),
-    );
-    if (!mounted || settings == null) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-
-    controller.setTitleDisplay(settings);
-    return SlashCommandCallbackResult.executed;
-  }
-
-  Future<SlashCommandCallbackResult> _configureStatusLineDisplay() async {
-    final controller = widget.appearanceController;
-    if (controller == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    final settings = await showModalBottomSheet<AppStatusLineDisplaySettings>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) =>
-          StatusLineDisplaySheet(initialSettings: controller.statusLineDisplay),
-    );
-    if (!mounted || settings == null) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-
-    controller.setStatusLineDisplay(settings);
-    return SlashCommandCallbackResult.executed;
-  }
-
-  Future<SlashCommandCallbackResult> _toggleComposerVimMode() async {
-    final controller = widget.appearanceController;
-    if (controller == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    final nextMode = controller.composerInputMode == AppComposerInputMode.vim
-        ? AppComposerInputMode.standard
-        : AppComposerInputMode.vim;
-    controller.setComposerInputMode(nextMode);
-    return SlashCommandCallbackResult.executed;
-  }
-
-  Future<SlashCommandCallbackResult> _configureKeymap(String arguments) async {
-    final controller = widget.appearanceController;
-    if (controller == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    final trimmed = arguments.trim();
-    if (trimmed.isNotEmpty) {
-      final shortcut = AppComposerSendShortcut.parseCommandValue(trimmed);
-      if (shortcut == null) {
-        return SlashCommandCallbackResult.unavailable;
-      }
-      controller.setComposerSendShortcut(shortcut);
-      return SlashCommandCallbackResult.executed;
-    }
-
-    final shortcut = await showModalBottomSheet<AppComposerSendShortcut>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) =>
-          ComposerKeymapSheet(initialShortcut: controller.composerSendShortcut),
-    );
-    if (!mounted || shortcut == null) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-
-    controller.setComposerSendShortcut(shortcut);
-    return SlashCommandCallbackResult.executed;
-  }
-
-  Future<SlashCommandCallbackResult> _configureTerminalPets(
-    String arguments,
-  ) async {
-    final controller = widget.appearanceController;
-    if (controller == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    final trimmed = arguments.trim();
-    if (trimmed.isNotEmpty) {
-      final preference = AppTerminalPetPreference.parseCommandValue(trimmed);
-      if (preference == null) {
-        return SlashCommandCallbackResult.unavailable;
-      }
-      controller.setTerminalPetPreference(preference);
-      return SlashCommandCallbackResult.executed;
-    }
-
-    final preference = await showModalBottomSheet<AppTerminalPetPreference>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => TerminalPetDisplaySheet(
-        initialPreference: controller.terminalPetPreference,
-      ),
-    );
-    if (!mounted || preference == null) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-
-    controller.setTerminalPetPreference(preference);
-    return SlashCommandCallbackResult.executed;
   }
 
   Future<SlashCommandCallbackResult> _submitFeedback() async {
