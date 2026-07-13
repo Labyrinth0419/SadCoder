@@ -2673,11 +2673,6 @@ class _ChatPageState extends State<ChatPage> {
     if (threadId == null || timelineController == null) {
       return;
     }
-    if (thread.turns.isNotEmpty) {
-      _lastTimelineWindowThreadId = threadId;
-      timelineController.showThread(thread);
-      return;
-    }
     final reader = widget.sessionController?.threadItemListReader;
     if (reader == null) {
       _lastTimelineWindowThreadId = threadId;

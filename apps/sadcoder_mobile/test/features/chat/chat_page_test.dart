@@ -7770,6 +7770,93 @@ void main() {
   });
 
   testWidgets(
+    'thread selection prefers bounded items page over full thread turns',
+    (tester) async {
+      tester.view.physicalSize = const Size(480, 620);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final approvalController = ApprovalStateController();
+      final itemReader = _RecordingThreadItemListReader([
+        ThreadItemsPage(
+          nextCursor: 'older_1',
+          items: [
+            for (var i = 99; i >= 20; i--)
+              ThreadItemSummary.fromJson({
+                'id': 'item_$i',
+                'turnId': 'turn_1',
+                'type': 'agentMessage',
+                'text': 'Paged message $i',
+              }),
+          ],
+        ),
+      ]);
+      final detailReader = _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_1',
+            'sessionId': 'sess_1',
+            'preview': 'Paged thread',
+            'ephemeral': false,
+            'turns': [
+              {
+                'id': 'turn_1',
+                'status': 'completed',
+                'itemsView': 'full',
+                'items': [
+                  for (var i = 0; i < 100; i++)
+                    {
+                      'id': 'full_item_$i',
+                      'turnId': 'turn_1',
+                      'type': 'agentMessage',
+                      'text': 'Full detail message $i',
+                    },
+                ],
+              },
+            ],
+          }),
+        ),
+      );
+      final starter = _FakeSessionStarter(
+        threadListReader: const _FakeThreadListReader(
+          page: ThreadListPage(threads: []),
+        ),
+        threadItemListReader: itemReader,
+      );
+      final sessionController = CodexSessionStateController(
+        connector: starter,
+        approvalController: approvalController,
+      );
+      final detailController = ThreadDetailController(
+        readerProvider: () => detailReader,
+      );
+      final timelineController = ChatTimelineController();
+      addTearDown(timelineController.dispose);
+      addTearDown(detailController.dispose);
+      addTearDown(sessionController.dispose);
+      addTearDown(approvalController.dispose);
+
+      await sessionController.connect(_profile);
+      await detailController.readThread('thr_1', includeTurns: false);
+      await _pumpChatPage(
+        tester,
+        sessionController: sessionController,
+        threadDetailController: detailController,
+        timelineController: timelineController,
+      );
+      await tester.pumpAndSettle();
+
+      expect(detailReader.includeTurnsValues, [false]);
+      expect(itemReader.calls, hasLength(1));
+      expect(itemReader.calls.single.limit, chatTimelineInitialItemLimit);
+      expect(timelineController.itemCount, chatTimelineInitialItemLimit);
+      expect(find.textContaining('Paged message 99'), findsOneWidget);
+      expect(find.textContaining('Full detail message 0'), findsNothing);
+    },
+  );
+
+  testWidgets(
     'scrolling to top loads older timeline items without duplicates',
     (tester) async {
       tester.view.physicalSize = const Size(480, 520);
