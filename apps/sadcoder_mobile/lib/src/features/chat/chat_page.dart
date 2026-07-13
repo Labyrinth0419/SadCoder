@@ -46,6 +46,7 @@ import 'chat_display_settings_sheets.dart';
 import 'chat_diff_summary.dart';
 import 'chat_experimental_summary.dart';
 import 'chat_feedback_sheet.dart';
+import 'chat_goal_command.dart';
 import 'chat_hooks_summary.dart';
 import 'chat_memories_summary.dart';
 import 'chat_model_override_sheet.dart';
@@ -1324,22 +1325,22 @@ class _ChatPageState extends State<ChatPage> {
       return null;
     }
 
-    final command = _parseGoalCommand(arguments);
+    final command = parseChatGoalCommand(arguments);
     if (command == null) {
       return null;
     }
 
     final l10n = context.l10n;
     return switch (command) {
-      _GoalGetCommand() => buildThreadGoalSummary(
+      ChatGoalGetCommand() => buildThreadGoalSummary(
         l10n: l10n,
         goal: (await runner.getGoal(threadId: threadId)).goal,
       ),
-      _GoalClearCommand() => buildThreadGoalClearedSummary(
+      ChatGoalClearCommand() => buildThreadGoalClearedSummary(
         l10n: l10n,
         cleared: (await runner.clearGoal(threadId: threadId)).cleared,
       ),
-      _GoalSetCommand(:final objective, :final status, :final tokenBudget) =>
+      ChatGoalSetCommand(:final objective, :final status, :final tokenBudget) =>
         buildThreadGoalSummary(
           l10n: l10n,
           goal: (await runner.setGoal(
@@ -3026,74 +3027,6 @@ class _ComposerMention {
         text.substring(start, end) == token;
   }
 }
-
-sealed class _GoalCommand {
-  const _GoalCommand();
-}
-
-class _GoalGetCommand extends _GoalCommand {
-  const _GoalGetCommand();
-}
-
-class _GoalClearCommand extends _GoalCommand {
-  const _GoalClearCommand();
-}
-
-class _GoalSetCommand extends _GoalCommand {
-  const _GoalSetCommand({this.objective, this.status, this.tokenBudget});
-
-  final String? objective;
-  final String? status;
-  final int? tokenBudget;
-}
-
-_GoalCommand? _parseGoalCommand(String arguments) {
-  final trimmed = arguments.trim();
-  if (trimmed.isEmpty || trimmed == 'show' || trimmed == 'get') {
-    return const _GoalGetCommand();
-  }
-  if (trimmed == 'clear') {
-    return const _GoalClearCommand();
-  }
-
-  final firstSpace = trimmed.indexOf(RegExp(r'\s'));
-  final head = firstSpace == -1 ? trimmed : trimmed.substring(0, firstSpace);
-  final tail = firstSpace == -1 ? '' : trimmed.substring(firstSpace + 1).trim();
-  if (head == 'status') {
-    if (!_goalStatuses.contains(tail)) {
-      return null;
-    }
-    return _GoalSetCommand(status: tail);
-  }
-  if (head == 'budget') {
-    final nextSpace = tail.indexOf(RegExp(r'\s'));
-    final budgetText = nextSpace == -1 ? tail : tail.substring(0, nextSpace);
-    final budget = int.tryParse(budgetText);
-    if (budget == null || budget <= 0) {
-      return null;
-    }
-    final objective = nextSpace == -1
-        ? null
-        : tail.substring(nextSpace + 1).trim();
-    return _GoalSetCommand(
-      tokenBudget: budget,
-      objective: objective?.isEmpty == true ? null : objective,
-    );
-  }
-  if (head == 'set') {
-    return tail.isEmpty ? null : _GoalSetCommand(objective: tail);
-  }
-  return _GoalSetCommand(objective: trimmed);
-}
-
-const _goalStatuses = {
-  'active',
-  'paused',
-  'blocked',
-  'usageLimited',
-  'budgetLimited',
-  'complete',
-};
 
 double _sidebarWidthFor(double maxWidth) {
   if (maxWidth <= 320) {
