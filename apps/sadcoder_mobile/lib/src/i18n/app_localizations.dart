@@ -203,6 +203,20 @@ class AppLocalizations {
       .replaceAll('{keyType}', keyType)
       .replaceAll('{fingerprint}', fingerprint);
   String get hostKeyTrust => _text('hostKeyTrust');
+  String get hostKeyChangedTitle => _text('hostKeyChangedTitle');
+  String hostKeyChangedBody(
+    String endpoint,
+    String expectedKeyType,
+    String expectedFingerprint,
+    String receivedKeyType,
+    String receivedFingerprint,
+  ) => _text('hostKeyChangedBody')
+      .replaceAll('{endpoint}', endpoint)
+      .replaceAll('{expectedKeyType}', expectedKeyType)
+      .replaceAll('{expectedFingerprint}', expectedFingerprint)
+      .replaceAll('{receivedKeyType}', receivedKeyType)
+      .replaceAll('{receivedFingerprint}', receivedFingerprint);
+  String get hostKeyChangedClose => _text('hostKeyChangedClose');
   String get m0ProtocolClient => _text('m0ProtocolClient');
   String get m0ProtocolClientBody => _text('m0ProtocolClientBody');
   String get slashCommandSurface => _text('slashCommandSurface');
@@ -1252,6 +1266,10 @@ const _values = <String, Map<String, String>>{
     'hostKeyConfirmBody':
         'This is the first time SadCoder has seen {endpoint}.\n\nKey type: {keyType}\nFingerprint: {fingerprint}\n\nOnly continue if this fingerprint matches the server you expect.',
     'hostKeyTrust': 'Trust and continue',
+    'hostKeyChangedTitle': 'SSH host key changed',
+    'hostKeyChangedBody':
+        'SadCoder has blocked the connection to {endpoint} because the SSH host key no longer matches the saved fingerprint.\n\nSaved key: {expectedKeyType}\nSaved fingerprint: {expectedFingerprint}\n\nReceived key: {receivedKeyType}\nReceived fingerprint: {receivedFingerprint}\n\nDo not continue until you verify this change out of band.',
+    'hostKeyChangedClose': 'Close',
     'm0ProtocolClient': 'M0 protocol client',
     'm0ProtocolClientBody':
         'The app has a JSON-RPC client for initialize, model/list, and thread/list. SSH transport uses the same interface.',
@@ -2117,6 +2135,10 @@ const _values = <String, Map<String, String>>{
     'hostKeyConfirmBody':
         '这是 SadCoder 首次看到 {endpoint}。\n\n密钥类型：{keyType}\n指纹：{fingerprint}\n\n只有在该指纹与预期服务器一致时才继续。',
     'hostKeyTrust': '信任并继续',
+    'hostKeyChangedTitle': 'SSH 主机密钥已变化',
+    'hostKeyChangedBody':
+        'SadCoder 已阻断到 {endpoint} 的连接，因为当前 SSH 主机密钥与已保存指纹不匹配。\n\n已保存密钥：{expectedKeyType}\n已保存指纹：{expectedFingerprint}\n\n当前收到密钥：{receivedKeyType}\n当前收到指纹：{receivedFingerprint}\n\n请先通过其他可信渠道确认该变化，再继续处理。',
+    'hostKeyChangedClose': '关闭',
     'm0ProtocolClient': 'M0 协议客户端',
     'm0ProtocolClientBody':
         '应用已经具备 initialize、model/list 和 thread/list 的 JSON-RPC 客户端，SSH 传输复用同一接口。',

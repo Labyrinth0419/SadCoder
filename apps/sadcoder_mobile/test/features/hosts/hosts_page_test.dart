@@ -398,6 +398,52 @@ void main() {
     expect(find.textContaining('Unknown SSH host key'), findsOneWidget);
   });
 
+  testWidgets('blocks changed host keys during manual probe', (tester) async {
+    final error = _changedHostKeyException();
+    final runner = _FakeProbeRunner(
+      report: const M0ProbeReport(steps: []),
+      error: error,
+    );
+
+    await _pumpHostsPage(tester, runner);
+
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('password-field')),
+      'secret',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('probe-test-button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('probe-test-button')));
+    await tester.pump();
+
+    expect(find.text('SSH host key changed'), findsOneWidget);
+    expect(find.textContaining('srv.dev:22'), findsOneWidget);
+    expect(
+      find.textContaining('Saved fingerprint: SHA256:first'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Received fingerprint: SHA256:changed'),
+      findsOneWidget,
+    );
+    expect(find.text('Trust and continue'), findsNothing);
+
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('SSH host key changed'), findsWidgets);
+    expect(find.text('Probe passed'), findsNothing);
+  });
+
   testWidgets('saves host profile metadata without requiring password', (
     tester,
   ) async {
@@ -1294,6 +1340,52 @@ secret-key-material
     expect(find.text('No active connection'), findsOneWidget);
   });
 
+  testWidgets('blocks changed host keys during connect', (tester) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final approvalController = ApprovalStateController();
+    final starter = _FakeSessionStarter(
+      connectError: _changedHostKeyException(),
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await _pumpHostsPage(tester, runner, sessionController: sessionController);
+
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('password-field')),
+      'secret',
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('session-connect-button')),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('session-connect-button')));
+    await tester.pump();
+
+    expect(find.text('SSH host key changed'), findsOneWidget);
+    expect(
+      find.textContaining('Received fingerprint: SHA256:changed'),
+      findsOneWidget,
+    );
+    expect(find.text('Trust and continue'), findsNothing);
+
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    expect(starter.connectedProfiles, isEmpty);
+    expect(sessionController.status, CodexSessionStatus.failed);
+    expect(find.textContaining('Connection failed'), findsOneWidget);
+  });
+
   testWidgets('localizes disconnect failures from the session controller', (
     tester,
   ) async {
@@ -1715,6 +1807,24 @@ const _hostKeyChallenge = SshHostKeyChallenge(
   fingerprintSha256: 'SHA256:first',
 );
 
+HostKeyChangedException _changedHostKeyException() {
+  return HostKeyChangedException(
+    expected: KnownHostEntry(
+      host: 'srv.dev',
+      port: 22,
+      keyType: 'ssh-ed25519',
+      fingerprintSha256: 'SHA256:first',
+      verifiedAt: DateTime.utc(2026, 1, 1),
+    ),
+    received: const SshHostKeyChallenge(
+      host: 'srv.dev',
+      port: 22,
+      keyType: 'ssh-ed25519',
+      fingerprintSha256: 'SHA256:changed',
+    ),
+  );
+}
+
 const _readyStatus = AgentStatus(
   agentVersion: '0.1.0',
   platformOs: 'linux',
@@ -2087,11 +2197,13 @@ class _RecordingSlashCommandManifestStore
 class _FakeSessionStarter implements CodexSessionConnectionStarter {
   _FakeSessionStarter({
     this.failConnect = false,
+    this.connectError,
     this.failRestartBackend = false,
     this.failClose = false,
   });
 
   final bool failConnect;
+  final Object? connectError;
   final bool failRestartBackend;
   final bool failClose;
   final connectedProfiles = <SshProfile>[];
@@ -2103,6 +2215,10 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     SshProfile profile, {
     ApprovalStateController? approvalController,
   }) async {
+    final connectError = this.connectError;
+    if (connectError != null) {
+      throw connectError;
+    }
     if (failConnect) {
       throw StateError('connect failed');
     }

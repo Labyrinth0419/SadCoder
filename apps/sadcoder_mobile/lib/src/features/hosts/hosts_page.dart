@@ -914,6 +914,9 @@ class _HostsPageState extends State<HostsPage> {
   }) async {
     try {
       return await action();
+    } on HostKeyChangedException catch (error) {
+      await _showHostKeyChanged(error);
+      rethrow;
     } on UnknownHostKeyException catch (error) {
       final trusted = await _confirmUnknownHostKey(error);
       if (!mounted || !trusted) {
@@ -922,6 +925,40 @@ class _HostsPageState extends State<HostsPage> {
       await _knownHostVerifier.trustHostKey(error.challenge);
       return action();
     }
+  }
+
+  Future<void> _showHostKeyChanged(HostKeyChangedException error) async {
+    if (!mounted) {
+      return;
+    }
+    final l10n = context.l10n;
+    final expected = error.expected;
+    final received = error.received;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(
+          Icons.gpp_bad_outlined,
+          color: Theme.of(dialogContext).colorScheme.error,
+        ),
+        title: Text(l10n.hostKeyChangedTitle),
+        content: SelectableText(
+          l10n.hostKeyChangedBody(
+            received.endpoint,
+            expected.keyType,
+            expected.fingerprintSha256,
+            received.keyType,
+            received.fingerprintSha256,
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.hostKeyChangedClose),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<bool> _confirmUnknownHostKey(UnknownHostKeyException error) async {

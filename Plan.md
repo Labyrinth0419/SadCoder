@@ -739,6 +739,10 @@ App 内部存储使用加密数据库；导入/导出时明确提示敏感信息
 - 不提供“永久忽略 host key”作为普通选项。
 - 支持 SHA256 fingerprint 展示。
 
+当前实现状态：
+
+- 已落地 Hosts 页面 changed host key 专用阻断弹窗：当已保存 endpoint 的 key type 或 SHA256 fingerprint 与当前收到值不一致时，App 会展示已保存/当前收到的 key type 与 fingerprint，只提供关闭动作，不提供信任继续或自动重试；手动 probe 与连接按钮路径均覆盖。
+
 ## 8. 保活、重连与连通性验证
 
 ### 8.1 自动保活
