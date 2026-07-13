@@ -1085,6 +1085,7 @@ MVP 可以简化为底部导航：
 - 已新增通用 `messageWithDetail` 资源化 formatter，并在 Host/Settings/Files/Chat 的用户可见失败详情和 Chat 摘要模块中使用；Chat 的 debug config、experimental、memories、MCP、usage、status、skills/plugins/hooks/apps/diff 与 permission profile 加载失败会保留 raw detail，但摘要与详情之间的分隔符按当前 locale 渲染（英文 `: `，中文 `：`），不影响 raw JSON、路径、配置 key 或协议 enum 的原样展示。
 - 已将 Hosts 页面 SSH config 空导入、私钥导入未包含 PEM private key block 这类 App 自己生成的失败详情移入资源文件：中文界面不再显示英文 `FormatException`、`No importable SSH Host entries found.` 或 `No PEM private key block found.`，同时继续保留真实底层 raw error detail 的原样展示策略。
 - 已将 Terminal 缺少 command exec runner 的 App 生成失败改为 typed `TerminalSessionException`，UI 按 failure code 映射到本地化详情：中文界面不再显示英文 `No active command exec session` 或 Dart `Bad state` 包装；未知底层错误仍保留 raw detail。
+- 已将 Hosts 页面常见用户操作失败增加本地化摘要：已保存 profile 加载/保存失败、连接失败、断开连接失败和 backend 重启失败都通过 `messageWithDetail` 显示当前 locale 摘要并保留底层 raw detail；连接状态卡优先显示用户刚触发的 action error，避免 controller raw error 遮住本地化摘要。
 
 ## 10. 本地数据模型
 

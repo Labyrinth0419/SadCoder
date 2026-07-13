@@ -441,6 +441,76 @@ void main() {
     expect(find.text('Profile saved.', skipOffstage: false), findsOneWidget);
   });
 
+  testWidgets('localizes saved profile load failures', (tester) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final store = _FakeProfileStore(loadError: StateError('load failed'));
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      profileStore: store,
+      locale: const Locale('zh'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('SSH 配置加载失败', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('load failed', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('SSH profile load failed', skipOffstage: false),
+      findsNothing,
+    );
+  });
+
+  testWidgets('localizes saved profile save failures', (tester) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final store = _FakeProfileStore(saveError: StateError('save failed'));
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      profileStore: store,
+      locale: const Locale('zh'),
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('host-name-field')),
+      'Dev',
+    );
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('host-save-profile-button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('host-save-profile-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('SSH 配置保存失败', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('save failed', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('SSH profile save failed', skipOffstage: false),
+      findsNothing,
+    );
+  });
+
   testWidgets('loads saved host profile metadata into the form', (
     tester,
   ) async {
@@ -1183,6 +1253,69 @@ secret-key-material
     expect(find.text('No active connection'), findsOneWidget);
   });
 
+  testWidgets('localizes disconnect failures from the session controller', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final approvalController = ApprovalStateController();
+    final starter = _FakeSessionStarter(failClose: true);
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      sessionController: sessionController,
+      locale: const Locale('zh'),
+    );
+
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('password-field')),
+      'secret',
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('session-connect-button')),
+    );
+    await tester.tap(find.byKey(const ValueKey('session-connect-button')));
+    await _pumpUntil(
+      tester,
+      () => sessionController.status == CodexSessionStatus.connected,
+      describe: () => 'status=${sessionController.status}',
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('session-disconnect-button')),
+    );
+    await tester.tap(find.byKey(const ValueKey('session-disconnect-button')));
+    await _pumpUntil(
+      tester,
+      () => sessionController.status == CodexSessionStatus.idle,
+      describe: () => 'status=${sessionController.status}',
+    );
+
+    expect(
+      find.textContaining('SSH 断开连接失败', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('disconnect failed', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('SSH disconnect failed', skipOffstage: false),
+      findsNothing,
+    );
+  });
+
   testWidgets('restarts backend and reconnects a Codex app session', (
     tester,
   ) async {
@@ -1248,6 +1381,79 @@ secret-key-material
     expect(find.text('Active connection: srv.dev'), findsOneWidget);
   });
 
+  testWidgets(
+    'localizes backend restart failures from the session controller',
+    (tester) async {
+      final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+      final approvalController = ApprovalStateController();
+      final starter = _FakeSessionStarter(failRestartBackend: true);
+      final sessionController = CodexSessionStateController(
+        connector: starter,
+        approvalController: approvalController,
+      );
+      addTearDown(sessionController.dispose);
+      addTearDown(approvalController.dispose);
+
+      await _pumpHostsPage(
+        tester,
+        runner,
+        sessionController: sessionController,
+        locale: const Locale('zh'),
+      );
+
+      await tester.enterText(
+        find.byKey(const ValueKey('host-field')),
+        'srv.dev',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('username-field')),
+        'alice',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('password-field')),
+        'secret',
+      );
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('session-connect-button')),
+      );
+      await tester.tap(find.byKey(const ValueKey('session-connect-button')));
+      await _pumpUntil(
+        tester,
+        () => sessionController.status == CodexSessionStatus.connected,
+        describe: () => 'status=${sessionController.status}',
+      );
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('session-restart-backend-button')),
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('session-restart-backend-button')),
+      );
+      await _pumpUntil(
+        tester,
+        () =>
+            sessionController.status == CodexSessionStatus.connected &&
+            starter.connections.first.restartBackendCount == 1,
+        describe: () =>
+            'status=${sessionController.status}, '
+            'restartCount=${starter.connections.first.restartBackendCount}',
+      );
+
+      expect(
+        find.textContaining('后端重启失败', skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('restart failed', skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Backend restart failed', skipOffstage: false),
+        findsNothing,
+      );
+    },
+  );
+
   testWidgets('shows connection failure from the session controller', (
     tester,
   ) async {
@@ -1285,6 +1491,59 @@ secret-key-material
     expect(sessionController.status, CodexSessionStatus.failed);
     expect(find.text('Connection failed: srv.dev'), findsOneWidget);
     expect(find.textContaining('connect failed'), findsOneWidget);
+  });
+
+  testWidgets('localizes connection failures from the session controller', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final approvalController = ApprovalStateController();
+    final sessionController = CodexSessionStateController(
+      connector: _FakeSessionStarter(failConnect: true),
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      sessionController: sessionController,
+      locale: const Locale('zh'),
+    );
+
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('password-field')),
+      'secret',
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('session-connect-button')),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('session-connect-button')));
+    await _pumpUntil(
+      tester,
+      () => sessionController.status == CodexSessionStatus.failed,
+      describe: () => 'status=${sessionController.status}',
+    );
+
+    expect(
+      find.textContaining('SSH 连接失败', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('connect failed', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('SSH connection failed', skipOffstage: false),
+      findsNothing,
+    );
   });
 
   testWidgets('shows reconnecting state after an observed session drops', (
@@ -1610,18 +1869,28 @@ class _FakePublicKeyExporter implements SshPublicKeyExporter {
 }
 
 class _FakeProfileStore implements SshProfileListStore {
-  _FakeProfileStore({this.initialProfile, List<SshProfile>? initialProfiles})
-    : profiles = [
-        if (initialProfiles != null) ...initialProfiles,
-        if (initialProfiles == null && initialProfile != null) initialProfile,
-      ];
+  _FakeProfileStore({
+    this.initialProfile,
+    List<SshProfile>? initialProfiles,
+    this.loadError,
+    this.saveError,
+  }) : profiles = [
+         if (initialProfiles != null) ...initialProfiles,
+         if (initialProfiles == null && initialProfile != null) initialProfile,
+       ];
 
   final SshProfile? initialProfile;
   final List<SshProfile> profiles;
+  final Object? loadError;
+  final Object? saveError;
   SshProfile? savedProfile;
 
   @override
   Future<SshProfile?> loadLastProfile() async {
+    final error = loadError;
+    if (error != null) {
+      throw error;
+    }
     if (initialProfile != null) {
       return initialProfile;
     }
@@ -1630,14 +1899,28 @@ class _FakeProfileStore implements SshProfileListStore {
 
   @override
   Future<void> saveLastProfile(SshProfile profile) async {
+    final error = saveError;
+    if (error != null) {
+      throw error;
+    }
     savedProfile = profile;
   }
 
   @override
-  Future<List<SshProfile>> loadProfiles() async => List.unmodifiable(profiles);
+  Future<List<SshProfile>> loadProfiles() async {
+    final error = loadError;
+    if (error != null) {
+      throw error;
+    }
+    return List.unmodifiable(profiles);
+  }
 
   @override
   Future<void> saveProfile(SshProfile profile) async {
+    final error = saveError;
+    if (error != null) {
+      throw error;
+    }
     savedProfile = profile;
     profiles
       ..removeWhere((existing) => existing.id == profile.id)
@@ -1756,9 +2039,15 @@ class _RecordingSlashCommandManifestStore
 }
 
 class _FakeSessionStarter implements CodexSessionConnectionStarter {
-  _FakeSessionStarter({this.failConnect = false});
+  _FakeSessionStarter({
+    this.failConnect = false,
+    this.failRestartBackend = false,
+    this.failClose = false,
+  });
 
   final bool failConnect;
+  final bool failRestartBackend;
+  final bool failClose;
   final connectedProfiles = <SshProfile>[];
   final connections = <_FakeSessionConnection>[];
   int closeCount = 0;
@@ -1774,6 +2063,8 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     connectedProfiles.add(profile);
     final connection = _FakeSessionConnection(
       profile: profile,
+      failRestartBackend: failRestartBackend,
+      failClose: failClose,
       onClose: () => closeCount++,
     );
     connections.add(connection);
@@ -1782,7 +2073,12 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
 }
 
 class _FakeSessionConnection implements CodexSessionConnectionHandle {
-  _FakeSessionConnection({required this.profile, required this.onClose});
+  _FakeSessionConnection({
+    required this.profile,
+    required this.failRestartBackend,
+    required this.failClose,
+    required this.onClose,
+  });
 
   final _doneCompleter = Completer<void>();
   int restartBackendCount = 0;
@@ -1790,6 +2086,8 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final SshProfile profile;
+  final bool failRestartBackend;
+  final bool failClose;
 
   @override
   ThreadListReader get threadListReader => const _FakeThreadListReader();
@@ -1918,6 +2216,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   @override
   Future<Map<String, Object?>> restartBackend() async {
     restartBackendCount++;
+    if (failRestartBackend) {
+      throw StateError('restart failed');
+    }
     return {'reconnectRequired': true};
   }
 
@@ -1949,6 +2250,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   Future<void> close({bool notifyApprovalController = true}) async {
     if (_closed) {
       return;
+    }
+    if (failClose) {
+      throw StateError('disconnect failed');
     }
     _closed = true;
     onClose();

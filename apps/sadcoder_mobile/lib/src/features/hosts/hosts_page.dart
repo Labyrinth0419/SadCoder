@@ -102,6 +102,7 @@ class _HostsPageState extends State<HostsPage> {
   String? _connectionActionError;
   String? _profileMessage;
   String? _profileError;
+  bool _loadedInitialProfile = false;
 
   M0ProbeRunner get _runner => widget.probeRunner ?? _defaultProbeRunner;
 
@@ -119,7 +120,15 @@ class _HostsPageState extends State<HostsPage> {
   @override
   void initState() {
     super.initState();
-    _loadSavedProfile();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loadedInitialProfile) {
+      _loadedInitialProfile = true;
+      _loadSavedProfile();
+    }
   }
 
   @override
@@ -519,6 +528,7 @@ class _HostsPageState extends State<HostsPage> {
       }
       return;
     }
+    final l10n = context.l10n;
     try {
       final profiles = store is SshProfileListStore
           ? await store.loadProfiles()
@@ -535,7 +545,12 @@ class _HostsPageState extends State<HostsPage> {
       });
     } on Object catch (error) {
       if (mounted) {
-        setState(() => _profileError = error.toString());
+        setState(
+          () => _profileError = l10n.messageWithDetail(
+            l10n.sshProfileLoadFailed,
+            error,
+          ),
+        );
       }
     }
   }
@@ -553,6 +568,7 @@ class _HostsPageState extends State<HostsPage> {
       });
       return;
     }
+    final l10n = context.l10n;
 
     setState(() {
       _savingProfile = true;
@@ -564,11 +580,16 @@ class _HostsPageState extends State<HostsPage> {
       final profile = _buildProfile();
       await _persistProfile(profile);
       if (mounted) {
-        setState(() => _profileMessage = context.l10n.profileSaved);
+        setState(() => _profileMessage = l10n.profileSaved);
       }
     } on Object catch (error) {
       if (mounted) {
-        setState(() => _profileError = error.toString());
+        setState(
+          () => _profileError = l10n.messageWithDetail(
+            l10n.sshProfileSaveFailed,
+            error,
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -585,6 +606,7 @@ class _HostsPageState extends State<HostsPage> {
       return;
     }
 
+    final l10n = context.l10n;
     setState(() => _connectionActionError = null);
     try {
       await _runWithKnownHostConfirmation(
@@ -598,7 +620,12 @@ class _HostsPageState extends State<HostsPage> {
       );
     } on Object catch (error) {
       if (mounted) {
-        setState(() => _connectionActionError = error.toString());
+        setState(
+          () => _connectionActionError = l10n.messageWithDetail(
+            l10n.sshConnectFailed,
+            error,
+          ),
+        );
       }
     }
   }
@@ -609,12 +636,18 @@ class _HostsPageState extends State<HostsPage> {
       return;
     }
 
+    final l10n = context.l10n;
     setState(() => _connectionActionError = null);
     try {
       await sessionController.disconnect();
     } on Object catch (error) {
       if (mounted) {
-        setState(() => _connectionActionError = error.toString());
+        setState(
+          () => _connectionActionError = l10n.messageWithDetail(
+            l10n.sshDisconnectFailed,
+            error,
+          ),
+        );
       }
     }
   }
@@ -625,6 +658,7 @@ class _HostsPageState extends State<HostsPage> {
       return;
     }
 
+    final l10n = context.l10n;
     setState(() {
       _restartingBackend = true;
       _connectionActionError = null;
@@ -633,7 +667,12 @@ class _HostsPageState extends State<HostsPage> {
       await sessionController.restartBackend();
     } on Object catch (error) {
       if (mounted) {
-        setState(() => _connectionActionError = error.toString());
+        setState(
+          () => _connectionActionError = l10n.messageWithDetail(
+            l10n.sshBackendRestartFailed,
+            error,
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -1633,7 +1672,7 @@ class _SessionStatusPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final error = controller.error?.toString() ?? actionError;
+    final error = actionError ?? controller.error?.toString();
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
