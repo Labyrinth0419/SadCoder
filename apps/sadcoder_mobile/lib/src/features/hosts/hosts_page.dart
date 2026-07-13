@@ -1843,7 +1843,7 @@ class _ProbeResultPanel extends StatelessWidget {
             ],
             if (report?.agentStatus != null) ...[
               const SizedBox(height: 8),
-              Text(_agentStatusSummary(report!.agentStatus!)),
+              Text(_agentStatusSummary(l10n, report!.agentStatus!)),
               const SizedBox(height: 4),
               Text('${l10n.agentVersion}: ${report.agentStatus!.agentVersion}'),
               if (report.agentStatus!.codexFailure != null) ...[
@@ -1940,8 +1940,11 @@ class _ProbeResultPanel extends StatelessWidget {
     return '${l10n.backend}: $kind / $state';
   }
 
-  String _agentStatusSummary(AgentStatus status) {
-    return '${status.platformOs}/${status.platformArch} - ${_codexSummary(status)}';
+  String _agentStatusSummary(AppLocalizations l10n, AgentStatus status) {
+    return l10n.agentStatusSummary(
+      '${status.platformOs}/${status.platformArch}',
+      _codexSummary(status),
+    );
   }
 
   String _codexSummary(AgentStatus status) {

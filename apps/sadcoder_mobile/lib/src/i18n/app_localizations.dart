@@ -119,6 +119,9 @@ class AppLocalizations {
   String get codexVersion => _text('codexVersion');
   String get agentVersion => _text('agentVersion');
   String get agentStatus => _text('agentStatus');
+  String agentStatusSummary(String platform, String codex) => _text(
+    'agentStatusSummary',
+  ).replaceAll('{platform}', platform).replaceAll('{codex}', codex);
   String get agentStart => _text('agentStart');
   String get proxyConnect => _text('proxyConnect');
   String get agentHello => _text('agentHello');
@@ -1218,6 +1221,7 @@ const _values = <String, Map<String, String>>{
     'codexVersion': 'Codex version',
     'agentVersion': 'Agent version',
     'agentStatus': 'Agent status',
+    'agentStatusSummary': 'Agent: {platform} / Codex: {codex}',
     'agentStart': 'Agent start',
     'proxyConnect': 'Proxy connect',
     'agentHello': 'Agent hello',
@@ -2111,6 +2115,7 @@ const _values = <String, Map<String, String>>{
     'codexVersion': 'Codex 版本',
     'agentVersion': 'Agent 版本',
     'agentStatus': 'Agent 状态',
+    'agentStatusSummary': 'Agent：{platform} / Codex：{codex}',
     'agentStart': '启动 Agent',
     'proxyConnect': '代理连接',
     'agentHello': 'Agent 握手',

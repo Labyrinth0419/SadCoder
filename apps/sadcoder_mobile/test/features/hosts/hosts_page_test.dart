@@ -105,6 +105,10 @@ void main() {
     expect(runner.lastProfile?.password, 'secret');
     expect(runner.lastProfile?.agentCommand, 'sadcoder-agent');
     expect(find.text('Probe passed'), findsOneWidget);
+    expect(
+      find.text('Agent: linux/x86_64 / Codex: codex-cli 0.142.5'),
+      findsOneWidget,
+    );
     expect(find.text('Agent version: 0.1.0'), findsOneWidget);
     expect(find.text('Backend: stdio fallback / ready'), findsOneWidget);
     expect(
@@ -172,7 +176,7 @@ void main() {
     );
   });
 
-  testWidgets('shows structured Codex failure in agent status summary', (
+  testWidgets('shows structured Codex failure in localized agent summary', (
     tester,
   ) async {
     final runner = _FakeProbeRunner(
@@ -190,7 +194,7 @@ void main() {
       ),
     );
 
-    await _pumpHostsPage(tester, runner);
+    await _pumpHostsPage(tester, runner, locale: const Locale('zh'));
 
     await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
     await tester.enterText(
@@ -211,16 +215,18 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('probe-test-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Probe failed'), findsOneWidget);
+    expect(find.text('测试失败'), findsOneWidget);
     expect(
-      find.text('linux/x86_64 - runtime-not-found: node: SyntaxError'),
+      find.text(
+        'Agent：linux/x86_64 / Codex：runtime-not-found: node: SyntaxError',
+      ),
       findsOneWidget,
     );
     expect(
-      find.text('Codex status failure: runtime-not-found: node: SyntaxError'),
+      find.text('Codex 状态失败: runtime-not-found: node: SyntaxError'),
       findsOneWidget,
     );
-    expect(find.text('Backend: unknown / unavailable'), findsOneWidget);
+    expect(find.text('后端: 未知 / 不可用'), findsOneWidget);
   });
 
   testWidgets('validates required host fields before probing', (tester) async {

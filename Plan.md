@@ -1110,6 +1110,7 @@ MVP 可以简化为底部导航：
 - 已将 Terminal 缺少 command exec runner 的 App 生成失败改为 typed `TerminalSessionException`，UI 按 failure code 映射到本地化详情：中文界面不再显示英文 `No active command exec session` 或 Dart `Bad state` 包装；未知底层错误仍保留 raw detail。
 - 已将 Hosts 页面常见用户操作失败增加本地化摘要：已保存 profile 加载/保存失败、连接失败、断开连接失败和 backend 重启失败都通过 `messageWithDetail` 显示当前 locale 摘要并保留底层 raw detail；连接状态卡优先显示用户刚触发的 action error，避免 controller raw error 遮住本地化摘要。
 - 已将 Hosts 手动 SSH/M0 probe 失败和 Chat 高级 Raw RPC 发送失败增加本地化摘要；高级诊断面板仍显示底层 raw exception detail，但中文界面不再只有英文/Dart 异常文本。
+- 已将 Hosts 手动 SSH/M0 probe 的 agent status 摘要格式移入资源文件：平台、架构、Codex 版本或结构化失败详情作为占位符填充，中文界面显示本地化摘要，同时继续保留 `runtime-not-found`、stderr 等底层 raw detail 供诊断。
 - 已将 TurnController 自己生成的常见失败改为 typed `TurnControllerException`：无 active Codex session、已有 active turn、缺失 thread id、无可中断 turn 和 turn transition 冲突都会在 Chat 顶部状态槽与 `/status` 摘要中按当前 locale 显示；runner/app-server 传回的真实异常仍保留 raw detail，不做字符串匹配翻译。
 - 已将 Settings 页面 account/model/server config/agent doctor/agent Codex configure/schema/logs 的加载或保存失败统一为本地化摘要 + raw detail：中文界面不再只显示 `Bad state: ...`，同时保留底层异常、远端 stderr 或诊断细节。
 
