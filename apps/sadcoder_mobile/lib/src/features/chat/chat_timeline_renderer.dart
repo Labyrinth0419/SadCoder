@@ -303,6 +303,9 @@ class _TimelineMessageItem extends StatelessWidget {
   final String rawJson;
   final bool showRaw;
 
+  static const _maxBubbleWidth = 720.0;
+  static const _widthFactor = 0.92;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -318,7 +321,7 @@ class _TimelineMessageItem extends StatelessWidget {
         ? AlignmentDirectional.centerEnd
         : AlignmentDirectional.centerStart;
     final bubble = ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 680),
+      constraints: const BoxConstraints(maxWidth: _maxBubbleWidth),
       child: SizedBox(
         width: double.infinity,
         child: DecoratedBox(
@@ -370,7 +373,8 @@ class _TimelineMessageItem extends StatelessWidget {
         key: ValueKey('timeline-message-align-${item.itemId}'),
         alignment: alignment,
         child: FractionallySizedBox(
-          widthFactor: 0.90,
+          key: ValueKey('timeline-message-width-${item.itemId}'),
+          widthFactor: _widthFactor,
           alignment: alignment,
           child: bubble,
         ),

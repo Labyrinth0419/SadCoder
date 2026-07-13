@@ -51,8 +51,16 @@ void main() {
     final agentAlign = tester.widget<Align>(
       find.byKey(const ValueKey('timeline-message-align-agent_1')),
     );
+    final userWidth = tester.widget<FractionallySizedBox>(
+      find.byKey(const ValueKey('timeline-message-width-user_1')),
+    );
+    final agentWidth = tester.widget<FractionallySizedBox>(
+      find.byKey(const ValueKey('timeline-message-width-agent_1')),
+    );
     expect(userAlign.alignment, AlignmentDirectional.centerEnd);
     expect(agentAlign.alignment, AlignmentDirectional.centerStart);
+    expect(userWidth.widthFactor, 0.92);
+    expect(agentWidth.widthFactor, 0.92);
     expect(find.text('Hello from user'), findsOneWidget);
     expect(find.text('Hello from Codex'), findsOneWidget);
   });

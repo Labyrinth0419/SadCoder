@@ -7469,8 +7469,8 @@ void main() {
           find.byKey(const ValueKey('timeline-message-bubble-assistant_1')),
         )
         .width;
-    expect(userBubbleWidth, greaterThan(timelineWidth * 0.72));
-    expect(agentBubbleWidth, greaterThan(timelineWidth * 0.72));
+    expect(userBubbleWidth, greaterThan(timelineWidth * 0.82));
+    expect(agentBubbleWidth, greaterThan(timelineWidth * 0.82));
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('timeline-message-markdown-user_1')),
@@ -7541,7 +7541,7 @@ void main() {
     ]) {
       final bubbleWidth = tester.getSize(find.byKey(key)).width;
       expect(bubbleWidth, lessThanOrEqualTo(timelineWidth * 0.94));
-      expect(bubbleWidth, greaterThan(timelineWidth * 0.80));
+      expect(bubbleWidth, greaterThan(timelineWidth * 0.82));
     }
     expect(tester.takeException(), isNull);
   });
