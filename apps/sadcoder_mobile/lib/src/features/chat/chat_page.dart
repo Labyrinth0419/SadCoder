@@ -38,7 +38,7 @@ import '../files/file_search_sheet.dart';
 import 'chat_advanced_controls_sheet.dart';
 import 'chat_agent_topology_sheet.dart';
 import 'chat_activity_strip.dart';
-import 'chat_background_terminal_summary.dart';
+import 'chat_background_terminal_commands.dart';
 import 'chat_catalog_summary_commands.dart';
 import 'chat_config_summary_commands.dart';
 import 'chat_connection_controls.dart';
@@ -1356,31 +1356,21 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<String?> _buildBackgroundTerminalsSummary(String arguments) async {
-    if (arguments.trim().isNotEmpty) {
-      return null;
-    }
-    final runner = widget.sessionController?.threadBackgroundTerminalRunner;
-    final threadId = _currentThreadId();
-    if (runner == null || threadId == null) {
-      return null;
-    }
-    final l10n = context.l10n;
-    final page = await runner.listTerminals(threadId: threadId, limit: 25);
-    return buildThreadBackgroundTerminalsSummary(l10n: l10n, page: page);
+    return buildBackgroundTerminalsSummaryFromCommand(
+      l10n: context.l10n,
+      runner: widget.sessionController?.threadBackgroundTerminalRunner,
+      threadId: _currentThreadId(),
+      arguments: arguments,
+    );
   }
 
   Future<String?> _cleanBackgroundTerminals(String arguments) async {
-    if (arguments.trim().isNotEmpty) {
-      return null;
-    }
-    final runner = widget.sessionController?.threadBackgroundTerminalRunner;
-    final threadId = _currentThreadId();
-    if (runner == null || threadId == null) {
-      return null;
-    }
-    final l10n = context.l10n;
-    await runner.cleanTerminals(threadId: threadId);
-    return buildThreadBackgroundTerminalsCleanSummary(l10n);
+    return cleanBackgroundTerminalsFromCommand(
+      l10n: context.l10n,
+      runner: widget.sessionController?.threadBackgroundTerminalRunner,
+      threadId: _currentThreadId(),
+      arguments: arguments,
+    );
   }
 
   Future<void> _refreshStatusSources() async {

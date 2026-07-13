@@ -893,6 +893,7 @@ MVP 可以简化为底部导航：
 - 本轮结构整理将 `/skills`、`/hooks`、`/apps` 的只读 catalog summary 命令加载、reader 不可用处理和加载失败摘要从 `ChatPage` 拆到 `features/chat/chat_catalog_summary_commands.dart`；`ChatPage` 只传入当前 cwd/thread context，summary 模块负责参数边界、reader 调用和本地化错误摘要。
 - 本轮结构整理将 `/debug-config`、`/experimental`、`/memories` 的只读配置 summary 命令 refresh、cwd 选择和参数边界从 `ChatPage` 拆到 `features/chat/chat_config_summary_commands.dart`；`ChatPage` 只传入 config snapshot controller、当前 workspace cwds 和 thread raw memory context。
 - 本轮结构整理将 `/raw` transcript view 的 `toggle`/`on`/`off` 参数解析从 `ChatPage` 的 `setState` 分支拆到 `features/chat/chat_raw_transcript_command.dart`；`ChatPage` 只根据纯函数返回的下一状态更新本地 raw timeline 显示。
+- 本轮结构整理将 `/ps` 背景终端列表和 `/stop`/`/clean` 后台终端清理的参数边界、thread/runner 可用性检查与 runner 调用从 `ChatPage` 拆到 `features/chat/chat_background_terminal_commands.dart`；`ChatPage` 只传入当前 thread id 和 session runner。
 - 已补齐 active turn 文本追加路径：`CodexAppServerClient`、`CodexTurnRunner`、`TurnController` 和 Chat composer 已支持 `turn/steer`，active turn 中发送普通文本会带 `expectedTurnId` steer 当前回合，而不是启动新 turn 或禁用输入；本次 turn overrides 仍只随 `turn/start` 消耗，不会被 steer 清掉。
 
 ### 9.3 Approvals 页面
