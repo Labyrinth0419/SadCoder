@@ -664,9 +664,12 @@ void main() {
       fileReader: const _FakeWorkspaceFileReader(),
     );
 
-    expect(find.textContaining('Size: 2 KB'), findsOneWidget);
-    expect(find.textContaining('Modified:'), findsOneWidget);
-    expect(find.textContaining('2024'), findsOneWidget);
+    var tooltip = tester.widget<Tooltip>(
+      find.byKey(const ValueKey('workspace-files-entry-tooltip-lib/main.dart')),
+    );
+    expect(tooltip.message, contains('Size: 2 KB'));
+    expect(tooltip.message, contains('Modified:'));
+    expect(tooltip.message, contains('2024'));
 
     await _pumpFilesPage(
       tester,
@@ -675,9 +678,12 @@ void main() {
       fileReader: const _FakeWorkspaceFileReader(),
     );
 
-    expect(find.textContaining('大小：2 KB'), findsOneWidget);
-    expect(find.textContaining('修改时间：'), findsOneWidget);
-    expect(find.textContaining('2024'), findsOneWidget);
+    tooltip = tester.widget<Tooltip>(
+      find.byKey(const ValueKey('workspace-files-entry-tooltip-lib/main.dart')),
+    );
+    expect(tooltip.message, contains('大小：2 KB'));
+    expect(tooltip.message, contains('修改时间：'));
+    expect(tooltip.message, contains('2024'));
   });
 
   testWidgets('pages directory rows', (tester) async {
@@ -808,7 +814,10 @@ void main() {
       fileReader: fileReader,
     );
 
-    expect(find.textContaining('/repo/lib/main.dart'), findsOneWidget);
+    final tooltip = tester.widget<Tooltip>(
+      find.byKey(const ValueKey('workspace-files-entry-tooltip-lib/main.dart')),
+    );
+    expect(tooltip.message, contains('/repo/lib/main.dart'));
     await tester.tap(
       find.byKey(const ValueKey('workspace-files-entry-lib/main.dart')),
     );

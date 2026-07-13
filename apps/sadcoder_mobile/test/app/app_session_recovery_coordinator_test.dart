@@ -581,6 +581,27 @@ void main() {
 
     expect(fixture.threadDetailReader.threadIds, ['thr_active']);
   });
+
+  test('recovers an explicit thread even when an active turn exists', () async {
+    final fixture = _Fixture();
+    addTearDown(fixture.dispose);
+    await fixture.threadDetailController.readThread('thr_selected');
+    fixture.threadDetailReader.clear();
+    fixture.turnController.trackStartedTurn(
+      threadId: 'thr_active',
+      turn: const TurnSummary(
+        id: 'turn_1',
+        status: 'running',
+        itemCount: 0,
+        itemsView: 'notLoaded',
+      ),
+    );
+
+    fixture.coordinator.recoverThread('thr_selected');
+    await _flushMicrotasks();
+
+    expect(fixture.threadDetailReader.threadIds, ['thr_selected']);
+  });
 }
 
 class _Fixture {

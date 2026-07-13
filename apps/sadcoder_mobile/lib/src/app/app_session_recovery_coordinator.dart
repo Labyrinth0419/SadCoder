@@ -88,6 +88,13 @@ class AppSessionRecoveryCoordinator {
     }
   }
 
+  void recoverThread(String threadId) {
+    final normalizedThreadId = _normalized(threadId);
+    if (normalizedThreadId != null) {
+      unawaited(_recoverThread(normalizedThreadId));
+    }
+  }
+
   Future<void> _recoverThread(String threadId) async {
     final recoveryHint = await _loadRecoveryHint(threadId);
     final turnListReader = _threadTurnListReaderProvider?.call();

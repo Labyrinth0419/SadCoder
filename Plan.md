@@ -858,6 +858,7 @@ MVP 可以简化为底部导航：
 - Chat 高级折叠区已按能力拆分：配置覆盖控件只在有 `CodexConfigOverrideController` 时出现，Raw RPC 面板可显示禁用态，但发送只依赖已注入的 session controller，避免 session-only 页面展开高级区时因覆盖 controller 缺失而崩溃；默认对话面仍不显示这些调试控件。
 - 最新 UI pass 已把 active turn 的 raw `Status: inProgress` 从主 timeline 移除，running/working/failed 详情只由顶部 TUI 状态槽承担；高级调试入口改为图标折叠按钮，斜杠命令输入预览改为轻量 inline surface，避免底部输入区继续占用对话主体。
 - 本轮 UI pass 继续强化对话主体权重：顶部 activity strip 增加 TUI 式语义色轨，running/working/failed 详情仍只放在顶部状态槽；会话侧栏行改为紧凑工具行和选中 rail，仅展示会话标题，不回退显示 cwd、status、thread/turn id 等详情。
+- 本轮 UI polish 将会话侧栏的 active / archived 模式切换从横向 segmented control 改为竖向紧凑工具按钮，保留 tooltip、选中 rail 和图标语义，避免窄侧栏横向挤压对话主体。
 - 侧聊提示面板也已去掉 side/main thread id，仅保留侧聊标题、触发命令和返回主线按钮；默认对话画布不再显示内部会话详情。
 
 ### 9.3 Approvals 页面
@@ -1003,6 +1004,7 @@ MVP 可以简化为底部导航：
 - 已调整 Files 页面为左侧工作区文件侧栏和主区域 status page / 文件预览；文件过滤、隐藏文件、远端搜索和刷新入口已收敛为紧凑工具行，搜索栏高度已压缩，显式 workspace root 与默认 root 选择保持折叠入口。
 - 本轮 UI pass 已继续压缩 Files 顶部和工具栏密度，文件搜索栏限制为 20px 高、88px 宽上限（测试契约不超过 96px），文件树行改为工具侧栏式密集行；主区域保留 status page / opened file 的单一主体语义，预览面板只保留清晰边界，不再用投影制造卡片感；窄屏默认收起文件树侧栏，左上三横线负责展开，避免文件树覆盖主状态页。
 - 本轮 UI pass 为文件树行增加轻量语义色轨和固定尺寸图标容器，保留只读文件浏览边界；工作区 root 选择继续折叠，搜索栏保持紧凑，主界面仍只承担 status page 或已打开文件预览。
+- 本轮 UI polish 将文件树行进一步收成单行导航项，默认只显示图标、文件名、展开/复制动作和选中 rail；绝对路径、大小、修改时间仍按 locale 格式化但移入 tooltip，避免侧栏元数据抢占主预览区域。
 - 已覆盖路径归一化、目录响应 path/name 校验、目录分页 `nextCursor`/`cursor`、拒绝 `..` / 绝对 child path、符号链接祖先拒绝、二进制文件拒绝、UTF-8 range 边界、后续 chunk 失败重试和大 Markdown raw 保护。
 - 已补充文件页 widget 覆盖：可手动指定工作区 root，目录读取使用该 root；可保存 App 默认工作区 root 到 cwd 覆盖，并可从临时 root 恢复默认 root。
 - 仍待后续单独设计：受控编辑、写文件、目录监听、diff 审批和冲突检测；这些能力不得混入只读 Files 页面。
@@ -1059,6 +1061,7 @@ MVP 可以简化为底部导航：
 - 已落地 cursor gap 的延迟 thread 切换恢复：如果 agent snapshot gap 属于非当前 thread，App 不会立刻切换 UI；用户之后打开该 thread 时，`AppHostSessionUiState` 会消费对应 gap hint 并触发一次保守 turn/item 回填，避免断线期间非当前 thread 的事件缺口长期停留。
 - 已落地未知归属 cursor gap 的保守恢复：当 agent snapshot 只报告 `cursorGap=true` 但没有 recent event/thread id 可归因时，App 会保留一个 unknown gap 信号；用户之后打开任一尚未消费该 gap 的 thread 时，会按保守策略有界回填，避免因为缺少 thread id 而误用旧 cursor 提前截断。
 - 已落地 active turn snapshot gap 恢复：当 `agent/snapshot` 先标记 cursor gap、随后才回放 `turn/started` recent event 时，`AppHostSessionUiState` 会在 active turn 建立后再次检查该 thread 的 gap hint，并触发现有保守 turn/item 回填；无需用户先打开会话详情，也不会把恢复目标错误绑定到当前 UI 选中 thread。
+- 已落地显式 thread cursor-gap 恢复入口：当 UI 已知缺口归属的 threadId 时会直接调用 `recoverThread(threadId)`，不再通过 active-thread-first 的 `recoverCurrentThread()` 路由，避免用户打开非 active 缺口会话时被正在运行的 active turn 抢走恢复目标。
 - 已落地 agent `--backend auto` 的 service-only 生产语义：auto 会启动并连接 SadCoder service，service 启动或 proxy 连接失败时返回错误，不再静默降级到 direct stdio；direct stdio 仅保留给显式 `--backend stdio` 或兼容 `--backend daemon` 路径。
 - 已落地后台 active-turn retention 的上下文刷新：App 后台且 active turn 仍需保活时，如果 host/thread/turn context 变化，会释放旧 foreground retention 并用新 context 重新 retain，避免 Android 通知和保活上下文停留在旧 turn。
 - 已落地后台 active-turn retention 连接丢失后的前台恢复：如果 App 后台期间保留的 active-turn 观察连接自行断开，lifecycle coordinator 会释放 retention 并标记 foreground resume，回到前台后重新恢复观察连接。

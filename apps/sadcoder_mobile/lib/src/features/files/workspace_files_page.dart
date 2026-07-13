@@ -1243,130 +1243,121 @@ class _WorkspaceEntryRow extends StatelessWidget {
       if (entry.modifiedAt != null)
         l10n.workspaceFilesModifiedAt(entry.modifiedAt!),
     ];
+    final detailsMessage = details.join('\n');
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final foreground = selected
         ? colorScheme.onPrimaryContainer
         : colorScheme.onSurface;
-    return Material(
-      key: entryKey,
-      color: selected
-          ? colorScheme.primaryContainer.withValues(alpha: 0.52)
-          : Colors.transparent,
-      borderRadius: BorderRadius.circular(6),
-      child: InkWell(
+    return Tooltip(
+      key: ValueKey('workspace-files-entry-tooltip-${entry.path}'),
+      message: detailsMessage,
+      waitDuration: const Duration(milliseconds: 450),
+      child: Material(
+        key: entryKey,
+        color: selected
+            ? colorScheme.primaryContainer.withValues(alpha: 0.52)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(6),
-        onTap: onTap,
-        child: Stack(
-          children: [
-            PositionedDirectional(
-              start: 0,
-              top: 5,
-              bottom: 5,
-              width: 3,
-              child: DecoratedBox(
-                key: ValueKey('workspace-files-entry-rail-${entry.path}'),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? colorScheme.primary
-                      : isDirectory
-                      ? colorScheme.secondary.withValues(alpha: 0.42)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(2),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: onTap,
+          child: Stack(
+            children: [
+              PositionedDirectional(
+                start: 0,
+                top: 5,
+                bottom: 5,
+                width: 3,
+                child: DecoratedBox(
+                  key: ValueKey('workspace-files-entry-rail-${entry.path}'),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? colorScheme.primary
+                        : isDirectory
+                        ? colorScheme.secondary.withValues(alpha: 0.42)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: EdgeInsetsDirectional.only(
-                start: 10.0 + depth * 18,
-                end: 2,
-                top: 4,
-                bottom: 4,
-              ),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 18,
-                    child: Icon(
-                      isDirectory
-                          ? expanded
-                                ? Icons.expand_more
-                                : Icons.chevron_right
-                          : Icons.chevron_right,
-                      size: 17,
-                      color: isDirectory
-                          ? colorScheme.onSurfaceVariant
-                          : Colors.transparent,
+              Padding(
+                padding: EdgeInsetsDirectional.only(
+                  start: 10.0 + depth * 18,
+                  end: 2,
+                  top: 4,
+                  bottom: 4,
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 18,
+                      child: Icon(
+                        isDirectory
+                            ? expanded
+                                  ? Icons.expand_more
+                                  : Icons.chevron_right
+                            : Icons.chevron_right,
+                        size: 17,
+                        color: isDirectory
+                            ? colorScheme.onSurfaceVariant
+                            : Colors.transparent,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 2),
-                  Container(
-                    width: 26,
-                    height: 26,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? colorScheme.primary.withValues(alpha: 0.14)
-                          : colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(6),
+                    const SizedBox(width: 2),
+                    Container(
+                      width: 26,
+                      height: 26,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? colorScheme.primary.withValues(alpha: 0.14)
+                            : colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(
+                        entry.isSymlink
+                            ? Icons.link
+                            : isDirectory
+                            ? expanded
+                                  ? Icons.folder_open
+                                  : Icons.folder_outlined
+                            : _fileIcon(entry.path),
+                        size: 17,
+                        color: selected
+                            ? colorScheme.primary
+                            : colorScheme.secondary,
+                      ),
                     ),
-                    child: Icon(
-                      entry.isSymlink
-                          ? Icons.link
-                          : isDirectory
-                          ? expanded
-                                ? Icons.folder_open
-                                : Icons.folder_outlined
-                          : _fileIcon(entry.path),
-                      size: 17,
-                      color: selected
-                          ? colorScheme.primary
-                          : colorScheme.secondary,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          entry.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: foreground,
-                            fontWeight: selected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                          ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        entry.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: foreground,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                         ),
-                        const SizedBox(height: 1),
-                        Text(
-                          details.join(' | '),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  SizedBox.square(
-                    dimension: 30,
-                    child: IconButton(
-                      onPressed: onCopy,
-                      tooltip: l10n.workspaceFilesCopyPath,
-                      padding: EdgeInsets.zero,
-                      visualDensity: VisualDensity.compact,
-                      icon: const Icon(Icons.copy, size: 16),
+                    SizedBox.square(
+                      dimension: 30,
+                      child: IconButton(
+                        onPressed: onCopy,
+                        tooltip: l10n.workspaceFilesCopyPath,
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.copy, size: 16),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

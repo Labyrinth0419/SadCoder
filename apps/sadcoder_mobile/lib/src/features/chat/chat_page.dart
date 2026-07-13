@@ -5165,24 +5165,115 @@ class _ThreadListModeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: SegmentedButton<bool>(
-        showSelectedIcon: false,
-        segments: [
-          ButtonSegment(
-            value: false,
-            icon: const Icon(Icons.forum_outlined),
-            label: Text(l10n.activeThreads),
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        border: Border.all(color: colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _ThreadListModeButton(
+              key: const ValueKey('chat-thread-mode-active'),
+              selected: !archived,
+              icon: Icons.forum_outlined,
+              label: l10n.activeThreads,
+              onPressed: () => onChanged(false),
+            ),
+            const SizedBox(height: 4),
+            _ThreadListModeButton(
+              key: const ValueKey('chat-thread-mode-archived'),
+              selected: archived,
+              icon: Icons.archive_outlined,
+              label: l10n.archivedThreads,
+              onPressed: () => onChanged(true),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ThreadListModeButton extends StatelessWidget {
+  const _ThreadListModeButton({
+    super.key,
+    required this.selected,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final bool selected;
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final foreground = selected
+        ? colorScheme.onPrimaryContainer
+        : colorScheme.onSurfaceVariant;
+    return Tooltip(
+      message: label,
+      child: Material(
+        color: selected
+            ? colorScheme.primaryContainer.withValues(alpha: 0.68)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: onPressed,
+          child: Stack(
+            children: [
+              PositionedDirectional(
+                start: 0,
+                top: 5,
+                bottom: 5,
+                width: 3,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? colorScheme.primary
+                        : colorScheme.outlineVariant.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(10, 7, 8, 7),
+                child: Row(
+                  children: [
+                    Icon(icon, size: 17, color: foreground),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: foreground,
+                          fontWeight: selected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (selected)
+                      Icon(Icons.check, size: 16, color: colorScheme.primary),
+                  ],
+                ),
+              ),
+            ],
           ),
-          ButtonSegment(
-            value: true,
-            icon: const Icon(Icons.archive_outlined),
-            label: Text(l10n.archivedThreads),
-          ),
-        ],
-        selected: {archived},
-        onSelectionChanged: (selection) => onChanged(selection.single),
+        ),
       ),
     );
   }

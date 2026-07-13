@@ -312,7 +312,7 @@ class AppHostSessionUiState {
     if (!hasPendingThreadGap && !hasPendingUnknownGap) {
       return;
     }
-    _sessionRecoveryCoordinator.recoverCurrentThread();
+    _sessionRecoveryCoordinator.recoverThread(threadId);
   }
 
   void _handleThreadListChanged() {
@@ -340,7 +340,7 @@ class AppHostSessionUiState {
     if (!hasPendingThreadGap && !hasPendingUnknownGap) {
       return;
     }
-    _sessionRecoveryCoordinator.recoverCurrentThread();
+    _sessionRecoveryCoordinator.recoverThread(threadId);
   }
 
   void _syncActiveTurnToTimeline() {
