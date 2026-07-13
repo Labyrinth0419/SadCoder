@@ -6063,8 +6063,9 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Side conversation'), findsOneWidget);
-    expect(find.textContaining('Command: /side'), findsOneWidget);
+    expect(find.textContaining('Side conversation'), findsOneWidget);
+    expect(find.textContaining('/side'), findsOneWidget);
+    expect(find.textContaining('Command: /side'), findsNothing);
     expect(find.textContaining('Side thread: thr_side'), findsNothing);
     expect(find.textContaining('Main thread: thr_selected'), findsNothing);
     expect(find.text('Started side conversation.'), findsOneWidget);
@@ -6081,7 +6082,7 @@ void main() {
       'thr_selected',
     ]);
     expect(turnRunner.interruptedTurns, isEmpty);
-    expect(find.text('Side conversation'), findsNothing);
+    expect(find.textContaining('Side conversation'), findsNothing);
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
     expect(find.text('Returned to main thread.'), findsOneWidget);
@@ -6174,7 +6175,9 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('Command: /btw'), findsOneWidget);
+    expect(find.textContaining('Side conversation'), findsOneWidget);
+    expect(find.textContaining('/btw'), findsOneWidget);
+    expect(find.textContaining('Command: /btw'), findsNothing);
   });
 
   testWidgets('side mode rejects unavailable slash commands', (tester) async {

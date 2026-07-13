@@ -909,6 +909,7 @@ class _FilesSidebar extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
           children: [
             _WorkspaceRootSelector(
+              root: root,
               controller: rootController,
               canSaveDefaultRoot: canSaveDefaultRoot,
               onUseRoot: onUseRoot,
@@ -926,6 +927,7 @@ class _FilesSidebar extends StatelessWidget {
 
 class _WorkspaceRootSelector extends StatelessWidget {
   const _WorkspaceRootSelector({
+    required this.root,
     required this.controller,
     required this.canSaveDefaultRoot,
     required this.onUseRoot,
@@ -933,6 +935,7 @@ class _WorkspaceRootSelector extends StatelessWidget {
     required this.onSaveDefaultRoot,
   });
 
+  final String? root;
   final TextEditingController controller;
   final bool canSaveDefaultRoot;
   final VoidCallback onUseRoot;
@@ -962,6 +965,16 @@ class _WorkspaceRootSelector extends StatelessWidget {
             l10n.workspaceFilesRootLabel,
             style: theme.textTheme.titleSmall,
           ),
+          subtitle: root == null
+              ? null
+              : Text(
+                  root!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
           childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
           children: [
             SizedBox(

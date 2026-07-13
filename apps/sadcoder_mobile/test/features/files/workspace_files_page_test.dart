@@ -364,6 +364,13 @@ void main() {
       findsNothing,
     );
     expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('workspace-files-root-selector')),
+        matching: find.text('/repo'),
+      ),
+      findsOneWidget,
+    );
+    expect(
       tester
           .getSize(find.byKey(const ValueKey('workspace-files-filter')))
           .height,
