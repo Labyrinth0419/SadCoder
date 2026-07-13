@@ -58,9 +58,11 @@ class AppHostSessionUiState {
       profileId: threadCacheProfileId,
       threadCacheStore: threadCacheStore,
       threadTimelineCursorStore: threadTimelineCursorStore,
-      selectedThreadIdProvider: () =>
-          _normalized(timelineController.selectedThreadId) ??
-          _normalized(threadDetailController.selectedThreadId),
+      preferredThreadIdsProvider: () => [
+        turnController.activeThreadId,
+        timelineController.selectedThreadId,
+        threadDetailController.selectedThreadId,
+      ],
       deliveredCursorProvider: (threadId) =>
           _deliveredCursorByThreadId[threadId],
     );

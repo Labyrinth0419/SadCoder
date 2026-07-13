@@ -4,6 +4,7 @@ import '../threads/thread_cache_store.dart';
 import '../threads/thread_timeline_cursor_store.dart';
 
 typedef SelectedThreadIdProvider = String? Function();
+typedef PreferredThreadIdsProvider = Iterable<String?> Function();
 typedef DeliveredCursorProvider = String? Function(String threadId);
 
 class AppAgentSnapshotCursorProvider {
@@ -11,6 +12,7 @@ class AppAgentSnapshotCursorProvider {
     required this.threadCacheStore,
     required this.threadTimelineCursorStore,
     this.profileId,
+    this.preferredThreadIdsProvider,
     this.selectedThreadIdProvider,
     this.deliveredCursorProvider,
   });
@@ -18,6 +20,7 @@ class AppAgentSnapshotCursorProvider {
   final ThreadCacheStore? threadCacheStore;
   final ThreadTimelineCursorStore? threadTimelineCursorStore;
   final String? profileId;
+  final PreferredThreadIdsProvider? preferredThreadIdsProvider;
   final SelectedThreadIdProvider? selectedThreadIdProvider;
   final DeliveredCursorProvider? deliveredCursorProvider;
   String? get lastResolvedThreadId => _lastResolvedThreadId;
@@ -30,12 +33,29 @@ class AppAgentSnapshotCursorProvider {
       return null;
     }
     final threadId =
-        _normalized(selectedThreadIdProvider?.call()) ??
+        _firstPreferredThreadId() ??
         await _loadCachedSelectedThreadId(resolvedProfileId);
     if (threadId == null) {
       return null;
     }
     _lastResolvedThreadId = threadId;
+    return _loadThreadCursor(resolvedProfileId, threadId);
+  }
+
+  String? _firstPreferredThreadId() {
+    final preferredThreadIds = preferredThreadIdsProvider?.call();
+    if (preferredThreadIds != null) {
+      for (final threadId in preferredThreadIds) {
+        final normalized = _normalized(threadId);
+        if (normalized != null) {
+          return normalized;
+        }
+      }
+    }
+    return _normalized(selectedThreadIdProvider?.call());
+  }
+
+  Future<String?> _loadThreadCursor(String profileId, String threadId) async {
     final inMemoryCursor = _normalized(deliveredCursorProvider?.call(threadId));
     if (inMemoryCursor != null) {
       return inMemoryCursor;
@@ -46,7 +66,7 @@ class AppAgentSnapshotCursorProvider {
     }
     try {
       final snapshot = await cursorStore.loadThreadCursor(
-        profileId: resolvedProfileId,
+        profileId: profileId,
         threadId: threadId,
       );
       return _normalized(snapshot?.deliveredCursor);

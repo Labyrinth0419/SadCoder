@@ -27,6 +27,62 @@ void main() {
     expect(cursor, 'event-live');
   });
 
+  test('prefers an active thread cursor before the selected thread', () async {
+    final cursorStore = _MemoryThreadTimelineCursorStore({
+      'profile-a::thr_active': const ThreadTimelineCursorSnapshot(
+        threadId: 'thr_active',
+        turnIds: [],
+        itemIds: [],
+        deliveredCursor: 'event-active',
+        cachedAtMs: 2,
+      ),
+      'profile-a::thr_selected': const ThreadTimelineCursorSnapshot(
+        threadId: 'thr_selected',
+        turnIds: [],
+        itemIds: [],
+        deliveredCursor: 'event-selected',
+        cachedAtMs: 1,
+      ),
+    });
+    final provider = AppAgentSnapshotCursorProvider(
+      profileId: 'profile-a',
+      threadCacheStore: null,
+      threadTimelineCursorStore: cursorStore,
+      preferredThreadIdsProvider: () => [' thr_active ', 'thr_selected'],
+    );
+
+    final cursor = await provider.load(_profileA);
+
+    expect(cursor, 'event-active');
+    expect(provider.lastResolvedThreadId, 'thr_active');
+  });
+
+  test(
+    'uses a missing active thread cursor instead of another thread',
+    () async {
+      final cursorStore = _MemoryThreadTimelineCursorStore({
+        'profile-a::thr_selected': const ThreadTimelineCursorSnapshot(
+          threadId: 'thr_selected',
+          turnIds: [],
+          itemIds: [],
+          deliveredCursor: 'event-selected',
+          cachedAtMs: 1,
+        ),
+      });
+      final provider = AppAgentSnapshotCursorProvider(
+        profileId: 'profile-a',
+        threadCacheStore: null,
+        threadTimelineCursorStore: cursorStore,
+        preferredThreadIdsProvider: () => ['thr_active', 'thr_selected'],
+      );
+
+      final cursor = await provider.load(_profileA);
+
+      expect(cursor, isNull);
+      expect(provider.lastResolvedThreadId, 'thr_active');
+    },
+  );
+
   test('derives profile id from the connected profile', () async {
     final cursorStore = _MemoryThreadTimelineCursorStore({
       'profile-a::thr_live': const ThreadTimelineCursorSnapshot(

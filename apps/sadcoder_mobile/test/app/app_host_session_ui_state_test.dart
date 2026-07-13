@@ -374,6 +374,44 @@ void main() {
     expect(cursor, 'event-9');
   });
 
+  test(
+    'loads agent snapshot cursor from active thread before selection',
+    () async {
+      final threadStore = _MemoryThreadCacheStore();
+      final cursorStore = _MemoryThreadTimelineCursorStore({
+        'profile-a::thr_active': const ThreadTimelineCursorSnapshot(
+          threadId: 'thr_active',
+          turnIds: [],
+          itemIds: [],
+          deliveredCursor: 'event-active',
+          cachedAtMs: 2,
+        ),
+        'profile-a::thr_selected': const ThreadTimelineCursorSnapshot(
+          threadId: 'thr_selected',
+          turnIds: [],
+          itemIds: [],
+          deliveredCursor: 'event-selected',
+          cachedAtMs: 1,
+        ),
+      });
+      final fixture = _UiStateFixture(
+        profileId: 'profile-a',
+        store: threadStore,
+        timelineCursorStore: cursorStore,
+      );
+      addTearDown(fixture.dispose);
+
+      fixture.state.threadDetailController.restoreCachedDetail(
+        _threadWithTurn('thr_selected', 'Selected task'),
+      );
+      fixture.state.turnController.restoreCachedActiveThread('thr_active');
+
+      final cursor = await fixture.state.loadAgentSnapshotCursor(_profileA);
+
+      expect(cursor, 'event-active');
+    },
+  );
+
   test('observes session status and refreshes threads after connect', () async {
     final threadStore = _MemoryThreadCacheStore();
     final threadListReader = _RecordingThreadListReader([
