@@ -38,9 +38,9 @@ import '../../turns/turn_controller.dart';
 import '../../turns/turn_text_element.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import '../../usage/thread_token_usage_controller.dart';
-import 'raw_rpc_panel.dart';
 import '../appearance/app_color_palette_picker.dart';
 import '../files/file_search_sheet.dart';
+import 'chat_advanced_controls_sheet.dart';
 import 'chat_apps_summary.dart';
 import 'chat_activity_strip.dart';
 import 'chat_background_terminal_summary.dart';
@@ -66,9 +66,7 @@ import 'chat_usage_summary.dart';
 import 'chat_timeline_view.dart';
 import 'config_override_controls.dart';
 import 'config_override_labels.dart';
-import 'session_override_controls.dart';
 import 'slash_command_palette.dart';
-import 'turn_override_controls.dart';
 
 typedef ChatProfileConnector = Future<void> Function(SshProfile profile);
 
@@ -1485,7 +1483,7 @@ class _ChatPageState extends State<ChatPage> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (context) => _ChatAdvancedControlsSheet(
+      builder: (context) => ChatAdvancedControlsSheet(
         configOverrideController: widget.configOverrideController,
         rawRpcSender: widget.sessionController?.requestRaw,
         onApplySessionOverrides: _applySessionOverrides,
@@ -4409,94 +4407,4 @@ double _sidebarWidthFor(double maxWidth) {
     return maxWidth * 0.88;
   }
   return 320;
-}
-
-class _ChatAdvancedControlsSheet extends StatelessWidget {
-  const _ChatAdvancedControlsSheet({
-    required this.configOverrideController,
-    required this.rawRpcSender,
-    required this.onApplySessionOverrides,
-  });
-
-  final CodexConfigOverrideController? configOverrideController;
-  final RawRpcSender? rawRpcSender;
-  final Future<void> Function(CodexConfigOverrides overrides)?
-  onApplySessionOverrides;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final controller = configOverrideController;
-    return FractionallySizedBox(
-      key: const ValueKey('chat-advanced-controls-sheet'),
-      heightFactor: 0.88,
-      child: Material(
-        color: colorScheme.surfaceContainerLowest,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 8, 8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 30,
-                    height: 30,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer.withValues(
-                        alpha: 0.62,
-                      ),
-                      borderRadius: BorderRadius.circular(7),
-                    ),
-                    child: Icon(
-                      Icons.tune,
-                      size: 18,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      l10n.showChatAdvancedControls,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    key: const ValueKey('chat-advanced-controls-close'),
-                    onPressed: () => Navigator.of(context).pop(),
-                    tooltip: MaterialLocalizations.of(
-                      context,
-                    ).closeButtonTooltip,
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-            ),
-            Divider(height: 1, color: colorScheme.outlineVariant),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                children: [
-                  if (controller != null) ...[
-                    SessionOverrideControls(
-                      controller: controller,
-                      onApplySessionOverrides: onApplySessionOverrides,
-                    ),
-                    const SizedBox(height: 10),
-                    TurnOverrideControls(controller: controller),
-                    const SizedBox(height: 10),
-                  ],
-                  RawRpcPanel(onSend: rawRpcSender),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
