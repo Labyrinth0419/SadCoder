@@ -107,8 +107,35 @@ String turnStatusLabel(AppLocalizations l10n, TurnController controller) {
     TurnControllerStatus.completed => l10n.turnCompleted,
     TurnControllerStatus.interrupting => l10n.interruptingTurn,
     TurnControllerStatus.interrupted => l10n.turnInterrupted,
-    TurnControllerStatus.failed =>
-      controller.error?.toString() ?? l10n.turnFailed,
+    TurnControllerStatus.failed => turnControllerErrorMessage(
+      l10n,
+      controller.error,
+    ),
+  };
+}
+
+String turnControllerErrorMessage(AppLocalizations l10n, Object? error) {
+  if (error is TurnControllerException) {
+    return turnControllerFailureLabel(l10n, error.failure);
+  }
+  return error?.toString() ?? l10n.turnFailed;
+}
+
+String turnControllerFailureLabel(
+  AppLocalizations l10n,
+  TurnControllerFailure failure,
+) {
+  return switch (failure) {
+    TurnControllerFailure.turnFailed => l10n.turnFailed,
+    TurnControllerFailure.activeTurnAlreadyRunning =>
+      l10n.turnFailureActiveTurnAlreadyRunning,
+    TurnControllerFailure.noActiveCodexSession =>
+      l10n.turnFailureNoActiveCodexSession,
+    TurnControllerFailure.missingThreadId => l10n.turnFailureMissingThreadId,
+    TurnControllerFailure.noActiveTurnToInterrupt =>
+      l10n.turnFailureNoActiveTurnToInterrupt,
+    TurnControllerFailure.transitionInProgress =>
+      l10n.turnFailureTransitionInProgress,
   };
 }
 

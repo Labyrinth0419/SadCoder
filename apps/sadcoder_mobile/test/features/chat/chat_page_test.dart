@@ -241,6 +241,45 @@ void main() {
     );
   });
 
+  testWidgets('turn app failures are localized in the chat activity strip', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final sessionController = CodexSessionStateController(
+      connector: const _FakeSessionStarter(
+        threadListReader: _FakeThreadListReader(
+          page: ThreadListPage(threads: []),
+        ),
+      ),
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(runnerProvider: () => null);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      locale: const Locale('zh', 'CN'),
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '修复问题',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('发送'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('失败'), findsOneWidget);
+    expect(find.textContaining('没有可用的 Codex 会话。'), findsOneWidget);
+    expect(find.textContaining('No active Codex session'), findsNothing);
+    expect(find.textContaining('Bad state'), findsNothing);
+  });
+
   testWidgets('host selector connects a saved SSH profile', (tester) async {
     const remoteProfile = SshProfile(
       id: 'remote',

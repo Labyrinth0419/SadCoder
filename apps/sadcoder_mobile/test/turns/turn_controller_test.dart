@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
@@ -331,11 +333,111 @@ void main() {
     await controller.submitText('Fix bug');
 
     expect(controller.status, TurnControllerStatus.failed);
-    expect(controller.error, isA<StateError>());
+    expect(
+      controller.error,
+      isA<TurnControllerException>().having(
+        (error) => error.failure,
+        'failure',
+        TurnControllerFailure.noActiveCodexSession,
+      ),
+    );
+  });
+
+  test('submitText records typed failure when an active turn exists', () async {
+    final runner = _FakeTurnRunner();
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+
+    await controller.submitText('Run long task');
+    await controller.submitText('Second turn');
+
+    expect(controller.status, TurnControllerStatus.failed);
+    expect(
+      controller.error,
+      isA<TurnControllerException>().having(
+        (error) => error.failure,
+        'failure',
+        TurnControllerFailure.activeTurnAlreadyRunning,
+      ),
+    );
+    expect(runner.startedTurns, [(threadId: 'thr_new', text: 'Run long task')]);
+  });
+
+  test('submitText records typed failure when thread id is missing', () async {
+    final runner = _FakeTurnRunner(startedThreadId: '');
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+
+    await controller.submitText('Run task');
+
+    expect(controller.status, TurnControllerStatus.failed);
+    expect(
+      controller.error,
+      isA<TurnControllerException>().having(
+        (error) => error.failure,
+        'failure',
+        TurnControllerFailure.missingThreadId,
+      ),
+    );
+  });
+
+  test(
+    'interruptActiveTurn records typed failure without active turn',
+    () async {
+      final runner = _FakeTurnRunner();
+      final controller = TurnController(runnerProvider: () => runner);
+      addTearDown(controller.dispose);
+
+      await controller.interruptActiveTurn();
+
+      expect(controller.status, TurnControllerStatus.failed);
+      expect(
+        controller.error,
+        isA<TurnControllerException>().having(
+          (error) => error.failure,
+          'failure',
+          TurnControllerFailure.noActiveTurnToInterrupt,
+        ),
+      );
+      expect(runner.interruptedTurns, isEmpty);
+    },
+  );
+
+  test('submitText throws typed failure during turn transition', () async {
+    final startThread = Completer<ThreadSummary>();
+    final runner = _FakeTurnRunner(startThreadCompleter: startThread);
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+
+    final firstSubmit = controller.submitText('Run task');
+    await Future<void>.delayed(Duration.zero);
+
+    await expectLater(
+      controller.submitText('Second turn'),
+      throwsA(
+        isA<TurnControllerException>().having(
+          (error) => error.failure,
+          'failure',
+          TurnControllerFailure.transitionInProgress,
+        ),
+      ),
+    );
+
+    startThread.complete(_thread('thr_new'));
+    await firstSubmit;
+
+    expect(controller.status, TurnControllerStatus.submitted);
   });
 }
 
 class _FakeTurnRunner implements TurnRunner {
+  _FakeTurnRunner({
+    this.startedThreadId = 'thr_new',
+    this.startThreadCompleter,
+  });
+
+  final String startedThreadId;
+  final Completer<ThreadSummary>? startThreadCompleter;
   int startedThreads = 0;
   final resumedThreads = <String>[];
   final startedTurns = <({String threadId, String text})>[];
@@ -346,7 +448,11 @@ class _FakeTurnRunner implements TurnRunner {
   @override
   Future<ThreadSummary> startThread() async {
     startedThreads++;
-    return _thread('thr_new');
+    final completer = startThreadCompleter;
+    if (completer != null) {
+      return completer.future;
+    }
+    return _thread(startedThreadId);
   }
 
   @override

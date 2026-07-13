@@ -22,6 +22,31 @@ enum TurnControllerStatus {
   failed,
 }
 
+enum TurnControllerFailure {
+  turnFailed,
+  activeTurnAlreadyRunning,
+  noActiveCodexSession,
+  missingThreadId,
+  noActiveTurnToInterrupt,
+  transitionInProgress,
+}
+
+class TurnControllerException implements Exception {
+  const TurnControllerException(this.failure, [this.detail]);
+
+  final TurnControllerFailure failure;
+  final Object? detail;
+
+  @override
+  String toString() {
+    final detail = this.detail;
+    if (detail == null) {
+      return 'TurnControllerException.${failure.name}';
+    }
+    return 'TurnControllerException.${failure.name}: $detail';
+  }
+}
+
 class TurnController extends ChangeNotifier {
   TurnController({
     required TurnRunnerProvider runnerProvider,
@@ -69,7 +94,9 @@ class TurnController extends ChangeNotifier {
     if (turn.status == 'failed') {
       _setState(
         status: TurnControllerStatus.failed,
-        error: turn.errorMessage ?? StateError('Turn failed'),
+        error:
+            turn.errorMessage ??
+            const TurnControllerException(TurnControllerFailure.turnFailed),
       );
       return;
     }
@@ -90,12 +117,16 @@ class TurnController extends ChangeNotifier {
       return;
     }
     if (isBusy) {
-      throw StateError('A turn transition is already in progress');
+      throw const TurnControllerException(
+        TurnControllerFailure.transitionInProgress,
+      );
     }
     if (_activeTurnId != null) {
       _setState(
         status: TurnControllerStatus.failed,
-        error: StateError('An active turn is already running'),
+        error: const TurnControllerException(
+          TurnControllerFailure.activeTurnAlreadyRunning,
+        ),
       );
       return;
     }
@@ -104,7 +135,9 @@ class TurnController extends ChangeNotifier {
     if (runner == null) {
       _setState(
         status: TurnControllerStatus.failed,
-        error: StateError('No active Codex session'),
+        error: const TurnControllerException(
+          TurnControllerFailure.noActiveCodexSession,
+        ),
       );
       return;
     }
@@ -129,7 +162,9 @@ class TurnController extends ChangeNotifier {
         threadId = thread.id;
       }
       if (threadId.isEmpty) {
-        throw StateError('Codex did not return a thread id');
+        throw const TurnControllerException(
+          TurnControllerFailure.missingThreadId,
+        );
       }
       _activeThreadId = threadId;
       _setState(status: TurnControllerStatus.sendingTurn, error: null);
@@ -161,7 +196,9 @@ class TurnController extends ChangeNotifier {
     if (runner == null) {
       _setState(
         status: TurnControllerStatus.failed,
-        error: StateError('No active Codex session'),
+        error: const TurnControllerException(
+          TurnControllerFailure.noActiveCodexSession,
+        ),
       );
       return false;
     }
@@ -174,7 +211,9 @@ class TurnController extends ChangeNotifier {
         return false;
       }
       if (thread.id.isEmpty) {
-        throw StateError('Codex did not return a thread id');
+        throw const TurnControllerException(
+          TurnControllerFailure.missingThreadId,
+        );
       }
       _activeThreadId = thread.id;
       _activeTurnId = null;
@@ -199,7 +238,9 @@ class TurnController extends ChangeNotifier {
     if (runner == null) {
       _setState(
         status: TurnControllerStatus.failed,
-        error: StateError('No active Codex session'),
+        error: const TurnControllerException(
+          TurnControllerFailure.noActiveCodexSession,
+        ),
       );
       return false;
     }
@@ -212,7 +253,9 @@ class TurnController extends ChangeNotifier {
         return false;
       }
       if (thread.id.isEmpty) {
-        throw StateError('Codex did not return a thread id');
+        throw const TurnControllerException(
+          TurnControllerFailure.missingThreadId,
+        );
       }
       _activeThreadId = thread.id;
       _activeTurnId = null;
@@ -277,14 +320,18 @@ class TurnController extends ChangeNotifier {
 
   Future<void> interruptActiveTurn() async {
     if (isBusy) {
-      throw StateError('A turn transition is already in progress');
+      throw const TurnControllerException(
+        TurnControllerFailure.transitionInProgress,
+      );
     }
     final threadId = _activeThreadId;
     final turnId = _activeTurnId;
     if (threadId == null || turnId == null) {
       _setState(
         status: TurnControllerStatus.failed,
-        error: StateError('No active turn to interrupt'),
+        error: const TurnControllerException(
+          TurnControllerFailure.noActiveTurnToInterrupt,
+        ),
       );
       return;
     }
@@ -292,7 +339,9 @@ class TurnController extends ChangeNotifier {
     if (runner == null) {
       _setState(
         status: TurnControllerStatus.failed,
-        error: StateError('No active Codex session'),
+        error: const TurnControllerException(
+          TurnControllerFailure.noActiveCodexSession,
+        ),
       );
       return;
     }

@@ -245,6 +245,15 @@ class AppLocalizations {
   String get interruptingTurn => _text('interruptingTurn');
   String get turnInterrupted => _text('turnInterrupted');
   String get turnFailed => _text('turnFailed');
+  String get turnFailureActiveTurnAlreadyRunning =>
+      _text('turnFailureActiveTurnAlreadyRunning');
+  String get turnFailureNoActiveCodexSession =>
+      _text('turnFailureNoActiveCodexSession');
+  String get turnFailureMissingThreadId => _text('turnFailureMissingThreadId');
+  String get turnFailureNoActiveTurnToInterrupt =>
+      _text('turnFailureNoActiveTurnToInterrupt');
+  String get turnFailureTransitionInProgress =>
+      _text('turnFailureTransitionInProgress');
   String get shellCommandFailed => _text('shellCommandFailed');
   String get timeline => _text('timeline');
   String get noTimelineEvents => _text('noTimelineEvents');
@@ -1285,6 +1294,13 @@ const _values = <String, Map<String, String>>{
     'interruptingTurn': 'Interrupting turn',
     'turnInterrupted': 'Turn interrupted',
     'turnFailed': 'Turn failed',
+    'turnFailureActiveTurnAlreadyRunning': 'An active turn is already running.',
+    'turnFailureNoActiveCodexSession': 'No active Codex session is available.',
+    'turnFailureMissingThreadId': 'Codex did not return a thread id.',
+    'turnFailureNoActiveTurnToInterrupt':
+        'No active turn is available to interrupt.',
+    'turnFailureTransitionInProgress':
+        'A turn transition is already in progress.',
     'shellCommandFailed': 'Shell command failed',
     'timeline': 'Timeline',
     'noTimelineEvents': 'No events yet',
@@ -2141,6 +2157,11 @@ const _values = <String, Map<String, String>>{
     'interruptingTurn': '正在中断回合',
     'turnInterrupted': '回合已中断',
     'turnFailed': '回合失败',
+    'turnFailureActiveTurnAlreadyRunning': '已有回合正在运行。',
+    'turnFailureNoActiveCodexSession': '没有可用的 Codex 会话。',
+    'turnFailureMissingThreadId': 'Codex 没有返回会话 ID。',
+    'turnFailureNoActiveTurnToInterrupt': '没有可中断的活动回合。',
+    'turnFailureTransitionInProgress': '已有回合状态切换正在进行。',
     'shellCommandFailed': 'Shell 命令执行失败',
     'timeline': '事件流',
     'noTimelineEvents': '暂无事件',

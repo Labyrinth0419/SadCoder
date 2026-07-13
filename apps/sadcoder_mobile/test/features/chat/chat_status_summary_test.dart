@@ -10,6 +10,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_status_summary.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_controller.dart';
+import 'package:sadcoder_mobile/src/turns/turn_controller.dart';
 import 'package:sadcoder_mobile/src/usage/thread_token_usage_controller.dart';
 
 void main() {
@@ -170,6 +171,26 @@ void main() {
     expect(summary, contains('服务器配置快照: 服务器配置加载失败：Bad state: config failed'));
     expect(summary, contains('账户: 账户加载失败：Bad state: account failed'));
   });
+
+  test(
+    'buildChatStatusSummary localizes app-generated turn failures',
+    () async {
+      const zh = AppLocalizations(Locale('zh', 'CN'));
+      final turnController = TurnController(runnerProvider: () => null);
+      addTearDown(turnController.dispose);
+
+      await turnController.submitText('修复问题');
+
+      final summary = buildChatStatusSummary(
+        l10n: zh,
+        turnController: turnController,
+      );
+
+      expect(summary, contains('回合: 没有可用的 Codex 会话。'));
+      expect(summary, isNot(contains('No active Codex session')));
+      expect(summary, isNot(contains('Bad state')));
+    },
+  );
 }
 
 class _FakeAccountSnapshotReader implements AccountSnapshotReader {

@@ -4806,8 +4806,10 @@ String _chatActivityTurnStatusLabel(
     TurnControllerStatus.completed => l10n.turnCompleted,
     TurnControllerStatus.interrupting => l10n.interruptingTurn,
     TurnControllerStatus.interrupted => l10n.turnInterrupted,
-    TurnControllerStatus.failed =>
-      controller.error?.toString() ?? l10n.turnFailed,
+    TurnControllerStatus.failed => turnControllerErrorMessage(
+      l10n,
+      controller.error,
+    ),
   };
 }
 
