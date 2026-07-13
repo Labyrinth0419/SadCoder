@@ -690,7 +690,7 @@ class _HostsPageState extends State<HostsPage> {
     final username = _usernameController.text.trim();
     final port = int.tryParse(_portController.text.trim()) ?? 22;
     return SshProfile(
-      id: sshProfileId(host: host, port: port, username: username),
+      id: sshProfileId(host: host, port: port, username: username, name: name),
       name: name.isEmpty ? host : name,
       host: host,
       port: port,

@@ -486,6 +486,55 @@ void main() {
     expect(find.text('Profile saved.', skipOffstage: false), findsOneWidget);
   });
 
+  testWidgets('manual host aliases create distinct saved profiles', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final store = _FakeProfileStore();
+
+    await _pumpHostsPage(tester, runner, profileStore: store);
+
+    Future<void> saveAlias(String alias) async {
+      await tester.enterText(
+        find.byKey(const ValueKey('host-name-field')),
+        alias,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('host-field')),
+        'srv.dev',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('username-field')),
+        'alice',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('password-field')),
+        'secret',
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('host-save-profile-button')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('host-save-profile-button')));
+      await tester.pumpAndSettle();
+    }
+
+    await saveAlias('Dev A');
+    await saveAlias('Dev B');
+
+    expect(store.profiles, hasLength(2));
+    expect(store.profiles.map((profile) => profile.name), ['Dev B', 'Dev A']);
+    expect(store.profiles.map((profile) => profile.id).toSet(), hasLength(2));
+    expect(store.profiles.first.id, contains('#dev%20b'));
+    expect(store.profiles.last.id, contains('#dev%20a'));
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 1000));
+    await tester.pumpAndSettle();
+    expect(find.text('Dev A, Dev B'), findsOneWidget);
+    expect(find.text('2 profiles'), findsOneWidget);
+  });
+
   testWidgets('saves private key auth profile fields', (tester) async {
     final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
     final store = _FakeProfileStore();
@@ -815,7 +864,7 @@ secret-key-material
 
     expect(store.savedProfile?.authType, SshAuthType.privateKey);
     expect(store.savedProfile?.privateKeyPem, contains('secret-key-material'));
-    expect(store.savedProfile?.id, 'alice@srv.dev:22');
+    expect(store.savedProfile?.id, 'alice@srv.dev:22#dev');
     await tester.scrollUntilVisible(
       find.text(
         'Private key imported and profile saved securely.',
@@ -924,7 +973,7 @@ secret-key-material
       store.savedProfile?.privateKeyPem,
       'generated-ed25519-private-alice@srv.dev',
     );
-    expect(store.savedProfile?.id, 'alice@srv.dev:22');
+    expect(store.savedProfile?.id, 'alice@srv.dev:22#dev');
     expect(find.byKey(const ValueKey('private-key-field')), findsOneWidget);
     expect(
       tester
