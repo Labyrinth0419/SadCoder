@@ -57,6 +57,20 @@ class OpenSshConfigParser {
     var defaults = const _OpenSshHostOptions();
     _OpenSshHostEntry? current;
     final entries = <_OpenSshHostEntry>[];
+    var inMatchBlock = false;
+
+    void flushCurrent() {
+      final entry = current;
+      if (entry == null) {
+        return;
+      }
+      if (entry.isGlobalDefault) {
+        defaults = defaults.merge(entry.options);
+      } else if (!entry.isWildcardOnly) {
+        entries.add(entry.withDefaults(defaults));
+      }
+      current = null;
+    }
 
     for (final rawLine in text.split('\n')) {
       final words = _splitWords(_stripComment(rawLine.trim()));
@@ -66,13 +80,8 @@ class OpenSshConfigParser {
       final keyword = words.first.toLowerCase();
       final values = words.skip(1).toList(growable: false);
       if (keyword == 'host') {
-        if (current != null) {
-          if (current.isGlobalDefault) {
-            defaults = defaults.merge(current.options);
-          } else if (!current.isWildcardOnly) {
-            entries.add(current.withDefaults(defaults));
-          }
-        }
+        flushCurrent();
+        inMatchBlock = false;
         current = _OpenSshHostEntry(
           aliases: values,
           options: const _OpenSshHostOptions(),
@@ -80,22 +89,27 @@ class OpenSshConfigParser {
         continue;
       }
 
-      if (current == null) {
+      if (keyword == 'match') {
+        flushCurrent();
+        inMatchBlock = true;
+        continue;
+      }
+
+      if (inMatchBlock) {
+        continue;
+      }
+
+      final entry = current;
+      if (entry == null) {
         defaults = _applyOption(defaults, keyword, values);
       } else {
-        current = current.copyWith(
-          options: _applyOption(current.options, keyword, values),
+        current = entry.copyWith(
+          options: _applyOption(entry.options, keyword, values),
         );
       }
     }
 
-    if (current != null) {
-      if (current.isGlobalDefault) {
-        defaults = defaults.merge(current.options);
-      } else if (!current.isWildcardOnly) {
-        entries.add(current.withDefaults(defaults));
-      }
-    }
+    flushCurrent();
     return entries;
   }
 

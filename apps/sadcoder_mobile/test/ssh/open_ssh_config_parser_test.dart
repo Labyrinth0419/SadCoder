@@ -74,6 +74,35 @@ Host missing-user
     },
   );
 
+  test('ignores conditional Match blocks during profile import', () {
+    const config = '''
+Host *
+  User default-user
+
+Host dev
+  HostName dev.example.com
+  User alice
+
+Match host dev
+  User root
+  Port 2201
+  HostName matched.example.com
+
+Host prod
+  HostName prod.example.com
+''';
+
+    final profiles = const OpenSshConfigParser().parseProfiles(config);
+
+    expect(profiles, hasLength(2));
+    expect(profiles.first.id, 'alice@dev.example.com:22#dev');
+    expect(profiles.first.username, 'alice');
+    expect(profiles.first.port, 22);
+    expect(profiles.last.id, 'default-user@prod.example.com:22#prod');
+    expect(profiles.last.username, 'default-user');
+    expect(profiles.last.port, 22);
+  });
+
   test('parses quoted values and inline comments', () {
     const config = '''
 Host "quoted dev" # comment
