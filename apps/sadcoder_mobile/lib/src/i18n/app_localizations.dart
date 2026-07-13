@@ -774,6 +774,8 @@ class AppLocalizations {
   String get pluginMarketplaceErrors => _text('pluginMarketplaceErrors');
   String get pluginDescription => _text('pluginDescription');
   String get pluginVersion => _text('pluginVersion');
+  String pluginLocalVersion(String version) =>
+      _text('pluginLocalVersion').replaceAll('{version}', version);
   String get pluginSource => _text('pluginSource');
   String get pluginCapabilities => _text('pluginCapabilities');
   String get pluginReadme => _text('pluginReadme');
@@ -1756,6 +1758,7 @@ const _values = <String, Map<String, String>>{
     'pluginMarketplaceErrors': 'Marketplace errors',
     'pluginDescription': 'Description',
     'pluginVersion': 'Version',
+    'pluginLocalVersion': 'local {version}',
     'pluginSource': 'Source',
     'pluginCapabilities': 'Capabilities',
     'pluginReadme': 'README',
@@ -2570,6 +2573,7 @@ const _values = <String, Map<String, String>>{
     'pluginMarketplaceErrors': '市场错误',
     'pluginDescription': '说明',
     'pluginVersion': '版本',
+    'pluginLocalVersion': '本地 {version}',
     'pluginSource': '来源',
     'pluginCapabilities': '能力',
     'pluginReadme': 'README',

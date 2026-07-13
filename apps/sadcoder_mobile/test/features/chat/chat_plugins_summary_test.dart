@@ -100,6 +100,29 @@ void main() {
     expect(summary, contains('README:\n# Linear'));
   });
 
+  test('buildPluginDetailSummary localizes local plugin version label', () {
+    const zh = AppLocalizations(Locale('zh', 'CN'));
+    final summary = buildPluginDetailSummary(
+      l10n: zh,
+      detail: PluginDetail.fromJson(
+        pluginId: 'linear',
+        json: {
+          'plugin': {
+            'id': 'linear',
+            'name': 'linear',
+            'version': '1.2.3',
+            'localVersion': '1.2.0',
+            'installed': true,
+            'enabled': true,
+            'interface': {'displayName': 'Linear'},
+          },
+        },
+      ),
+    );
+
+    expect(summary, contains('版本: 1.2.3, 本地 1.2.0'));
+  });
+
   test('buildPluginMutationSummary renders operation and server message', () {
     final summary = buildPluginMutationSummary(
       l10n: l10n,

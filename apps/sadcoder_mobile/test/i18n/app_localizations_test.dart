@@ -128,6 +128,7 @@ void main() {
     expect(zh.slashCommandRolloutPathUnavailable, '暂时无法获取 rollout 路径。');
     expect(zh.slashCommandTestApprovalReason, 'SadCoder 测试审批请求');
     expect(zh.slashCommandTestApprovalQueued, '已加入测试审批请求。');
+    expect(zh.pluginLocalVersion('1.2.0'), '本地 1.2.0');
     expect(zh.slashCommandArgumentHint('rename'), '<名称>');
     expect(en.slashCommandArgumentHint('rename'), '<name>');
 

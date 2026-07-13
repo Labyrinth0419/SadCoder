@@ -28,7 +28,7 @@ String buildPluginsSummary({
       if (description.isNotEmpty) {
         lines.add('  ${l10n.pluginDescription}: $description');
       }
-      final version = _versionLabel(plugin);
+      final version = _versionLabel(l10n, plugin);
       if (version.isNotEmpty) {
         lines.add('  ${l10n.pluginVersion}: $version');
       }
@@ -69,7 +69,7 @@ String buildPluginDetailSummary({
   if (detail.marketplacePath != null) {
     lines.add('${l10n.pluginMarketplacePath}: ${detail.marketplacePath}');
   }
-  final version = _versionLabel(plugin);
+  final version = _versionLabel(l10n, plugin);
   if (version.isNotEmpty) {
     lines.add('${l10n.pluginVersion}: $version');
   }
@@ -115,10 +115,11 @@ String _pluginLine(AppLocalizations l10n, PluginSummary plugin) {
   return '${plugin.displayName} (${plugin.name}): $installed, $enabled, ${l10n.pluginAvailability}: ${plugin.availability}';
 }
 
-String _versionLabel(PluginSummary plugin) {
+String _versionLabel(AppLocalizations l10n, PluginSummary plugin) {
   return [
     if (plugin.version != null) plugin.version!,
-    if (plugin.localVersion != null) 'local ${plugin.localVersion}',
+    if (plugin.localVersion != null)
+      l10n.pluginLocalVersion(plugin.localVersion!),
   ].join(', ');
 }
 
