@@ -352,6 +352,39 @@ void main() {
     expect(phaseOffset.dx, moreOrLessEquals(mappingOffset.dx, epsilon: 0.1));
   });
 
+  testWidgets('slash command palette keeps group labels vertical', (
+    tester,
+  ) async {
+    await _pumpChatPage(tester);
+
+    await tester.tap(find.byKey(const ValueKey('chat-slash-command-button')));
+    await tester.pumpAndSettle();
+
+    final commonGroup = find.byKey(
+      const ValueKey('slash-command-group-common'),
+    );
+    final sessionGroup = find.byKey(
+      const ValueKey('slash-command-group-session'),
+    );
+    final configurationGroup = find.byKey(
+      const ValueKey('slash-command-group-configuration'),
+    );
+    expect(commonGroup, findsOneWidget);
+    expect(sessionGroup, findsOneWidget);
+    expect(configurationGroup, findsOneWidget);
+
+    final commonOffset = tester.getTopLeft(commonGroup);
+    final sessionOffset = tester.getTopLeft(sessionGroup);
+    final configurationOffset = tester.getTopLeft(configurationGroup);
+    expect(sessionOffset.dy, greaterThan(commonOffset.dy));
+    expect(configurationOffset.dy, greaterThan(sessionOffset.dy));
+    expect(sessionOffset.dx, moreOrLessEquals(commonOffset.dx, epsilon: 0.1));
+    expect(
+      configurationOffset.dx,
+      moreOrLessEquals(commonOffset.dx, epsilon: 0.1),
+    );
+  });
+
   testWidgets('slash command palette fits on compact screens', (tester) async {
     tester.view.physicalSize = const Size(360, 320);
     tester.view.devicePixelRatio = 1;
