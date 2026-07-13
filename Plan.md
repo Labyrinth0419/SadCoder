@@ -870,6 +870,7 @@ MVP 可以简化为底部导航：
 - 后续 Chat 输入框修复已将 composer 改为受最大高度约束的真正多行输入区：移动端键盘动作保留换行，长文本软换行后输入框增高到上限再内部滚动；硬件 Enter / Ctrl+Enter 发送仍按 keymap 执行，widget 测试覆盖长中文输入不再把布局向右撑开。
 - 本轮 Chat UI / timeline 性能里程碑已修正消息方向契约：user 消息固定右侧、Codex/assistant 消息固定左侧，文本气泡使用约 90% 可用 timeline 宽度且保留左右方向感；command/file/tool/reasoning 仍为中性 timeline block。Chat timeline 新增可拖动的浮层“跳到最新”按钮，位置限制在对话内容区域内，不占 composer 或 timeline layout 空间；左上三横线会话侧栏使用 210ms ease-out slide/fade 过渡，打开/关闭不再跳变。全局正文、中文、英文、代码块和 terminal/diff/raw 输出统一到随包发布的 LXGW WenKai Mono 字体，并在 `assets/fonts` 保留 OFL 授权文本。
 - 本轮 Chat timeline 已改为有界窗口与按需分页：普通 thread 选择先读取 metadata，再通过 `thread/items/list(sortDirection=desc, limit=80)` 拉最新窗口，向上滚动接近顶部后按 cursor 继续加载更早 item page；controller 对 item id 去重，失败时保留当前 timeline 并显示 retry 状态，live event / reconnect recovery 的 turn backfill 路径仍保留且同样受窗口上限保护。后续仍需根据真实 app-server cursor 语义做端到端设备验证，确认 `nextCursor` 在各 Codex 版本上均表示更早历史页。
+- 本轮结构整理将 Chat timeline viewport、滚动监听、向上加载触发和可拖动“跳到最新”浮层从 `ChatPage` 拆到 `features/chat/chat_timeline_view.dart`；`ChatPage` 只负责页面编排、侧聊 header 和 timeline renderer 组合。后续若继续降低 `ChatPage` 体量，可再把 timeline item renderer、thread sidebar 与 slash command sheets 分别拆成独立文件。
 - 已补齐 active turn 文本追加路径：`CodexAppServerClient`、`CodexTurnRunner`、`TurnController` 和 Chat composer 已支持 `turn/steer`，active turn 中发送普通文本会带 `expectedTurnId` steer 当前回合，而不是启动新 turn 或禁用输入；本次 turn overrides 仍只随 `turn/start` 消耗，不会被 steer 清掉。
 
 ### 9.3 Approvals 页面

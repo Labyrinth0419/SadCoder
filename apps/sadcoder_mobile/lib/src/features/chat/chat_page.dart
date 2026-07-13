@@ -62,6 +62,7 @@ import 'chat_mcp_summary.dart';
 import 'chat_review_summary.dart';
 import 'chat_summary_formatting.dart';
 import 'chat_usage_summary.dart';
+import 'chat_timeline_view.dart';
 import 'config_override_controls.dart';
 import 'config_override_labels.dart';
 import 'session_override_controls.dart';
@@ -262,15 +263,23 @@ class _ChatPageState extends State<ChatPage> {
                             ? sidebarWidth
                             : 0,
                         right: 0,
-                        child: _ChatMainConversation(
+                        child: ChatTimelineConversation(
                           compact: compactHeight,
-                          sideConversation: _sideConversation,
-                          canReturnToMain:
-                              widget.turnController?.canSubmit == true,
-                          onReturnToMain: _returnToMainThread,
                           timelineController: widget.timelineController,
-                          showRawTranscript: _showRawTranscript,
                           onLoadOlderHistory: _requestOlderTimelineItems,
+                          header: _sideConversation == null
+                              ? null
+                              : _SideConversationPanel(
+                                  conversation: _sideConversation!,
+                                  canReturn:
+                                      widget.turnController?.canSubmit == true,
+                                  onReturn: _returnToMainThread,
+                                ),
+                          timeline: _ChatTimelinePanel(
+                            controller: widget.timelineController,
+                            showRaw: _showRawTranscript,
+                            onRetryOlderHistory: _requestOlderTimelineItems,
+                          ),
                         ),
                       ),
                       Positioned(
@@ -5104,237 +5113,6 @@ String _chatActivityTurnStatusLabel(
       controller.error,
     ),
   };
-}
-
-class _ChatMainConversation extends StatefulWidget {
-  const _ChatMainConversation({
-    required this.compact,
-    required this.sideConversation,
-    required this.canReturnToMain,
-    required this.onReturnToMain,
-    required this.timelineController,
-    required this.showRawTranscript,
-    required this.onLoadOlderHistory,
-  });
-
-  final bool compact;
-  final _SideConversation? sideConversation;
-  final bool canReturnToMain;
-  final VoidCallback onReturnToMain;
-  final ChatTimelineController? timelineController;
-  final bool showRawTranscript;
-  final VoidCallback onLoadOlderHistory;
-
-  @override
-  State<_ChatMainConversation> createState() => _ChatMainConversationState();
-}
-
-class _ChatMainConversationState extends State<_ChatMainConversation> {
-  final ScrollController _scrollController = ScrollController();
-  String? _lastSelectedThreadId;
-  bool _nearBottom = true;
-  bool _showJumpToLatest = false;
-  Offset? _jumpButtonOffset;
-
-  static const Size _jumpButtonSize = Size(46, 46);
-
-  @override
-  void initState() {
-    super.initState();
-    _lastSelectedThreadId = widget.timelineController?.selectedThreadId;
-    _scrollController.addListener(_handleScroll);
-    widget.timelineController?.addListener(_handleTimelineChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToLatest());
-  }
-
-  @override
-  void didUpdateWidget(_ChatMainConversation oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.timelineController != widget.timelineController) {
-      oldWidget.timelineController?.removeListener(_handleTimelineChanged);
-      widget.timelineController?.addListener(_handleTimelineChanged);
-      _lastSelectedThreadId = widget.timelineController?.selectedThreadId;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToLatest());
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.timelineController?.removeListener(_handleTimelineChanged);
-    _scrollController.removeListener(_handleScroll);
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _handleScroll() {
-    if (!_scrollController.hasClients) {
-      return;
-    }
-    final nearBottom = _scrollController.position.extentAfter < 96;
-    if (_scrollController.position.extentBefore < 96) {
-      widget.onLoadOlderHistory();
-    }
-    if (nearBottom != _nearBottom || (_showJumpToLatest && nearBottom)) {
-      setState(() {
-        _nearBottom = nearBottom;
-        if (nearBottom) {
-          _showJumpToLatest = false;
-        }
-      });
-    }
-  }
-
-  void _handleTimelineChanged() {
-    final selectedThreadId = widget.timelineController?.selectedThreadId;
-    final selectedThreadChanged = selectedThreadId != _lastSelectedThreadId;
-    _lastSelectedThreadId = selectedThreadId;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      if (selectedThreadChanged) {
-        _jumpToLatest();
-        return;
-      }
-      if (_nearBottom) {
-        _animateToLatest();
-      } else if (!_showJumpToLatest) {
-        setState(() => _showJumpToLatest = true);
-      }
-    });
-  }
-
-  void _jumpToLatest() {
-    if (!_scrollController.hasClients) {
-      return;
-    }
-    _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-    if (mounted) {
-      setState(() {
-        _nearBottom = true;
-        _showJumpToLatest = false;
-      });
-    }
-  }
-
-  void _animateToLatest() {
-    if (!_scrollController.hasClients) {
-      return;
-    }
-    _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
-    );
-    if (mounted && _showJumpToLatest) {
-      setState(() => _showJumpToLatest = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(color: colorScheme.surfaceContainerLowest),
-      child: Stack(
-        children: [
-          ListView(
-            key: const ValueKey('chat-main-conversation'),
-            controller: _scrollController,
-            padding: EdgeInsets.fromLTRB(
-              widget.compact ? 8 : 16,
-              widget.compact ? 8 : 14,
-              widget.compact ? 8 : 16,
-              widget.compact ? 48 : 52,
-            ),
-            children: [
-              if (widget.sideConversation != null)
-                _SideConversationPanel(
-                  conversation: widget.sideConversation!,
-                  canReturn: widget.canReturnToMain,
-                  onReturn: widget.onReturnToMain,
-                ),
-              _ChatTimelinePanel(
-                controller: widget.timelineController,
-                showRaw: widget.showRawTranscript,
-                onRetryOlderHistory: widget.onLoadOlderHistory,
-              ),
-            ],
-          ),
-          if (_showJumpToLatest)
-            Positioned.fill(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final size = Size(
-                    constraints.maxWidth,
-                    constraints.maxHeight,
-                  );
-                  final offset = _clampJumpButtonOffset(
-                    _jumpButtonOffset ?? _defaultJumpButtonOffset(size),
-                    size,
-                  );
-                  if (_jumpButtonOffset != offset) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) {
-                        setState(() => _jumpButtonOffset = offset);
-                      }
-                    });
-                  }
-                  return Stack(
-                    children: [
-                      Positioned(
-                        left: offset.dx,
-                        top: offset.dy,
-                        width: _jumpButtonSize.width,
-                        height: _jumpButtonSize.height,
-                        child: GestureDetector(
-                          key: const ValueKey('chat-jump-to-latest'),
-                          onPanUpdate: (details) {
-                            setState(() {
-                              _jumpButtonOffset = _clampJumpButtonOffset(
-                                offset + details.delta,
-                                size,
-                              );
-                            });
-                          },
-                          child: FloatingActionButton.small(
-                            heroTag: null,
-                            tooltip: context.l10n.timelineJumpToLatest,
-                            onPressed: _jumpToLatest,
-                            child: const Icon(Icons.south, size: 19),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Offset _defaultJumpButtonOffset(Size size) {
-    return Offset(size.width - _jumpButtonSize.width - 16, size.height - 64);
-  }
-
-  Offset _clampJumpButtonOffset(Offset offset, Size size) {
-    const margin = 8.0;
-    final maxX = size.width - _jumpButtonSize.width - margin;
-    final maxY = size.height - _jumpButtonSize.height - margin;
-    return Offset(
-      _clampDouble(offset.dx, margin, maxX),
-      _clampDouble(offset.dy, margin, maxY),
-    );
-  }
-
-  double _clampDouble(double value, double min, double max) {
-    if (max < min) {
-      return min;
-    }
-    return value.clamp(min, max).toDouble();
-  }
 }
 
 class _ChatThreadSidebar extends StatelessWidget {
