@@ -41,6 +41,7 @@ import 'chat_apps_summary.dart';
 import 'chat_activity_strip.dart';
 import 'chat_background_terminal_summary.dart';
 import 'chat_connection_controls.dart';
+import 'chat_composer_mention.dart';
 import 'chat_debug_config_summary.dart';
 import 'chat_display_settings_sheets.dart';
 import 'chat_diff_summary.dart';
@@ -124,7 +125,7 @@ class _ChatPageState extends State<ChatPage> {
   SlashCommandParseResult _slashCommand =
       const SlashCommandParseResult.notSlash();
   final TextEditingController _composerController = TextEditingController();
-  final List<_ComposerMention> _composerMentions = [];
+  final List<ChatComposerMention> _composerMentions = [];
   ChatSideConversation? _sideConversation;
   CodexSessionStatus? _lastSessionStatus;
   String? _slashTextPrompt;
@@ -1284,17 +1285,18 @@ class _ChatPageState extends State<ChatPage> {
     final safeStart = start.clamp(0, text.length).toInt();
     final safeEnd = end.clamp(safeStart, text.length).toInt();
     final newText = text.replaceRange(safeStart, safeEnd, token);
-    _composerMentions
-      ..removeWhere(
-        (mention) => mention.start < safeEnd && mention.end > safeStart,
-      )
-      ..add(
-        _ComposerMention(
-          token: token,
-          start: safeStart,
-          end: safeStart + token.length,
-        ),
-      );
+    removeChatComposerMentionsOverlappingRange(
+      _composerMentions,
+      start: safeStart,
+      end: safeEnd,
+    );
+    _composerMentions.add(
+      ChatComposerMention(
+        token: token,
+        start: safeStart,
+        end: safeStart + token.length,
+      ),
+    );
     _composerController.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(offset: safeStart + token.length),
@@ -1303,19 +1305,11 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _pruneComposerMentions(String text) {
-    _composerMentions.removeWhere((mention) => !mention.isPresentIn(text));
+    pruneChatComposerMentions(_composerMentions, text);
   }
 
   List<TurnTextElement> _composerTextElements(String text) {
-    return [
-      for (final mention in _composerMentions)
-        if (mention.isPresentIn(text))
-          TurnTextElement.fromCodeUnitRange(
-            text: text,
-            start: mention.start,
-            end: mention.end,
-          ),
-    ];
+    return chatComposerTextElements(text: text, mentions: _composerMentions);
   }
 
   Future<String?> _handleGoalCommand(String arguments) async {
@@ -3007,25 +3001,6 @@ String? _rolloutPathFromRaw(Map<String, Object?> raw) {
     }
   }
   return null;
-}
-
-class _ComposerMention {
-  const _ComposerMention({
-    required this.token,
-    required this.start,
-    required this.end,
-  });
-
-  final String token;
-  final int start;
-  final int end;
-
-  bool isPresentIn(String text) {
-    return start >= 0 &&
-        end <= text.length &&
-        end > start &&
-        text.substring(start, end) == token;
-  }
 }
 
 double _sidebarWidthFor(double maxWidth) {
