@@ -35,6 +35,7 @@ import 'chat_conversation_command_handler.dart';
 import 'chat_file_context_command_handler.dart';
 import 'chat_layout_metrics.dart';
 import 'chat_override_command_handler.dart';
+import 'chat_profile_selection_handler.dart';
 import 'chat_raw_transcript_command.dart';
 import 'chat_status_summary.dart';
 import 'chat_summary_command_handler.dart';
@@ -130,7 +131,7 @@ class _ChatPageState extends State<ChatPage> {
     widget.turnController?.addListener(_handleTurnChanged);
     widget.appearanceController?.addListener(_handleAppearanceChanged);
     _lastSessionStatus = widget.sessionController?.status;
-    unawaited(_loadSavedProfiles());
+    unawaited(_profileSelectionHandler().loadSavedProfiles());
     _refreshThreadsIfConnected();
     _handleThreadDetailChanged();
   }
@@ -161,7 +162,7 @@ class _ChatPageState extends State<ChatPage> {
       widget.appearanceController?.addListener(_handleAppearanceChanged);
     }
     if (oldWidget.profileStore != widget.profileStore) {
-      unawaited(_loadSavedProfiles());
+      unawaited(_profileSelectionHandler().loadSavedProfiles());
     }
   }
 
@@ -224,7 +225,7 @@ class _ChatPageState extends State<ChatPage> {
                       sessionController == null &&
                           widget.profileConnector == null
                       ? null
-                      : _selectHeaderProfile,
+                      : _profileSelectionHandler().selectProfile,
                 ),
               ),
               const Divider(height: 1),
@@ -328,7 +329,8 @@ class _ChatPageState extends State<ChatPage> {
                                                   widget.profileConnector ==
                                                       null
                                               ? null
-                                              : _selectHeaderProfile,
+                                              : _profileSelectionHandler()
+                                                    .selectProfile,
                                         ),
                                       ],
                                       const SizedBox(height: 10),
@@ -631,121 +633,20 @@ class _ChatPageState extends State<ChatPage> {
     await widget.turnController?.interruptActiveTurn();
   }
 
-  Future<void> _loadSavedProfiles() async {
-    final store = widget.profileStore;
-    if (store == null) {
-      if (mounted) {
-        setState(() {
-          _savedProfiles = const [];
-          _selectedProfileId = widget.sessionController?.profile?.id;
-          _profileLoadError = null;
-        });
-      }
-      return;
-    }
-
-    try {
-      late final List<SshProfile> profiles;
-      if (store is SshProfileListStore) {
-        profiles = await store.loadProfiles();
-      } else {
-        final profile = await store.loadLastProfile();
-        profiles = [?profile];
-      }
-      if (!mounted || store != widget.profileStore) {
-        return;
-      }
-      setState(() {
-        _savedProfiles = List.unmodifiable(profiles);
-        _selectedProfileId = _preferredHeaderProfileId(profiles);
-        _profileLoadError = null;
-      });
-    } on Object catch (error) {
-      if (!mounted || store != widget.profileStore) {
-        return;
-      }
-      setState(() {
-        _savedProfiles = const [];
-        _selectedProfileId = widget.sessionController?.profile?.id;
-        _profileLoadError = error;
-      });
-    }
-  }
-
-  String? _preferredHeaderProfileId(List<SshProfile> profiles) {
-    final connectedProfile = widget.sessionController?.profile;
-    if (connectedProfile != null) {
-      return connectedProfile.id;
-    }
-    final selectedProfileId = _selectedProfileId;
-    if (selectedProfileId != null &&
-        profiles.any((profile) => profile.id == selectedProfileId)) {
-      return selectedProfileId;
-    }
-    return profiles.isEmpty ? null : profiles.first.id;
-  }
-
   List<SshProfile> _headerProfiles() {
-    final connectedProfile = widget.sessionController?.profile;
-    final profiles = <SshProfile>[
-      ..._savedProfiles,
-      for (final session in widget.hostSessions) session.profile,
-      ?connectedProfile,
-    ];
-    final seen = <String>{};
-    return List.unmodifiable(
-      profiles.where((profile) => seen.add(profile.id)).toList(),
+    return chatHeaderProfiles(
+      savedProfiles: _savedProfiles,
+      hostSessions: widget.hostSessions,
+      connectedProfile: widget.sessionController?.profile,
     );
   }
 
   SshProfile? _selectedHeaderProfile() {
-    final selectedId =
-        widget.sessionController?.profile?.id ?? _selectedProfileId;
-    if (selectedId == null) {
-      return null;
-    }
-    return _profileById(_headerProfiles(), selectedId);
-  }
-
-  SshProfile? _profileById(List<SshProfile> profiles, String profileId) {
-    for (final profile in profiles) {
-      if (profile.id == profileId) {
-        return profile;
-      }
-    }
-    return null;
-  }
-
-  Future<void> _selectHeaderProfile(SshProfile profile) async {
-    setState(() {
-      _selectedProfileId = profile.id;
-      _profileLoadError = null;
-    });
-
-    final connector = widget.profileConnector;
-    final sessionController = widget.sessionController;
-    if (connector == null && sessionController == null) {
-      return;
-    }
-    if (sessionController?.status == CodexSessionStatus.connected &&
-        sessionController?.profile?.id == profile.id) {
-      return;
-    }
-
-    try {
-      if (connector != null) {
-        await connector(profile);
-      } else {
-        await sessionController!.connect(profile);
-      }
-    } on Object catch (error) {
-      if (!mounted) {
-        return;
-      }
-      _showChatSnackBar(
-        context.l10n.messageWithDetail(context.l10n.connectionFailed, error),
-      );
-    }
+    return selectedChatHeaderProfile(
+      profiles: _headerProfiles(),
+      connectedProfile: widget.sessionController?.profile,
+      selectedProfileId: _selectedProfileId,
+    );
   }
 
   Future<void> _dispatchSlashCommand(SlashCommandParseResult parsed) async {
@@ -949,6 +850,36 @@ class _ChatPageState extends State<ChatPage> {
       clearSideConversation: _clearSideConversation,
       refreshVisibleThreads: _refreshVisibleThreads,
       syncActiveTurnToTimeline: _timelineWindowCoordinator.syncActiveTurn,
+      showSnackBar: _showChatSnackBar,
+    );
+  }
+
+  ChatProfileSelectionHandler _profileSelectionHandler() {
+    return ChatProfileSelectionHandler(
+      context: context,
+      mounted: () => mounted,
+      profileStoreProvider: () => widget.profileStore,
+      sessionController: widget.sessionController,
+      profileConnector: widget.profileConnector,
+      currentSelectedProfileId: () => _selectedProfileId,
+      applyProfileState:
+          ({
+            required savedProfiles,
+            required selectedProfileId,
+            required profileLoadError,
+          }) {
+            setState(() {
+              _savedProfiles = savedProfiles;
+              _selectedProfileId = selectedProfileId;
+              _profileLoadError = profileLoadError;
+            });
+          },
+      selectProfileLocally: (profileId) {
+        setState(() {
+          _selectedProfileId = profileId;
+          _profileLoadError = null;
+        });
+      },
       showSnackBar: _showChatSnackBar,
     );
   }
