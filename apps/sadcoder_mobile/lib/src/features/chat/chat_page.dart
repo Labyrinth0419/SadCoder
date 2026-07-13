@@ -55,6 +55,7 @@ import 'chat_model_override_sheet.dart';
 import 'chat_override_scope.dart';
 import 'chat_personality_override_sheet.dart';
 import 'chat_permissions_override_sheet.dart';
+import 'chat_plugins_command.dart';
 import 'chat_plugins_summary.dart';
 import 'chat_skills_summary.dart';
 import 'chat_status_summary.dart';
@@ -945,38 +946,22 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<String?> _buildPluginsSummary(String arguments) async {
-    final parts = arguments
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((part) => part.isNotEmpty)
-        .toList(growable: false);
-    final command = parts.isEmpty ? '' : parts.first.toLowerCase();
-    final read =
-        parts.length == 2 &&
-        (command == 'read' || command == 'show' || command == 'detail');
-    final install = parts.length == 2 && command == 'install';
-    final uninstall =
-        parts.length == 2 && (command == 'uninstall' || command == 'remove');
-    final marketplaceKinds = _pluginMarketplaceKindsFromArguments(parts);
-    if (parts.isNotEmpty &&
-        !read &&
-        !install &&
-        !uninstall &&
-        marketplaceKinds == null) {
+    final command = parseChatPluginsCommand(arguments);
+    if (command == null) {
       return null;
     }
 
     final l10n = context.l10n;
     final reader = widget.sessionController?.pluginListReader;
     final cwds = _currentWorkspaceCwds();
-    if (read) {
+    if (command case ChatPluginsReadCommand(:final pluginId)) {
       final detailReader = widget.sessionController?.pluginDetailReader;
       if (detailReader == null) {
         return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
       }
       try {
         final detail = await detailReader.readPlugin(
-          pluginId: parts[1],
+          pluginId: pluginId,
           cwds: cwds,
         );
         return buildPluginDetailSummary(l10n: l10n, detail: detail);
@@ -991,15 +976,28 @@ class _ChatPageState extends State<ChatPage> {
         ].join('\n');
       }
     }
-    if (install || uninstall) {
+    final mutationPluginId = switch (command) {
+      ChatPluginsInstallCommand(:final pluginId) => pluginId,
+      ChatPluginsUninstallCommand(:final pluginId) => pluginId,
+      _ => null,
+    };
+    if (mutationPluginId != null) {
       final runner = widget.sessionController?.pluginMutationRunner;
       if (runner == null) {
         return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
       }
       try {
-        final result = install
-            ? await runner.installPlugin(pluginId: parts[1], cwds: cwds)
-            : await runner.uninstallPlugin(pluginId: parts[1], cwds: cwds);
+        final result = switch (command) {
+          ChatPluginsInstallCommand() => await runner.installPlugin(
+            pluginId: mutationPluginId,
+            cwds: cwds,
+          ),
+          ChatPluginsUninstallCommand() => await runner.uninstallPlugin(
+            pluginId: mutationPluginId,
+            cwds: cwds,
+          ),
+          _ => throw StateError('Unexpected plugin mutation command.'),
+        };
         final lines = <String>[
           buildPluginMutationSummary(l10n: l10n, result: result),
         ];
@@ -1020,6 +1018,10 @@ class _ChatPageState extends State<ChatPage> {
       }
     }
 
+    final marketplaceKinds = switch (command) {
+      ChatPluginsListCommand(:final marketplaceKinds) => marketplaceKinds,
+      _ => const <PluginMarketplaceKind>[],
+    };
     if (reader == null) {
       return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
     }
@@ -1027,7 +1029,7 @@ class _ChatPageState extends State<ChatPage> {
     try {
       final page = await reader.listPlugins(
         cwds: cwds,
-        marketplaceKinds: marketplaceKinds ?? const [],
+        marketplaceKinds: marketplaceKinds,
       );
       return buildPluginsSummary(l10n: l10n, page: page);
     } on Object catch (error) {
@@ -2335,37 +2337,6 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     return const [];
-  }
-
-  List<PluginMarketplaceKind>? _pluginMarketplaceKindsFromArguments(
-    List<String> parts,
-  ) {
-    if (parts.isEmpty) {
-      return const [];
-    }
-    final kind = switch (parts) {
-      [final rawKind] => _parsePluginMarketplaceKind(rawKind),
-      ['marketplace' || 'marketplaces', final rawKind] =>
-        _parsePluginMarketplaceKind(rawKind),
-      _ => null,
-    };
-    return kind == null ? null : [kind];
-  }
-
-  PluginMarketplaceKind? _parsePluginMarketplaceKind(String value) {
-    final normalized = value.trim().toLowerCase().replaceAll('_', '-');
-    for (final kind in PluginMarketplaceKind.values) {
-      final normalizedName = kind.name
-          .replaceAllMapped(
-            RegExp(r'[A-Z]'),
-            (match) => '-${match.group(0)!.toLowerCase()}',
-          )
-          .toLowerCase();
-      if (normalized == kind.wireName || normalized == normalizedName) {
-        return kind;
-      }
-    }
-    return null;
   }
 
   Future<String?> _resolvePlanModeModel() async {
