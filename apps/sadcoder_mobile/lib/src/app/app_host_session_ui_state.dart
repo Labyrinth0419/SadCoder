@@ -648,7 +648,7 @@ Map<String, _AgentSnapshotThreadCursor> _threadCursorsForAgentSnapshot(
     if (threadId != null && cursor != null) {
       final existing = threadCursors[threadId];
       threadCursors[threadId] = _AgentSnapshotThreadCursor(
-        deliveredCursor: cursor,
+        deliveredCursor: _newerCursor(existing?.deliveredCursor, cursor),
         lastTurnId: _turnIdFromParams(event.params) ?? existing?.lastTurnId,
         lastItemId: _itemIdFromParams(event.params) ?? existing?.lastItemId,
       );
@@ -712,6 +712,34 @@ List<String> _mergedIds(List<String>? first, List<String>? second) {
     }
   }
   return List.unmodifiable(ids);
+}
+
+String _newerCursor(String? current, String candidate) {
+  final normalizedCurrent = _normalized(current);
+  final normalizedCandidate = _normalized(candidate);
+  if (normalizedCurrent == null || normalizedCandidate == null) {
+    return normalizedCandidate ?? normalizedCurrent ?? candidate;
+  }
+  final currentOrder = _cursorOrder(normalizedCurrent);
+  final candidateOrder = _cursorOrder(normalizedCandidate);
+  if (currentOrder != null && candidateOrder != null) {
+    return candidateOrder >= currentOrder
+        ? normalizedCandidate
+        : normalizedCurrent;
+  }
+  return normalizedCurrent;
+}
+
+int? _cursorOrder(String cursor) {
+  final numeric = int.tryParse(cursor);
+  if (numeric != null) {
+    return numeric;
+  }
+  final match = RegExp(r'(\d+)$').firstMatch(cursor);
+  if (match == null) {
+    return null;
+  }
+  return int.tryParse(match.group(1)!);
 }
 
 ThreadTimelineCursorSnapshot _withDeliveredCursor(
