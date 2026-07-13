@@ -1,10 +1,25 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sadcoder_mobile/src/ssh/default_ssh_profile_store.dart';
+import 'package:sadcoder_mobile/src/ssh/flutter_secure_storage_ssh_credential_store.dart';
 import 'package:sadcoder_mobile/src/ssh/secure_ssh_profile_store.dart';
+import 'package:sadcoder_mobile/src/ssh/shared_preferences_ssh_profile_store.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_credential_store.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile_store.dart';
 
 void main() {
+  test('default store keeps metadata and secrets in separate backends', () {
+    expect(defaultSshProfileStore, isA<SecureSshProfileStore>());
+    final store = defaultSshProfileStore as SecureSshProfileStore;
+
+    expect(store.metadataStore, isA<SharedPreferencesSshProfileStore>());
+    expect(
+      store.credentialStore,
+      isA<FlutterSecureStorageSshCredentialStore>(),
+    );
+  });
+
   test('combines profile metadata with securely stored secrets', () async {
     final metadataStore = _FakeProfileStore(
       initialProfile: const SshProfile(
@@ -125,6 +140,54 @@ void main() {
     expect(metadataStore.deletedProfileIds, ['bob@srv.dev:22']);
     expect(credentialStore.deletedProfileIds, ['bob@srv.dev:22']);
   });
+
+  test(
+    'SharedPreferences metadata does not contain imported secrets',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      const importedPrivateKey = '''-----BEGIN OPENSSH PRIVATE KEY-----
+private-key-body
+-----END OPENSSH PRIVATE KEY-----''';
+      final credentialStore = _FakeCredentialStore();
+      final store = SecureSshProfileStore(
+        metadataStore: const SharedPreferencesSshProfileStore(),
+        credentialStore: credentialStore,
+      );
+
+      await store.saveProfile(
+        const SshProfile(
+          id: 'alice@srv.dev:22#Dev',
+          name: 'Dev',
+          host: 'srv.dev',
+          username: 'alice',
+          authType: SshAuthType.privateKey,
+          password: 'password-secret',
+          privateKeyPem: importedPrivateKey,
+          passphrase: 'passphrase-secret',
+        ),
+      );
+
+      final preferences = await SharedPreferences.getInstance();
+      final rawMetadata = [
+        for (final key in preferences.getKeys()) '$key=${preferences.get(key)}',
+      ].join('\n');
+
+      expect(rawMetadata, contains('srv.dev'));
+      expect(rawMetadata, isNot(contains('password-secret')));
+      expect(rawMetadata, isNot(contains('PRIVATE KEY')));
+      expect(rawMetadata, isNot(contains('passphrase-secret')));
+
+      final reloadedStore = SecureSshProfileStore(
+        metadataStore: const SharedPreferencesSshProfileStore(),
+        credentialStore: credentialStore,
+      );
+      final loadedProfiles = await reloadedStore.loadProfiles();
+
+      expect(loadedProfiles.single.privateKeyPem, importedPrivateKey);
+      expect(loadedProfiles.single.password, 'password-secret');
+      expect(loadedProfiles.single.passphrase, 'passphrase-secret');
+    },
+  );
 }
 
 class _FakeProfileStore implements SshProfileStore {
@@ -177,11 +240,11 @@ class _FakeProfileListStore implements SshProfileListStore {
 class _FakeCredentialStore implements SshCredentialStore {
   _FakeCredentialStore({
     this.initialSecrets = const SshProfileSecrets(),
-    this.secretsByProfileId = const {},
-  });
+    Map<String, SshProfileSecrets> secretsByProfileId = const {},
+  }) : _secretsByProfileId = Map.of(secretsByProfileId);
 
   final SshProfileSecrets initialSecrets;
-  final Map<String, SshProfileSecrets> secretsByProfileId;
+  final Map<String, SshProfileSecrets> _secretsByProfileId;
   final loadedProfileIds = <String>[];
   final savedProfileIds = <String>[];
   final savedSecrets = <SshProfileSecrets>[];
@@ -190,23 +253,24 @@ class _FakeCredentialStore implements SshCredentialStore {
   @override
   Future<SshProfileSecrets> loadSecrets(String profileId) async {
     loadedProfileIds.add(profileId);
-    return secretsByProfileId[profileId] ?? initialSecrets;
+    return _secretsByProfileId[profileId] ?? initialSecrets;
   }
 
   @override
   Future<void> saveSecrets(String profileId, SshProfile profile) async {
     savedProfileIds.add(profileId);
-    savedSecrets.add(
-      SshProfileSecrets(
-        password: profile.password,
-        privateKeyPem: profile.privateKeyPem,
-        passphrase: profile.passphrase,
-      ),
+    final secrets = SshProfileSecrets(
+      password: profile.password,
+      privateKeyPem: profile.privateKeyPem,
+      passphrase: profile.passphrase,
     );
+    savedSecrets.add(secrets);
+    _secretsByProfileId[profileId] = secrets;
   }
 
   @override
   Future<void> deleteSecrets(String profileId) async {
     deletedProfileIds.add(profileId);
+    _secretsByProfileId.remove(profileId);
   }
 }

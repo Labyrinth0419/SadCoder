@@ -1051,6 +1051,7 @@ MVP 可以简化为底部导航：
 当前实现状态：
 
 - 已落地本地多 SSH profile 保存、按 host 分组折叠、保存项删除、OpenSSH config 导入、私钥文件导入、RSA / ED25519 密钥生成和 public key 复制/导出；私钥走 secure profile store 持久化，不放普通 cache。
+- 本轮加固了生产 SSH profile store wiring：默认 App 入口统一使用 `defaultSshProfileStore`，其组合固定为 SharedPreferences metadata + FlutterSecureStorage secrets；新增测试直接断言默认组合，并验证导入私钥、密码、passphrase 不会写入 SharedPreferences metadata，重新加载时由 durable credential store 回填。
 - 已统一主机显示原则：保存主机和会话状态优先显示用户别名；无别名时显示 host/IP，不把 `user@host:port` 当作默认标题。
 - 已对齐手动保存与 OpenSSH config 导入的 profile id 规则：用户填写别名时，同一 `user@host:port` 下的不同别名会保存为不同 profile，并在同一 host 分组下折叠展示；无别名时仍回退到 endpoint id，避免普通单主机配置产生重复项。
 - 已加固 OpenSSH config 导入的条件段边界：`Match` 条件块不会被当作普通 Host 配置继续套用到前一个主机或全局默认；当前移动端导入只解析明确的 `Host` 段，条件配置留待后续显式能力设计。
