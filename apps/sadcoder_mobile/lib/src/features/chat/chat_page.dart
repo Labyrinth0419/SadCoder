@@ -44,7 +44,7 @@ import 'chat_config_summary_commands.dart';
 import 'chat_connection_controls.dart';
 import 'chat_composer_mention.dart';
 import 'chat_display_settings_sheets.dart';
-import 'chat_diff_summary.dart';
+import 'chat_diff_command.dart';
 import 'chat_feedback_sheet.dart';
 import 'chat_goal_command.dart';
 import 'chat_layout_metrics.dart';
@@ -1131,28 +1131,12 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<String?> _buildDiffSummary(String arguments) async {
-    if (arguments.trim().isNotEmpty) {
-      return null;
-    }
-
-    final l10n = context.l10n;
-    final reader = widget.sessionController?.gitDiffReader;
-    if (reader == null) {
-      return [l10n.diffTitle, l10n.diffUnavailable].join('\n');
-    }
-
-    try {
-      final cwds = _currentWorkspaceCwds();
-      final result = await reader.readDiff(
-        cwd: cwds.isEmpty ? null : cwds.first,
-      );
-      return buildGitDiffSummary(l10n: l10n, result: result);
-    } on Object catch (error) {
-      return [
-        l10n.diffTitle,
-        chatSummaryMessageWithOptionalDetail(l10n, l10n.diffLoadFailed, error),
-      ].join('\n');
-    }
+    return buildGitDiffSummaryFromCommand(
+      l10n: context.l10n,
+      reader: widget.sessionController?.gitDiffReader,
+      cwds: _currentWorkspaceCwds(),
+      arguments: arguments,
+    );
   }
 
   Future<SlashCommandCallbackResult> _mentionFile() async {
