@@ -500,6 +500,7 @@ class _HostsPageState extends State<HostsPage> {
       _error = null;
     });
 
+    final l10n = context.l10n;
     try {
       final report = await _runWithKnownHostConfirmation(
         action: () => _runner.run(_buildProfile()),
@@ -512,7 +513,9 @@ class _HostsPageState extends State<HostsPage> {
       if (!mounted) {
         return;
       }
-      setState(() => _error = error.toString());
+      setState(
+        () => _error = l10n.messageWithDetail(l10n.sshProbeFailed, error),
+      );
     } finally {
       if (mounted) {
         setState(() => _testing = false);

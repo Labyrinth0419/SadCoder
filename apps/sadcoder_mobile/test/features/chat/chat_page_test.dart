@@ -188,6 +188,59 @@ void main() {
     expect(find.byKey(const ValueKey('chat-raw-rpc-panel')), findsOneWidget);
   });
 
+  testWidgets('raw RPC send failures keep localized summary and raw detail', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final sessionController = CodexSessionStateController(
+      connector: const _FakeSessionStarter(
+        threadListReader: _FakeThreadListReader(
+          page: ThreadListPage(threads: []),
+        ),
+        rawRpcError: FormatException('raw failed'),
+      ),
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      locale: const Locale('zh', 'CN'),
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('原始 RPC'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-raw-rpc-method-field')),
+      'thread/list',
+    );
+    await tester.tap(find.byKey(const ValueKey('chat-raw-rpc-confirm')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('chat-raw-rpc-send')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('原始 RPC 发送失败', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('raw failed', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Raw RPC send failed', skipOffstage: false),
+      findsNothing,
+    );
+  });
+
   testWidgets('host selector connects a saved SSH profile', (tester) async {
     const remoteProfile = SshProfile(
       id: 'remote',
@@ -7642,6 +7695,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.fileSearchReader = const _FakeFileSearchReader(),
     this.mcpServerConfigRunner = const _FakeMcpServerConfigRunner(),
     this.mcpServerOAuthRunner = const _FakeMcpServerOAuthRunner(),
+    this.rawRpcError,
   });
 
   final ThreadListReader threadListReader;
@@ -7663,6 +7717,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final FileSearchReader fileSearchReader;
   final McpServerConfigRunner mcpServerConfigRunner;
   final McpServerOAuthRunner mcpServerOAuthRunner;
+  final Object? rawRpcError;
 
   @override
   Future<CodexSessionConnectionHandle> connect(
@@ -7694,6 +7749,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
         workspaceFileReader: const _FakeWorkspaceFileReader(),
         mcpServerConfigRunner: mcpServerConfigRunner,
         mcpServerOAuthRunner: mcpServerOAuthRunner,
+        rawRpcError: rawRpcError,
       );
     }
     return _FakeSessionConnection(
@@ -7718,6 +7774,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       workspaceFileReader: const _FakeWorkspaceFileReader(),
       mcpServerConfigRunner: mcpServerConfigRunner,
       mcpServerOAuthRunner: mcpServerOAuthRunner,
+      rawRpcError: rawRpcError,
     );
   }
 }
@@ -7745,6 +7802,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.workspaceFileReader,
     required this.mcpServerConfigRunner,
     required this.mcpServerOAuthRunner,
+    this.rawRpcError,
   }) : _doneCompleter = Completer<void>();
 
   final Completer<void> _doneCompleter;
@@ -7823,6 +7881,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final McpServerOAuthRunner mcpServerOAuthRunner;
+  final Object? rawRpcError;
 
   @override
   ModelListReader get modelListReader => const _FakeModelListReader();
@@ -7887,6 +7946,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required String method,
     Map<String, Object?>? params,
   }) async {
+    final error = rawRpcError;
+    if (error != null) {
+      throw error;
+    }
     final result = <String, Object?>{'method': method.trim()};
     if (params != null) {
       result['params'] = params;
@@ -7928,6 +7991,7 @@ class _FakeThreadShellCommandConnection extends _FakeSessionConnection
     required super.workspaceFileReader,
     required super.mcpServerConfigRunner,
     required super.mcpServerOAuthRunner,
+    super.rawRpcError,
   });
 
   @override

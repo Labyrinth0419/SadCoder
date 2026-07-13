@@ -131,6 +131,47 @@ void main() {
     expect(find.text('Thread list (limit 1)'), findsOneWidget);
   });
 
+  testWidgets('localizes manual M0 probe failures', (tester) async {
+    final runner = _FakeProbeRunner(
+      report: const M0ProbeReport(steps: []),
+      error: StateError('probe failed'),
+    );
+
+    await _pumpHostsPage(tester, runner, locale: const Locale('zh'));
+
+    await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+    await tester.enterText(
+      find.byKey(const ValueKey('username-field')),
+      'alice',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('password-field')),
+      'secret',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('probe-test-button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('probe-test-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('SSH 检测失败', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('probe failed', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('SSH probe failed', skipOffstage: false),
+      findsNothing,
+    );
+  });
+
   testWidgets('shows structured Codex failure in agent status summary', (
     tester,
   ) async {
@@ -1733,14 +1774,19 @@ const _passedProbeSteps = [
 ];
 
 class _FakeProbeRunner implements M0ProbeRunner {
-  _FakeProbeRunner({required this.report});
+  _FakeProbeRunner({required this.report, this.error});
 
   final M0ProbeReport report;
+  final Object? error;
   SshProfile? lastProfile;
 
   @override
   Future<M0ProbeReport> run(SshProfile profile) async {
     lastProfile = profile;
+    final error = this.error;
+    if (error != null) {
+      throw error;
+    }
     return report;
   }
 }

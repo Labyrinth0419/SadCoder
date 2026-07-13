@@ -185,7 +185,9 @@ class _RawRpcPanelState extends State<RawRpcPanel> {
       if (!mounted) {
         return;
       }
-      setState(() => _error = error.toString());
+      setState(
+        () => _error = l10n.messageWithDetail(l10n.rawRpcSendFailed, error),
+      );
     } finally {
       if (mounted) {
         setState(() => _submitting = false);

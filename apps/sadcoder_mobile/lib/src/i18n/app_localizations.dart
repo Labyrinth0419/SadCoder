@@ -65,6 +65,7 @@ class AppLocalizations {
   String get sshConnectFailed => _text('sshConnectFailed');
   String get sshDisconnectFailed => _text('sshDisconnectFailed');
   String get sshBackendRestartFailed => _text('sshBackendRestartFailed');
+  String get sshProbeFailed => _text('sshProbeFailed');
   String savedHostProfileCount(int count) =>
       _text('savedHostProfileCount').replaceAll('{count}', '$count');
   String get importSshConfig => _text('importSshConfig');
@@ -219,6 +220,7 @@ class AppLocalizations {
   String get rawRpcError => _text('rawRpcError');
   String get rawRpcInvalidJsonObject => _text('rawRpcInvalidJsonObject');
   String get rawRpcMethodRequired => _text('rawRpcMethodRequired');
+  String get rawRpcSendFailed => _text('rawRpcSendFailed');
   String get connectBeforeTurn => _text('connectBeforeTurn');
   String get connectBeforeLoadingThreads =>
       _text('connectBeforeLoadingThreads');
@@ -1123,6 +1125,7 @@ const _values = <String, Map<String, String>>{
     'sshConnectFailed': 'SSH connection failed',
     'sshDisconnectFailed': 'SSH disconnect failed',
     'sshBackendRestartFailed': 'Backend restart failed',
+    'sshProbeFailed': 'SSH probe failed',
     'savedHostProfileCount': '{count} profiles',
     'importSshConfig': 'Import SSH config',
     'importingSshConfig': 'Importing config',
@@ -1260,6 +1263,7 @@ const _values = <String, Map<String, String>>{
     'rawRpcError': 'Error',
     'rawRpcInvalidJsonObject': 'Params must be a JSON object',
     'rawRpcMethodRequired': 'Method is required.',
+    'rawRpcSendFailed': 'Raw RPC send failed',
     'connectBeforeTurn': 'Connect to a host before sending a turn',
     'connectBeforeLoadingThreads': 'Connect to a host to load sessions.',
     'refreshThreads': 'Refresh sessions',
@@ -1995,6 +1999,7 @@ const _values = <String, Map<String, String>>{
     'sshConnectFailed': 'SSH 连接失败',
     'sshDisconnectFailed': 'SSH 断开连接失败',
     'sshBackendRestartFailed': '后端重启失败',
+    'sshProbeFailed': 'SSH 检测失败',
     'savedHostProfileCount': '{count} 个配置',
     'importSshConfig': '导入 SSH config',
     'importingSshConfig': '正在导入 config',
@@ -2114,6 +2119,7 @@ const _values = <String, Map<String, String>>{
     'rawRpcError': '错误',
     'rawRpcInvalidJsonObject': '参数必须是 JSON 对象',
     'rawRpcMethodRequired': '必须填写方法。',
+    'rawRpcSendFailed': '原始 RPC 发送失败',
     'connectBeforeTurn': '连接主机后才能发送任务',
     'connectBeforeLoadingThreads': '连接主机后加载会话。',
     'refreshThreads': '刷新会话',
