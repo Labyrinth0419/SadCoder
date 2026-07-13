@@ -238,6 +238,51 @@ enum _SettingsSection {
   diagnostics,
 }
 
+enum _SettingsMenuGroup { codex, interface, connection, system }
+
+extension _SettingsMenuGroupSections on _SettingsMenuGroup {
+  List<_SettingsSection> get sections {
+    return switch (this) {
+      _SettingsMenuGroup.codex => const [
+        _SettingsSection.permissions,
+        _SettingsSection.account,
+        _SettingsSection.models,
+      ],
+      _SettingsMenuGroup.interface => const [_SettingsSection.appearance],
+      _SettingsMenuGroup.connection => const [_SettingsSection.ssh],
+      _SettingsMenuGroup.system => const [_SettingsSection.diagnostics],
+    };
+  }
+
+  bool get expandedByDefault {
+    return switch (this) {
+      _SettingsMenuGroup.codex ||
+      _SettingsMenuGroup.interface ||
+      _SettingsMenuGroup.connection => true,
+      _SettingsMenuGroup.system => false,
+    };
+  }
+}
+
+String _labelForSettingsGroup(BuildContext context, _SettingsMenuGroup group) {
+  final l10n = context.l10n;
+  return switch (group) {
+    _SettingsMenuGroup.codex => l10n.settingsGroupCodex,
+    _SettingsMenuGroup.interface => l10n.settingsGroupInterface,
+    _SettingsMenuGroup.connection => l10n.settingsGroupConnection,
+    _SettingsMenuGroup.system => l10n.settingsGroupSystem,
+  };
+}
+
+IconData _iconForSettingsGroup(_SettingsMenuGroup group) {
+  return switch (group) {
+    _SettingsMenuGroup.codex => Icons.tune_outlined,
+    _SettingsMenuGroup.interface => Icons.dashboard_customize_outlined,
+    _SettingsMenuGroup.connection => Icons.hub_outlined,
+    _SettingsMenuGroup.system => Icons.build_circle_outlined,
+  };
+}
+
 String _labelForSection(BuildContext context, _SettingsSection section) {
   final l10n = context.l10n;
   return switch (section) {
@@ -275,13 +320,32 @@ class _SettingsSectionMenu extends StatelessWidget {
     return Card(
       child: Column(
         children: [
-          for (final section in _SettingsSection.values)
-            _SettingsSectionTile(
-              tileKey: ValueKey('settings-section-${section.name}'),
-              icon: _iconForSection(section),
-              label: _labelForSection(context, section),
-              selected: selectedSection == section,
-              onTap: () => onSelected(section),
+          for (final group in _SettingsMenuGroup.values)
+            Theme(
+              data: Theme.of(
+                context,
+              ).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                key: ValueKey('settings-group-${group.name}'),
+                initiallyExpanded:
+                    group.sections.contains(selectedSection) ||
+                    group.expandedByDefault,
+                dense: true,
+                visualDensity: VisualDensity.compact,
+                leading: Icon(_iconForSettingsGroup(group)),
+                title: Text(_labelForSettingsGroup(context, group)),
+                childrenPadding: const EdgeInsets.only(bottom: 4),
+                children: [
+                  for (final section in group.sections)
+                    _SettingsSectionTile(
+                      tileKey: ValueKey('settings-section-${section.name}'),
+                      icon: _iconForSection(section),
+                      label: _labelForSection(context, section),
+                      selected: selectedSection == section,
+                      onTap: () => onSelected(section),
+                    ),
+                ],
+              ),
             ),
         ],
       ),
@@ -308,6 +372,8 @@ class _SettingsSectionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       key: tileKey,
+      dense: true,
+      contentPadding: const EdgeInsetsDirectional.only(start: 40, end: 12),
       leading: Icon(icon),
       title: Text(label),
       selected: selected,

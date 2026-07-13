@@ -29,6 +29,10 @@ class AppLocalizations {
   String get sessions => _text('sessions');
   String get approvals => _text('approvals');
   String get settings => _text('settings');
+  String get settingsGroupCodex => _text('settingsGroupCodex');
+  String get settingsGroupInterface => _text('settingsGroupInterface');
+  String get settingsGroupConnection => _text('settingsGroupConnection');
+  String get settingsGroupSystem => _text('settingsGroupSystem');
   String get settingsSectionPermissions => _text('settingsSectionPermissions');
   String get settingsSectionAccount => _text('settingsSectionAccount');
   String get settingsSectionModels => _text('settingsSectionModels');
@@ -1124,6 +1128,10 @@ const _values = <String, Map<String, String>>{
     'sessions': 'Sessions',
     'approvals': 'Approvals',
     'settings': 'Settings',
+    'settingsGroupCodex': 'Codex',
+    'settingsGroupInterface': 'Interface',
+    'settingsGroupConnection': 'Connection',
+    'settingsGroupSystem': 'System',
     'settingsSectionPermissions': 'Permissions',
     'settingsSectionAccount': 'Account',
     'settingsSectionModels': 'Models',
@@ -2018,6 +2026,10 @@ const _values = <String, Map<String, String>>{
     'sessions': '会话',
     'approvals': '审批',
     'settings': '设置',
+    'settingsGroupCodex': 'Codex',
+    'settingsGroupInterface': '界面',
+    'settingsGroupConnection': '连接',
+    'settingsGroupSystem': '系统',
     'settingsSectionPermissions': '权限',
     'settingsSectionAccount': '账户',
     'settingsSectionModels': '模型',

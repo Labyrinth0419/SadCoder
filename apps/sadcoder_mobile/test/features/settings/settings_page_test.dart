@@ -32,7 +32,7 @@ import 'package:sadcoder_mobile/src/protocol/json_rpc_diagnostic_log.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 
 void main() {
-  testWidgets('uses first-level settings sections with one detail group open', (
+  testWidgets('uses two-level settings sections with one detail group open', (
     tester,
   ) async {
     final controller = CodexConfigOverrideController();
@@ -46,6 +46,16 @@ void main() {
       appearanceController: appearanceController,
     );
 
+    expect(find.byKey(const ValueKey('settings-group-codex')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('settings-group-interface')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('settings-group-connection')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('settings-group-system')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('settings-section-permissions')),
       findsOneWidget,
@@ -65,10 +75,18 @@ void main() {
     expect(find.byKey(const ValueKey('settings-section-ssh')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('settings-section-diagnostics')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(find.text('Server defaults'), findsOneWidget);
     expect(find.byKey(const ValueKey('settings-theme-selector')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('settings-group-system')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('settings-section-diagnostics')),
+      findsOneWidget,
+    );
 
     await _openSettingsSection(tester, 'appearance');
 
@@ -99,6 +117,11 @@ void main() {
     );
 
     expect(find.text('Settings'), findsOneWidget);
+    expect(find.byKey(const ValueKey('settings-group-codex')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('settings-group-interface')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey('settings-section-account')),
       findsOneWidget,
@@ -1406,10 +1429,30 @@ const _profile = SshProfile(
 
 Future<void> _openSettingsSection(WidgetTester tester, String section) async {
   final sectionFinder = find.byKey(ValueKey('settings-section-$section'));
+  if (sectionFinder.evaluate().isEmpty) {
+    final group = _settingsGroupForSection(section);
+    if (group != null) {
+      final groupFinder = find.byKey(ValueKey('settings-group-$group'));
+      await tester.ensureVisible(groupFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(groupFinder);
+      await tester.pumpAndSettle();
+    }
+  }
   await tester.ensureVisible(sectionFinder);
   await tester.pumpAndSettle();
   await tester.tap(sectionFinder);
   await tester.pumpAndSettle();
+}
+
+String? _settingsGroupForSection(String section) {
+  return switch (section) {
+    'permissions' || 'account' || 'models' => 'codex',
+    'appearance' => 'interface',
+    'ssh' => 'connection',
+    'diagnostics' => 'system',
+    _ => null,
+  };
 }
 
 class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {
