@@ -20,9 +20,7 @@ import '../../session/host_session_summary.dart';
 import '../../ssh/ssh_profile.dart';
 import '../../ssh/ssh_profile_store.dart';
 import '../../threads/thread_detail_controller.dart';
-import '../../threads/thread_item_list_reader.dart';
 import '../../threads/thread_list_controller.dart';
-import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
 import '../../turns/turn_text_element.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
@@ -47,6 +45,7 @@ import 'chat_thread_command_handler.dart';
 import 'chat_thread_sidebar.dart';
 import 'chat_timeline_renderer.dart';
 import 'chat_timeline_view.dart';
+import 'chat_timeline_window_coordinator.dart';
 import 'slash_command_palette.dart';
 
 typedef ChatProfileConnector = Future<void> Function(SshProfile profile);
@@ -114,12 +113,18 @@ class _ChatPageState extends State<ChatPage> {
   List<SshProfile> _savedProfiles = const [];
   String? _selectedProfileId;
   Object? _profileLoadError;
-  String? _lastTimelineWindowThreadId;
-  int _timelineWindowGeneration = 0;
+  late final ChatTimelineWindowCoordinator _timelineWindowCoordinator;
 
   @override
   void initState() {
     super.initState();
+    _timelineWindowCoordinator = ChatTimelineWindowCoordinator(
+      mounted: () => mounted,
+      timelineControllerProvider: () => widget.timelineController,
+      threadItemListReaderProvider: () =>
+          widget.sessionController?.threadItemListReader,
+      turnControllerProvider: () => widget.turnController,
+    );
     widget.sessionController?.addListener(_handleSessionChanged);
     widget.threadDetailController?.addListener(_handleThreadDetailChanged);
     widget.turnController?.addListener(_handleTurnChanged);
@@ -144,7 +149,7 @@ class _ChatPageState extends State<ChatPage> {
         _handleThreadDetailChanged,
       );
       widget.threadDetailController?.addListener(_handleThreadDetailChanged);
-      _lastTimelineWindowThreadId = null;
+      _timelineWindowCoordinator.reset();
       _handleThreadDetailChanged();
     }
     if (oldWidget.turnController != widget.turnController) {
@@ -248,7 +253,8 @@ class _ChatPageState extends State<ChatPage> {
                         child: ChatTimelineConversation(
                           compact: compactHeight,
                           timelineController: widget.timelineController,
-                          onLoadOlderHistory: _requestOlderTimelineItems,
+                          onLoadOlderHistory:
+                              _timelineWindowCoordinator.requestOlderItems,
                           header: _sideConversation == null
                               ? null
                               : ChatSideConversationPanel(
@@ -263,7 +269,8 @@ class _ChatPageState extends State<ChatPage> {
                           timeline: ChatTimelinePanel(
                             controller: widget.timelineController,
                             showRaw: _showRawTranscript,
-                            onRetryOlderHistory: _requestOlderTimelineItems,
+                            onRetryOlderHistory:
+                                _timelineWindowCoordinator.requestOlderItems,
                           ),
                         ),
                       ),
@@ -565,7 +572,7 @@ class _ChatPageState extends State<ChatPage> {
       await turnController.submitText(text, textElements: textElements);
     }
     if (turnController.status != TurnControllerStatus.failed) {
-      _syncActiveTurnToTimeline(submittedText: text);
+      _timelineWindowCoordinator.syncActiveTurn(submittedText: text);
       if (!steeringActiveTurn) {
         widget.configOverrideController?.clearTurn();
       }
@@ -899,7 +906,7 @@ class _ChatPageState extends State<ChatPage> {
       permissionProfileListController: widget.permissionProfileListController,
       turnController: widget.turnController,
       resolvePlanModeModel: _resolvePlanModeModel,
-      syncActiveTurnToTimeline: _syncActiveTurnToTimeline,
+      syncActiveTurnToTimeline: _timelineWindowCoordinator.syncActiveTurn,
     );
   }
 
@@ -941,7 +948,7 @@ class _ChatPageState extends State<ChatPage> {
       },
       clearSideConversation: _clearSideConversation,
       refreshVisibleThreads: _refreshVisibleThreads,
-      syncActiveTurnToTimeline: _syncActiveTurnToTimeline,
+      syncActiveTurnToTimeline: _timelineWindowCoordinator.syncActiveTurn,
       showSnackBar: _showChatSnackBar,
     );
   }
@@ -1418,122 +1425,13 @@ class _ChatPageState extends State<ChatPage> {
           detailController?.selectedThreadId,
         );
         if (thread != null && thread.id == selectedThreadId) {
-          _loadInitialTimelineWindow(thread);
+          _timelineWindowCoordinator.loadInitialWindow(thread);
         }
       case ThreadDetailStatus.idle:
-        _lastTimelineWindowThreadId = null;
+        _timelineWindowCoordinator.reset();
       case ThreadDetailStatus.failed:
       case null:
         break;
-    }
-  }
-
-  void _loadInitialTimelineWindow(ThreadSummary thread) {
-    final threadId = _nonEmptyText(thread.id);
-    final timelineController = widget.timelineController;
-    if (threadId == null || timelineController == null) {
-      return;
-    }
-    final reader = widget.sessionController?.threadItemListReader;
-    if (reader == null) {
-      _lastTimelineWindowThreadId = threadId;
-      timelineController.showThread(thread);
-      return;
-    }
-    if (_lastTimelineWindowThreadId == threadId &&
-        timelineController.selectedThreadId == threadId &&
-        timelineController.itemCount > 0) {
-      return;
-    }
-    _lastTimelineWindowThreadId = threadId;
-    final generation = ++_timelineWindowGeneration;
-    unawaited(
-      _readInitialTimelineWindow(
-        generation: generation,
-        reader: reader,
-        thread: thread,
-      ),
-    );
-  }
-
-  Future<void> _readInitialTimelineWindow({
-    required int generation,
-    required ThreadItemListReader reader,
-    required ThreadSummary thread,
-  }) async {
-    try {
-      final page = await reader.listItems(
-        threadId: thread.id,
-        limit: chatTimelineInitialItemLimit,
-        sortDirection: 'desc',
-      );
-      if (!mounted || generation != _timelineWindowGeneration) {
-        return;
-      }
-      widget.timelineController?.showThreadItemWindow(
-        thread: thread,
-        items: page.items.reversed.toList(growable: false),
-        olderItemsCursor: page.nextCursor,
-      );
-    } on Object {
-      if (!mounted || generation != _timelineWindowGeneration) {
-        return;
-      }
-      widget.timelineController?.showThread(thread);
-    }
-  }
-
-  void _requestOlderTimelineItems() {
-    final timelineController = widget.timelineController;
-    final reader = widget.sessionController?.threadItemListReader;
-    final threadId = _nonEmptyText(timelineController?.selectedThreadId);
-    final cursor = _normalizedText(timelineController?.olderItemsCursor);
-    if (timelineController == null ||
-        reader == null ||
-        threadId == null ||
-        cursor == null ||
-        timelineController.isLoadingOlderHistory) {
-      return;
-    }
-    timelineController.beginOlderHistoryLoad();
-    final generation = ++_timelineWindowGeneration;
-    unawaited(
-      _readOlderTimelineItems(
-        generation: generation,
-        reader: reader,
-        threadId: threadId,
-        cursor: cursor,
-      ),
-    );
-  }
-
-  Future<void> _readOlderTimelineItems({
-    required int generation,
-    required ThreadItemListReader reader,
-    required String threadId,
-    required String cursor,
-  }) async {
-    try {
-      final page = await reader.listItems(
-        threadId: threadId,
-        cursor: cursor,
-        limit: chatTimelineInitialItemLimit,
-        sortDirection: 'desc',
-      );
-      if (!mounted || generation != _timelineWindowGeneration) {
-        return;
-      }
-      final nextCursor = _normalizedText(page.nextCursor);
-      widget.timelineController?.prependThreadItems(
-        threadId: threadId,
-        items: page.items.reversed.toList(growable: false),
-        olderItemsCursor: nextCursor == cursor ? null : nextCursor,
-      );
-    } on Object catch (error) {
-      if (!mounted || generation != _timelineWindowGeneration) {
-        return;
-      }
-      widget.timelineController?.failOlderHistoryLoad(error);
     }
   }
 
@@ -1545,35 +1443,10 @@ class _ChatPageState extends State<ChatPage> {
         activeThreadId != sideConversation.sideThreadId) {
       _sideConversation = null;
     }
-    _syncActiveTurnToTimeline();
+    _timelineWindowCoordinator.syncActiveTurn();
     if (mounted) {
       setState(() {});
     }
-  }
-
-  void _syncActiveTurnToTimeline({String? submittedText}) {
-    final timelineController = widget.timelineController;
-    final turnController = widget.turnController;
-    final activeThreadId = _nonEmptyText(turnController?.activeThreadId);
-    if (timelineController == null ||
-        turnController == null ||
-        activeThreadId == null) {
-      return;
-    }
-    final lastTurn = turnController.lastTurn;
-    if (lastTurn != null && lastTurn.id.trim().isNotEmpty) {
-      timelineController.showTurn(threadId: activeThreadId, turn: lastTurn);
-      final text = _nonEmptyText(submittedText);
-      if (text != null) {
-        timelineController.showLocalUserMessage(
-          threadId: activeThreadId,
-          turnId: lastTurn.id,
-          text: text,
-        );
-      }
-      return;
-    }
-    timelineController.selectThread(activeThreadId);
   }
 
   void _refreshThreadsIfConnected() {
