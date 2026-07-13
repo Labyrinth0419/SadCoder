@@ -30,6 +30,7 @@ import '../../turns/turn_text_element.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import '../../usage/thread_token_usage_controller.dart';
 import '../files/file_search_sheet.dart';
+import 'chat_account_command_handler.dart';
 import 'chat_advanced_controls_sheet.dart';
 import 'chat_agent_topology_sheet.dart';
 import 'chat_activity_strip.dart';
@@ -40,7 +41,6 @@ import 'chat_config_summary_commands.dart';
 import 'chat_connection_controls.dart';
 import 'chat_composer_mention.dart';
 import 'chat_diff_command.dart';
-import 'chat_feedback_sheet.dart';
 import 'chat_goal_command.dart';
 import 'chat_layout_metrics.dart';
 import 'chat_mcp_command.dart';
@@ -809,8 +809,8 @@ class _ChatPageState extends State<ChatPage> {
           resumeThread: (threadId) =>
               _threadCommandHandler().resumeThread(threadId),
           renameThread: (name) => _threadCommandHandler().renameThread(name),
-          logout: _logoutAccount,
-          submitFeedback: _submitFeedback,
+          logout: () => _accountCommandHandler().logoutAccount(),
+          submitFeedback: () => _accountCommandHandler().submitFeedback(),
           configureTheme: () => _appearanceCommandHandler().configureTheme(),
           configureTitleDisplay: () =>
               _appearanceCommandHandler().configureTitleDisplay(),
@@ -878,6 +878,18 @@ class _ChatPageState extends State<ChatPage> {
       turnController: widget.turnController,
       resolvePlanModeModel: _resolvePlanModeModel,
       syncActiveTurnToTimeline: _syncActiveTurnToTimeline,
+    );
+  }
+
+  ChatAccountCommandHandler _accountCommandHandler() {
+    return ChatAccountCommandHandler(
+      context: context,
+      mounted: () => mounted,
+      sessionController: widget.sessionController,
+      accountSnapshotController: widget.accountSnapshotController,
+      accountUsageSnapshotController: widget.accountUsageSnapshotController,
+      currentThreadIdProvider: _currentThreadId,
+      activeTurnIdProvider: () => widget.turnController?.activeTurnId,
     );
   }
 
@@ -1521,69 +1533,6 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
     _showChatSnackBar(context.l10n.slashCommandReturnedToMainThread);
-  }
-
-  Future<SlashCommandCallbackResult> _submitFeedback() async {
-    final runner = widget.sessionController?.feedbackUploadRunner;
-    if (runner == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    final result = await showModalBottomSheet<ChatFeedbackFormResult>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => const ChatFeedbackSheet(),
-    );
-    if (!mounted || result == null) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-
-    await runner.uploadFeedback(
-      classification: result.category.classification,
-      reason: result.note,
-      threadId: _currentThreadId(),
-      turnId: widget.turnController?.activeTurnId,
-      includeLogs: result.includeLogs,
-    );
-    return SlashCommandCallbackResult.executed;
-  }
-
-  Future<SlashCommandCallbackResult> _logoutAccount() async {
-    final runner = widget.sessionController?.accountLogoutRunner;
-    if (runner == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.logoutAccountTitle),
-        content: Text(l10n.logoutAccountBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.approvalCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.logoutAccountConfirm),
-          ),
-        ],
-      ),
-    );
-    if (!mounted || confirmed != true) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-
-    await runner.logout();
-    await Future.wait([
-      if (widget.accountSnapshotController != null)
-        widget.accountSnapshotController!.refresh(),
-      if (widget.accountUsageSnapshotController != null)
-        widget.accountUsageSnapshotController!.refresh(),
-    ]);
-    return SlashCommandCallbackResult.executed;
   }
 
   Future<bool> _confirmHighRiskSlashCommand(
