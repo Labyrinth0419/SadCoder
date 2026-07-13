@@ -1013,6 +1013,7 @@ MVP 可以简化为底部导航：
 - 本轮 UI polish 将工作区 root 折叠入口补充为当前 root 路径摘要：默认仍不显示输入框和保存默认 root 动作，用户展开后才可手动指定 root、恢复默认 root 或保存默认 workspace；顶部仍保留 `Root: ...` 状态文本，侧栏折叠标题只显示路径，避免主区域和侧栏重复抢占空间。
 - 已覆盖路径归一化、目录响应 path/name 校验、目录分页 `nextCursor`/`cursor`、拒绝 `..` / 绝对 child path、符号链接祖先拒绝、二进制文件拒绝、UTF-8 range 边界、后续 chunk 失败重试和大 Markdown raw 保护。
 - 已补充文件页 widget 覆盖：可手动指定工作区 root，目录读取使用该 root；可保存 App 默认工作区 root 到 cwd 覆盖，并可从临时 root 恢复默认 root。
+- 已补充文件页只读边界 widget 覆盖：打开文件预览后仍不出现 terminal、新建文件/文件夹、重命名、删除、编辑、保存或写文件入口，确保后续 UI polish 不会把受控编辑能力混入只读 Files 页面。
 - 仍待后续单独设计：受控编辑、写文件、目录监听、diff 审批和冲突检测；这些能力不得混入只读 Files 页面。
 
 ### 9.7 深色模式

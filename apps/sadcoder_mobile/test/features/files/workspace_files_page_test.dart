@@ -596,18 +596,60 @@ void main() {
     expect(find.textContaining('class SearchHit'), findsOneWidget);
   });
 
-  testWidgets('keeps the file browser toolbar read-only', (tester) async {
+  testWidgets('keeps the file browser controls read-only', (tester) async {
     await _pumpFilesPage(
       tester,
-      directoryReader: const _FakeWorkspaceDirectoryReader({'': []}),
-      fileReader: const _FakeWorkspaceFileReader(),
+      directoryReader: _FakeWorkspaceDirectoryReader({
+        '': [_entry(path: 'README.md', name: 'README.md')],
+      }),
+      fileReader: _FakeWorkspaceFileReader(
+        stats: {'README.md': _stat(path: 'README.md', language: 'markdown')},
+        chunks: {
+          'README.md': [_chunk(path: 'README.md', content: '# Read me')],
+        },
+      ),
     );
 
-    expect(
-      find.byKey(const ValueKey('workspace-files-terminal')),
-      findsNothing,
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-entry-README.md')),
     );
-    expect(find.byIcon(Icons.terminal), findsNothing);
+    await tester.pumpAndSettle();
+
+    for (final key in const [
+      'workspace-files-terminal',
+      'workspace-files-new-file',
+      'workspace-files-new-folder',
+      'workspace-files-rename',
+      'workspace-files-delete',
+      'workspace-files-edit',
+      'workspace-files-save',
+      'workspace-files-write',
+    ]) {
+      expect(find.byKey(ValueKey(key)), findsNothing);
+    }
+    for (final icon in const [
+      Icons.terminal,
+      Icons.note_add_outlined,
+      Icons.create_new_folder_outlined,
+      Icons.drive_file_rename_outline,
+      Icons.delete_outline,
+      Icons.edit_outlined,
+      Icons.save_outlined,
+    ]) {
+      expect(find.byIcon(icon), findsNothing);
+    }
+    for (final label in const [
+      'Terminal',
+      'New file',
+      'New folder',
+      'Rename',
+      'Delete',
+      'Edit',
+      'Save',
+      'Write',
+    ]) {
+      expect(find.text(label), findsNothing);
+    }
   });
 
   testWidgets('rejects unsafe remote file search result paths before reading', (
