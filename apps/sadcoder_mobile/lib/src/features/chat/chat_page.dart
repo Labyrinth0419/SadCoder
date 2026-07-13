@@ -50,6 +50,7 @@ import 'chat_feedback_sheet.dart';
 import 'chat_goal_command.dart';
 import 'chat_hooks_summary.dart';
 import 'chat_layout_metrics.dart';
+import 'chat_mcp_command.dart';
 import 'chat_memories_summary.dart';
 import 'chat_model_override_sheet.dart';
 import 'chat_override_scope.dart';
@@ -861,38 +862,41 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<String?> _buildMcpSummary(String arguments) async {
-    final parts = arguments
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((part) => part.isNotEmpty)
-        .toList(growable: false);
-    final command = parts.isEmpty ? '' : parts.first.toLowerCase();
-    final verbose = parts.length == 1 && command == 'verbose';
-    final reload =
-        parts.length == 1 && (command == 'reload' || command == 'refresh');
-    final oauthLogin =
-        parts.length == 2 &&
-        (command == 'login' || command == 'oauth' || command == 'auth');
-    if (parts.isNotEmpty && !verbose && !reload && !oauthLogin) {
+    final command = parseChatMcpCommand(arguments);
+    if (command == null) {
       return null;
     }
 
     final l10n = context.l10n;
-    if (oauthLogin) {
-      final runner = widget.sessionController?.mcpServerOAuthRunner;
-      if (runner == null) {
-        return null;
-      }
-      final result = await runner.startOAuthLogin(serverName: parts[1]);
-      return buildMcpServerOAuthLoginSummary(l10n: l10n, result: result);
+    switch (command) {
+      case ChatMcpLoginCommand(:final serverName):
+        final runner = widget.sessionController?.mcpServerOAuthRunner;
+        if (runner == null) {
+          return null;
+        }
+        final result = await runner.startOAuthLogin(serverName: serverName);
+        return buildMcpServerOAuthLoginSummary(l10n: l10n, result: result);
+      case ChatMcpReloadCommand(:final verbose):
+        final runner = widget.sessionController?.mcpServerConfigRunner;
+        if (runner == null) {
+          return null;
+        }
+        await runner.reloadMcpServers();
+        return _buildMcpStatusSummary(
+          l10n: l10n,
+          verbose: verbose,
+          prefix: l10n.mcpServersReloaded,
+        );
+      case ChatMcpSummaryCommand(:final verbose):
+        return _buildMcpStatusSummary(l10n: l10n, verbose: verbose);
     }
-    if (reload) {
-      final runner = widget.sessionController?.mcpServerConfigRunner;
-      if (runner == null) {
-        return null;
-      }
-      await runner.reloadMcpServers();
-    }
+  }
+
+  Future<String> _buildMcpStatusSummary({
+    required AppLocalizations l10n,
+    required bool verbose,
+    String? prefix,
+  }) async {
     final controller = widget.mcpServerStatusController;
     if (controller != null) {
       await controller.refresh(
@@ -908,8 +912,8 @@ class _ChatPageState extends State<ChatPage> {
       controller: controller,
       verbose: verbose,
     );
-    if (reload) {
-      return [l10n.mcpServersReloaded, summary].join('\n');
+    if (prefix != null) {
+      return [prefix, summary].join('\n');
     }
     return summary;
   }
