@@ -1,7 +1,16 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_mcp_command.dart';
+import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_server_config_runner.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_server_oauth_runner.dart'
+    show McpServerOAuthLoginResult, McpServerOAuthRunner;
+import 'package:sadcoder_mobile/src/mcp/mcp_server_status_controller.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 
 void main() {
+  const l10n = AppLocalizations(Locale('en'));
+
   test('empty arguments default to a compact MCP summary command', () {
     final command = parseChatMcpCommand('');
 
@@ -45,4 +54,210 @@ void main() {
     expect(parseChatMcpCommand('login'), isNull);
     expect(parseChatMcpCommand('unknown'), isNull);
   });
+
+  group('buildMcpSummaryFromCommand', () {
+    test('summarizes the selected MCP servers', () async {
+      final reader = _RecordingMcpServerStatusReader(
+        page: McpServerStatusPage.fromJson({
+          'data': [
+            {
+              'name': 'filesystem',
+              'authStatus': 'unsupported',
+              'tools': {
+                'read_file': {'name': 'read_file'},
+              },
+            },
+          ],
+        }),
+      );
+      final controller = McpServerStatusController(
+        readerProvider: () => reader,
+      );
+      addTearDown(controller.dispose);
+
+      final summary = await buildMcpSummaryFromCommand(
+        l10n: l10n,
+        statusController: controller,
+        oauthRunner: null,
+        configRunner: null,
+        threadId: 'thr_1',
+        arguments: '',
+      );
+
+      expect(reader.threadIds, ['thr_1']);
+      expect(reader.limits, [25]);
+      expect(reader.details, [McpServerStatusDetail.toolsAndAuthOnly]);
+      expect(summary, contains('MCP servers'));
+      expect(summary, contains('filesystem: auth: unsupported, tools: 1'));
+    });
+
+    test('verbose summaries request full MCP detail', () async {
+      final reader = _RecordingMcpServerStatusReader(
+        page: const McpServerStatusPage(servers: []),
+      );
+      final controller = McpServerStatusController(
+        readerProvider: () => reader,
+      );
+      addTearDown(controller.dispose);
+
+      await buildMcpSummaryFromCommand(
+        l10n: l10n,
+        statusController: controller,
+        oauthRunner: null,
+        configRunner: null,
+        threadId: 'thr_1',
+        arguments: 'verbose',
+      );
+
+      expect(reader.details, [McpServerStatusDetail.full]);
+    });
+
+    test('reloads MCP config before summarizing', () async {
+      final reader = _RecordingMcpServerStatusReader(
+        page: McpServerStatusPage.fromJson({
+          'data': [
+            {
+              'name': 'filesystem',
+              'authStatus': 'unsupported',
+              'tools': {
+                'read_file': {'name': 'read_file'},
+              },
+            },
+          ],
+        }),
+      );
+      final controller = McpServerStatusController(
+        readerProvider: () => reader,
+      );
+      final configRunner = _RecordingMcpServerConfigRunner();
+      addTearDown(controller.dispose);
+
+      final summary = await buildMcpSummaryFromCommand(
+        l10n: l10n,
+        statusController: controller,
+        oauthRunner: null,
+        configRunner: configRunner,
+        threadId: 'thr_1',
+        arguments: 'reload',
+      );
+
+      expect(configRunner.reloadCalls, 1);
+      expect(summary, contains(l10n.mcpServersReloaded));
+      expect(summary, contains('filesystem: auth: unsupported, tools: 1'));
+    });
+
+    test('starts OAuth login when a server name is provided', () async {
+      final oauthRunner = _RecordingMcpServerOAuthRunner(
+        result: const McpServerOAuthLoginResult(
+          serverName: 'github',
+          authorizationUrl: 'https://example.test/oauth',
+          userCode: 'ABCD-1234',
+          raw: <String, Object?>{},
+        ),
+      );
+
+      final summary = await buildMcpSummaryFromCommand(
+        l10n: l10n,
+        statusController: null,
+        oauthRunner: oauthRunner,
+        configRunner: null,
+        threadId: 'thr_1',
+        arguments: 'login github',
+      );
+
+      expect(oauthRunner.serverNames, ['github']);
+      expect(summary, contains('Started MCP OAuth login for github.'));
+      expect(summary, contains('Open URL: https://example.test/oauth'));
+      expect(summary, contains('Code: ABCD-1234'));
+    });
+
+    test('rejects missing runners and unsupported inputs', () async {
+      final summaryUnavailable = await buildMcpSummaryFromCommand(
+        l10n: l10n,
+        statusController: null,
+        oauthRunner: null,
+        configRunner: null,
+        threadId: 'thr_1',
+        arguments: '',
+      );
+      final loginUnavailable = await buildMcpSummaryFromCommand(
+        l10n: l10n,
+        statusController: null,
+        oauthRunner: null,
+        configRunner: null,
+        threadId: 'thr_1',
+        arguments: 'login github',
+      );
+      final reloadUnavailable = await buildMcpSummaryFromCommand(
+        l10n: l10n,
+        statusController: null,
+        oauthRunner: null,
+        configRunner: null,
+        threadId: 'thr_1',
+        arguments: 'reload',
+      );
+      final unsupported = await buildMcpSummaryFromCommand(
+        l10n: l10n,
+        statusController: null,
+        oauthRunner: null,
+        configRunner: null,
+        threadId: 'thr_1',
+        arguments: 'sideways',
+      );
+
+      expect(summaryUnavailable, contains('MCP servers'));
+      expect(summaryUnavailable, contains(l10n.mcpServersUnavailable));
+      expect(loginUnavailable, isNull);
+      expect(reloadUnavailable, isNull);
+      expect(unsupported, isNull);
+    });
+  });
+}
+
+class _RecordingMcpServerStatusReader implements McpServerStatusReader {
+  _RecordingMcpServerStatusReader({required this.page});
+
+  final McpServerStatusPage page;
+  final threadIds = <String?>[];
+  final cursors = <String?>[];
+  final limits = <int?>[];
+  final details = <McpServerStatusDetail>[];
+
+  @override
+  Future<McpServerStatusPage> listMcpServers({
+    String? threadId,
+    String? cursor,
+    int? limit,
+    McpServerStatusDetail detail = McpServerStatusDetail.toolsAndAuthOnly,
+  }) async {
+    threadIds.add(threadId);
+    cursors.add(cursor);
+    limits.add(limit);
+    details.add(detail);
+    return page;
+  }
+}
+
+class _RecordingMcpServerOAuthRunner implements McpServerOAuthRunner {
+  _RecordingMcpServerOAuthRunner({required this.result});
+
+  final McpServerOAuthLoginResult result;
+  final serverNames = <String>[];
+
+  @override
+  Future<McpServerOAuthLoginResult> startOAuthLogin({
+    required String serverName,
+  }) async {
+    serverNames.add(serverName);
+    return result;
+  }
+}
+
+class _RecordingMcpServerConfigRunner implements McpServerConfigRunner {
+  var reloadCalls = 0;
+
+  @override
+  Future<void> reloadMcpServers() async {
+    reloadCalls++;
+  }
 }

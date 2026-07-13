@@ -13,7 +13,6 @@ import '../../config/codex_config_snapshot_controller.dart';
 import '../../files/file_search_reader.dart';
 import '../../i18n/app_localizations.dart';
 import '../../mcp/mcp_server_status_controller.dart';
-import '../../mcp/mcp_server_status_reader.dart';
 import '../../models/model_list_controller.dart';
 import '../../permissions/permission_profile_list_controller.dart';
 import '../../plugins/plugin_list_reader.dart';
@@ -57,7 +56,6 @@ import 'chat_review_command.dart';
 import 'chat_status_summary.dart';
 import 'chat_test_approval_command.dart';
 import 'chat_timeline_controller.dart';
-import 'chat_mcp_summary.dart';
 import 'chat_rollout_diagnostics.dart';
 import 'chat_side_conversation_panel.dart';
 import 'chat_slash_command_preview.dart';
@@ -856,60 +854,14 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<String?> _buildMcpSummary(String arguments) async {
-    final command = parseChatMcpCommand(arguments);
-    if (command == null) {
-      return null;
-    }
-
-    final l10n = context.l10n;
-    switch (command) {
-      case ChatMcpLoginCommand(:final serverName):
-        final runner = widget.sessionController?.mcpServerOAuthRunner;
-        if (runner == null) {
-          return null;
-        }
-        final result = await runner.startOAuthLogin(serverName: serverName);
-        return buildMcpServerOAuthLoginSummary(l10n: l10n, result: result);
-      case ChatMcpReloadCommand(:final verbose):
-        final runner = widget.sessionController?.mcpServerConfigRunner;
-        if (runner == null) {
-          return null;
-        }
-        await runner.reloadMcpServers();
-        return _buildMcpStatusSummary(
-          l10n: l10n,
-          verbose: verbose,
-          prefix: l10n.mcpServersReloaded,
-        );
-      case ChatMcpSummaryCommand(:final verbose):
-        return _buildMcpStatusSummary(l10n: l10n, verbose: verbose);
-    }
-  }
-
-  Future<String> _buildMcpStatusSummary({
-    required AppLocalizations l10n,
-    required bool verbose,
-    String? prefix,
-  }) async {
-    final controller = widget.mcpServerStatusController;
-    if (controller != null) {
-      await controller.refresh(
-        threadId: _currentThreadId(),
-        limit: 25,
-        detail: verbose
-            ? McpServerStatusDetail.full
-            : McpServerStatusDetail.toolsAndAuthOnly,
-      );
-    }
-    final summary = buildMcpServerStatusSummary(
-      l10n: l10n,
-      controller: controller,
-      verbose: verbose,
+    return buildMcpSummaryFromCommand(
+      l10n: context.l10n,
+      statusController: widget.mcpServerStatusController,
+      oauthRunner: widget.sessionController?.mcpServerOAuthRunner,
+      configRunner: widget.sessionController?.mcpServerConfigRunner,
+      threadId: _currentThreadId(),
+      arguments: arguments,
     );
-    if (prefix != null) {
-      return [prefix, summary].join('\n');
-    }
-    return summary;
   }
 
   Future<String?> _buildSkillsSummary(String arguments) async {
