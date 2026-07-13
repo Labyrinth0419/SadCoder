@@ -836,6 +836,24 @@ void main() {
     expect(find.text(' Fix login bug '), findsNothing);
   });
 
+  testWidgets('sends active turn follow-up text through steer', (tester) async {
+    final harness = await _pumpConnectedChatPage(tester);
+
+    await _submitComposerText(tester, 'Run long task');
+    await _submitComposerText(tester, 'Refine the current answer');
+
+    expect(harness.turnRunner.startedTurns, [
+      (threadId: 'thr_new', text: 'Run long task'),
+    ]);
+    expect(harness.turnRunner.steeredTurns, [
+      (
+        threadId: 'thr_new',
+        turnId: 'turn_1',
+        text: 'Refine the current answer',
+      ),
+    ]);
+  });
+
   testWidgets('applies next-turn overrides once and clears them after send', (
     tester,
   ) async {
@@ -9426,6 +9444,8 @@ class _FakeTurnRunner implements TurnRunner {
   final startedTurns = <({String threadId, String text})>[];
   final startedTurnOverrides = <CodexConfigOverrides>[];
   final startedTurnTextElements = <List<TurnTextElement>>[];
+  final steeredTurns = <({String threadId, String turnId, String text})>[];
+  final steeredTurnTextElements = <List<TurnTextElement>>[];
   final interruptedTurns = <({String threadId, String turnId})>[];
 
   @override
@@ -9456,6 +9476,18 @@ class _FakeTurnRunner implements TurnRunner {
       'items': <Object?>[],
       'itemsView': 'notLoaded',
     });
+  }
+
+  @override
+  Future<String> steerTurn({
+    required String threadId,
+    required String turnId,
+    required String text,
+    List<TurnTextElement> textElements = const [],
+  }) async {
+    steeredTurns.add((threadId: threadId, turnId: turnId, text: text));
+    steeredTurnTextElements.add(textElements);
+    return turnId;
   }
 
   @override
@@ -9661,6 +9693,14 @@ class _ConstantTurnRunner implements TurnRunner {
     'items': <Object?>[],
     'itemsView': 'notLoaded',
   });
+
+  @override
+  Future<String> steerTurn({
+    required String threadId,
+    required String turnId,
+    required String text,
+    List<TurnTextElement> textElements = const [],
+  }) async => turnId;
 
   @override
   Future<void> interruptTurn({

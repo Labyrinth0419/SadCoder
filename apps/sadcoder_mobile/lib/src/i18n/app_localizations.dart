@@ -273,6 +273,8 @@ class AppLocalizations {
   String get turnFailureMissingThreadId => _text('turnFailureMissingThreadId');
   String get turnFailureNoActiveTurnToInterrupt =>
       _text('turnFailureNoActiveTurnToInterrupt');
+  String get turnFailureNoActiveTurnToSteer =>
+      _text('turnFailureNoActiveTurnToSteer');
   String get turnFailureTransitionInProgress =>
       _text('turnFailureTransitionInProgress');
   String get shellCommandFailed => _text('shellCommandFailed');
@@ -1350,6 +1352,7 @@ const _values = <String, Map<String, String>>{
     'turnFailureMissingThreadId': 'Codex did not return a thread id.',
     'turnFailureNoActiveTurnToInterrupt':
         'No active turn is available to interrupt.',
+    'turnFailureNoActiveTurnToSteer': 'No active turn is available to steer.',
     'turnFailureTransitionInProgress':
         'A turn transition is already in progress.',
     'shellCommandFailed': 'Shell command failed',
@@ -2233,6 +2236,7 @@ const _values = <String, Map<String, String>>{
     'turnFailureNoActiveCodexSession': '没有可用的 Codex 会话。',
     'turnFailureMissingThreadId': 'Codex 没有返回会话 ID。',
     'turnFailureNoActiveTurnToInterrupt': '没有可中断的活动回合。',
+    'turnFailureNoActiveTurnToSteer': '没有可追加指令的活动回合。',
     'turnFailureTransitionInProgress': '已有回合状态切换正在进行。',
     'shellCommandFailed': 'Shell 命令执行失败',
     'timeline': '事件流',

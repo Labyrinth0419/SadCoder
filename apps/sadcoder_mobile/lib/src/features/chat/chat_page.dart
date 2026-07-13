@@ -495,10 +495,18 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
     final textElements = _composerTextElements(text);
-    await turnController.submitText(text, textElements: textElements);
+    final steeringActiveTurn =
+        turnController.canSteer && !turnController.canSubmit;
+    if (steeringActiveTurn) {
+      await turnController.steerActiveTurn(text, textElements: textElements);
+    } else {
+      await turnController.submitText(text, textElements: textElements);
+    }
     if (turnController.status != TurnControllerStatus.failed) {
       _syncActiveTurnToTimeline(submittedText: text);
-      widget.configOverrideController?.clearTurn();
+      if (!steeringActiveTurn) {
+        widget.configOverrideController?.clearTurn();
+      }
       _composerMentions.clear();
       _slashTextPrompt = null;
       _composerController.clear();
@@ -2533,7 +2541,9 @@ class _ChatPageState extends State<ChatPage> {
     }
     final parsed = widget.registry.parseComposerText(text);
     final canSubmitPrompt =
-        isConnected && turnController != null && turnController.canSubmit;
+        isConnected &&
+        turnController != null &&
+        (turnController.canSubmit || turnController.canSteer);
     if (_isSlashTextPrompt(text, parsed)) {
       return canSubmitPrompt;
     }

@@ -2240,6 +2240,16 @@ class _NoopTurnRunner implements TurnRunner {
   }
 
   @override
+  Future<String> steerTurn({
+    required String threadId,
+    required String turnId,
+    required String text,
+    List<TurnTextElement> textElements = const [],
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<void> interruptTurn({
     required String threadId,
     required String turnId,

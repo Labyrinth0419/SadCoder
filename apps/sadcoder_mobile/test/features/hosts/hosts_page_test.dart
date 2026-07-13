@@ -2882,6 +2882,14 @@ class _FakeTurnRunner implements TurnRunner {
   });
 
   @override
+  Future<String> steerTurn({
+    required String threadId,
+    required String turnId,
+    required String text,
+    List<TurnTextElement> textElements = const [],
+  }) async => turnId;
+
+  @override
   Future<void> interruptTurn({
     required String threadId,
     required String turnId,

@@ -868,6 +868,7 @@ MVP 可以简化为底部导航：
 - 侧聊提示面板也已去掉 side/main thread id，仅保留侧聊标题、触发命令和返回主线按钮；默认对话画布不再显示内部会话详情。
 - 本轮 Chat 可见 UI 里程碑已将 user / Codex 文本改为左右气泡式阅读流，并默认复用 Files Markdown 预览的 MarkdownBody、代码高亮和图片占位策略；command/file/tool/reasoning 仍保持中性 timeline block，超长文本回退 selectable raw，长 command output 默认折叠并提供行数/字节数、尾部摘要和展开动作。Composer 已压缩为多行自动换行输入，移除输入模式/发送快捷键/terminal pet helper 文案，高级控制入口迁入左上三横线侧栏，timeline 增加跳到最新行为：同一 thread 新事件尊重用户历史位置，切换 thread/session 默认滚到最新。
 - 后续 Chat 输入框修复已将 composer 改为受最大高度约束的真正多行输入区：移动端键盘动作保留换行，长文本软换行后输入框增高到上限再内部滚动；硬件 Enter / Ctrl+Enter 发送仍按 keymap 执行，widget 测试覆盖长中文输入不再把布局向右撑开。
+- 已补齐 active turn 文本追加路径：`CodexAppServerClient`、`CodexTurnRunner`、`TurnController` 和 Chat composer 已支持 `turn/steer`，active turn 中发送普通文本会带 `expectedTurnId` steer 当前回合，而不是启动新 turn 或禁用输入；本次 turn overrides 仍只随 `turn/start` 消耗，不会被 steer 清掉。
 
 ### 9.3 Approvals 页面
 

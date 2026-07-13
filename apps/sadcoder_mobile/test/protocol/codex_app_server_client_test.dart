@@ -196,6 +196,11 @@ void main() {
       cancellationToken: ' token-1 ',
     );
     await client.startTurn(threadId: 'thr_1', text: 'Fix bug');
+    await client.steerTurn(
+      threadId: 'thr_1',
+      turnId: 'turn_1',
+      text: 'Adjust plan',
+    );
     await client.interruptTurn(threadId: 'thr_1', turnId: 'turn_1');
 
     expect(requests.map((request) => request.method), [
@@ -233,6 +238,7 @@ void main() {
       'command/exec',
       'fuzzyFileSearch',
       'turn/start',
+      'turn/steer',
       'turn/interrupt',
     ]);
     expect(requests.first.params, {
@@ -351,6 +357,13 @@ void main() {
       'threadId': 'thr_1',
       'input': [
         {'type': 'text', 'text': 'Fix bug', 'text_elements': <Object?>[]},
+      ],
+    });
+    expect(requests[34].params, {
+      'threadId': 'thr_1',
+      'expectedTurnId': 'turn_1',
+      'input': [
+        {'type': 'text', 'text': 'Adjust plan', 'text_elements': <Object?>[]},
       ],
     });
     expect(requests.last.params, {'threadId': 'thr_1', 'turnId': 'turn_1'});
@@ -620,6 +633,39 @@ void main() {
         {
           'type': 'text',
           'text': '@lib/main.dart explain',
+          'text_elements': [
+            {
+              'byte_range': {'start': 0, 'end': 14},
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  test('turn steer sends expected turn id and text elements', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {'turnId': 'turn_1'};
+    });
+
+    final client = CodexAppServerClient(transport);
+    await client.steerTurn(
+      threadId: 'thr_1',
+      turnId: 'turn_1',
+      text: '@lib/main.dart refine',
+      textElements: const [TurnTextElement(start: 0, end: 14)],
+    );
+
+    expect(requests.single.method, 'turn/steer');
+    expect(requests.single.params, {
+      'threadId': 'thr_1',
+      'expectedTurnId': 'turn_1',
+      'input': [
+        {
+          'type': 'text',
+          'text': '@lib/main.dart refine',
           'text_elements': [
             {
               'byte_range': {'start': 0, 'end': 14},

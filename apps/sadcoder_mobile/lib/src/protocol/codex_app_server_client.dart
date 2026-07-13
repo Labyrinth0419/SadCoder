@@ -724,16 +724,21 @@ class CodexAppServerClient {
   }) {
     return _request('turn/start', {
       'threadId': threadId,
-      'input': [
-        {
-          'type': 'text',
-          'text': text,
-          'text_elements': [
-            for (final element in textElements) element.toJson(),
-          ],
-        },
-      ],
+      'input': [_textUserInput(text: text, textElements: textElements)],
       ...overrides.toTurnStartParams(),
+    });
+  }
+
+  Future<Map<String, Object?>> steerTurn({
+    required String threadId,
+    required String turnId,
+    required String text,
+    List<TurnTextElement> textElements = const [],
+  }) {
+    return _request('turn/steer', {
+      'threadId': threadId,
+      'expectedTurnId': turnId,
+      'input': [_textUserInput(text: text, textElements: textElements)],
     });
   }
 
@@ -752,4 +757,15 @@ class CodexAppServerClient {
       JsonRpcRequest(id: _nextId++, method: method, params: params),
     );
   }
+}
+
+Map<String, Object?> _textUserInput({
+  required String text,
+  required List<TurnTextElement> textElements,
+}) {
+  return {
+    'type': 'text',
+    'text': text,
+    'text_elements': [for (final element in textElements) element.toJson()],
+  };
 }

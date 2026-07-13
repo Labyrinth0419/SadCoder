@@ -95,6 +95,39 @@ void main() {
     },
   );
 
+  test('steerActiveTurn sends input to the active turn', () async {
+    final runner = _FakeTurnRunner();
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+    const text = '  @lib/main.dart refine  ';
+
+    await controller.submitText('Run long task');
+    final statuses = <TurnControllerStatus>[];
+    controller.addListener(() => statuses.add(controller.status));
+    await controller.steerActiveTurn(
+      text,
+      textElements: [
+        TurnTextElement.fromCodeUnitRange(text: text, start: 2, end: 16),
+      ],
+    );
+
+    expect(runner.startedTurns, [(threadId: 'thr_new', text: 'Run long task')]);
+    expect(runner.steeredTurns, [
+      (threadId: 'thr_new', turnId: 'turn_1', text: '@lib/main.dart refine'),
+    ]);
+    expect(runner.steeredTurnTextElements.single.single.toJson(), {
+      'byte_range': {'start': 0, 'end': 14},
+    });
+    expect(controller.status, TurnControllerStatus.submitted);
+    expect(controller.activeThreadId, 'thr_new');
+    expect(controller.activeTurnId, 'turn_1');
+    expect(controller.canSteer, true);
+    expect(statuses, [
+      TurnControllerStatus.sendingTurn,
+      TurnControllerStatus.submitted,
+    ]);
+  });
+
   test('finishTurn clears active turn and restores submit ability', () async {
     final runner = _FakeTurnRunner();
     final controller = TurnController(runnerProvider: () => runner);
@@ -403,6 +436,25 @@ void main() {
     },
   );
 
+  test('steerActiveTurn records typed failure without active turn', () async {
+    final runner = _FakeTurnRunner();
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+
+    await controller.steerActiveTurn('Refine this turn');
+
+    expect(controller.status, TurnControllerStatus.failed);
+    expect(
+      controller.error,
+      isA<TurnControllerException>().having(
+        (error) => error.failure,
+        'failure',
+        TurnControllerFailure.noActiveTurnToSteer,
+      ),
+    );
+    expect(runner.steeredTurns, isEmpty);
+  });
+
   test('submitText throws typed failure during turn transition', () async {
     final startThread = Completer<ThreadSummary>();
     final runner = _FakeTurnRunner(startThreadCompleter: startThread);
@@ -428,6 +480,33 @@ void main() {
 
     expect(controller.status, TurnControllerStatus.submitted);
   });
+
+  test('steerActiveTurn throws typed failure during turn transition', () async {
+    final startThread = Completer<ThreadSummary>();
+    final runner = _FakeTurnRunner(startThreadCompleter: startThread);
+    final controller = TurnController(runnerProvider: () => runner);
+    addTearDown(controller.dispose);
+
+    final firstSubmit = controller.submitText('Run task');
+    await Future<void>.delayed(Duration.zero);
+
+    await expectLater(
+      controller.steerActiveTurn('Refine this turn'),
+      throwsA(
+        isA<TurnControllerException>().having(
+          (error) => error.failure,
+          'failure',
+          TurnControllerFailure.transitionInProgress,
+        ),
+      ),
+    );
+
+    startThread.complete(_thread('thr_new'));
+    await firstSubmit;
+
+    expect(controller.status, TurnControllerStatus.submitted);
+    expect(runner.steeredTurns, isEmpty);
+  });
 }
 
 class _FakeTurnRunner implements TurnRunner {
@@ -443,6 +522,8 @@ class _FakeTurnRunner implements TurnRunner {
   final startedTurns = <({String threadId, String text})>[];
   final startedTurnOverrides = <CodexConfigOverrides>[];
   final startedTurnTextElements = <List<TurnTextElement>>[];
+  final steeredTurns = <({String threadId, String turnId, String text})>[];
+  final steeredTurnTextElements = <List<TurnTextElement>>[];
   final interruptedTurns = <({String threadId, String turnId})>[];
 
   @override
@@ -477,6 +558,18 @@ class _FakeTurnRunner implements TurnRunner {
       'items': <Object?>[],
       'itemsView': 'notLoaded',
     });
+  }
+
+  @override
+  Future<String> steerTurn({
+    required String threadId,
+    required String turnId,
+    required String text,
+    List<TurnTextElement> textElements = const [],
+  }) async {
+    steeredTurns.add((threadId: threadId, turnId: turnId, text: text));
+    steeredTurnTextElements.add(textElements);
+    return turnId;
   }
 
   @override

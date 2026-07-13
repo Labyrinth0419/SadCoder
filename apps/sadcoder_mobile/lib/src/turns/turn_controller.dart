@@ -28,6 +28,7 @@ enum TurnControllerFailure {
   noActiveCodexSession,
   missingThreadId,
   noActiveTurnToInterrupt,
+  noActiveTurnToSteer,
   transitionInProgress,
 }
 
@@ -81,6 +82,9 @@ class TurnController extends ChangeNotifier {
   };
 
   bool get canInterrupt =>
+      !isBusy && _activeThreadId != null && _activeTurnId != null;
+
+  bool get canSteer =>
       !isBusy && _activeThreadId != null && _activeTurnId != null;
 
   bool get canSubmit => !isBusy && _activeTurnId == null;
@@ -355,6 +359,69 @@ class TurnController extends ChangeNotifier {
       }
       _activeTurnId = null;
       _setState(status: TurnControllerStatus.interrupted, error: null);
+    } on Object catch (error) {
+      if (generation != _generation) {
+        return;
+      }
+      _setState(status: TurnControllerStatus.failed, error: error);
+    }
+  }
+
+  Future<void> steerActiveTurn(
+    String text, {
+    List<TurnTextElement> textElements = const [],
+  }) async {
+    final submission = _prepareSubmittedText(text, textElements);
+    if (submission.text.isEmpty) {
+      return;
+    }
+    if (isBusy) {
+      throw const TurnControllerException(
+        TurnControllerFailure.transitionInProgress,
+      );
+    }
+    final threadId = _activeThreadId;
+    final turnId = _activeTurnId;
+    if (threadId == null ||
+        threadId.isEmpty ||
+        turnId == null ||
+        turnId.isEmpty) {
+      _setState(
+        status: TurnControllerStatus.failed,
+        error: const TurnControllerException(
+          TurnControllerFailure.noActiveTurnToSteer,
+        ),
+      );
+      return;
+    }
+    final runner = _runnerProvider();
+    if (runner == null) {
+      _setState(
+        status: TurnControllerStatus.failed,
+        error: const TurnControllerException(
+          TurnControllerFailure.noActiveCodexSession,
+        ),
+      );
+      return;
+    }
+
+    final generation = ++_generation;
+    _setState(status: TurnControllerStatus.sendingTurn, error: null);
+    try {
+      final steeredTurnId = await runner.steerTurn(
+        threadId: threadId,
+        turnId: turnId,
+        text: submission.text,
+        textElements: submission.textElements,
+      );
+      if (generation != _generation) {
+        return;
+      }
+      final normalizedSteeredTurnId = steeredTurnId.trim();
+      if (normalizedSteeredTurnId.isNotEmpty) {
+        _activeTurnId = normalizedSteeredTurnId;
+      }
+      _setState(status: TurnControllerStatus.submitted, error: null);
     } on Object catch (error) {
       if (generation != _generation) {
         return;

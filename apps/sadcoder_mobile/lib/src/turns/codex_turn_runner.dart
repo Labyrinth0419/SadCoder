@@ -38,6 +38,23 @@ class CodexTurnRunner implements TurnRunner {
   }
 
   @override
+  Future<String> steerTurn({
+    required String threadId,
+    required String turnId,
+    required String text,
+    List<TurnTextElement> textElements = const [],
+  }) async {
+    final result = await _client.steerTurn(
+      threadId: threadId,
+      turnId: turnId,
+      text: text,
+      textElements: textElements,
+    );
+    final returnedTurnId = result['turnId'];
+    return returnedTurnId is String ? returnedTurnId : '';
+  }
+
+  @override
   Future<void> interruptTurn({
     required String threadId,
     required String turnId,

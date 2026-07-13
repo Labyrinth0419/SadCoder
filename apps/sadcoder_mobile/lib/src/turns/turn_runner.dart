@@ -14,6 +14,13 @@ abstract interface class TurnRunner {
     List<TurnTextElement> textElements = const [],
   });
 
+  Future<String> steerTurn({
+    required String threadId,
+    required String turnId,
+    required String text,
+    List<TurnTextElement> textElements = const [],
+  });
+
   Future<void> interruptTurn({
     required String threadId,
     required String turnId,

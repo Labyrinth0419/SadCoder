@@ -134,6 +134,8 @@ String turnControllerFailureLabel(
     TurnControllerFailure.missingThreadId => l10n.turnFailureMissingThreadId,
     TurnControllerFailure.noActiveTurnToInterrupt =>
       l10n.turnFailureNoActiveTurnToInterrupt,
+    TurnControllerFailure.noActiveTurnToSteer =>
+      l10n.turnFailureNoActiveTurnToSteer,
     TurnControllerFailure.transitionInProgress =>
       l10n.turnFailureTransitionInProgress,
   };

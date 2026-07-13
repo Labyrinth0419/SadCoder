@@ -55,6 +55,11 @@ void main() {
     );
     await connection.turnRunner.startThread();
     await connection.turnRunner.startTurn(threadId: 'thr_1', text: 'Fix bug');
+    await connection.turnRunner.steerTurn(
+      threadId: 'thr_1',
+      turnId: 'turn_1',
+      text: 'Adjust plan',
+    );
     await connection.turnRunner.interruptTurn(
       threadId: 'thr_1',
       turnId: 'turn_1',
@@ -84,6 +89,7 @@ void main() {
       'thread/items/list',
       'thread/start',
       'turn/start',
+      'turn/steer',
       'turn/interrupt',
     ]);
     final initializeRequest = proxyConnector.requests.singleWhere(
@@ -416,6 +422,7 @@ class _LineServerProxyConnector implements AgentProxyConnector {
         'itemsView': 'notLoaded',
       },
     },
+    'turn/steer' => {'turnId': 'turn_1'},
     _ => {},
   };
 }
