@@ -90,6 +90,7 @@ class _HostsPageState extends State<HostsPage> {
   bool _testing = false;
   bool _savingProfile = false;
   bool _restartingBackend = false;
+  bool _stoppingBackend = false;
   bool _importingSshConfig = false;
   bool _importingPrivateKey = false;
   bool _generatingKey = false;
@@ -222,6 +223,7 @@ class _HostsPageState extends State<HostsPage> {
           testing: _testing,
           savingProfile: _savingProfile,
           restartingBackend: _restartingBackend,
+          stoppingBackend: _stoppingBackend,
           onTest: _runProbe,
           onSaveProfile: _profileStore == null ? null : _saveProfile,
           sessionStatus: sessionController?.status,
@@ -231,6 +233,7 @@ class _HostsPageState extends State<HostsPage> {
               : _connect,
           onDisconnect: sessionController == null ? null : _disconnect,
           onRestartBackend: sessionController == null ? null : _restartBackend,
+          onStopBackend: sessionController == null ? null : _stopBackend,
         ),
         if (_profileMessage != null || _profileError != null) ...[
           const SizedBox(height: 8),
@@ -680,6 +683,57 @@ class _HostsPageState extends State<HostsPage> {
     } finally {
       if (mounted) {
         setState(() => _restartingBackend = false);
+      }
+    }
+  }
+
+  Future<void> _stopBackend() async {
+    final sessionController = widget.sessionController;
+    if (sessionController == null || _stoppingBackend) {
+      return;
+    }
+
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.stop_circle_outlined),
+        title: Text(l10n.stopBackendTitle),
+        content: Text(l10n.stopBackendBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.stopBackend),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) {
+      return;
+    }
+
+    setState(() {
+      _stoppingBackend = true;
+      _connectionActionError = null;
+    });
+    try {
+      await sessionController.stopBackend();
+    } on Object catch (error) {
+      if (mounted) {
+        setState(
+          () => _connectionActionError = l10n.messageWithDetail(
+            l10n.sshBackendStopFailed,
+            error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _stoppingBackend = false);
       }
     }
   }
@@ -1395,12 +1449,14 @@ class _HostProfileForm extends StatelessWidget {
     required this.testing,
     required this.savingProfile,
     required this.restartingBackend,
+    required this.stoppingBackend,
     required this.onTest,
     required this.onSaveProfile,
     required this.sessionStatus,
     required this.onConnect,
     required this.onDisconnect,
     required this.onRestartBackend,
+    required this.onStopBackend,
   });
 
   final GlobalKey<FormState> formKey;
@@ -1417,12 +1473,14 @@ class _HostProfileForm extends StatelessWidget {
   final bool testing;
   final bool savingProfile;
   final bool restartingBackend;
+  final bool stoppingBackend;
   final VoidCallback onTest;
   final VoidCallback? onSaveProfile;
   final CodexSessionStatus? sessionStatus;
   final VoidCallback? onConnect;
   final VoidCallback? onDisconnect;
   final VoidCallback? onRestartBackend;
+  final VoidCallback? onStopBackend;
 
   @override
   Widget build(BuildContext context) {
@@ -1599,7 +1657,7 @@ class _HostProfileForm extends StatelessWidget {
                               restartingBackend))
                         OutlinedButton.icon(
                           key: const ValueKey('session-restart-backend-button'),
-                          onPressed: restartingBackend
+                          onPressed: restartingBackend || stoppingBackend
                               ? null
                               : onRestartBackend,
                           icon: restartingBackend
@@ -1614,6 +1672,29 @@ class _HostProfileForm extends StatelessWidget {
                             restartingBackend
                                 ? l10n.restartingBackend
                                 : l10n.restartBackend,
+                          ),
+                        ),
+                    if (onConnect != null && onDisconnect != null)
+                      if (onStopBackend != null &&
+                          (sessionStatus == CodexSessionStatus.connected ||
+                              stoppingBackend))
+                        FilledButton.tonalIcon(
+                          key: const ValueKey('session-stop-backend-button'),
+                          onPressed: restartingBackend || stoppingBackend
+                              ? null
+                              : onStopBackend,
+                          icon: stoppingBackend
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.stop_circle_outlined),
+                          label: Text(
+                            stoppingBackend
+                                ? l10n.stoppingBackend
+                                : l10n.stopBackend,
                           ),
                         ),
                     if (onConnect != null && onDisconnect != null)

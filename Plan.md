@@ -1078,6 +1078,7 @@ MVP 可以简化为底部导航：
 - 已落地 Settings Diagnostics 的 App version 展示：Diagnostics 顶部会显示移动端包版本 `sadcoderMobileAppVersion`，并与 agent version、Codex version 放在同一只读诊断入口；app-server initialize 仍使用独立的 `sadcoderMobileClientVersion`，避免把发布包版本和协议 client version 混用；测试会对齐 `sadcoderMobileAppVersion` 与 `pubspec.yaml` 的 `version`，防止发布版本漂移。
 - 已落地 Hosts / Settings Diagnostics 的 Codex failure 展示：`sadcoder-agent doctor --json` 中 command diagnostic failure 与 `AgentStatus.codexFailure` 会作为独立结构化行展示，避免 Node/NVM 运行时错误、非零退出、路径缺失等被压缩成模糊的“Codex 不可用”摘要。
 - 已落地 Hosts 探测结果的 backend readiness 展示：agent status 摘要会显示 backend kind 与 state，例如 SadCoder service / ready 或 stdio fallback / unavailable，避免只看到后端类型而不知道可用性。
+- 已落地 Hosts 页面 `agent/stopBackend` UI 入口：已连接状态下可在主机表单中停止当前 host 的 SadCoder backend，操作前必须二次确认；确认后调用现有 `CodexSessionStateController.stopBackend()` 并停留 idle，不自动重连，失败时使用本地化摘要并保留底层错误详情。
 - 已落地 agent snapshot 缓存窗口诊断：`AgentStateSnapshot` 会暴露 `retainedCursorFloor` 与 `cursorGap`，当客户端 `sinceCursor` 早于 agent retained recent event 窗口或无法在窗口中确认时标记 gap，为后续触发更保守的 thread/read、turn/item 分页 reconciliation 做准备。
 - 已落地 cursor gap 驱动的移动端保守恢复：`AppHostSessionUiState` 会把 agent snapshot 的 `cursorGap` 映射到对应 thread 的一次性 recovery hint；`AppSessionRecoveryCoordinator` 在 gap 存在时不再用本地 lastTurnId/lastItemId 提前截断 turn/item 有界回填，并会在 snapshot 晚于 connected 状态到达时主动对当前 thread 再触发一次恢复。
 - 已落地 cursor gap 的延迟 thread 切换恢复：如果 agent snapshot gap 属于非当前 thread，App 不会立刻切换 UI；用户之后打开该 thread 时，`AppHostSessionUiState` 会消费对应 gap hint 并触发一次保守 turn/item 回填，避免断线期间非当前 thread 的事件缺口长期停留。

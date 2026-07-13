@@ -69,6 +69,7 @@ class AppLocalizations {
   String get sshConnectFailed => _text('sshConnectFailed');
   String get sshDisconnectFailed => _text('sshDisconnectFailed');
   String get sshBackendRestartFailed => _text('sshBackendRestartFailed');
+  String get sshBackendStopFailed => _text('sshBackendStopFailed');
   String get sshProbeFailed => _text('sshProbeFailed');
   String savedHostProfileCount(int count) =>
       _text('savedHostProfileCount').replaceAll('{count}', '$count');
@@ -189,6 +190,10 @@ class AppLocalizations {
   String get reconnecting => _text('reconnecting');
   String get restartBackend => _text('restartBackend');
   String get restartingBackend => _text('restartingBackend');
+  String get stopBackend => _text('stopBackend');
+  String get stoppingBackend => _text('stoppingBackend');
+  String get stopBackendTitle => _text('stopBackendTitle');
+  String get stopBackendBody => _text('stopBackendBody');
   String get statusIdle => _text('statusIdle');
   String get statusRunning => _text('statusRunning');
   String get statusWorking => _text('statusWorking');
@@ -1182,6 +1187,7 @@ const _values = <String, Map<String, String>>{
     'sshConnectFailed': 'SSH connection failed',
     'sshDisconnectFailed': 'SSH disconnect failed',
     'sshBackendRestartFailed': 'Backend restart failed',
+    'sshBackendStopFailed': 'Backend stop failed',
     'sshProbeFailed': 'SSH probe failed',
     'savedHostProfileCount': '{count} profiles',
     'importSshConfig': 'Import SSH config',
@@ -1286,6 +1292,11 @@ const _values = <String, Map<String, String>>{
     'reconnecting': 'Reconnecting',
     'restartBackend': 'Restart backend',
     'restartingBackend': 'Restarting backend',
+    'stopBackend': 'Stop backend',
+    'stoppingBackend': 'Stopping backend',
+    'stopBackendTitle': 'Stop backend?',
+    'stopBackendBody':
+        'This stops the SadCoder backend service for the active host and closes the current connection. Running Codex work may stop or become unavailable until you reconnect.',
     'statusIdle': 'Idle',
     'statusRunning': 'Running',
     'statusWorking': 'Working',
@@ -2085,6 +2096,7 @@ const _values = <String, Map<String, String>>{
     'sshConnectFailed': 'SSH 连接失败',
     'sshDisconnectFailed': 'SSH 断开连接失败',
     'sshBackendRestartFailed': '后端重启失败',
+    'sshBackendStopFailed': '后端停止失败',
     'sshProbeFailed': 'SSH 检测失败',
     'savedHostProfileCount': '{count} 个配置',
     'importSshConfig': '导入 SSH config',
@@ -2173,6 +2185,11 @@ const _values = <String, Map<String, String>>{
     'reconnecting': '重连中',
     'restartBackend': '重启后端',
     'restartingBackend': '正在重启后端',
+    'stopBackend': '停止后端',
+    'stoppingBackend': '正在停止后端',
+    'stopBackendTitle': '停止后端？',
+    'stopBackendBody':
+        '这会停止当前主机上的 SadCoder 后端服务并关闭当前连接。正在运行的 Codex 工作可能停止，或在重新连接前不可用。',
     'statusIdle': '空闲',
     'statusRunning': '运行中',
     'statusWorking': '工作中',

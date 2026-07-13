@@ -1569,6 +1569,132 @@ secret-key-material
     expect(find.text('Active connection: srv.dev'), findsOneWidget);
   });
 
+  testWidgets('requires confirmation before stopping the backend', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final approvalController = ApprovalStateController();
+    final starter = _FakeSessionStarter();
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await _pumpHostsPage(tester, runner, sessionController: sessionController);
+    await _connectPasswordHost(tester, sessionController);
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('session-stop-backend-button')),
+    );
+    expect(
+      find.byKey(const ValueKey('session-stop-backend-button')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('session-stop-backend-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Stop backend?'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Cancel'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(starter.connections.first.stopBackendCount, 0);
+    expect(starter.connectedProfiles.length, 1);
+    expect(sessionController.status, CodexSessionStatus.connected);
+  });
+
+  testWidgets('stops the backend without reconnecting after confirmation', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final approvalController = ApprovalStateController();
+    final starter = _FakeSessionStarter();
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await _pumpHostsPage(tester, runner, sessionController: sessionController);
+    await _connectPasswordHost(tester, sessionController);
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('session-stop-backend-button')),
+    );
+    await tester.tap(find.byKey(const ValueKey('session-stop-backend-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Stop backend').last);
+    await _pumpUntil(
+      tester,
+      () =>
+          sessionController.status == CodexSessionStatus.idle &&
+          starter.connections.first.stopBackendCount == 1,
+      describe: () =>
+          'status=${sessionController.status}, '
+          'stopCount=${starter.connections.first.stopBackendCount}',
+    );
+
+    expect(starter.connectedProfiles.length, 1);
+    expect(starter.closeCount, 1);
+    expect(find.text('No active connection'), findsOneWidget);
+  });
+
+  testWidgets('localizes backend stop failures from the session controller', (
+    tester,
+  ) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final approvalController = ApprovalStateController();
+    final starter = _FakeSessionStarter(failStopBackend: true);
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      sessionController: sessionController,
+      locale: const Locale('zh'),
+    );
+    await _connectPasswordHost(tester, sessionController);
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('session-stop-backend-button')),
+    );
+    await tester.tap(find.byKey(const ValueKey('session-stop-backend-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('停止后端').last);
+    await _pumpUntil(
+      tester,
+      () =>
+          sessionController.status == CodexSessionStatus.connected &&
+          starter.connections.first.stopBackendCount == 1,
+      describe: () =>
+          'status=${sessionController.status}, '
+          'stopCount=${starter.connections.first.stopBackendCount}',
+    );
+
+    expect(find.textContaining('后端停止失败', skipOffstage: false), findsOneWidget);
+    expect(
+      find.textContaining('stop failed', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Backend stop failed', skipOffstage: false),
+      findsNothing,
+    );
+  });
+
   testWidgets(
     'localizes backend restart failures from the session controller',
     (tester) async {
@@ -1801,6 +1927,28 @@ Future<void> _pumpUntil(
     await tester.pump(const Duration(milliseconds: 50));
   }
   expect(predicate(), isTrue, reason: describe?.call());
+}
+
+Future<void> _connectPasswordHost(
+  WidgetTester tester,
+  CodexSessionStateController sessionController,
+) async {
+  await tester.enterText(find.byKey(const ValueKey('host-field')), 'srv.dev');
+  await tester.enterText(find.byKey(const ValueKey('username-field')), 'alice');
+  await tester.enterText(
+    find.byKey(const ValueKey('password-field')),
+    'secret',
+  );
+  await tester.ensureVisible(
+    find.byKey(const ValueKey('session-connect-button')),
+  );
+
+  await tester.tap(find.byKey(const ValueKey('session-connect-button')));
+  await _pumpUntil(
+    tester,
+    () => sessionController.status == CodexSessionStatus.connected,
+    describe: () => 'status=${sessionController.status}',
+  );
 }
 
 Future<void> _pumpHostsPage(
@@ -2254,12 +2402,14 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.failConnect = false,
     this.connectError,
     this.failRestartBackend = false,
+    this.failStopBackend = false,
     this.failClose = false,
   });
 
   final bool failConnect;
   final Object? connectError;
   final bool failRestartBackend;
+  final bool failStopBackend;
   final bool failClose;
   final connectedProfiles = <SshProfile>[];
   final connections = <_FakeSessionConnection>[];
@@ -2281,6 +2431,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     final connection = _FakeSessionConnection(
       profile: profile,
       failRestartBackend: failRestartBackend,
+      failStopBackend: failStopBackend,
       failClose: failClose,
       onClose: () => closeCount++,
     );
@@ -2293,6 +2444,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   _FakeSessionConnection({
     required this.profile,
     required this.failRestartBackend,
+    required this.failStopBackend,
     required this.failClose,
     required this.onClose,
   });
@@ -2304,6 +2456,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   @override
   final SshProfile profile;
   final bool failRestartBackend;
+  final bool failStopBackend;
   final bool failClose;
 
   @override
@@ -2454,6 +2607,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   @override
   Future<Map<String, Object?>> stopBackend() async {
     stopBackendCount++;
+    if (failStopBackend) {
+      throw StateError('stop failed');
+    }
     return {'stopped': true};
   }
 
