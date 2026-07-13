@@ -31,6 +31,10 @@ void main() {
         colorPalette: AppColorPalette.pastelCandy,
         brightness: Brightness.light,
       ).extension<SadCoderThemeColors>()!;
+      final sugarRush = sadCoderThemeData(
+        colorPalette: AppColorPalette.sugarRush,
+        brightness: Brightness.light,
+      ).extension<SadCoderThemeColors>()!;
 
       expect(candy.codeKeyword, isNot(sadcoder.codeKeyword));
       expect(candy.terminalAccent, isNot(sadcoder.terminalAccent));
@@ -41,6 +45,8 @@ void main() {
       expect(candyTones.terminalAccent, isNot(candy.terminalAccent));
       expect(pastelCandy.codeKeyword, isNot(candy.codeKeyword));
       expect(pastelCandy.terminalAccent, isNot(candy.terminalAccent));
+      expect(sugarRush.codeKeyword, isNot(candy.codeKeyword));
+      expect(sugarRush.terminalAccent, isNot(candy.terminalAccent));
       expect(candy.diffAddedForeground, sadcoder.diffAddedForeground);
       expect(candy.diffRemovedForeground, sadcoder.diffRemovedForeground);
       expect(candyPop.diffAddedForeground, sadcoder.diffAddedForeground);
@@ -49,6 +55,8 @@ void main() {
       expect(candyTones.diffRemovedForeground, sadcoder.diffRemovedForeground);
       expect(pastelCandy.diffAddedForeground, sadcoder.diffAddedForeground);
       expect(pastelCandy.diffRemovedForeground, sadcoder.diffRemovedForeground);
+      expect(sugarRush.diffAddedForeground, sadcoder.diffAddedForeground);
+      expect(sugarRush.diffRemovedForeground, sadcoder.diffRemovedForeground);
       expect(lagoon.diffAddedForeground, sadcoder.diffAddedForeground);
       expect(lagoon.diffRemovedForeground, sadcoder.diffRemovedForeground);
     },
@@ -123,6 +131,24 @@ void main() {
     expect(scheme.secondaryContainer, const Color(0xFFD3F8E2));
     expect(scheme.tertiaryContainer, const Color(0xFFA9DEF9));
     expect(scheme.surfaceContainerHighest, const Color(0xFFF4E6FF));
+    expect(scheme.primary, isNot(nativeSeed.primary));
+  });
+
+  test('sugar rush color scheme uses bespoke bubblegum-inspired tones', () {
+    final scheme = sadCoderColorScheme(
+      colorPalette: AppColorPalette.sugarRush,
+      brightness: Brightness.light,
+    );
+    final nativeSeed = ColorScheme.fromSeed(
+      seedColor: AppColorPalette.sugarRush.seedColor,
+      brightness: Brightness.light,
+    );
+
+    expect(scheme.primary, const Color(0xFFA9273A));
+    expect(scheme.primaryContainer, const Color(0xFFFFD9DD));
+    expect(scheme.secondaryContainer, const Color(0xFFCCF5FA));
+    expect(scheme.tertiaryContainer, const Color(0xFFF2DAFF));
+    expect(scheme.surfaceContainerHighest, const Color(0xFFF6E1FF));
     expect(scheme.primary, isNot(nativeSeed.primary));
   });
 

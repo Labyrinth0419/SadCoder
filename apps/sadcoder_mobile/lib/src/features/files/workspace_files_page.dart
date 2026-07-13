@@ -810,8 +810,9 @@ class _FilesTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final colorScheme = Theme.of(context).colorScheme;
     return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerLowest,
+      color: colorScheme.surfaceContainerLow,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 5, 12, 5),
         child: Row(
@@ -821,6 +822,12 @@ class _FilesTopBar extends StatelessWidget {
               tooltip: l10n.workspaceFilesSidebar,
               onPressed: onToggleSidebar,
               style: IconButton.styleFrom(
+                backgroundColor: sidebarVisible
+                    ? colorScheme.primaryContainer
+                    : colorScheme.surfaceContainerHighest,
+                foregroundColor: sidebarVisible
+                    ? colorScheme.onPrimaryContainer
+                    : colorScheme.onSurfaceVariant,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 minimumSize: const Size.square(36),
                 padding: EdgeInsets.zero,
@@ -831,7 +838,7 @@ class _FilesTopBar extends StatelessWidget {
             Icon(
               Icons.folder_copy_outlined,
               size: 19,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              color: colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 9),
             Expanded(
@@ -1037,7 +1044,7 @@ class _FilesToolbar extends StatelessWidget {
       builder: (context, constraints) {
         final searchWidth = constraints.maxWidth < 220
             ? constraints.maxWidth
-            : 96.0;
+            : 88.0;
         return Row(
           children: [
             Flexible(

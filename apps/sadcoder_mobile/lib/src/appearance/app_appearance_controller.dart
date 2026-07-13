@@ -93,7 +93,7 @@ extension AppColorPaletteValues on AppColorPalette {
       AppColorPalette.pastelCandy => const Color(0xFFF4BCC7),
       AppColorPalette.candyTones => const Color(0xFFF694C1),
       AppColorPalette.candyPop => const Color(0xFF9B5DE5),
-      AppColorPalette.sugarRush => const Color(0xFFFF6B9A),
+      AppColorPalette.sugarRush => const Color(0xFFF56C78),
       AppColorPalette.lagoon => const Color(0xFF2563EB),
       AppColorPalette.ember => const Color(0xFFC2410C),
     };
@@ -135,11 +135,11 @@ extension AppColorPaletteValues on AppColorPalette {
         Color(0xFF00F5D4),
       ],
       AppColorPalette.sugarRush => const [
-        Color(0xFFFF6B9A),
-        Color(0xFFFFC857),
-        Color(0xFF4ECDC4),
-        Color(0xFF7A5CFF),
-        Color(0xFFFFF0A6),
+        Color(0xFFF56C78),
+        Color(0xFFECE482),
+        Color(0xFF7CD6E4),
+        Color(0xFFAAE48F),
+        Color(0xFFC25DE9),
       ],
       AppColorPalette.lagoon => const [
         Color(0xFF2563EB),

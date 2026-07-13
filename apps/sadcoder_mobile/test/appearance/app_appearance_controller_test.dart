@@ -78,14 +78,14 @@ void main() {
     ]);
   });
 
-  test('sugar rush palette exposes bright candy swatches', () {
-    expect(AppColorPalette.sugarRush.seedColor, const Color(0xFFFF6B9A));
+  test('sugar rush palette exposes bubblegum-inspired candy swatches', () {
+    expect(AppColorPalette.sugarRush.seedColor, const Color(0xFFF56C78));
     expect(AppColorPalette.sugarRush.swatchColors, const [
-      Color(0xFFFF6B9A),
-      Color(0xFFFFC857),
-      Color(0xFF4ECDC4),
-      Color(0xFF7A5CFF),
-      Color(0xFFFFF0A6),
+      Color(0xFFF56C78),
+      Color(0xFFECE482),
+      Color(0xFF7CD6E4),
+      Color(0xFFAAE48F),
+      Color(0xFFC25DE9),
     ]);
   });
 

@@ -4417,8 +4417,11 @@ class _ChatActivityStripBody extends StatelessWidget {
     final active = busy || running;
     return Material(
       color: active
-          ? indicator.withValues(alpha: 0.08)
-          : colorScheme.surfaceContainerLowest,
+          ? Color.alphaBlend(
+              indicator.withValues(alpha: 0.08),
+              colorScheme.surfaceContainerLowest,
+            )
+          : colorScheme.surfaceContainerLow,
       child: DecoratedBox(
         decoration: BoxDecoration(
           border: Border(
@@ -4428,15 +4431,15 @@ class _ChatActivityStripBody extends StatelessWidget {
                   : colorScheme.outlineVariant,
             ),
           ),
-          boxShadow: active
-              ? [
-                  BoxShadow(
-                    color: indicator.withValues(alpha: 0.10),
-                    blurRadius: 12,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+          boxShadow: [
+            BoxShadow(
+              color: (active ? indicator : colorScheme.shadow).withValues(
+                alpha: active ? 0.12 : 0.04,
+              ),
+              blurRadius: active ? 16 : 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -4450,6 +4453,12 @@ class _ChatActivityStripBody extends StatelessWidget {
                     tooltip: l10n.sessions,
                     onPressed: onToggleSidebar,
                     style: IconButton.styleFrom(
+                      backgroundColor: sidebarVisible
+                          ? colorScheme.primaryContainer
+                          : colorScheme.surfaceContainerHighest,
+                      foregroundColor: sidebarVisible
+                          ? colorScheme.onPrimaryContainer
+                          : colorScheme.onSurfaceVariant,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       minimumSize: const Size.square(36),
                       padding: EdgeInsets.zero,
@@ -4559,14 +4568,29 @@ class _ChatTuiStatusLine extends StatelessWidget {
             if (details.isNotEmpty) ...[
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  details.join('  |  '),
-                  key: const ValueKey('chat-activity-detail'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontFamily: 'monospace',
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.72,
+                    ),
+                    border: Border.all(color: colorScheme.outlineVariant),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
+                    child: Text(
+                      details.join('  |  '),
+                      key: const ValueKey('chat-activity-detail'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
                   ),
                 ),
               ),

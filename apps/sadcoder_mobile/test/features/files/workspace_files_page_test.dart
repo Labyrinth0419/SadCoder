@@ -369,7 +369,7 @@ void main() {
       tester
           .getSize(find.byKey(const ValueKey('workspace-files-filter')))
           .width,
-      lessThanOrEqualTo(150),
+      lessThanOrEqualTo(96),
     );
     expect(
       find.byKey(const ValueKey('workspace-files-sidebar-toggle')),
