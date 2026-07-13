@@ -16,9 +16,7 @@ import '../../files/file_search_reader.dart';
 import '../../i18n/app_localizations.dart';
 import '../../mcp/mcp_server_status_controller.dart';
 import '../../mcp/mcp_server_status_reader.dart';
-import '../../models/model_labels.dart';
 import '../../models/model_list_controller.dart';
-import '../../models/model_list_reader.dart';
 import '../../permissions/permission_profile_list_controller.dart';
 import '../../permissions/permission_profile_list_reader.dart';
 import '../../plugins/plugin_list_reader.dart';
@@ -51,7 +49,9 @@ import 'chat_experimental_summary.dart';
 import 'chat_feedback_sheet.dart';
 import 'chat_hooks_summary.dart';
 import 'chat_memories_summary.dart';
+import 'chat_model_override_sheet.dart';
 import 'chat_plugins_summary.dart';
+import 'chat_override_scope.dart';
 import 'chat_skills_summary.dart';
 import 'chat_status_summary.dart';
 import 'chat_timeline_controller.dart';
@@ -1523,10 +1523,10 @@ class _ChatPageState extends State<ChatPage> {
     if (controller == null) {
       return SlashCommandCallbackResult.unavailable;
     }
-    final result = await showModalBottomSheet<_ModelOverrideResult>(
+    final result = await showModalBottomSheet<ChatModelOverrideResult>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _ModelOverrideSheet(
+      builder: (context) => ChatModelOverrideSheet(
         controller: controller,
         modelListController: widget.modelListController,
       ),
@@ -1535,12 +1535,12 @@ class _ChatPageState extends State<ChatPage> {
       return SlashCommandCallbackResult.cancelled;
     }
     switch (result.scope) {
-      case _OverrideScope.turn:
+      case ChatOverrideScope.turn:
         controller.setTurnModelEffort(
           model: result.model,
           effort: result.effort,
         );
-      case _OverrideScope.session:
+      case ChatOverrideScope.session:
         controller.setSessionModelEffort(
           model: result.model,
           effort: result.effort,
@@ -1572,13 +1572,13 @@ class _ChatPageState extends State<ChatPage> {
       }
     }
     switch (result.scope) {
-      case _OverrideScope.turn:
+      case ChatOverrideScope.turn:
         controller.setTurnPermissions(
           approvalPolicy: result.approvalPolicy,
           sandboxPolicy: result.sandboxPolicy,
           permissionProfile: result.permissionProfile,
         );
-      case _OverrideScope.session:
+      case ChatOverrideScope.session:
         controller.setSessionPermissions(
           approvalPolicy: result.approvalPolicy,
           sandboxPolicy: result.sandboxPolicy,
@@ -1632,9 +1632,9 @@ class _ChatPageState extends State<ChatPage> {
       return SlashCommandCallbackResult.cancelled;
     }
     switch (result.scope) {
-      case _OverrideScope.turn:
+      case ChatOverrideScope.turn:
         controller.setTurnPersonality(result.personality);
-      case _OverrideScope.session:
+      case ChatOverrideScope.session:
         controller.setSessionPersonality(result.personality);
     }
     return SlashCommandCallbackResult.executed;
@@ -3307,8 +3307,6 @@ const _goalStatuses = {
   'complete',
 };
 
-enum _OverrideScope { turn, session }
-
 const _approvalPolicyOptions = ['', 'on-request', 'on-failure', 'never'];
 const _sandboxModeOptions = [
   '',
@@ -3316,34 +3314,6 @@ const _sandboxModeOptions = [
   'workspaceWrite',
   'dangerFullAccess',
 ];
-
-class _OverrideScopeSelector extends StatelessWidget {
-  const _OverrideScopeSelector({required this.scope, required this.onChanged});
-
-  final _OverrideScope scope;
-  final ValueChanged<_OverrideScope> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return SegmentedButton<_OverrideScope>(
-      segments: [
-        ButtonSegment(
-          value: _OverrideScope.turn,
-          icon: const Icon(Icons.send_outlined),
-          label: Text(l10n.overrideTurnScope),
-        ),
-        ButtonSegment(
-          value: _OverrideScope.session,
-          icon: const Icon(Icons.forum_outlined),
-          label: Text(l10n.overrideSessionScope),
-        ),
-      ],
-      selected: {scope},
-      onSelectionChanged: (selection) => onChanged(selection.single),
-    );
-  }
-}
 
 class _PermissionsOverrideResult {
   const _PermissionsOverrideResult({
@@ -3353,7 +3323,7 @@ class _PermissionsOverrideResult {
     required this.permissionProfile,
   });
 
-  final _OverrideScope scope;
+  final ChatOverrideScope scope;
   final Object? approvalPolicy;
   final Map<String, Object?> sandboxPolicy;
   final String? permissionProfile;
@@ -3374,7 +3344,7 @@ class _PermissionsOverrideSheet extends StatefulWidget {
 }
 
 class _PermissionsOverrideSheetState extends State<_PermissionsOverrideSheet> {
-  late _OverrideScope _scope;
+  late ChatOverrideScope _scope;
   late String _approvalPolicy;
   late String _permissionProfile;
   late String _sandboxMode;
@@ -3383,7 +3353,7 @@ class _PermissionsOverrideSheetState extends State<_PermissionsOverrideSheet> {
   @override
   void initState() {
     super.initState();
-    _scope = _OverrideScope.turn;
+    _scope = ChatOverrideScope.turn;
     _loadScopeValues();
     unawaited(_refreshPermissionProfiles());
   }
@@ -3404,7 +3374,7 @@ class _PermissionsOverrideSheetState extends State<_PermissionsOverrideSheet> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
-            _OverrideScopeSelector(
+            ChatOverrideScopeSelector(
               scope: _scope,
               onChanged: (scope) {
                 setState(() {
@@ -3505,7 +3475,7 @@ class _PermissionsOverrideSheetState extends State<_PermissionsOverrideSheet> {
   }
 
   void _loadScopeValues() {
-    final overrides = _overridesForScope(widget.controller, _scope);
+    final overrides = chatOverridesForScope(widget.controller, _scope);
     _approvalPolicy = _supportedOption(
       configOverrideValueLabel(overrides.approvalPolicy) ?? '',
       _approvalPolicyOptions,
@@ -3741,249 +3711,13 @@ class _PermissionsRiskWarning extends StatelessWidget {
   }
 }
 
-class _ModelOverrideResult {
-  const _ModelOverrideResult({
-    required this.scope,
-    required this.model,
-    required this.effort,
-  });
-
-  final _OverrideScope scope;
-  final String model;
-  final String effort;
-}
-
-class _ModelOverrideSheet extends StatefulWidget {
-  const _ModelOverrideSheet({
-    required this.controller,
-    this.modelListController,
-  });
-
-  final CodexConfigOverrideController controller;
-  final ModelListController? modelListController;
-
-  @override
-  State<_ModelOverrideSheet> createState() => _ModelOverrideSheetState();
-}
-
-class _ModelOverrideSheetState extends State<_ModelOverrideSheet> {
-  late _OverrideScope _scope;
-  late final TextEditingController _modelController;
-  late final TextEditingController _effortController;
-
-  @override
-  void initState() {
-    super.initState();
-    _scope = _OverrideScope.turn;
-    final overrides = _overridesForScope(widget.controller, _scope);
-    _modelController = TextEditingController(text: overrides.model ?? '');
-    _effortController = TextEditingController(text: overrides.effort ?? '');
-    unawaited(widget.modelListController?.refresh());
-  }
-
-  @override
-  void dispose() {
-    _modelController.dispose();
-    _effortController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l10n.modelCommandTitle,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            _OverrideScopeSelector(
-              scope: _scope,
-              onChanged: (scope) {
-                setState(() {
-                  _scope = scope;
-                  _loadScopeValues();
-                });
-              },
-            ),
-            const SizedBox(height: 12),
-            _ModelListPicker(
-              controller: widget.modelListController,
-              modelController: _modelController,
-            ),
-            const SizedBox(height: 12),
-            ConfigOverrideField(
-              keyValue: 'chat-model-command-model',
-              controller: _modelController,
-              label: l10n.modelOverride,
-            ),
-            const SizedBox(height: 12),
-            ConfigOverrideField(
-              keyValue: 'chat-model-command-effort',
-              controller: _effortController,
-              label: l10n.effortOverride,
-            ),
-            const SizedBox(height: 16),
-            OverflowBar(
-              alignment: MainAxisAlignment.end,
-              spacing: 8,
-              overflowSpacing: 8,
-              children: [
-                TextButton.icon(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
-                  label: Text(l10n.approvalCancel),
-                ),
-                FilledButton.icon(
-                  key: const ValueKey('chat-model-command-apply'),
-                  onPressed: _apply,
-                  icon: const Icon(Icons.check),
-                  label: Text(l10n.applyModelOverride),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _apply() {
-    Navigator.of(context).pop(
-      _ModelOverrideResult(
-        scope: _scope,
-        model: _modelController.text,
-        effort: _effortController.text,
-      ),
-    );
-  }
-
-  void _loadScopeValues() {
-    final overrides = _overridesForScope(widget.controller, _scope);
-    _modelController.text = overrides.model ?? '';
-    _effortController.text = overrides.effort ?? '';
-  }
-}
-
-class _ModelListPicker extends StatelessWidget {
-  const _ModelListPicker({
-    required this.controller,
-    required this.modelController,
-  });
-
-  final ModelListController? controller;
-  final TextEditingController modelController;
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = this.controller;
-    if (controller == null) {
-      return const SizedBox.shrink();
-    }
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        if (controller.models.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        final selectedModel =
-            controller.models.any((model) => model.id == modelController.text)
-            ? modelController.text
-            : null;
-        return InputDecorator(
-          decoration: InputDecoration(
-            labelText: context.l10n.modelList,
-            border: const OutlineInputBorder(),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              key: const ValueKey('chat-model-command-model-list'),
-              value: selectedModel,
-              isExpanded: true,
-              itemHeight: null,
-              selectedItemBuilder: (context) => [
-                for (final model in controller.models)
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(
-                      codexModelDisplayLabel(context, model),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-              ],
-              items: [
-                for (final model in controller.models)
-                  DropdownMenuItem(
-                    value: model.id,
-                    child: _ModelPickerMenuItem(model: model),
-                  ),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  modelController.text = value;
-                }
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _ModelPickerMenuItem extends StatelessWidget {
-  const _ModelPickerMenuItem({required this.model});
-
-  final CodexModelSummary model;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final capabilitySummary = codexModelCapabilitySummary(context, model);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            codexModelDisplayLabel(context, model),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (capabilitySummary != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              capabilitySummary,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 class _PersonalityOverrideResult {
   const _PersonalityOverrideResult({
     required this.scope,
     required this.personality,
   });
 
-  final _OverrideScope scope;
+  final ChatOverrideScope scope;
   final String personality;
 }
 
@@ -3998,14 +3732,14 @@ class _PersonalityOverrideSheet extends StatefulWidget {
 }
 
 class _PersonalityOverrideSheetState extends State<_PersonalityOverrideSheet> {
-  late _OverrideScope _scope;
+  late ChatOverrideScope _scope;
   late final TextEditingController _personalityController;
 
   @override
   void initState() {
     super.initState();
-    _scope = _OverrideScope.turn;
-    final overrides = _overridesForScope(widget.controller, _scope);
+    _scope = ChatOverrideScope.turn;
+    final overrides = chatOverridesForScope(widget.controller, _scope);
     _personalityController = TextEditingController(
       text: overrides.personality ?? '',
     );
@@ -4033,7 +3767,7 @@ class _PersonalityOverrideSheetState extends State<_PersonalityOverrideSheet> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
-            _OverrideScopeSelector(
+            ChatOverrideScopeSelector(
               scope: _scope,
               onChanged: (scope) {
                 setState(() {
@@ -4083,19 +3817,9 @@ class _PersonalityOverrideSheetState extends State<_PersonalityOverrideSheet> {
   }
 
   void _loadScopeValues() {
-    final overrides = _overridesForScope(widget.controller, _scope);
+    final overrides = chatOverridesForScope(widget.controller, _scope);
     _personalityController.text = overrides.personality ?? '';
   }
-}
-
-CodexConfigOverrides _overridesForScope(
-  CodexConfigOverrideController controller,
-  _OverrideScope scope,
-) {
-  return switch (scope) {
-    _OverrideScope.turn => controller.layers.turn,
-    _OverrideScope.session => controller.layers.session,
-  };
 }
 
 double _sidebarWidthFor(double maxWidth) {
