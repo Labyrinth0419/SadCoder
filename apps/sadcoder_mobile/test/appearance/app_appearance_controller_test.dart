@@ -27,6 +27,8 @@ void main() {
     expect(AppColorPalette.parse('marshmallow'), AppColorPalette.candyTones);
     expect(AppColorPalette.parse('candy-pop'), AppColorPalette.candyPop);
     expect(AppColorPalette.parse('pop'), AppColorPalette.candyPop);
+    expect(AppColorPalette.parse('sugar-rush'), AppColorPalette.sugarRush);
+    expect(AppColorPalette.parse('gummy'), AppColorPalette.sugarRush);
     expect(AppColorPalette.parse('ocean'), AppColorPalette.lagoon);
     expect(AppColorPalette.parse('warm'), AppColorPalette.ember);
     expect(AppColorPalette.parse('unknown'), isNull);
@@ -73,6 +75,17 @@ void main() {
       Color(0xFFF694C1),
       Color(0xFFEDE7B1),
       Color(0xFFA9DEF9),
+    ]);
+  });
+
+  test('sugar rush palette exposes bright candy swatches', () {
+    expect(AppColorPalette.sugarRush.seedColor, const Color(0xFFFF6B9A));
+    expect(AppColorPalette.sugarRush.swatchColors, const [
+      Color(0xFFFF6B9A),
+      Color(0xFFFFC857),
+      Color(0xFF4ECDC4),
+      Color(0xFF7A5CFF),
+      Color(0xFFFFF0A6),
     ]);
   });
 

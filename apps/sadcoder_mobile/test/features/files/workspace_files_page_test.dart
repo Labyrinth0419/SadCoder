@@ -515,10 +515,13 @@ void main() {
       fileReader: const _FakeWorkspaceFileReader(),
     );
 
-    expect(
+    final statusPage = tester.widget<Container>(
       find.byKey(const ValueKey('workspace-files-status-page')),
-      findsOneWidget,
     );
+    final decoration = statusPage.decoration! as BoxDecoration;
+    expect(decoration.border, isNotNull);
+    expect(decoration.borderRadius, isNotNull);
+    expect(decoration.boxShadow, isNotEmpty);
     expect(find.text('Select a text file to preview it.'), findsOneWidget);
     expect(find.text('Root: /repo'), findsOneWidget);
   });

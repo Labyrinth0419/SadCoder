@@ -7018,6 +7018,28 @@ void main() {
     await _pumpChatPage(tester, timelineController: timelineController);
 
     expect(find.text('cargo test'), findsOneWidget);
+    final commandBlock = tester.widget<Container>(
+      find.byKey(const ValueKey('timeline-execution-cmd_1')),
+    );
+    final commandDecoration = commandBlock.decoration! as BoxDecoration;
+    final commandRail = tester.widget<ColoredBox>(
+      find.byKey(const ValueKey('timeline-execution-rail-cmd_1')),
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('timeline-execution-rail-cmd_1')))
+          .width,
+      3,
+    );
+    expect(
+      commandRail.color,
+      Theme.of(
+        tester.element(
+          find.byKey(const ValueKey('timeline-execution-rail-cmd_1')),
+        ),
+      ).colorScheme.tertiary,
+    );
+    expect(commandDecoration.boxShadow, isNotEmpty);
     expect(find.textContaining('Working directory: /repo'), findsNothing);
     expect(find.byKey(const ValueKey('timeline-details-cmd_1')), findsNothing);
     expect(find.textContaining('Exit code: 0'), findsNothing);

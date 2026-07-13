@@ -40,6 +40,7 @@ enum AppColorPalette {
   pastelCandy,
   candyTones,
   candyPop,
+  sugarRush,
   lagoon,
   ember;
 
@@ -60,6 +61,10 @@ enum AppColorPalette {
       'candypop' ||
       'pop' ||
       'sweet-pop' => AppColorPalette.candyPop,
+      'sugar-rush' ||
+      'sugarrush' ||
+      'gummy' ||
+      'taffy' => AppColorPalette.sugarRush,
       'lagoon' || 'blue' || 'ocean' => AppColorPalette.lagoon,
       'ember' || 'warm' => AppColorPalette.ember,
       _ => null,
@@ -75,6 +80,7 @@ extension AppColorPaletteValues on AppColorPalette {
       AppColorPalette.pastelCandy => 'pastel-candy',
       AppColorPalette.candyTones => 'candy-tones',
       AppColorPalette.candyPop => 'candy-pop',
+      AppColorPalette.sugarRush => 'sugar-rush',
       AppColorPalette.lagoon => 'lagoon',
       AppColorPalette.ember => 'ember',
     };
@@ -87,6 +93,7 @@ extension AppColorPaletteValues on AppColorPalette {
       AppColorPalette.pastelCandy => const Color(0xFFF4BCC7),
       AppColorPalette.candyTones => const Color(0xFFF694C1),
       AppColorPalette.candyPop => const Color(0xFF9B5DE5),
+      AppColorPalette.sugarRush => const Color(0xFFFF6B9A),
       AppColorPalette.lagoon => const Color(0xFF2563EB),
       AppColorPalette.ember => const Color(0xFFC2410C),
     };
@@ -126,6 +133,13 @@ extension AppColorPaletteValues on AppColorPalette {
         Color(0xFFFEE440),
         Color(0xFF00BBF9),
         Color(0xFF00F5D4),
+      ],
+      AppColorPalette.sugarRush => const [
+        Color(0xFFFF6B9A),
+        Color(0xFFFFC857),
+        Color(0xFF4ECDC4),
+        Color(0xFF7A5CFF),
+        Color(0xFFFFF0A6),
       ],
       AppColorPalette.lagoon => const [
         Color(0xFF2563EB),

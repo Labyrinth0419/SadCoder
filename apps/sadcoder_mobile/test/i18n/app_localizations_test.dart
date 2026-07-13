@@ -103,6 +103,7 @@ void main() {
     expect(zh.colorPaletteLabel('pastel-candy'), '粉彩糖果');
     expect(zh.colorPaletteLabel('candy-tones'), '糖果色调');
     expect(zh.colorPaletteLabel('candy-pop'), '糖果汽水');
+    expect(zh.colorPaletteLabel('sugar-rush'), '糖果冲击');
     expect(zh.modelDefaultValueSummary('low'), '默认：low');
     expect(zh.modelReasoningSummary('low, high'), '推理：low, high');
     expect(zh.modelServiceTierSummary('default'), '服务档位：default');

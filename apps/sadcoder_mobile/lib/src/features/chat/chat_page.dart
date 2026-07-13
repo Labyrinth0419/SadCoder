@@ -4414,6 +4414,15 @@ class _ChatActivityStripBody extends StatelessWidget {
                   : colorScheme.outlineVariant,
             ),
           ),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: indicator.withValues(alpha: 0.10),
+                    blurRadius: 12,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -5416,56 +5425,92 @@ class _TimelineExecutionItem extends StatelessWidget {
       (change) => change.diff.trim().isNotEmpty,
     );
     final hasBody = body.isNotEmpty;
+    final accent = _timelineExecutionAccent(colorScheme, item.itemType);
     return Container(
       key: ValueKey('timeline-execution-${item.itemId}'),
       margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.all(12),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLow,
         border: Border.all(color: colorScheme.outlineVariant),
         borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              _TimelineGlyph(icon: icon, color: colorScheme.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-              ),
-            ],
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-          if (hasBody) ...[
-            const SizedBox(height: 10),
-            _TimelineBodyBlock(item: item, body: body),
-          ],
-          if (hasDiffs) ...[
-            const SizedBox(height: 10),
-            for (final change in item.fileChanges)
-              if (change.diff.trim().isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _TimelineDiffBlock(change: change),
-                ),
-          ],
-          if (showRaw) ...[
-            const SizedBox(height: 8),
-            SelectableText(
-              rawJson,
-              key: ValueKey('timeline-raw-${item.itemId}'),
+        ],
+      ),
+      child: Stack(
+        children: [
+          PositionedDirectional(
+            start: 0,
+            top: 0,
+            bottom: 0,
+            width: 3,
+            child: ColoredBox(
+              key: ValueKey('timeline-execution-rail-${item.itemId}'),
+              color: accent,
             ),
-          ],
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(15, 12, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    _TimelineGlyph(icon: icon, color: accent),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ),
+                  ],
+                ),
+                if (hasBody) ...[
+                  const SizedBox(height: 10),
+                  _TimelineBodyBlock(item: item, body: body),
+                ],
+                if (hasDiffs) ...[
+                  const SizedBox(height: 10),
+                  for (final change in item.fileChanges)
+                    if (change.diff.trim().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _TimelineDiffBlock(change: change),
+                      ),
+                ],
+                if (showRaw) ...[
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    rawJson,
+                    key: ValueKey('timeline-raw-${item.itemId}'),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
+}
+
+Color _timelineExecutionAccent(ColorScheme colorScheme, String itemType) {
+  return switch (itemType) {
+    'commandExecution' => colorScheme.tertiary,
+    'fileChange' => colorScheme.secondary,
+    'mcpToolCall' ||
+    'dynamicToolCall' ||
+    'collabAgentToolCall' => colorScheme.primary,
+    _ => colorScheme.outline,
+  };
 }
 
 class _TimelineCollapsibleItem extends StatelessWidget {
