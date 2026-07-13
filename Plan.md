@@ -856,6 +856,7 @@ MVP 可以简化为底部导航：
 - 已收敛 Chat 顶部为左侧三横线会话侧栏按钮、中部 TUI 式状态词（idle/running/working/failed）+ 当前工作详情和右侧 host selector；活动条会从当前非终态 timeline item 提取命令/工具/文件变更详情，不暴露 thread/turn 内部 id。主区域优先显示 thread timeline 的用户/Codex 文本、工具调用、命令输出和 diff；用户/Codex 消息采用开放消息流，命令/工具/diff 采用执行块，推理等低频内容默认折叠，会话列表不再展示 cwd/status 详情，timeline item metadata 不进入默认主对话流。
 - 本轮 UI pass 已补强 Chat 主画布权重和 TUI 状态 marker/status chip，侧栏开关固定为左上三横线且默认收起会话侧栏，timeline turn 作为主内容渲染并有 widget 测试覆盖；会话侧栏已改为工具侧栏式列表 surface，点选会话只切换/加载 timeline，不展示 Thread detail/cwd/turn id 详情；顶栏状态和主机选择器支持窄屏 flex 收缩，斜杠命令预览仍保留为输入附近的轻提示，不再抢占默认对话信息架构。
 - Chat 高级折叠区已按能力拆分：配置覆盖控件只在有 `CodexConfigOverrideController` 时出现，Raw RPC 面板可显示禁用态，但发送只依赖已注入的 session controller，避免 session-only 页面展开高级区时因覆盖 controller 缺失而崩溃；默认对话面仍不显示这些调试控件。
+- 最新 UI pass 已把 active turn 的 raw `Status: inProgress` 从主 timeline 移除，running/working/failed 详情只由顶部 TUI 状态槽承担；高级调试入口改为图标折叠按钮，斜杠命令输入预览改为轻量 inline surface，避免底部输入区继续占用对话主体。
 
 ### 9.3 Approvals 页面
 
@@ -1009,7 +1010,7 @@ MVP 可以简化为底部导航：
 - 支持 system / light / dark。
 - 代码块、diff、terminal output 要有专门配色，不能只用普通文本颜色。
 - 配色方案可影响代码关键字、终端 accent 和标题区等语义 accent，但 diff added/removed、风险状态等角色必须保持可识别，不能随主题被简单染成同一种主色。
-- 已落地 system/light/dark、五档字号（极小/小/中/大/极大）和多配色方案；Candy palette 已从单一 Material seed 调整为参考 cotton-candy / bubblegum / mint / sky / lemon 调色板的明确 hex 色板（`#FFB3E6`、`#FFD1F3`、`#B8F2E6`、`#A0C4FF`、`#FFF1B6`），并保留浅色模式深色主按钮/正文对比；新增 `pastel-candy` 粉彩糖果方案，参考 pastel candy 的粉、浅蓝、浅金、清绿、淡紫组合（`#F4BCC7`、`#9EDEF2`、`#F2E1B1`、`#C6F2AF`、`#D5CAF9`），新增 `candy-tones` 柔和糖果色方案（`#D3F8E2`、`#E4C1F9`、`#F694C1`、`#EDE7B1`、`#A9DEF9`），Candy Pop 高饱和糖果配色参考紫、粉、黄、青、薄荷的 candy-pop hex 调色板；`sugar-rush` 已按网上 bubblegum/candy 参考改为粉红、淡黄、泡泡蓝、糖果绿、紫色组合（`#F56C78`、`#ECE482`、`#7CD6E4`、`#AAE48F`、`#C25DE9`），同时保留代码、diff、terminal 的语义色边界。
+- 已落地 system/light/dark、五档字号（极小/小/中/大/极大）和多配色方案；Candy palette 已从单一 Material seed 调整为参考 cotton-candy / bubblegum / mint / sky / lemon 调色板的明确 hex 色板（`#FFB3E6`、`#FFD1F3`、`#B8F2E6`、`#A0C4FF`、`#FFF1B6`），并保留浅色模式深色主按钮/正文对比；新增 `pastel-candy` 粉彩糖果方案，参考 pastel candy 的粉、浅蓝、浅金、清绿、淡紫组合（`#F4BCC7`、`#9EDEF2`、`#F2E1B1`、`#C6F2AF`、`#D5CAF9`），新增 `candy-tones` 柔和糖果色方案（`#D3F8E2`、`#E4C1F9`、`#F694C1`、`#EDE7B1`、`#A9DEF9`），Candy Pop 高饱和糖果配色参考 Coolors `9b5de5-f15bb5-fee440-00bbf9-00f5d4` 的紫、粉、黄、青、薄荷 hex 调色板；`sugar-rush` 已按网上 bubblegum/candy 参考改为粉红、淡黄、泡泡蓝、糖果绿、紫色组合（`#F56C78`、`#ECE482`、`#7CD6E4`、`#AAE48F`、`#C25DE9`），同时保留代码、diff、terminal 的语义色边界。
 - 本轮 UI polish 已为 Chat 顶部活动条、三横线侧栏入口和 timeline execution block 增加轻量层次；running/working/failure 详情固定在顶部 TUI 式状态槽中，不把会话详情或内部 thread/turn id 放回主对话流。command/file/tool 块使用左侧语义色轨区分命令、文件变更和工具调用，Files 主区未连接/无 cwd/未打开文件状态保持带边界和图标容器的 status page。会话和文件树仍放在左侧栏，左上三横线作为入口，低频 workspace root 和高级外观/诊断设置保持折叠。
 
 ### 9.7.1 主机、设置与主题后续改造

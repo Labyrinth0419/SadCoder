@@ -137,6 +137,7 @@ void main() {
       find.byKey(const ValueKey('chat-advanced-controls-toggle')),
       findsOneWidget,
     );
+    expect(find.text('Advanced controls'), findsNothing);
 
     await tester.tap(
       find.byKey(const ValueKey('chat-advanced-controls-toggle')),
@@ -3428,6 +3429,46 @@ void main() {
     );
     expect(detail.data, contains('Command: cargo test'));
     expect(find.textContaining('thr_active'), findsNothing);
+    expect(find.textContaining('turn_active'), findsNothing);
+  });
+
+  testWidgets('main timeline keeps active turn protocol status out of view', (
+    tester,
+  ) async {
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+
+    timelineController.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_active',
+        'sessionId': 'sess_1',
+        'preview': 'Run tests',
+        'ephemeral': false,
+        'status': 'idle',
+        'cwd': '/repo',
+        'updatedAt': 1,
+        'turns': [
+          {
+            'id': 'turn_active',
+            'status': 'inProgress',
+            'itemsView': 'full',
+            'items': [
+              {
+                'id': 'cmd_active',
+                'type': 'commandExecution',
+                'command': 'cargo test',
+                'status': 'running',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    await _pumpChatPage(tester, timelineController: timelineController);
+
+    expect(find.text('cargo test'), findsOneWidget);
+    expect(find.textContaining('Status: inProgress'), findsNothing);
     expect(find.textContaining('turn_active'), findsNothing);
   });
 

@@ -4899,17 +4899,28 @@ class _AdvancedChatControlsToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final colorScheme = Theme.of(context).colorScheme;
+    final tooltip = expanded
+        ? l10n.hideChatAdvancedControls
+        : l10n.showChatAdvancedControls;
     return Align(
       alignment: Alignment.centerRight,
-      child: TextButton.icon(
+      child: IconButton.outlined(
         key: const ValueKey('chat-advanced-controls-toggle'),
         onPressed: onPressed,
-        icon: Icon(expanded ? Icons.expand_less : Icons.tune),
-        label: Text(
-          expanded
-              ? l10n.hideChatAdvancedControls
-              : l10n.showChatAdvancedControls,
+        tooltip: tooltip,
+        style: IconButton.styleFrom(
+          backgroundColor: expanded
+              ? colorScheme.primaryContainer.withValues(alpha: 0.72)
+              : colorScheme.surfaceContainerHighest,
+          foregroundColor: expanded
+              ? colorScheme.onPrimaryContainer
+              : colorScheme.onSurfaceVariant,
+          minimumSize: const Size.square(34),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: EdgeInsets.zero,
         ),
+        icon: Icon(expanded ? Icons.expand_less : Icons.tune, size: 19),
       ),
     );
   }
@@ -5285,21 +5296,12 @@ class _TimelineTurnView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showTurnStatus = !_isTerminalTurnStatus(turn.status);
     return Padding(
       key: ValueKey('timeline-turn-${turn.turnId}'),
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (showTurnStatus)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                '${context.l10n.timelineStatus}: ${turn.status}',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-            ),
           if (turn.items.isEmpty)
             Text(context.l10n.noTimelineEvents)
           else
@@ -5835,12 +5837,66 @@ class _PreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: trailing,
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLow,
+          border: Border.all(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withValues(alpha: 0.56),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Icon(icon, size: 18, color: colorScheme.primary),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+            ],
+          ),
+        ),
       ),
     );
   }
