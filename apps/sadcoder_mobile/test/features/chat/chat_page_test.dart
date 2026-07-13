@@ -1486,6 +1486,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Confirm high-risk permissions'), findsOneWidget);
+    expect(
+      find.text(
+        'These settings can reduce approval prompts or give Codex broader filesystem access. Continue only if this host and workspace are trusted.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Apply anyway'));
+    await tester.pumpAndSettle();
+
     expect(overrideController.layers.session.toTurnStartParams(), {
       'approvalPolicy': 'never',
       'sandboxPolicy': {'type': 'dangerFullAccess', 'networkAccess': true},
@@ -1495,6 +1505,74 @@ void main() {
     });
     expect(turnRunner.startedTurns, isEmpty);
     expect(find.text('Permission override updated.'), findsOneWidget);
+  });
+
+  testWidgets('/permissions can cancel high-risk permission overrides', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final overrideController = CodexConfigOverrideController(
+      initialLayers: const CodexConfigOverrideLayers(
+        session: CodexConfigOverrides(approvalPolicy: 'on-request'),
+      ),
+    );
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+      overrideLayersProvider: () => overrideController.layers,
+    );
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      configOverrideController: overrideController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/permissions',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+
+    await _selectDropdownOption(
+      tester,
+      const ValueKey('chat-permissions-command-approval-policy'),
+      'never',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('chat-permissions-command-apply')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Confirm high-risk permissions'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(overrideController.layers.session.toTurnStartParams(), {
+      'approvalPolicy': 'on-request',
+    });
+    expect(overrideController.layers.turn.toTurnStartParams(), isEmpty);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(find.text('Permission override updated.'), findsNothing);
+    expect(find.text('Canceled /permissions.'), findsOneWidget);
   });
 
   testWidgets('/permissions can select permission profiles from server list', (

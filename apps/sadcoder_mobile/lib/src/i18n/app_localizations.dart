@@ -707,6 +707,12 @@ class AppLocalizations {
   String get permissionProfileUnavailable =>
       _text('permissionProfileUnavailable');
   String get permissionsHighRiskWarning => _text('permissionsHighRiskWarning');
+  String get permissionsHighRiskConfirmTitle =>
+      _text('permissionsHighRiskConfirmTitle');
+  String get permissionsHighRiskConfirmBody =>
+      _text('permissionsHighRiskConfirmBody');
+  String get permissionsHighRiskConfirmProceed =>
+      _text('permissionsHighRiskConfirmProceed');
   String get serverConfigSnapshot => _text('serverConfigSnapshot');
   String get refreshServerConfig => _text('refreshServerConfig');
   String get serverConfigUnavailable => _text('serverConfigUnavailable');
@@ -1728,6 +1734,10 @@ const _values = <String, Map<String, String>>{
     'permissionProfileUnavailable': 'unavailable',
     'permissionsHighRiskWarning':
         'High risk: these permissions can let Codex run with less review or broader filesystem access.',
+    'permissionsHighRiskConfirmTitle': 'Confirm high-risk permissions',
+    'permissionsHighRiskConfirmBody':
+        'These settings can reduce approval prompts or give Codex broader filesystem access. Continue only if this host and workspace are trusted.',
+    'permissionsHighRiskConfirmProceed': 'Apply anyway',
     'serverConfigSnapshot': 'Server config snapshot',
     'refreshServerConfig': 'Refresh server config',
     'serverConfigUnavailable': 'Connect to a host, then refresh server config.',
@@ -2571,6 +2581,10 @@ const _values = <String, Map<String, String>>{
     'permissionProfilesEmpty': '服务器暂无权限配置。',
     'permissionProfileUnavailable': '不可用',
     'permissionsHighRiskWarning': '高风险：这些权限会减少 Codex 执行前的审批或扩大文件系统访问范围。',
+    'permissionsHighRiskConfirmTitle': '确认高风险权限',
+    'permissionsHighRiskConfirmBody':
+        '这些设置会减少审批提示或扩大 Codex 的文件系统访问范围。只有在信任当前主机和工作区时才继续。',
+    'permissionsHighRiskConfirmProceed': '仍然应用',
     'serverConfigSnapshot': '服务器配置快照',
     'refreshServerConfig': '刷新服务器配置',
     'serverConfigUnavailable': '连接主机后刷新服务器配置。',

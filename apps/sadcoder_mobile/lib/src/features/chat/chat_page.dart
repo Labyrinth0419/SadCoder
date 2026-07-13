@@ -1476,6 +1476,12 @@ class _ChatPageState extends State<ChatPage> {
     if (!mounted || result == null) {
       return SlashCommandCallbackResult.cancelled;
     }
+    if (_permissionsOverrideIsHighRisk(result)) {
+      final confirmed = await _confirmHighRiskPermissionsOverride();
+      if (!mounted || !confirmed) {
+        return SlashCommandCallbackResult.cancelled;
+      }
+    }
     switch (result.scope) {
       case _OverrideScope.turn:
         controller.setTurnPermissions(
@@ -1491,6 +1497,36 @@ class _ChatPageState extends State<ChatPage> {
         );
     }
     return SlashCommandCallbackResult.executed;
+  }
+
+  bool _permissionsOverrideIsHighRisk(_PermissionsOverrideResult result) {
+    return isHighRiskPermissionState(
+      approvalPolicy: result.approvalPolicy,
+      sandboxPolicy: result.sandboxPolicy,
+      permissionProfile: result.permissionProfile,
+    );
+  }
+
+  Future<bool> _confirmHighRiskPermissionsOverride() async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.permissionsHighRiskConfirmTitle),
+        content: Text(l10n.permissionsHighRiskConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.permissionsHighRiskConfirmProceed),
+          ),
+        ],
+      ),
+    );
+    return mounted && confirmed == true;
   }
 
   Future<SlashCommandCallbackResult> _configurePersonalityOverride() async {

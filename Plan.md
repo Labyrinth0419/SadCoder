@@ -1143,6 +1143,12 @@ MVP 可以简化为底部导航：
 - 对 `danger-full-access`、`approvalPolicy=never` 组合显示高风险标记。
 - 审批操作需要防误触：高风险命令或大 diff 可要求二次确认。
 
+当前实现状态：
+
+- Settings/Chat status 会显示当前 approval policy、sandbox/permission profile，并对 `approvalPolicy=never`、`dangerFullAccess`/`:danger-full-access` 这类高风险状态显示明确 warning。
+- `/permissions` 在应用 turn/session 权限覆盖前会重新判定高风险状态；命中 `approvalPolicy=never`、`dangerFullAccess` sandbox 或 `:danger-full-access` permission profile 时，必须通过二次确认才写入本地 override，取消不会启动 turn，也不会修改已有覆盖。
+- 审批页已对高风险命令和大 diff 加二次确认；移动端 `/setup-default-sandbox`、`/sandbox-add-read-dir` 这类高风险斜杠命令在真正落地 fallback 前也需要确认。
+
 ### 11.3 日志脱敏
 
 日志默认脱敏：
