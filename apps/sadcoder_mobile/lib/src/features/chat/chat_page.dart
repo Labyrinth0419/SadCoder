@@ -55,6 +55,7 @@ import 'chat_personality_override_sheet.dart';
 import 'chat_permissions_override_sheet.dart';
 import 'chat_plugins_command.dart';
 import 'chat_plugins_summary.dart';
+import 'chat_raw_transcript_command.dart';
 import 'chat_status_summary.dart';
 import 'chat_timeline_controller.dart';
 import 'chat_goal_summary.dart';
@@ -1434,20 +1435,15 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   bool? _toggleRawTranscript(String arguments) {
-    final normalized = arguments.trim().toLowerCase();
-    if (normalized.isEmpty || normalized == 'toggle') {
-      setState(() => _showRawTranscript = !_showRawTranscript);
-      return _showRawTranscript;
+    final next = rawTranscriptVisibilityForCommand(
+      current: _showRawTranscript,
+      arguments: arguments,
+    );
+    if (next == null) {
+      return null;
     }
-    if (normalized == 'on' || normalized == 'true' || normalized == '1') {
-      setState(() => _showRawTranscript = true);
-      return true;
-    }
-    if (normalized == 'off' || normalized == 'false' || normalized == '0') {
-      setState(() => _showRawTranscript = false);
-      return false;
-    }
-    return null;
+    setState(() => _showRawTranscript = next);
+    return next;
   }
 
   Future<SlashCommandCallbackResult> _configureModelOverride() async {
