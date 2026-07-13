@@ -44,10 +44,7 @@ import 'chat_feedback_sheet.dart';
 import 'chat_goal_command.dart';
 import 'chat_layout_metrics.dart';
 import 'chat_mcp_command.dart';
-import 'chat_model_override_sheet.dart';
-import 'chat_override_scope.dart';
-import 'chat_personality_override_sheet.dart';
-import 'chat_permissions_override_sheet.dart';
+import 'chat_override_command_handler.dart';
 import 'chat_plugins_command.dart';
 import 'chat_plugins_summary.dart';
 import 'chat_raw_transcript_command.dart';
@@ -826,7 +823,8 @@ class _ChatPageState extends State<ChatPage> {
           configureTerminalPets: (arguments) =>
               _appearanceCommandHandler().configureTerminalPets(arguments),
           attachIdeContext: _attachIdeContext,
-          configurePlanMode: _configurePlanMode,
+          configurePlanMode: (arguments) =>
+              _overrideCommandHandler().configurePlanMode(arguments),
           mentionFile: _mentionFile,
           startSideConversation: _startSideConversation,
           showAgentTopology: _showAgentTopology,
@@ -838,9 +836,11 @@ class _ChatPageState extends State<ChatPage> {
           compactThread: () => _threadCommandHandler().compactCurrentThread(),
           archiveThread: () => _threadCommandHandler().archiveCurrentThread(),
           deleteThread: () => _threadCommandHandler().deleteCurrentThread(),
-          configureModel: _configureModelOverride,
-          configurePersonality: _configurePersonalityOverride,
-          configurePermissions: _configurePermissionsOverride,
+          configureModel: () => _overrideCommandHandler().configureModel(),
+          configurePersonality: () =>
+              _overrideCommandHandler().configurePersonality(),
+          configurePermissions: () =>
+              _overrideCommandHandler().configurePermissions(),
           confirmHighRisk: _confirmHighRiskSlashCommand,
         );
   }
@@ -865,6 +865,19 @@ class _ChatPageState extends State<ChatPage> {
       context: context,
       mounted: () => mounted,
       controller: widget.appearanceController,
+    );
+  }
+
+  ChatOverrideCommandHandler _overrideCommandHandler() {
+    return ChatOverrideCommandHandler(
+      context: context,
+      mounted: () => mounted,
+      configOverrideController: widget.configOverrideController,
+      modelListController: widget.modelListController,
+      permissionProfileListController: widget.permissionProfileListController,
+      turnController: widget.turnController,
+      resolvePlanModeModel: _resolvePlanModeModel,
+      syncActiveTurnToTimeline: _syncActiveTurnToTimeline,
     );
   }
 
@@ -1314,156 +1327,6 @@ class _ChatPageState extends State<ChatPage> {
     }
     setState(() => _showRawTranscript = next);
     return next;
-  }
-
-  Future<SlashCommandCallbackResult> _configureModelOverride() async {
-    final controller = widget.configOverrideController;
-    if (controller == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    final result = await showModalBottomSheet<ChatModelOverrideResult>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => ChatModelOverrideSheet(
-        controller: controller,
-        modelListController: widget.modelListController,
-      ),
-    );
-    if (!mounted || result == null) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-    switch (result.scope) {
-      case ChatOverrideScope.turn:
-        controller.setTurnModelEffort(
-          model: result.model,
-          effort: result.effort,
-        );
-      case ChatOverrideScope.session:
-        controller.setSessionModelEffort(
-          model: result.model,
-          effort: result.effort,
-        );
-    }
-    return SlashCommandCallbackResult.executed;
-  }
-
-  Future<SlashCommandCallbackResult> _configurePermissionsOverride() async {
-    final controller = widget.configOverrideController;
-    if (controller == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    final result = await showModalBottomSheet<ChatPermissionsOverrideResult>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => ChatPermissionsOverrideSheet(
-        controller: controller,
-        permissionProfileListController: widget.permissionProfileListController,
-      ),
-    );
-    if (!mounted || result == null) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-    if (result.isHighRisk) {
-      final confirmed = await _confirmHighRiskPermissionsOverride();
-      if (!mounted || !confirmed) {
-        return SlashCommandCallbackResult.cancelled;
-      }
-    }
-    switch (result.scope) {
-      case ChatOverrideScope.turn:
-        controller.setTurnPermissions(
-          approvalPolicy: result.approvalPolicy,
-          sandboxPolicy: result.sandboxPolicy,
-          permissionProfile: result.permissionProfile,
-        );
-      case ChatOverrideScope.session:
-        controller.setSessionPermissions(
-          approvalPolicy: result.approvalPolicy,
-          sandboxPolicy: result.sandboxPolicy,
-          permissionProfile: result.permissionProfile,
-        );
-    }
-    return SlashCommandCallbackResult.executed;
-  }
-
-  Future<bool> _confirmHighRiskPermissionsOverride() async {
-    final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.permissionsHighRiskConfirmTitle),
-        content: Text(l10n.permissionsHighRiskConfirmBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.approvalCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.permissionsHighRiskConfirmProceed),
-          ),
-        ],
-      ),
-    );
-    return mounted && confirmed == true;
-  }
-
-  Future<SlashCommandCallbackResult> _configurePersonalityOverride() async {
-    final controller = widget.configOverrideController;
-    if (controller == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    final result = await showModalBottomSheet<ChatPersonalityOverrideResult>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) =>
-          ChatPersonalityOverrideSheet(controller: controller),
-    );
-    if (!mounted || result == null) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-    switch (result.scope) {
-      case ChatOverrideScope.turn:
-        controller.setTurnPersonality(result.personality);
-      case ChatOverrideScope.session:
-        controller.setSessionPersonality(result.personality);
-    }
-    return SlashCommandCallbackResult.executed;
-  }
-
-  Future<SlashCommandCallbackResult> _configurePlanMode(
-    String arguments,
-  ) async {
-    final controller = widget.configOverrideController;
-    if (controller == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    final prompt = arguments.trim();
-    final turnController = widget.turnController;
-    if (prompt.isNotEmpty &&
-        (turnController == null || !turnController.canSubmit)) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    final model = await _resolvePlanModeModel();
-    if (!mounted || model == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    controller.setTurnCollaborationMode(
-      CodexCollaborationModeOverride.plan(model: model),
-    );
-    if (prompt.isEmpty) {
-      return SlashCommandCallbackResult.executed;
-    }
-
-    await turnController!.submitText(prompt);
-    if (turnController.status == TurnControllerStatus.failed) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    _syncActiveTurnToTimeline(submittedText: prompt);
-    controller.clearTurn();
-    return SlashCommandCallbackResult.executed;
   }
 
   Future<void> _applySessionOverrides(CodexConfigOverrides overrides) async {
