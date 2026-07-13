@@ -15,7 +15,6 @@ import '../../i18n/app_localizations.dart';
 import '../../mcp/mcp_server_status_controller.dart';
 import '../../models/model_list_controller.dart';
 import '../../permissions/permission_profile_list_controller.dart';
-import '../../plugins/plugin_list_reader.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../session/host_session_summary.dart';
 import '../../ssh/ssh_profile.dart';
@@ -35,31 +34,19 @@ import 'chat_advanced_controls_sheet.dart';
 import 'chat_agent_topology_sheet.dart';
 import 'chat_activity_strip.dart';
 import 'chat_appearance_command_handler.dart';
-import 'chat_background_terminal_commands.dart';
-import 'chat_catalog_summary_commands.dart';
-import 'chat_config_summary_commands.dart';
 import 'chat_connection_controls.dart';
 import 'chat_composer_mention.dart';
-import 'chat_diff_command.dart';
-import 'chat_goal_command.dart';
 import 'chat_layout_metrics.dart';
-import 'chat_mcp_command.dart';
 import 'chat_override_command_handler.dart';
-import 'chat_plugins_command.dart';
-import 'chat_plugins_summary.dart';
 import 'chat_raw_transcript_command.dart';
-import 'chat_review_command.dart';
 import 'chat_status_summary.dart';
-import 'chat_test_approval_command.dart';
+import 'chat_summary_command_handler.dart';
 import 'chat_timeline_controller.dart';
-import 'chat_rollout_diagnostics.dart';
 import 'chat_side_conversation_panel.dart';
 import 'chat_slash_command_preview.dart';
-import 'chat_summary_formatting.dart';
 import 'chat_thread_command_handler.dart';
 import 'chat_thread_sidebar.dart';
 import 'chat_timeline_renderer.dart';
-import 'chat_usage_summary.dart';
 import 'chat_timeline_view.dart';
 import 'slash_command_palette.dart';
 
@@ -781,68 +768,93 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   SlashCommandActionDispatcher _slashCommandDispatcher() {
-    return widget.slashCommandDispatcher ??
-        SlashCommandActionDispatcher(
-          disconnect: widget.sessionController?.disconnect,
-          clearTranscript: _clearLocalTranscript,
-          copyLastResponse: _copyLastResponse,
-          showStatus: _buildStatusSummary,
-          showUsage: _buildUsageSummary,
-          showMcp: _buildMcpSummary,
-          showSkills: _buildSkillsSummary,
-          showPlugins: _buildPluginsSummary,
-          showHooks: _buildHooksSummary,
-          showApps: _buildAppsSummary,
-          showDebugConfig: _buildDebugConfigSummary,
-          showExperimental: _buildExperimentalSummary,
-          showMemories: _buildMemoriesSummary,
-          showRollout: _buildRolloutSummary,
-          testApproval: _testApprovalRequest,
-          showDiff: _buildDiffSummary,
-          handleGoal: _handleGoalCommand,
-          handleReview: _handleReviewCommand,
-          approveRecentAutoReviewDenial: _approveRecentAutoReviewDenial,
-          showBackgroundTerminals: _buildBackgroundTerminalsSummary,
-          cleanBackgroundTerminals: _cleanBackgroundTerminals,
-          toggleRawTranscript: _toggleRawTranscript,
-          startNewThread: () => _threadCommandHandler().startNewThread(),
-          resumeThread: (threadId) =>
-              _threadCommandHandler().resumeThread(threadId),
-          renameThread: (name) => _threadCommandHandler().renameThread(name),
-          logout: () => _accountCommandHandler().logoutAccount(),
-          submitFeedback: () => _accountCommandHandler().submitFeedback(),
-          configureTheme: () => _appearanceCommandHandler().configureTheme(),
-          configureTitleDisplay: () =>
-              _appearanceCommandHandler().configureTitleDisplay(),
-          configureStatusLineDisplay: () =>
-              _appearanceCommandHandler().configureStatusLineDisplay(),
-          configureKeymap: (arguments) =>
-              _appearanceCommandHandler().configureKeymap(arguments),
-          toggleComposerVimMode: () =>
-              _appearanceCommandHandler().toggleComposerVimMode(),
-          configureTerminalPets: (arguments) =>
-              _appearanceCommandHandler().configureTerminalPets(arguments),
-          attachIdeContext: _attachIdeContext,
-          configurePlanMode: (arguments) =>
-              _overrideCommandHandler().configurePlanMode(arguments),
-          mentionFile: _mentionFile,
-          startSideConversation: _startSideConversation,
-          showAgentTopology: _showAgentTopology,
-          forkThread: () => _threadCommandHandler().forkCurrentThread(),
-          duplicateThread: () =>
-              _threadCommandHandler().duplicateCurrentThread(),
-          rewindThread: (lastTurnId) =>
-              _threadCommandHandler().rewindCurrentThread(lastTurnId),
-          compactThread: () => _threadCommandHandler().compactCurrentThread(),
-          archiveThread: () => _threadCommandHandler().archiveCurrentThread(),
-          deleteThread: () => _threadCommandHandler().deleteCurrentThread(),
-          configureModel: () => _overrideCommandHandler().configureModel(),
-          configurePersonality: () =>
-              _overrideCommandHandler().configurePersonality(),
-          configurePermissions: () =>
-              _overrideCommandHandler().configurePermissions(),
-          confirmHighRisk: _confirmHighRiskSlashCommand,
-        );
+    final injected = widget.slashCommandDispatcher;
+    if (injected != null) {
+      return injected;
+    }
+    final summaryHandler = _summaryCommandHandler();
+    return SlashCommandActionDispatcher(
+      disconnect: widget.sessionController?.disconnect,
+      clearTranscript: _clearLocalTranscript,
+      copyLastResponse: summaryHandler.copyLastResponse,
+      showStatus: summaryHandler.buildStatusSummary,
+      showUsage: summaryHandler.buildUsageSummary,
+      showMcp: summaryHandler.buildMcpSummary,
+      showSkills: summaryHandler.buildSkillsSummary,
+      showPlugins: summaryHandler.buildPluginsSummary,
+      showHooks: summaryHandler.buildHooksSummary,
+      showApps: summaryHandler.buildAppsSummary,
+      showDebugConfig: summaryHandler.buildDebugConfigSummary,
+      showExperimental: summaryHandler.buildExperimentalSummary,
+      showMemories: summaryHandler.buildMemoriesSummary,
+      showRollout: summaryHandler.buildRolloutSummary,
+      testApproval: summaryHandler.testApprovalRequest,
+      showDiff: summaryHandler.buildDiffSummary,
+      handleGoal: summaryHandler.handleGoalCommand,
+      handleReview: summaryHandler.handleReviewCommand,
+      approveRecentAutoReviewDenial:
+          summaryHandler.approveRecentAutoReviewDenial,
+      showBackgroundTerminals: summaryHandler.buildBackgroundTerminalsSummary,
+      cleanBackgroundTerminals: summaryHandler.cleanBackgroundTerminals,
+      toggleRawTranscript: _toggleRawTranscript,
+      startNewThread: () => _threadCommandHandler().startNewThread(),
+      resumeThread: (threadId) =>
+          _threadCommandHandler().resumeThread(threadId),
+      renameThread: (name) => _threadCommandHandler().renameThread(name),
+      logout: () => _accountCommandHandler().logoutAccount(),
+      submitFeedback: () => _accountCommandHandler().submitFeedback(),
+      configureTheme: () => _appearanceCommandHandler().configureTheme(),
+      configureTitleDisplay: () =>
+          _appearanceCommandHandler().configureTitleDisplay(),
+      configureStatusLineDisplay: () =>
+          _appearanceCommandHandler().configureStatusLineDisplay(),
+      configureKeymap: (arguments) =>
+          _appearanceCommandHandler().configureKeymap(arguments),
+      toggleComposerVimMode: () =>
+          _appearanceCommandHandler().toggleComposerVimMode(),
+      configureTerminalPets: (arguments) =>
+          _appearanceCommandHandler().configureTerminalPets(arguments),
+      attachIdeContext: _attachIdeContext,
+      configurePlanMode: (arguments) =>
+          _overrideCommandHandler().configurePlanMode(arguments),
+      mentionFile: _mentionFile,
+      startSideConversation: _startSideConversation,
+      showAgentTopology: _showAgentTopology,
+      forkThread: () => _threadCommandHandler().forkCurrentThread(),
+      duplicateThread: () => _threadCommandHandler().duplicateCurrentThread(),
+      rewindThread: (lastTurnId) =>
+          _threadCommandHandler().rewindCurrentThread(lastTurnId),
+      compactThread: () => _threadCommandHandler().compactCurrentThread(),
+      archiveThread: () => _threadCommandHandler().archiveCurrentThread(),
+      deleteThread: () => _threadCommandHandler().deleteCurrentThread(),
+      configureModel: () => _overrideCommandHandler().configureModel(),
+      configurePersonality: () =>
+          _overrideCommandHandler().configurePersonality(),
+      configurePermissions: () =>
+          _overrideCommandHandler().configurePermissions(),
+      confirmHighRisk: _confirmHighRiskSlashCommand,
+    );
+  }
+
+  ChatSummaryCommandHandler _summaryCommandHandler() {
+    return ChatSummaryCommandHandler(
+      context: context,
+      sessionController: widget.sessionController,
+      threadListController: widget.threadListController,
+      threadDetailController: widget.threadDetailController,
+      turnController: widget.turnController,
+      timelineController: widget.timelineController,
+      configOverrideController: widget.configOverrideController,
+      configSnapshotController: widget.configSnapshotController,
+      accountSnapshotController: widget.accountSnapshotController,
+      accountUsageSnapshotController: widget.accountUsageSnapshotController,
+      mcpServerStatusController: widget.mcpServerStatusController,
+      threadTokenUsageController: widget.threadTokenUsageController,
+      currentThreadIdProvider: _currentThreadId,
+      currentWorkspaceCwdsProvider: _currentWorkspaceCwds,
+      currentThreadUsageProvider: _currentThreadTokenUsage,
+      refreshVisibleThreads: _refreshVisibleThreads,
+    );
   }
 
   ChatThreadCommandHandler _threadCommandHandler() {
@@ -890,236 +902,6 @@ class _ChatPageState extends State<ChatPage> {
       accountUsageSnapshotController: widget.accountUsageSnapshotController,
       currentThreadIdProvider: _currentThreadId,
       activeTurnIdProvider: () => widget.turnController?.activeTurnId,
-    );
-  }
-
-  Future<String> _buildStatusSummary() async {
-    final l10n = context.l10n;
-    await _refreshStatusSources();
-    return buildChatStatusSummary(
-      l10n: l10n,
-      sessionController: widget.sessionController,
-      threadListController: widget.threadListController,
-      threadDetailController: widget.threadDetailController,
-      turnController: widget.turnController,
-      timelineController: widget.timelineController,
-      configOverrideController: widget.configOverrideController,
-      configSnapshotController: widget.configSnapshotController,
-      accountSnapshotController: widget.accountSnapshotController,
-      accountUsageSnapshotController: widget.accountUsageSnapshotController,
-      threadTokenUsageController: widget.threadTokenUsageController,
-    );
-  }
-
-  Future<String> _buildUsageSummary() async {
-    final l10n = context.l10n;
-    final controller = widget.accountUsageSnapshotController;
-    if (controller != null) {
-      await controller.refresh();
-    }
-    return buildAccountUsageSummary(
-      l10n: l10n,
-      controller: controller,
-      threadUsage: _currentThreadTokenUsage(),
-    );
-  }
-
-  Future<String?> _buildMcpSummary(String arguments) async {
-    return buildMcpSummaryFromCommand(
-      l10n: context.l10n,
-      statusController: widget.mcpServerStatusController,
-      oauthRunner: widget.sessionController?.mcpServerOAuthRunner,
-      configRunner: widget.sessionController?.mcpServerConfigRunner,
-      threadId: _currentThreadId(),
-      arguments: arguments,
-    );
-  }
-
-  Future<String?> _buildSkillsSummary(String arguments) async {
-    return buildSkillsSummaryFromCommand(
-      l10n: context.l10n,
-      reader: widget.sessionController?.skillListReader,
-      cwds: _currentWorkspaceCwds(),
-      arguments: arguments,
-    );
-  }
-
-  Future<String?> _buildPluginsSummary(String arguments) async {
-    final command = parseChatPluginsCommand(arguments);
-    if (command == null) {
-      return null;
-    }
-
-    final l10n = context.l10n;
-    final reader = widget.sessionController?.pluginListReader;
-    final cwds = _currentWorkspaceCwds();
-    if (command case ChatPluginsReadCommand(:final pluginId)) {
-      final detailReader = widget.sessionController?.pluginDetailReader;
-      if (detailReader == null) {
-        return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
-      }
-      try {
-        final detail = await detailReader.readPlugin(
-          pluginId: pluginId,
-          cwds: cwds,
-        );
-        return buildPluginDetailSummary(l10n: l10n, detail: detail);
-      } on Object catch (error) {
-        return [
-          l10n.pluginsTitle,
-          chatSummaryMessageWithOptionalDetail(
-            l10n,
-            l10n.pluginsLoadFailed,
-            error,
-          ),
-        ].join('\n');
-      }
-    }
-    final mutationPluginId = switch (command) {
-      ChatPluginsInstallCommand(:final pluginId) => pluginId,
-      ChatPluginsUninstallCommand(:final pluginId) => pluginId,
-      _ => null,
-    };
-    if (mutationPluginId != null) {
-      final runner = widget.sessionController?.pluginMutationRunner;
-      if (runner == null) {
-        return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
-      }
-      try {
-        final result = switch (command) {
-          ChatPluginsInstallCommand() => await runner.installPlugin(
-            pluginId: mutationPluginId,
-            cwds: cwds,
-          ),
-          ChatPluginsUninstallCommand() => await runner.uninstallPlugin(
-            pluginId: mutationPluginId,
-            cwds: cwds,
-          ),
-          _ => throw StateError('Unexpected plugin mutation command.'),
-        };
-        final lines = <String>[
-          buildPluginMutationSummary(l10n: l10n, result: result),
-        ];
-        if (reader != null) {
-          final page = await reader.listPlugins(cwds: cwds);
-          lines.add(buildPluginsSummary(l10n: l10n, page: page));
-        }
-        return lines.join('\n');
-      } on Object catch (error) {
-        return [
-          l10n.pluginsTitle,
-          chatSummaryMessageWithOptionalDetail(
-            l10n,
-            l10n.pluginMutationFailed,
-            error,
-          ),
-        ].join('\n');
-      }
-    }
-
-    final marketplaceKinds = switch (command) {
-      ChatPluginsListCommand(:final marketplaceKinds) => marketplaceKinds,
-      _ => const <PluginMarketplaceKind>[],
-    };
-    if (reader == null) {
-      return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
-    }
-
-    try {
-      final page = await reader.listPlugins(
-        cwds: cwds,
-        marketplaceKinds: marketplaceKinds,
-      );
-      return buildPluginsSummary(l10n: l10n, page: page);
-    } on Object catch (error) {
-      return [
-        l10n.pluginsTitle,
-        chatSummaryMessageWithOptionalDetail(
-          l10n,
-          l10n.pluginsLoadFailed,
-          error,
-        ),
-      ].join('\n');
-    }
-  }
-
-  Future<String?> _buildHooksSummary(String arguments) async {
-    return buildHooksSummaryFromCommand(
-      l10n: context.l10n,
-      reader: widget.sessionController?.hookListReader,
-      cwds: _currentWorkspaceCwds(),
-      arguments: arguments,
-    );
-  }
-
-  Future<String?> _buildAppsSummary(String arguments) async {
-    return buildAppsSummaryFromCommand(
-      l10n: context.l10n,
-      reader: widget.sessionController?.appListReader,
-      threadId: _currentThreadId(),
-      arguments: arguments,
-    );
-  }
-
-  Future<String?> _buildDebugConfigSummary(String arguments) async {
-    return buildDebugConfigSummaryFromCommand(
-      l10n: context.l10n,
-      controller: widget.configSnapshotController,
-      cwds: _currentWorkspaceCwds(),
-      arguments: arguments,
-    );
-  }
-
-  Future<String?> _buildExperimentalSummary(String arguments) async {
-    return buildExperimentalSummaryFromCommand(
-      l10n: context.l10n,
-      controller: widget.configSnapshotController,
-      cwds: _currentWorkspaceCwds(),
-      arguments: arguments,
-    );
-  }
-
-  Future<String?> _buildMemoriesSummary(String arguments) async {
-    return buildMemoriesSummaryFromCommand(
-      l10n: context.l10n,
-      controller: widget.configSnapshotController,
-      cwds: _currentWorkspaceCwds(),
-      threadRaw: widget.threadDetailController?.detail?.thread.raw ?? const {},
-      arguments: arguments,
-    );
-  }
-
-  Future<String?> _buildRolloutSummary(String arguments) async {
-    if (arguments.trim().isNotEmpty) {
-      return null;
-    }
-    final l10n = context.l10n;
-    final rolloutPath = rolloutPathFromThreadRaw(
-      widget.threadDetailController?.detail?.thread.raw ?? const {},
-    );
-    if (rolloutPath != null) {
-      return l10n.slashCommandRolloutCurrentPath(rolloutPath);
-    }
-    return l10n.slashCommandRolloutPathUnavailable;
-  }
-
-  Future<String?> _testApprovalRequest(String arguments) async {
-    return queueTestApprovalFromCommand(
-      l10n: context.l10n,
-      approvalController: widget.sessionController?.approvalController,
-      threadId: _currentThreadId(),
-      activeTurnId: widget.turnController?.activeTurnId,
-      now: DateTime.now(),
-      arguments: arguments,
-    );
-  }
-
-  Future<String?> _buildDiffSummary(String arguments) async {
-    return buildGitDiffSummaryFromCommand(
-      l10n: context.l10n,
-      reader: widget.sessionController?.gitDiffReader,
-      cwds: _currentWorkspaceCwds(),
-      arguments: arguments,
     );
   }
 
@@ -1218,95 +1000,6 @@ class _ChatPageState extends State<ChatPage> {
     return chatComposerTextElements(text: text, mentions: _composerMentions);
   }
 
-  Future<String?> _handleGoalCommand(String arguments) async {
-    return buildThreadGoalSummaryFromCommand(
-      l10n: context.l10n,
-      runner: widget.sessionController?.threadGoalRunner,
-      threadId: _currentThreadId(),
-      arguments: arguments,
-    );
-  }
-
-  Future<String?> _handleReviewCommand(String arguments) async {
-    return startThreadReviewFromCommand(
-      l10n: context.l10n,
-      runner: widget.sessionController?.threadReviewRunner,
-      turnController: widget.turnController,
-      timelineController: widget.timelineController,
-      threadDetailController: widget.threadDetailController,
-      refreshVisibleThreads: _refreshVisibleThreads,
-      threadId: _currentThreadId(),
-      arguments: arguments,
-    );
-  }
-
-  Future<SlashCommandCallbackResult> _approveRecentAutoReviewDenial() async {
-    final runner = widget.sessionController?.threadMutationRunner;
-    final timelineController = widget.timelineController;
-    final threadId = _currentThreadId();
-    if (runner == null || timelineController == null || threadId == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    final denial = timelineController.latestAutoReviewDenial(
-      threadId: threadId,
-    );
-    if (denial == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    await runner.approveGuardianDeniedAction(threadId: threadId, event: denial);
-    timelineController.removeAutoReviewDenial(denial.id);
-    return SlashCommandCallbackResult.executed;
-  }
-
-  Future<String?> _buildBackgroundTerminalsSummary(String arguments) async {
-    return buildBackgroundTerminalsSummaryFromCommand(
-      l10n: context.l10n,
-      runner: widget.sessionController?.threadBackgroundTerminalRunner,
-      threadId: _currentThreadId(),
-      arguments: arguments,
-    );
-  }
-
-  Future<String?> _cleanBackgroundTerminals(String arguments) async {
-    return cleanBackgroundTerminalsFromCommand(
-      l10n: context.l10n,
-      runner: widget.sessionController?.threadBackgroundTerminalRunner,
-      threadId: _currentThreadId(),
-      arguments: arguments,
-    );
-  }
-
-  Future<void> _refreshStatusSources() async {
-    final futures = <Future<void>>[];
-    final threadId = _currentThreadId();
-    final threadDetailController = widget.threadDetailController;
-    if (threadId != null && threadDetailController != null) {
-      futures.add(
-        threadDetailController.readThread(threadId, includeTurns: false),
-      );
-    }
-    final configSnapshotController = widget.configSnapshotController;
-    if (configSnapshotController != null) {
-      futures.add(
-        configSnapshotController.refresh(
-          cwd: widget.configOverrideController?.resolved.cwd,
-        ),
-      );
-    }
-    final accountSnapshotController = widget.accountSnapshotController;
-    if (accountSnapshotController != null) {
-      futures.add(accountSnapshotController.refresh());
-    }
-    final accountUsageSnapshotController =
-        widget.accountUsageSnapshotController;
-    if (accountUsageSnapshotController != null) {
-      futures.add(accountUsageSnapshotController.refresh());
-    }
-    await Future.wait(futures);
-  }
-
   Future<void> _showAdvancedControlsSheet() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -1318,15 +1011,6 @@ class _ChatPageState extends State<ChatPage> {
         onApplySessionOverrides: _applySessionOverrides,
       ),
     );
-  }
-
-  Future<bool> _copyLastResponse() async {
-    final markdown = widget.timelineController?.lastAssistantMessageMarkdown();
-    if (markdown == null || markdown.isEmpty) {
-      return false;
-    }
-    await Clipboard.setData(ClipboardData(text: markdown));
-    return true;
   }
 
   bool? _toggleRawTranscript(String arguments) {
