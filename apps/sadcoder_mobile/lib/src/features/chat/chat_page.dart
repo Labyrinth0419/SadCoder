@@ -325,6 +325,20 @@ class _ChatPageState extends State<ChatPage> {
                                             ? _showAdvancedControlsSheet
                                             : null,
                                       ),
+                                      if (widget.hostSessions.isNotEmpty) ...[
+                                        const SizedBox(height: 10),
+                                        ChatHostSessionsPanel(
+                                          hostSessions: widget.hostSessions,
+                                          selectedProfile:
+                                              sessionController?.profile,
+                                          onProfileSelected:
+                                              sessionController == null &&
+                                                  widget.profileConnector ==
+                                                      null
+                                              ? null
+                                              : _selectHeaderProfile,
+                                        ),
+                                      ],
                                       const SizedBox(height: 10),
                                       ChatThreadListPanel(
                                         controller: threadListController,

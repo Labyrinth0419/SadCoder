@@ -1087,6 +1087,7 @@ MVP 可以简化为底部导航：
 - 已对齐手动保存与 OpenSSH config 导入的 profile id 规则：用户填写别名时，同一 `user@host:port` 下的不同别名会保存为不同 profile，并在同一 host 分组下折叠展示；无别名时仍回退到 endpoint id，避免普通单主机配置产生重复项。
 - 已加固 OpenSSH config 导入的条件段边界：`Match` 条件块不会被当作普通 Host 配置继续套用到前一个主机或全局默认；当前移动端导入只解析明确的 `Host` 段，条件配置留待后续显式能力设计。
 - 已落地 Chat 顶栏主机选择器、Settings 二级菜单、candy/lagoon/ember palette 和斜杠命令高级可见性开关。
+- 已落地 Chat 侧栏 per-host 会话可见化：`HostSessionSummary` 现在携带当前选中 thread id/title，`AppShell` 从每个 host 的 UI state 汇总该摘要；Chat 左侧栏显示所有 managed host 的状态、endpoint 与当前 thread 摘要，并复用现有 profile connector 点击切换 host。当前仅展示当前选中 thread 上下文，完整 per-host thread 列表和后台/reconnect reconciliation 仍按多 host 架构后续推进。
 - Settings 菜单已明确收敛为最多二级：一级分组为 Codex、Interface、Connection、System，二级才进入 Permissions、Account、Models、Appearance、SSH、Diagnostics；Diagnostics 默认折叠在 System 下，避免低频诊断项和常用设置平铺混杂，窄屏仍保持“菜单页 -> 具体设置页”的单详情导航。
 - 本轮 Chat 可见 UI 里程碑已压低 AppShell 底部 `NavigationBar` 高度到 58px，先减少主对话页被全局导航占用的垂直空间。后续二级 Chat detail 路由方案记录为：主页 -> 对话 -> 选择已连接服务器/session 或新建 session -> 对话详情；对话详情页隐藏 bottom nav，由详情页自己的左上返回/侧栏入口承担导航。
 - 本轮 Chat UI / timeline 性能里程碑保持 9.7.1 的二级 Chat detail 路由为后续设计，不在本轮重做导航架构；当前只增强 Chat 页面内侧栏动效、气泡阅读宽度、字体一致性和 timeline 按需加载。

@@ -41,6 +41,7 @@ import '../threads/thread_cache_store.dart';
 import '../threads/thread_detail_controller.dart';
 import '../threads/thread_item_cache_store.dart';
 import '../threads/thread_list_controller.dart';
+import '../threads/thread_summary.dart';
 import '../threads/thread_timeline_cursor_store.dart';
 import '../turns/turn_controller.dart';
 import '../usage/account_usage_snapshot_controller.dart';
@@ -799,9 +800,44 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       return const [];
     }
     return [
-      for (final session in manager.sessions)
-        HostSessionSummary(profile: session.profile, status: session.status),
+      for (final session in manager.sessions) _hostSessionSummary(session),
     ];
+  }
+
+  HostSessionSummary _hostSessionSummary(HostSessionEntry session) {
+    final uiState = _hostUiStates[session.profileId];
+    final selectedThread = _selectedThreadForHost(uiState);
+    return HostSessionSummary(
+      profile: session.profile,
+      status: session.status,
+      selectedThreadId:
+          _nonEmpty(selectedThread?.id) ??
+          _nonEmpty(uiState?.threadDetailController.selectedThreadId),
+      selectedThreadTitle: _nonEmpty(selectedThread?.title),
+    );
+  }
+
+  ThreadSummary? _selectedThreadForHost(AppHostSessionUiState? uiState) {
+    if (uiState == null) {
+      return null;
+    }
+    final detail = uiState.threadDetailController.detail;
+    if (detail != null) {
+      return detail.thread;
+    }
+
+    final selectedThreadId = _nonEmpty(
+      uiState.threadDetailController.selectedThreadId,
+    );
+    if (selectedThreadId == null) {
+      return null;
+    }
+    for (final thread in uiState.threadListController.threads) {
+      if (thread.id == selectedThreadId) {
+        return thread;
+      }
+    }
+    return null;
   }
 
   void _handleHostSessionManagerChanged() {
@@ -935,4 +971,9 @@ String? _threadCacheProfileIdForSession(
 ) {
   final profile = sessionController.profile;
   return profile == null ? null : hostSessionProfileId(profile);
+}
+
+String? _nonEmpty(String? value) {
+  final trimmed = value?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
 }

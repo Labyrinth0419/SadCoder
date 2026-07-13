@@ -4,6 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/appearance/app_appearance_controller.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_thread_sidebar.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
+import 'package:sadcoder_mobile/src/session/host_session_summary.dart';
+import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/theme/sadcoder_theme.dart';
 
 void main() {
@@ -50,6 +53,85 @@ void main() {
     expect(opened, isTrue);
   });
 
+  testWidgets('host sessions panel shows per-host thread context', (
+    tester,
+  ) async {
+    final local = _profile(id: 'local', name: 'Local Dev', host: '127.0.0.1');
+    final remote = _profile(id: 'remote', name: 'GPU Box', host: '10.0.0.9');
+    SshProfile? selected;
+
+    await _pumpSidebar(
+      tester,
+      ChatHostSessionsPanel(
+        hostSessions: [
+          HostSessionSummary(
+            profile: local,
+            status: CodexSessionStatus.connected,
+            selectedThreadId: 'thread-local',
+            selectedThreadTitle: 'Fix mobile layout',
+          ),
+          HostSessionSummary(
+            profile: remote,
+            status: CodexSessionStatus.reconnecting,
+            selectedThreadId: 'thread-remote',
+            selectedThreadTitle: 'GPU training debug',
+          ),
+        ],
+        selectedProfile: local,
+        onProfileSelected: (profile) => selected = profile,
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey('chat-sidebar-host-sessions')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('chat-sidebar-host-session-local')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('chat-sidebar-host-session-remote')),
+      findsOneWidget,
+    );
+    expect(find.text('Local Dev'), findsOneWidget);
+    expect(find.text('GPU Box'), findsOneWidget);
+    expect(find.text('Fix mobile layout'), findsOneWidget);
+    expect(find.text('GPU training debug'), findsOneWidget);
+    expect(find.text('Connected'), findsOneWidget);
+    expect(find.text('Reconnecting'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('chat-sidebar-host-session-remote')),
+    );
+    await tester.pump();
+
+    expect(selected, same(remote));
+  });
+
+  testWidgets('host sessions panel falls back to selected thread id', (
+    tester,
+  ) async {
+    final host = _profile(id: 'host-a', name: 'Build Host', host: 'build.dev');
+
+    await _pumpSidebar(
+      tester,
+      ChatHostSessionsPanel(
+        hostSessions: [
+          HostSessionSummary(
+            profile: host,
+            status: CodexSessionStatus.connected,
+            selectedThreadId: 'thread-without-title',
+          ),
+        ],
+        selectedProfile: host,
+        onProfileSelected: (_) {},
+      ),
+    );
+
+    expect(find.text('thread-without-title'), findsOneWidget);
+  });
+
   testWidgets('thread list panel shows disconnected state without controller', (
     tester,
   ) async {
@@ -86,4 +168,12 @@ Future<void> _pumpSidebar(WidgetTester tester, Widget child) async {
       home: Scaffold(body: SizedBox(width: 320, height: 640, child: child)),
     ),
   );
+}
+
+SshProfile _profile({
+  required String id,
+  required String name,
+  required String host,
+}) {
+  return SshProfile(id: id, name: name, host: host, username: 'codex');
 }

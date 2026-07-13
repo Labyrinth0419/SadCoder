@@ -550,6 +550,34 @@ void main() {
 
     expect(find.text('Local history preserved'), findsOneWidget);
     expect(find.text('Remote history preserved'), findsNothing);
+
+    await _openChatSidebar(tester);
+    final hostPanel = find.byKey(const ValueKey('chat-sidebar-host-sessions'));
+    expect(hostPanel, findsOneWidget);
+    expect(
+      find.descendant(
+        of: hostPanel,
+        matching: find.byKey(const ValueKey('chat-sidebar-host-session-local')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: hostPanel,
+        matching: find.byKey(
+          const ValueKey('chat-sidebar-host-session-remote'),
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: hostPanel, matching: find.text('Local task')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: hostPanel, matching: find.text('Remote task')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('background retention uses inactive host active turn context', (
@@ -1351,11 +1379,8 @@ Future<void> _selectChatHost(WidgetTester tester, String profileId) async {
 }
 
 Future<void> _openThreadFromChat(WidgetTester tester, String threadId) async {
+  await _openChatSidebar(tester);
   final sidebar = find.byKey(const ValueKey('chat-session-sidebar'));
-  if (sidebar.evaluate().isEmpty) {
-    await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
-    await tester.pumpAndSettle();
-  }
   final threadTile = find.byKey(ValueKey('thread-summary-$threadId'));
   final sidebarScrollable = find
       .descendant(of: sidebar, matching: find.byType(Scrollable))
@@ -1368,6 +1393,14 @@ Future<void> _openThreadFromChat(WidgetTester tester, String threadId) async {
   await tester.pumpAndSettle();
   await tester.tap(threadTile);
   await tester.pumpAndSettle();
+}
+
+Future<void> _openChatSidebar(WidgetTester tester) async {
+  final sidebar = find.byKey(const ValueKey('chat-session-sidebar'));
+  if (sidebar.evaluate().isEmpty) {
+    await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
+    await tester.pumpAndSettle();
+  }
 }
 
 Future<void> _scrollToTimeline(WidgetTester tester) async {

@@ -3,9 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../i18n/app_localizations.dart';
+import '../../session/codex_session_state_controller.dart';
+import '../../session/host_session_summary.dart';
+import '../../ssh/ssh_profile.dart';
 import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_list_controller.dart';
 import '../../threads/thread_summary.dart';
+import 'chat_status_summary.dart';
 
 class ChatThreadSidebar extends StatelessWidget {
   const ChatThreadSidebar({
@@ -119,6 +123,254 @@ class ChatSidebarWorkspaceHeader extends StatelessWidget {
               icon: const Icon(Icons.tune, size: 18),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class ChatHostSessionsPanel extends StatelessWidget {
+  const ChatHostSessionsPanel({
+    super.key,
+    required this.hostSessions,
+    required this.selectedProfile,
+    required this.onProfileSelected,
+  });
+
+  final List<HostSessionSummary> hostSessions;
+  final SshProfile? selectedProfile;
+  final ValueChanged<SshProfile>? onProfileSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    if (hostSessions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    return Column(
+      key: const ValueKey('chat-sidebar-host-sessions'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(2, 2, 0, 4),
+          child: Row(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: colorScheme.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                child: const SizedBox(width: 4, height: 20),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.dns_outlined,
+                size: 18,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  context.l10n.hosts,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Divider(height: 1, color: colorScheme.outlineVariant),
+        ),
+        for (var index = 0; index < hostSessions.length; index++) ...[
+          _HostSessionTile(
+            summary: hostSessions[index],
+            selected: selectedProfile?.id == hostSessions[index].profile.id,
+            onSelected: onProfileSelected,
+          ),
+          if (index != hostSessions.length - 1) const SizedBox(height: 6),
+        ],
+      ],
+    );
+  }
+}
+
+class _HostSessionTile extends StatelessWidget {
+  const _HostSessionTile({
+    required this.summary,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final HostSessionSummary summary;
+  final bool selected;
+  final ValueChanged<SshProfile>? onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final profile = summary.profile;
+    final enabled = onSelected != null;
+    final threadLabel = summary.selectedThreadLabel;
+    final foreground = enabled
+        ? colorScheme.onSurface
+        : colorScheme.onSurface.withValues(alpha: 0.55);
+    return Semantics(
+      button: enabled,
+      selected: selected,
+      child: Material(
+        key: ValueKey('chat-sidebar-host-session-${profile.id}'),
+        color: selected
+            ? colorScheme.primaryContainer.withValues(alpha: 0.52)
+            : colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: enabled ? () => onSelected!(profile) : null,
+          borderRadius: BorderRadius.circular(8),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: selected
+                    ? colorScheme.primary.withValues(alpha: 0.52)
+                    : colorScheme.outlineVariant,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(9, 8, 8, 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? colorScheme.primary.withValues(alpha: 0.16)
+                          : colorScheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: Icon(
+                      selected ? Icons.check : Icons.dns_outlined,
+                      size: 17,
+                      color: selected ? colorScheme.primary : foreground,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                profile.displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: foreground,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            _HostSessionStatusPill(status: summary.status),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          profile.endpoint,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        if (threadLabel != null) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.forum_outlined,
+                                size: 13,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  threadLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurface,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HostSessionStatusPill extends StatelessWidget {
+  const _HostSessionStatusPill({required this.status});
+
+  final CodexSessionStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final active =
+        status == CodexSessionStatus.connected ||
+        status == CodexSessionStatus.reconnecting;
+    final busy =
+        status == CodexSessionStatus.connecting ||
+        status == CodexSessionStatus.disconnecting;
+    final color = status == CodexSessionStatus.failed
+        ? colorScheme.error
+        : active || busy
+        ? colorScheme.primary
+        : colorScheme.outline;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 92),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: active || busy ? 0.14 : 0.08),
+          border: Border.all(color: color.withValues(alpha: 0.42)),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          child: Text(
+            sessionStatusLabel(context.l10n, status),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: status == CodexSessionStatus.failed
+                  ? colorScheme.error
+                  : colorScheme.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
       ),
     );
