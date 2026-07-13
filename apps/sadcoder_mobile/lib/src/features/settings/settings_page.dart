@@ -419,7 +419,11 @@ class _AccountStatusSettingsContent extends StatelessWidget {
               AccountSnapshotStatus.idle => Text(l10n.accountStatusUnavailable),
               AccountSnapshotStatus.loading => const LinearProgressIndicator(),
               AccountSnapshotStatus.failed => Text(
-                controller.error?.toString() ?? l10n.accountLoadFailed,
+                _settingsFailureMessage(
+                  l10n,
+                  l10n.accountLoadFailed,
+                  controller.error,
+                ),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
               AccountSnapshotStatus.loaded when controller.snapshot == null =>
@@ -523,7 +527,11 @@ class _ModelListSettingsContent extends StatelessWidget {
               ModelListStatus.idle => Text(l10n.modelListUnavailable),
               ModelListStatus.loading => const LinearProgressIndicator(),
               ModelListStatus.failed => Text(
-                controller.error?.toString() ?? l10n.modelListLoadFailed,
+                _settingsFailureMessage(
+                  l10n,
+                  l10n.modelListLoadFailed,
+                  controller.error,
+                ),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
               ModelListStatus.loaded when controller.models.isEmpty => Text(
@@ -718,7 +726,11 @@ class _AgentDoctorSettingsContent extends StatelessWidget {
               AgentDoctorStatus.idle => Text(l10n.agentDoctorUnavailable),
               AgentDoctorStatus.loading => const LinearProgressIndicator(),
               AgentDoctorStatus.failed => Text(
-                controller.error?.toString() ?? l10n.agentDoctorLoadFailed,
+                _settingsFailureMessage(
+                  l10n,
+                  l10n.agentDoctorLoadFailed,
+                  controller.error,
+                ),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
               AgentDoctorStatus.loaded when controller.result == null => Text(
@@ -898,8 +910,11 @@ class _AgentCodexConfigureCardState extends State<_AgentCodexConfigureCard> {
               const LinearProgressIndicator(),
             if (widget.controller.status == AgentCodexConfigureStatus.failed)
               Text(
-                widget.controller.error?.toString() ??
-                    l10n.agentCodexConfigureFailed,
+                _settingsFailureMessage(
+                  l10n,
+                  l10n.agentCodexConfigureFailed,
+                  widget.controller.error,
+                ),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             if (widget.controller.status == AgentCodexConfigureStatus.saved &&
@@ -1149,7 +1164,11 @@ class _AgentSchemaSettingsContent extends StatelessWidget {
               AgentSchemaStatus.idle => Text(l10n.agentSchemaUnavailable),
               AgentSchemaStatus.loading => const LinearProgressIndicator(),
               AgentSchemaStatus.failed => Text(
-                controller.error?.toString() ?? l10n.agentSchemaLoadFailed,
+                _settingsFailureMessage(
+                  l10n,
+                  l10n.agentSchemaLoadFailed,
+                  controller.error,
+                ),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
               AgentSchemaStatus.loaded when controller.result == null => Text(
@@ -1311,7 +1330,11 @@ class _AgentLogsSettingsContent extends StatelessWidget {
               AgentLogsStatus.idle => Text(l10n.agentServiceLogsUnavailable),
               AgentLogsStatus.loading => const LinearProgressIndicator(),
               AgentLogsStatus.failed => Text(
-                controller.error?.toString() ?? l10n.agentServiceLogsLoadFailed,
+                _settingsFailureMessage(
+                  l10n,
+                  l10n.agentServiceLogsLoadFailed,
+                  controller.error,
+                ),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
               AgentLogsStatus.loaded when controller.result == null => Text(
@@ -1999,7 +2022,11 @@ class _ServerConfigSnapshotContent extends StatelessWidget {
               CodexConfigSnapshotStatus.loading =>
                 const LinearProgressIndicator(),
               CodexConfigSnapshotStatus.failed => Text(
-                controller.error?.toString() ?? l10n.serverConfigLoadFailed,
+                _settingsFailureMessage(
+                  l10n,
+                  l10n.serverConfigLoadFailed,
+                  controller.error,
+                ),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
               CodexConfigSnapshotStatus.loaded when snapshot == null => Text(
@@ -2379,6 +2406,17 @@ String? _stringOverrideValue(Object? value) {
     return value.trim();
   }
   return null;
+}
+
+String _settingsFailureMessage(
+  AppLocalizations l10n,
+  String message,
+  Object? detail,
+) {
+  if (detail == null) {
+    return message;
+  }
+  return l10n.messageWithDetail(message, detail);
 }
 
 class _SourceLine extends StatelessWidget {

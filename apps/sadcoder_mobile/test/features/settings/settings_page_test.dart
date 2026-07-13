@@ -430,6 +430,55 @@ void main() {
     expect(find.text('gpt-5'), findsOneWidget);
   });
 
+  testWidgets('localizes account model and server config failures in zh', (
+    tester,
+  ) async {
+    final overrideController = CodexConfigOverrideController();
+    final configController = CodexConfigSnapshotController(
+      readerProvider: () =>
+          _FailingConfigSnapshotReader(StateError('config failed')),
+    );
+    final accountController = AccountSnapshotController(
+      readerProvider: () =>
+          _FailingAccountSnapshotReader(StateError('account failed')),
+    );
+    final modelController = ModelListController(
+      readerProvider: () => _FailingModelListReader(StateError('model failed')),
+    );
+    addTearDown(overrideController.dispose);
+    addTearDown(configController.dispose);
+    addTearDown(accountController.dispose);
+    addTearDown(modelController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      locale: const Locale('zh', 'CN'),
+      configSnapshotController: configController,
+      accountSnapshotController: accountController,
+      modelListController: modelController,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('settings-server-config-refresh')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('服务器配置加载失败：Bad state: config failed'), findsOneWidget);
+    expect(find.textContaining('Failed to load server config'), findsNothing);
+
+    await _openSettingsSection(tester, 'account');
+    await tester.tap(find.byKey(const ValueKey('settings-account-refresh')));
+    await tester.pumpAndSettle();
+    expect(find.text('账户加载失败：Bad state: account failed'), findsOneWidget);
+    expect(find.textContaining('Failed to load account'), findsNothing);
+
+    await _openSettingsSection(tester, 'models');
+    await tester.tap(find.byKey(const ValueKey('settings-model-list-refresh')));
+    await tester.pumpAndSettle();
+    expect(find.text('模型列表加载失败：Bad state: model failed'), findsOneWidget);
+    expect(find.textContaining('Failed to load model list'), findsNothing);
+  });
+
   testWidgets('updates app theme preference from settings', (tester) async {
     final overrideController = CodexConfigOverrideController();
     final appearanceController = AppAppearanceController(
@@ -1033,6 +1082,111 @@ void main() {
     expect(schemaReader.experimentalValues, [false, true]);
   });
 
+  testWidgets('localizes agent diagnostic failures in zh', (tester) async {
+    final overrideController = CodexConfigOverrideController();
+    final doctorController = AgentDoctorController(
+      readerProvider: () =>
+          _FailingAgentDoctorReader(StateError('doctor failed')),
+      profileProvider: () => _profile,
+    );
+    final configureController = AgentCodexConfigureController(
+      runnerProvider: () =>
+          _FailingAgentCodexConfigureRunner(StateError('configure failed')),
+      profileProvider: () => _profile,
+    );
+    final logsController = AgentLogsController(
+      readerProvider: () => _FailingAgentLogsReader(StateError('logs failed')),
+      profileProvider: () => _profile,
+    );
+    final schemaController = AgentSchemaController(
+      readerProvider: () =>
+          _FailingAgentSchemaReader(StateError('schema failed')),
+      profileProvider: () => _profile,
+    );
+    addTearDown(overrideController.dispose);
+    addTearDown(doctorController.dispose);
+    addTearDown(configureController.dispose);
+    addTearDown(logsController.dispose);
+    addTearDown(schemaController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      locale: const Locale('zh', 'CN'),
+      agentDoctorController: doctorController,
+      agentCodexConfigureController: configureController,
+      agentLogsController: logsController,
+      agentSchemaController: schemaController,
+    );
+    await _openSettingsSection(tester, 'diagnostics');
+
+    await tester.tap(
+      find.byKey(const ValueKey('settings-agent-doctor-refresh')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('运行 agent 诊断失败：Bad state: doctor failed'), findsOneWidget);
+    expect(find.textContaining('Failed to run agent doctor'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-agent-codex-program')),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('settings-agent-codex-program')),
+      '/usr/local/bin/codex',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-agent-codex-configure-save')),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-agent-codex-configure-save')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('保存 Codex 配置失败：Bad state: configure failed'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Failed to save Codex config'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-agent-schema-refresh')),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-agent-schema-refresh')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('读取 app-server schema 诊断失败：Bad state: schema failed'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Failed to load app-server schema diagnostics'),
+      findsNothing,
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-agent-logs-refresh')),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('settings-agent-logs-refresh')));
+    await tester.pumpAndSettle();
+    expect(find.text('读取 agent 服务日志失败：Bad state: logs failed'), findsOneWidget);
+    expect(
+      find.textContaining('Failed to load agent service logs'),
+      findsNothing,
+    );
+  });
+
   testWidgets('confirms before copying diagnostic logs', (tester) async {
     final overrideController = CodexConfigOverrideController();
     final copied = <String>[];
@@ -1197,10 +1351,12 @@ Future<void> _pumpSettings(
   AgentLogsController? agentLogsController,
   AgentSchemaController? agentSchemaController,
   DiagnosticLogExportController? diagnosticLogExportController,
+  Locale? locale,
   String appVersion = '1.0.0+1',
 }) {
   return tester.pumpWidget(
     MaterialApp(
+      locale: locale,
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -1271,6 +1427,20 @@ class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {
   }
 }
 
+class _FailingConfigSnapshotReader implements CodexConfigSnapshotReader {
+  _FailingConfigSnapshotReader(this.error);
+
+  final Object error;
+
+  @override
+  Future<CodexConfigSnapshot> readConfig({
+    bool includeLayers = true,
+    String? cwd,
+  }) async {
+    throw error;
+  }
+}
+
 const _defaultConfig = {
   'model': 'gpt-5-codex',
   'model_provider': 'openai',
@@ -1293,6 +1463,17 @@ class _RecordingAccountSnapshotReader implements AccountSnapshotReader {
   }
 }
 
+class _FailingAccountSnapshotReader implements AccountSnapshotReader {
+  _FailingAccountSnapshotReader(this.error);
+
+  final Object error;
+
+  @override
+  Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
+    throw error;
+  }
+}
+
 class _RecordingModelListReader implements ModelListReader {
   _RecordingModelListReader({required this.page});
 
@@ -1310,6 +1491,21 @@ class _RecordingModelListReader implements ModelListReader {
   }
 }
 
+class _FailingModelListReader implements ModelListReader {
+  _FailingModelListReader(this.error);
+
+  final Object error;
+
+  @override
+  Future<ModelListPage> listModels({
+    String? cursor,
+    int? limit,
+    bool includeHidden = false,
+  }) async {
+    throw error;
+  }
+}
+
 class _RecordingAgentDoctorReader implements AgentDoctorReader {
   _RecordingAgentDoctorReader({required this.result});
 
@@ -1320,6 +1516,17 @@ class _RecordingAgentDoctorReader implements AgentDoctorReader {
   Future<AgentDoctorResult> readDoctor(SshProfile profile) async {
     profiles.add(profile);
     return result;
+  }
+}
+
+class _FailingAgentDoctorReader implements AgentDoctorReader {
+  _FailingAgentDoctorReader(this.error);
+
+  final Object error;
+
+  @override
+  Future<AgentDoctorResult> readDoctor(SshProfile profile) async {
+    throw error;
   }
 }
 
@@ -1335,6 +1542,17 @@ class _RecordingAgentLogsReader implements AgentLogsReader {
     profiles.add(profile);
     tailBytesValues.add(tailBytes);
     return result;
+  }
+}
+
+class _FailingAgentLogsReader implements AgentLogsReader {
+  _FailingAgentLogsReader(this.error);
+
+  final Object error;
+
+  @override
+  Future<AgentLogsResult> readLogs(SshProfile profile, {int? tailBytes}) async {
+    throw error;
   }
 }
 
@@ -1359,6 +1577,21 @@ class _RecordingAgentSchemaReader implements AgentSchemaReader {
   }
 }
 
+class _FailingAgentSchemaReader implements AgentSchemaReader {
+  _FailingAgentSchemaReader(this.error);
+
+  final Object error;
+
+  @override
+  Future<AgentSchemaResult> readSchema(
+    SshProfile profile, {
+    bool refresh = false,
+    bool experimental = false,
+  }) async {
+    throw error;
+  }
+}
+
 class _RecordingAgentCodexConfigureRunner implements AgentCodexConfigureRunner {
   _RecordingAgentCodexConfigureRunner({required this.result});
 
@@ -1374,5 +1607,19 @@ class _RecordingAgentCodexConfigureRunner implements AgentCodexConfigureRunner {
     profiles.add(profile);
     requests.add(request);
     return result;
+  }
+}
+
+class _FailingAgentCodexConfigureRunner implements AgentCodexConfigureRunner {
+  _FailingAgentCodexConfigureRunner(this.error);
+
+  final Object error;
+
+  @override
+  Future<AgentCodexConfigureResult> configureCodex(
+    SshProfile profile,
+    AgentCodexConfigureRequest request,
+  ) async {
+    throw error;
   }
 }
