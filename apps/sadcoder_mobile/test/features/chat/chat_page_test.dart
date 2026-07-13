@@ -7770,6 +7770,90 @@ void main() {
   });
 
   testWidgets(
+    'new live timeline items append without reloading the item window',
+    (tester) async {
+      tester.view.physicalSize = const Size(480, 620);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final approvalController = ApprovalStateController();
+      final itemReader = _RecordingThreadItemListReader([
+        ThreadItemsPage(
+          nextCursor: 'older_1',
+          items: [
+            for (var i = 79; i >= 0; i--)
+              ThreadItemSummary.fromJson({
+                'id': 'item_$i',
+                'turnId': 'turn_1',
+                'type': 'agentMessage',
+                'text': 'Paged message $i',
+              }),
+          ],
+        ),
+      ]);
+      final starter = _FakeSessionStarter(
+        threadListReader: const _FakeThreadListReader(
+          page: ThreadListPage(threads: []),
+        ),
+        threadItemListReader: itemReader,
+      );
+      final sessionController = CodexSessionStateController(
+        connector: starter,
+        approvalController: approvalController,
+      );
+      final detailController = ThreadDetailController(
+        readerProvider: () => _FakeThreadDetailReader(
+          detail: ThreadDetail(
+            thread: ThreadSummary.fromJson({
+              'id': 'thr_1',
+              'sessionId': 'sess_1',
+              'preview': 'Paged thread',
+              'ephemeral': false,
+              'turns': <Object?>[],
+            }),
+          ),
+        ),
+      );
+      final timelineController = ChatTimelineController();
+      addTearDown(timelineController.dispose);
+      addTearDown(detailController.dispose);
+      addTearDown(sessionController.dispose);
+      addTearDown(approvalController.dispose);
+
+      await sessionController.connect(_profile);
+      await detailController.readThread('thr_1', includeTurns: false);
+      await _pumpChatPage(
+        tester,
+        sessionController: sessionController,
+        threadDetailController: detailController,
+        timelineController: timelineController,
+      );
+      await tester.pumpAndSettle();
+
+      timelineController.ingest(
+        CodexEvent.fromNotification({
+          'method': 'item/agentMessage/delta',
+          'params': {
+            'threadId': 'thr_1',
+            'turnId': 'turn_live',
+            'itemId': 'live_agent',
+            'delta': 'Live append without full reload',
+          },
+        }),
+      );
+      await tester.pumpAndSettle();
+
+      expect(itemReader.calls, hasLength(1));
+      expect(timelineController.cursor.itemIds.last, 'live_agent');
+      expect(
+        find.textContaining('Live append without full reload'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
     'thread selection prefers bounded items page over full thread turns',
     (tester) async {
       tester.view.physicalSize = const Size(480, 620);
