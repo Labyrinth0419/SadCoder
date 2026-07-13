@@ -983,6 +983,9 @@ class AppLocalizations {
   String get terminalIdle => _text('terminalIdle');
   String get terminalStarting => _text('terminalStarting');
   String get terminalRunning => _text('terminalRunning');
+  String get terminalNoActiveCommandExecSession =>
+      _text('terminalNoActiveCommandExecSession');
+  String get terminalUnknownFailure => _text('terminalUnknownFailure');
   String terminalExitCode(int code) =>
       _text('terminalExitCode').replaceAll('{code}', formatNumber(code));
   String terminalFailed(String error) =>
@@ -1932,6 +1935,9 @@ const _values = <String, Map<String, String>>{
     'terminalIdle': 'Idle',
     'terminalStarting': 'Starting',
     'terminalRunning': 'Running',
+    'terminalNoActiveCommandExecSession':
+        'No active terminal command session is available.',
+    'terminalUnknownFailure': 'Unknown terminal error.',
     'terminalExitCode': 'Exited with code {code}',
     'terminalFailed': 'Failed: {error}',
   },
@@ -2750,6 +2756,8 @@ const _values = <String, Map<String, String>>{
     'terminalIdle': '空闲',
     'terminalStarting': '正在启动',
     'terminalRunning': '运行中',
+    'terminalNoActiveCommandExecSession': '没有可用的终端命令执行会话。',
+    'terminalUnknownFailure': '未知终端错误。',
     'terminalExitCode': '退出码 {code}',
     'terminalFailed': '失败：{error}',
   },

@@ -9,6 +9,18 @@ typedef TerminalCommandExecRunnerProvider = CommandExecRunner? Function();
 
 enum TerminalSessionStatus { idle, starting, running, completed, failed }
 
+enum TerminalSessionFailure { noActiveCommandExecSession }
+
+class TerminalSessionException implements Exception {
+  const TerminalSessionException(this.code, this.message);
+
+  final TerminalSessionFailure code;
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class TerminalSessionController extends ChangeNotifier {
   TerminalSessionController({
     required TerminalCommandExecRunnerProvider runnerProvider,
@@ -41,7 +53,10 @@ class TerminalSessionController extends ChangeNotifier {
     if (runner == null) {
       _setState(
         status: TerminalSessionStatus.failed,
-        error: StateError('No active command exec session'),
+        error: const TerminalSessionException(
+          TerminalSessionFailure.noActiveCommandExecSession,
+          'No active command exec session',
+        ),
       );
       return;
     }

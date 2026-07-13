@@ -1083,6 +1083,7 @@ MVP 可以简化为底部导航：
 - 已覆盖 `en-US` / `zh-CN` 基础资源完整性、数字/日期/文件大小格式化和斜杠命令说明本地化；Chat 中 `/rollout`、`/test-approval`、`/debug-config` 未知来源/未知 layer 标签和 `/plugins` 本地版本标签等可见诊断/摘要文本已移入资源文件，避免 debug/diagnostic/summary 路径继续硬编码英文 UI。
 - 已新增通用 `messageWithDetail` 资源化 formatter，并在 Host/Settings/Files/Chat 的用户可见失败详情和 Chat 摘要模块中使用；Chat 的 debug config、experimental、memories、MCP、usage、status、skills/plugins/hooks/apps/diff 与 permission profile 加载失败会保留 raw detail，但摘要与详情之间的分隔符按当前 locale 渲染（英文 `: `，中文 `：`），不影响 raw JSON、路径、配置 key 或协议 enum 的原样展示。
 - 已将 Hosts 页面 SSH config 空导入、私钥导入未包含 PEM private key block 这类 App 自己生成的失败详情移入资源文件：中文界面不再显示英文 `FormatException`、`No importable SSH Host entries found.` 或 `No PEM private key block found.`，同时继续保留真实底层 raw error detail 的原样展示策略。
+- 已将 Terminal 缺少 command exec runner 的 App 生成失败改为 typed `TerminalSessionException`，UI 按 failure code 映射到本地化详情：中文界面不再显示英文 `No active command exec session` 或 Dart `Bad state` 包装；未知底层错误仍保留 raw detail。
 
 ## 10. 本地数据模型
 

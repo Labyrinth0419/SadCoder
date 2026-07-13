@@ -79,7 +79,12 @@ void main() {
     await controller.start(commandLine: 'pwd', cwd: '/repo');
 
     expect(controller.status, TerminalSessionStatus.failed);
-    expect(controller.error, isA<StateError>());
+    final error = controller.error;
+    expect(error, isA<TerminalSessionException>());
+    expect(
+      (error! as TerminalSessionException).code,
+      TerminalSessionFailure.noActiveCommandExecSession,
+    );
   });
 }
 

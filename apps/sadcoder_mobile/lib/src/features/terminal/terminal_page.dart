@@ -364,9 +364,19 @@ String _statusLabel(
       controller.exitCode ?? -1,
     ),
     TerminalSessionStatus.failed => l10n.terminalFailed(
-      controller.error.toString(),
+      _terminalFailureDetail(l10n, controller.error),
     ),
   };
+}
+
+String _terminalFailureDetail(AppLocalizations l10n, Object? error) {
+  if (error is TerminalSessionException) {
+    return switch (error.code) {
+      TerminalSessionFailure.noActiveCommandExecSession =>
+        l10n.terminalNoActiveCommandExecSession,
+    };
+  }
+  return error?.toString() ?? l10n.terminalUnknownFailure;
 }
 
 String? _normalizedText(String? value) {

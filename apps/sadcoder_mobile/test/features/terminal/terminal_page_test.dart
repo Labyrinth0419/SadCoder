@@ -7,6 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/command_exec/command_exec_runner.dart';
 import 'package:sadcoder_mobile/src/features/terminal/terminal_page.dart';
+import 'package:sadcoder_mobile/src/features/terminal/terminal_session_controller.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/workspace/workspace_command_runner.dart';
 
@@ -98,15 +99,43 @@ void main() {
     await tester.pump();
     await tester.pump();
   });
+
+  testWidgets('localizes missing terminal runner failures', (tester) async {
+    final controller = TerminalSessionController(runnerProvider: () => null);
+    addTearDown(controller.dispose);
+
+    await _pumpTerminalPage(
+      tester,
+      runner: _FakeCommandExecRunner(),
+      root: '/repo',
+      controller: controller,
+      locale: const Locale('zh', 'CN'),
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('terminal-command-field')),
+      'pwd',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('terminal-run-button')));
+    await tester.pump();
+
+    expect(find.text('失败：没有可用的终端命令执行会话。'), findsOneWidget);
+    expect(find.textContaining('No active command exec session'), findsNothing);
+    expect(find.textContaining('Bad state'), findsNothing);
+  });
 }
 
 Future<void> _pumpTerminalPage(
   WidgetTester tester, {
   CommandExecRunner? runner,
   String? root,
+  TerminalSessionController? controller,
+  Locale? locale,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: locale,
       theme: ThemeData(),
       darkTheme: ThemeData.dark(),
       localizationsDelegates: const [
@@ -117,7 +146,7 @@ Future<void> _pumpTerminalPage(
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
-        body: TerminalPage(runner: runner, root: root),
+        body: TerminalPage(runner: runner, root: root, controller: controller),
       ),
     ),
   );
