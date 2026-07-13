@@ -126,7 +126,6 @@ class _ChatPageState extends State<ChatPage> {
   String? _slashTextPrompt;
   bool _slashPaletteOpen = false;
   bool _showRawTranscript = false;
-  bool _showAdvancedControls = false;
   bool _showArchivedThreads = false;
   bool _showThreadSidebar = false;
   List<SshProfile> _savedProfiles = const [];
@@ -294,29 +293,8 @@ class _ChatPageState extends State<ChatPage> {
                         (widget.configOverrideController != null ||
                             widget.sessionController != null)) ...[
                       _AdvancedChatControlsToggle(
-                        expanded: _showAdvancedControls,
-                        onPressed: () => setState(
-                          () => _showAdvancedControls = !_showAdvancedControls,
-                        ),
+                        onPressed: _showAdvancedControlsSheet,
                       ),
-                      if (_showAdvancedControls &&
-                          widget.configOverrideController != null) ...[
-                        const SizedBox(height: 8),
-                        SessionOverrideControls(
-                          controller: widget.configOverrideController!,
-                          onApplySessionOverrides: _applySessionOverrides,
-                        ),
-                        const SizedBox(height: 8),
-                        TurnOverrideControls(
-                          controller: widget.configOverrideController!,
-                        ),
-                      ],
-                      if (_showAdvancedControls) ...[
-                        const SizedBox(height: 8),
-                        RawRpcPanel(
-                          onSend: widget.sessionController?.requestRaw,
-                        ),
-                      ],
                       const SizedBox(height: 8),
                     ],
                     CallbackShortcuts(
@@ -1401,6 +1379,19 @@ class _ChatPageState extends State<ChatPage> {
       futures.add(accountUsageSnapshotController.refresh());
     }
     await Future.wait(futures);
+  }
+
+  Future<void> _showAdvancedControlsSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _ChatAdvancedControlsSheet(
+        configOverrideController: widget.configOverrideController,
+        rawRpcSender: widget.sessionController?.requestRaw,
+        onApplySessionOverrides: _applySessionOverrides,
+      ),
+    );
   }
 
   Future<bool> _copyLastResponse() async {
@@ -4992,39 +4983,118 @@ class _ChatThreadSidebar extends StatelessWidget {
 }
 
 class _AdvancedChatControlsToggle extends StatelessWidget {
-  const _AdvancedChatControlsToggle({
-    required this.expanded,
-    required this.onPressed,
-  });
+  const _AdvancedChatControlsToggle({required this.onPressed});
 
-  final bool expanded;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final colorScheme = Theme.of(context).colorScheme;
-    final tooltip = expanded
-        ? l10n.hideChatAdvancedControls
-        : l10n.showChatAdvancedControls;
     return Align(
       alignment: Alignment.centerRight,
       child: IconButton.outlined(
         key: const ValueKey('chat-advanced-controls-toggle'),
         onPressed: onPressed,
-        tooltip: tooltip,
+        tooltip: l10n.showChatAdvancedControls,
         style: IconButton.styleFrom(
-          backgroundColor: expanded
-              ? colorScheme.primaryContainer.withValues(alpha: 0.72)
-              : colorScheme.surfaceContainerHighest,
-          foregroundColor: expanded
-              ? colorScheme.onPrimaryContainer
-              : colorScheme.onSurfaceVariant,
+          backgroundColor: colorScheme.surfaceContainerHighest,
+          foregroundColor: colorScheme.onSurfaceVariant,
           minimumSize: const Size.square(34),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           padding: EdgeInsets.zero,
         ),
-        icon: Icon(expanded ? Icons.expand_less : Icons.tune, size: 19),
+        icon: const Icon(Icons.tune, size: 19),
+      ),
+    );
+  }
+}
+
+class _ChatAdvancedControlsSheet extends StatelessWidget {
+  const _ChatAdvancedControlsSheet({
+    required this.configOverrideController,
+    required this.rawRpcSender,
+    required this.onApplySessionOverrides,
+  });
+
+  final CodexConfigOverrideController? configOverrideController;
+  final RawRpcSender? rawRpcSender;
+  final Future<void> Function(CodexConfigOverrides overrides)?
+  onApplySessionOverrides;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final controller = configOverrideController;
+    return FractionallySizedBox(
+      key: const ValueKey('chat-advanced-controls-sheet'),
+      heightFactor: 0.88,
+      child: Material(
+        color: colorScheme.surfaceContainerLowest,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 8, 8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer.withValues(
+                        alpha: 0.62,
+                      ),
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: Icon(
+                      Icons.tune,
+                      size: 18,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      l10n.showChatAdvancedControls,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    key: const ValueKey('chat-advanced-controls-close'),
+                    onPressed: () => Navigator.of(context).pop(),
+                    tooltip: MaterialLocalizations.of(
+                      context,
+                    ).closeButtonTooltip,
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: colorScheme.outlineVariant),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                children: [
+                  if (controller != null) ...[
+                    SessionOverrideControls(
+                      controller: controller,
+                      onApplySessionOverrides: onApplySessionOverrides,
+                    ),
+                    const SizedBox(height: 10),
+                    TurnOverrideControls(controller: controller),
+                    const SizedBox(height: 10),
+                  ],
+                  RawRpcPanel(onSend: rawRpcSender),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

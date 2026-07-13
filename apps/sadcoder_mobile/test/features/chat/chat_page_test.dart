@@ -145,6 +145,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
+      find.byKey(const ValueKey('chat-advanced-controls-sheet')),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(const ValueKey('chat-session-overrides-edit')),
       findsOneWidget,
     );
@@ -153,6 +157,17 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('chat-raw-rpc-panel')), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('chat-advanced-controls-close')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('chat-advanced-controls-sheet')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('chat-raw-rpc-panel')), findsNothing);
   });
 
   testWidgets('advanced chat controls tolerate raw RPC without overrides', (
@@ -177,6 +192,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(
+      find.byKey(const ValueKey('chat-advanced-controls-sheet')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey('chat-session-overrides-edit')),
       findsNothing,
@@ -844,6 +863,11 @@ void main() {
       findsOneWidget,
     );
 
+    await tester.tap(
+      find.byKey(const ValueKey('chat-advanced-controls-close')),
+    );
+    await tester.pumpAndSettle();
+
     await tester.enterText(
       find.byKey(const ValueKey('chat-composer-field')),
       'Use turn overrides',
@@ -860,6 +884,11 @@ void main() {
       'serviceTier': 'priority',
     });
     expect(overrideController.layers.turn.toTurnStartParams(), isEmpty);
+
+    await tester.tap(
+      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
+    );
+    await tester.pumpAndSettle();
     expect(find.textContaining('Model: gpt-5 / app default'), findsWidgets);
   });
 
@@ -956,6 +985,11 @@ void main() {
       findsWidgets,
     );
 
+    await tester.tap(
+      find.byKey(const ValueKey('chat-advanced-controls-close')),
+    );
+    await tester.pumpAndSettle();
+
     await tester.enterText(
       find.byKey(const ValueKey('chat-composer-field')),
       'Use session overrides',
@@ -978,6 +1012,10 @@ void main() {
       'serviceTier': 'priority',
     });
 
+    await tester.tap(
+      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey('chat-session-overrides-clear')),
     );

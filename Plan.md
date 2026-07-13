@@ -861,6 +861,7 @@ MVP 可以简化为底部导航：
 - 本轮 UI pass 已补强 Chat 主画布权重和 TUI 状态 marker/status chip，侧栏开关固定为左上三横线且默认收起会话侧栏，timeline turn 作为主内容渲染并有 widget 测试覆盖；会话侧栏已改为工具侧栏式列表 surface，点选会话只切换/加载 timeline，不展示 Thread detail/cwd/turn id 详情；顶栏状态和主机选择器支持窄屏 flex 收缩，斜杠命令预览仍保留为输入附近的轻提示，不再抢占默认对话信息架构。
 - Chat 高级折叠区已按能力拆分：配置覆盖控件只在有 `CodexConfigOverrideController` 时出现，Raw RPC 面板可显示禁用态，但发送只依赖已注入的 session controller，避免 session-only 页面展开高级区时因覆盖 controller 缺失而崩溃；默认对话面仍不显示这些调试控件。
 - 最新 UI pass 已把 active turn 的 raw `Status: inProgress` 从主 timeline 移除，running/working/failed 详情只由顶部 TUI 状态槽承担；高级调试入口改为图标折叠按钮，斜杠命令输入预览改为轻量 inline surface，避免底部输入区继续占用对话主体。
+- 本轮 UI pass 将 Chat 高级调试入口从 inline 展开区迁到可滚动 bottom sheet：默认对话页不再把 Raw RPC、会话覆盖、本次回合覆盖插入输入框上方；用户点调试图标才进入独立高级工具面板，关闭后回到以 timeline 文本、工具调用和 composer 为主体的对话界面。
 - 本轮 UI pass 继续强化对话主体权重：顶部 activity strip 增加 TUI 式语义色轨，running/working/failed 详情仍只放在顶部状态槽；会话侧栏行改为紧凑工具行和选中 rail，仅展示会话标题，不回退显示 cwd、status、thread/turn id 等详情。
 - 本轮 UI polish 将会话侧栏的 active / archived 模式切换从横向 segmented control 改为竖向紧凑工具按钮，保留 tooltip、选中 rail 和图标语义，避免窄侧栏横向挤压对话主体。
 - 侧聊提示面板也已去掉 side/main thread id，仅保留侧聊标题、触发命令和返回主线按钮；默认对话画布不再显示内部会话详情。
