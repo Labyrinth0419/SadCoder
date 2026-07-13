@@ -1,3 +1,7 @@
+import '../../goals/thread_goal_runner.dart';
+import '../../i18n/app_localizations.dart';
+import 'chat_goal_summary.dart';
+
 sealed class ChatGoalCommand {
   const ChatGoalCommand();
 }
@@ -65,3 +69,40 @@ const _goalStatuses = {
   'budgetLimited',
   'complete',
 };
+
+Future<String?> buildThreadGoalSummaryFromCommand({
+  required AppLocalizations l10n,
+  required ThreadGoalRunner? runner,
+  required String? threadId,
+  required String arguments,
+}) async {
+  if (runner == null || threadId == null) {
+    return null;
+  }
+
+  final command = parseChatGoalCommand(arguments);
+  if (command == null) {
+    return null;
+  }
+
+  return switch (command) {
+    ChatGoalGetCommand() => buildThreadGoalSummary(
+      l10n: l10n,
+      goal: (await runner.getGoal(threadId: threadId)).goal,
+    ),
+    ChatGoalClearCommand() => buildThreadGoalClearedSummary(
+      l10n: l10n,
+      cleared: (await runner.clearGoal(threadId: threadId)).cleared,
+    ),
+    ChatGoalSetCommand(:final objective, :final status, :final tokenBudget) =>
+      buildThreadGoalSummary(
+        l10n: l10n,
+        goal: (await runner.setGoal(
+          threadId: threadId,
+          objective: objective,
+          status: status,
+          tokenBudget: tokenBudget,
+        )).goal,
+      ),
+  };
+}

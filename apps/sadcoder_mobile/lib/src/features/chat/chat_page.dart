@@ -57,7 +57,6 @@ import 'chat_raw_transcript_command.dart';
 import 'chat_status_summary.dart';
 import 'chat_test_approval_command.dart';
 import 'chat_timeline_controller.dart';
-import 'chat_goal_summary.dart';
 import 'chat_mcp_summary.dart';
 import 'chat_review_summary.dart';
 import 'chat_rollout_diagnostics.dart';
@@ -1198,38 +1197,12 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<String?> _handleGoalCommand(String arguments) async {
-    final runner = widget.sessionController?.threadGoalRunner;
-    final threadId = _currentThreadId();
-    if (runner == null || threadId == null) {
-      return null;
-    }
-
-    final command = parseChatGoalCommand(arguments);
-    if (command == null) {
-      return null;
-    }
-
-    final l10n = context.l10n;
-    return switch (command) {
-      ChatGoalGetCommand() => buildThreadGoalSummary(
-        l10n: l10n,
-        goal: (await runner.getGoal(threadId: threadId)).goal,
-      ),
-      ChatGoalClearCommand() => buildThreadGoalClearedSummary(
-        l10n: l10n,
-        cleared: (await runner.clearGoal(threadId: threadId)).cleared,
-      ),
-      ChatGoalSetCommand(:final objective, :final status, :final tokenBudget) =>
-        buildThreadGoalSummary(
-          l10n: l10n,
-          goal: (await runner.setGoal(
-            threadId: threadId,
-            objective: objective,
-            status: status,
-            tokenBudget: tokenBudget,
-          )).goal,
-        ),
-    };
+    return buildThreadGoalSummaryFromCommand(
+      l10n: context.l10n,
+      runner: widget.sessionController?.threadGoalRunner,
+      threadId: _currentThreadId(),
+      arguments: arguments,
+    );
   }
 
   Future<String?> _handleReviewCommand(String arguments) async {
