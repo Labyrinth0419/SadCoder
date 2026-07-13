@@ -873,6 +873,7 @@ MVP 可以简化为底部导航：
 - 本轮结构整理将 Chat timeline viewport、滚动监听、向上加载触发和可拖动“跳到最新”浮层从 `ChatPage` 拆到 `features/chat/chat_timeline_view.dart`；`ChatPage` 只负责页面编排、侧聊 header 和 timeline renderer 组合。后续若继续降低 `ChatPage` 体量，可再把 timeline item renderer、thread sidebar 与 slash command sheets 分别拆成独立文件。
 - 本轮结构整理继续将 Chat 会话侧栏 surface、workspace 摘要 header、active/archived thread list 与 thread tile 从 `ChatPage` 拆到 `features/chat/chat_thread_sidebar.dart`；高级控制 bottom sheet 仍保留在页面层，避免 sidebar 模块依赖配置覆盖/Raw RPC 调试能力。后续 `ChatPage` 仍可继续拆 timeline item renderer 与 slash command sheets。
 - 本轮结构整理将 Chat timeline renderer、消息气泡、reasoning 折叠块、command/file/tool 执行块、Markdown raw fallback、terminal output 折叠和 diff 渲染从 `ChatPage` 拆到 `features/chat/chat_timeline_renderer.dart`；`ChatPage` 不再直接依赖 Markdown preview / diff block / terminal renderer 细节。后续 `ChatPage` 主要剩余解耦点是 slash command dispatcher callbacks 和各类 command sheets。
+- 本轮结构整理将 composer 上方的 slash command preview 从 `ChatPage` 拆到 `features/chat/chat_slash_command_preview.dart`，保留 known/unknown/empty slash 的轻提示与“作为文本发送”入口；`ChatPage` 只传入解析结果和回调。后续可继续把 slash command dispatcher callbacks 与 command sheets 从页面层拆出。
 - 已补齐 active turn 文本追加路径：`CodexAppServerClient`、`CodexTurnRunner`、`TurnController` 和 Chat composer 已支持 `turn/steer`，active turn 中发送普通文本会带 `expectedTurnId` steer 当前回合，而不是启动新 turn 或禁用输入；本次 turn overrides 仍只随 `turn/start` 消耗，不会被 steer 清掉。
 
 ### 9.3 Approvals 页面
