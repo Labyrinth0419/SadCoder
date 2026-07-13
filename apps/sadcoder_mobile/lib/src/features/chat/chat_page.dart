@@ -40,17 +40,15 @@ import 'chat_agent_topology_sheet.dart';
 import 'chat_activity_strip.dart';
 import 'chat_background_terminal_summary.dart';
 import 'chat_catalog_summary_commands.dart';
+import 'chat_config_summary_commands.dart';
 import 'chat_connection_controls.dart';
 import 'chat_composer_mention.dart';
-import 'chat_debug_config_summary.dart';
 import 'chat_display_settings_sheets.dart';
 import 'chat_diff_summary.dart';
-import 'chat_experimental_summary.dart';
 import 'chat_feedback_sheet.dart';
 import 'chat_goal_command.dart';
 import 'chat_layout_metrics.dart';
 import 'chat_mcp_command.dart';
-import 'chat_memories_summary.dart';
 import 'chat_model_override_sheet.dart';
 import 'chat_override_scope.dart';
 import 'chat_personality_override_sheet.dart';
@@ -1043,48 +1041,30 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<String?> _buildDebugConfigSummary(String arguments) async {
-    if (arguments.trim().isNotEmpty) {
-      return null;
-    }
-
-    final l10n = context.l10n;
-    final controller = widget.configSnapshotController;
-    if (controller != null) {
-      final cwds = _currentWorkspaceCwds();
-      await controller.refresh(cwd: cwds.isEmpty ? null : cwds.first);
-    }
-    return buildDebugConfigSummary(l10n: l10n, controller: controller);
+    return buildDebugConfigSummaryFromCommand(
+      l10n: context.l10n,
+      controller: widget.configSnapshotController,
+      cwds: _currentWorkspaceCwds(),
+      arguments: arguments,
+    );
   }
 
   Future<String?> _buildExperimentalSummary(String arguments) async {
-    if (arguments.trim().isNotEmpty) {
-      return null;
-    }
-
-    final l10n = context.l10n;
-    final controller = widget.configSnapshotController;
-    if (controller != null) {
-      final cwds = _currentWorkspaceCwds();
-      await controller.refresh(cwd: cwds.isEmpty ? null : cwds.first);
-    }
-    return buildExperimentalSummary(l10n: l10n, controller: controller);
+    return buildExperimentalSummaryFromCommand(
+      l10n: context.l10n,
+      controller: widget.configSnapshotController,
+      cwds: _currentWorkspaceCwds(),
+      arguments: arguments,
+    );
   }
 
   Future<String?> _buildMemoriesSummary(String arguments) async {
-    if (arguments.trim().isNotEmpty) {
-      return null;
-    }
-
-    final l10n = context.l10n;
-    final controller = widget.configSnapshotController;
-    if (controller != null) {
-      final cwds = _currentWorkspaceCwds();
-      await controller.refresh(cwd: cwds.isEmpty ? null : cwds.first);
-    }
-    return buildMemoriesSummary(
-      l10n: l10n,
-      controller: controller,
+    return buildMemoriesSummaryFromCommand(
+      l10n: context.l10n,
+      controller: widget.configSnapshotController,
+      cwds: _currentWorkspaceCwds(),
       threadRaw: widget.threadDetailController?.detail?.thread.raw ?? const {},
+      arguments: arguments,
     );
   }
 
