@@ -1015,6 +1015,7 @@ MVP 可以简化为底部导航：
 - 已落地 system/light/dark、五档字号（极小/小/中/大/极大）和多配色方案；Candy palette 已从单一 Material seed 调整为参考 cotton-candy / bubblegum / mint / sky / lemon 调色板的明确 hex 色板（`#FFB3E6`、`#FFD1F3`、`#B8F2E6`、`#A0C4FF`、`#FFF1B6`），并保留浅色模式深色主按钮/正文对比；新增 `pastel-candy` 粉彩糖果方案，参考 pastel candy 的粉、浅蓝、浅金、清绿、淡紫组合（`#F4BCC7`、`#9EDEF2`、`#F2E1B1`、`#C6F2AF`、`#D5CAF9`），新增 `candy-tones` 柔和糖果色方案（`#D3F8E2`、`#E4C1F9`、`#F694C1`、`#EDE7B1`、`#A9DEF9`），Candy Pop 高饱和糖果配色参考 Coolors `9b5de5-f15bb5-fee440-00bbf9-00f5d4` 的紫、粉、黄、青、薄荷 hex 调色板；`sugar-rush` 已按网上 bubblegum/candy 参考改为粉红、淡黄、泡泡蓝、糖果绿、紫色组合（`#F56C78`、`#ECE482`、`#7CD6E4`、`#AAE48F`、`#C25DE9`），同时保留代码、diff、terminal 的语义色边界。
 - 本轮 UI polish 已为 Chat 顶部活动条、三横线侧栏入口和 timeline execution block 增加轻量层次；running/working/failure 详情固定在顶部 TUI 式状态槽中，不把会话详情或内部 thread/turn id 放回主对话流。command/file/tool 块使用左侧语义色轨区分命令、文件变更和工具调用，Files 主区未连接/无 cwd/未打开文件状态保持带边界和图标容器的 status page。会话和文件树仍放在左侧栏，左上三横线作为入口，低频 workspace root 和高级外观/诊断设置保持折叠。
 - 本轮外观 polish 将配色选择器从默认 Material ChoiceChip 改为自定义 swatch tile：每个 palette 直接展示多色糖果/主题色条、选中勾选和轻量边界层次；字号仍保留极小/小/中/大/极大五档。
+- 已将字号五档从默认 ChoiceChip 调整为带示例字形、语义色轨、选中勾选和固定宽度约束的自定义 tile；配色 swatch tile 在极窄宽度下按容器收缩，避免设置侧栏或小屏布局出现横向溢出。
 
 ### 9.7.1 主机、设置与主题后续改造
 

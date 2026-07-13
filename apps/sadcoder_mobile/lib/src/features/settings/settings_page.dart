@@ -1789,22 +1789,153 @@ class _FontSizePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final size in AppFontSizePreference.values)
-          ChoiceChip(
-            key: ValueKey('settings-font-size-${size.commandValue}'),
-            selected: size == selected,
-            label: Text(context.l10n.fontSizeLabel(size.commandValue)),
-            onSelected: (selected) {
-              if (selected) {
-                onSelected(size);
-              }
-            },
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tileWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth < 104
+                  ? constraints.maxWidth
+                  : constraints.maxWidth.clamp(104.0, 136.0).toDouble()
+            : 120.0;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final size in AppFontSizePreference.values)
+              _FontSizeOptionTile(
+                key: ValueKey('settings-font-size-${size.commandValue}'),
+                label: context.l10n.fontSizeLabel(size.commandValue),
+                scale: size.scale,
+                width: tileWidth,
+                selected: size == selected,
+                onTap: () => onSelected(size),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _FontSizeOptionTile extends StatelessWidget {
+  const _FontSizeOptionTile({
+    super.key,
+    required this.label,
+    required this.scale,
+    required this.width,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final double scale;
+  final double width;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final accent = selected ? colorScheme.primary : colorScheme.outlineVariant;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: Material(
+        color: selected
+            ? colorScheme.primaryContainer.withValues(alpha: 0.48)
+            : colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(8),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            width: width,
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: selected
+                    ? colorScheme.primary
+                    : colorScheme.outlineVariant,
+                width: selected ? 1.4 : 1,
+              ),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                if (selected)
+                  BoxShadow(
+                    color: colorScheme.primary.withValues(alpha: 0.10),
+                    blurRadius: 12,
+                    offset: const Offset(0, 2),
+                  ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                PositionedDirectional(
+                  start: 0,
+                  top: 3,
+                  bottom: 3,
+                  width: 3,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: accent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 8),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 30,
+                        child: Text(
+                          'Aa',
+                          maxLines: 1,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: selected
+                                ? colorScheme.primary
+                                : colorScheme.onSurfaceVariant,
+                            fontSize: 14 * scale,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: selected
+                                ? colorScheme.onPrimaryContainer
+                                : colorScheme.onSurface,
+                            fontWeight: selected
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        selected ? Icons.check_circle : Icons.circle_outlined,
+                        size: 16,
+                        color: selected
+                            ? colorScheme.primary
+                            : colorScheme.onSurfaceVariant.withValues(
+                                alpha: 0.58,
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-      ],
+        ),
+      ),
     );
   }
 }

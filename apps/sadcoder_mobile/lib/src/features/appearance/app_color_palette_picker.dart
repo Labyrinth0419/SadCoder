@@ -21,7 +21,9 @@ class AppColorPalettePicker extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final tileWidth = constraints.hasBoundedWidth
-            ? constraints.maxWidth.clamp(128.0, 166.0).toDouble()
+            ? constraints.maxWidth < 128
+                  ? constraints.maxWidth
+                  : constraints.maxWidth.clamp(128.0, 166.0).toDouble()
             : 166.0;
         return Wrap(
           spacing: 8,
