@@ -274,6 +274,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
+      find.byKey(const ValueKey('workspace-files-entry-rail-lib/main.dart')),
+      findsOneWidget,
+    );
+    expect(
       find.byWidgetPredicate((widget) {
         if (widget is! Container) {
           return false;

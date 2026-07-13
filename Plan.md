@@ -857,6 +857,7 @@ MVP 可以简化为底部导航：
 - 本轮 UI pass 已补强 Chat 主画布权重和 TUI 状态 marker/status chip，侧栏开关固定为左上三横线且默认收起会话侧栏，timeline turn 作为主内容渲染并有 widget 测试覆盖；会话侧栏已改为工具侧栏式列表 surface，点选会话只切换/加载 timeline，不展示 Thread detail/cwd/turn id 详情；顶栏状态和主机选择器支持窄屏 flex 收缩，斜杠命令预览仍保留为输入附近的轻提示，不再抢占默认对话信息架构。
 - Chat 高级折叠区已按能力拆分：配置覆盖控件只在有 `CodexConfigOverrideController` 时出现，Raw RPC 面板可显示禁用态，但发送只依赖已注入的 session controller，避免 session-only 页面展开高级区时因覆盖 controller 缺失而崩溃；默认对话面仍不显示这些调试控件。
 - 最新 UI pass 已把 active turn 的 raw `Status: inProgress` 从主 timeline 移除，running/working/failed 详情只由顶部 TUI 状态槽承担；高级调试入口改为图标折叠按钮，斜杠命令输入预览改为轻量 inline surface，避免底部输入区继续占用对话主体。
+- 本轮 UI pass 继续强化对话主体权重：顶部 activity strip 增加 TUI 式语义色轨，running/working/failed 详情仍只放在顶部状态槽；会话侧栏行改为紧凑工具行和选中 rail，仅展示会话标题，不回退显示 cwd、status、thread/turn id 等详情。
 
 ### 9.3 Approvals 页面
 
@@ -1000,6 +1001,7 @@ MVP 可以简化为底部导航：
 - 已落地 `workspace/directoryList`、`workspace/fileStat`、`workspace/fileRead` 的 agent RPC，并保留旧 `fs/*` 只读方法作为客户端兼容 fallback。
 - 已调整 Files 页面为左侧工作区文件侧栏和主区域 status page / 文件预览；文件过滤、隐藏文件、远端搜索和刷新入口已收敛为紧凑工具行，搜索栏高度已压缩，显式 workspace root 与默认 root 选择保持折叠入口。
 - 本轮 UI pass 已继续压缩 Files 顶部和工具栏密度，文件搜索栏限制为 20px 高、88px 宽上限（测试契约不超过 96px），文件树行改为工具侧栏式密集行；主区域保留 status page / opened file 的单一主体语义，预览面板只保留清晰边界，不再用投影制造卡片感；窄屏默认收起文件树侧栏，左上三横线负责展开，避免文件树覆盖主状态页。
+- 本轮 UI pass 为文件树行增加轻量语义色轨和固定尺寸图标容器，保留只读文件浏览边界；工作区 root 选择继续折叠，搜索栏保持紧凑，主界面仍只承担 status page 或已打开文件预览。
 - 已覆盖路径归一化、目录响应 path/name 校验、目录分页 `nextCursor`/`cursor`、拒绝 `..` / 绝对 child path、符号链接祖先拒绝、二进制文件拒绝、UTF-8 range 边界、后续 chunk 失败重试和大 Markdown raw 保护。
 - 已补充文件页 widget 覆盖：可手动指定工作区 root，目录读取使用该 root；可保存 App 默认工作区 root 到 cwd 覆盖，并可从临时 root 恢复默认 root。
 - 仍待后续单独设计：受控编辑、写文件、目录监听、diff 审批和冲突检测；这些能力不得混入只读 Files 页面。
@@ -1012,6 +1014,7 @@ MVP 可以简化为底部导航：
 - 配色方案可影响代码关键字、终端 accent 和标题区等语义 accent，但 diff added/removed、风险状态等角色必须保持可识别，不能随主题被简单染成同一种主色。
 - 已落地 system/light/dark、五档字号（极小/小/中/大/极大）和多配色方案；Candy palette 已从单一 Material seed 调整为参考 cotton-candy / bubblegum / mint / sky / lemon 调色板的明确 hex 色板（`#FFB3E6`、`#FFD1F3`、`#B8F2E6`、`#A0C4FF`、`#FFF1B6`），并保留浅色模式深色主按钮/正文对比；新增 `pastel-candy` 粉彩糖果方案，参考 pastel candy 的粉、浅蓝、浅金、清绿、淡紫组合（`#F4BCC7`、`#9EDEF2`、`#F2E1B1`、`#C6F2AF`、`#D5CAF9`），新增 `candy-tones` 柔和糖果色方案（`#D3F8E2`、`#E4C1F9`、`#F694C1`、`#EDE7B1`、`#A9DEF9`），Candy Pop 高饱和糖果配色参考 Coolors `9b5de5-f15bb5-fee440-00bbf9-00f5d4` 的紫、粉、黄、青、薄荷 hex 调色板；`sugar-rush` 已按网上 bubblegum/candy 参考改为粉红、淡黄、泡泡蓝、糖果绿、紫色组合（`#F56C78`、`#ECE482`、`#7CD6E4`、`#AAE48F`、`#C25DE9`），同时保留代码、diff、terminal 的语义色边界。
 - 本轮 UI polish 已为 Chat 顶部活动条、三横线侧栏入口和 timeline execution block 增加轻量层次；running/working/failure 详情固定在顶部 TUI 式状态槽中，不把会话详情或内部 thread/turn id 放回主对话流。command/file/tool 块使用左侧语义色轨区分命令、文件变更和工具调用，Files 主区未连接/无 cwd/未打开文件状态保持带边界和图标容器的 status page。会话和文件树仍放在左侧栏，左上三横线作为入口，低频 workspace root 和高级外观/诊断设置保持折叠。
+- 本轮外观 polish 将配色选择器从默认 Material ChoiceChip 改为自定义 swatch tile：每个 palette 直接展示多色糖果/主题色条、选中勾选和轻量边界层次；字号仍保留极小/小/中/大/极大五档。
 
 ### 9.7.1 主机、设置与主题后续改造
 

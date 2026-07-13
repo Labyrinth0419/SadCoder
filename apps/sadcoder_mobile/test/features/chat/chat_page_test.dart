@@ -3423,6 +3423,7 @@ void main() {
     );
 
     expect(find.text('Running'), findsOneWidget);
+    expect(find.byKey(const ValueKey('chat-activity-rail')), findsOneWidget);
     expect(find.byKey(const ValueKey('chat-running-progress')), findsOneWidget);
     final detail = tester.widget<Text>(
       find.byKey(const ValueKey('chat-activity-detail')),

@@ -1257,82 +1257,116 @@ class _WorkspaceEntryRow extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(6),
         onTap: onTap,
-        child: Padding(
-          padding: EdgeInsetsDirectional.only(
-            start: 8.0 + depth * 18,
-            end: 2,
-            top: 4,
-            bottom: 4,
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 18,
-                child: Icon(
-                  isDirectory
-                      ? expanded
-                            ? Icons.expand_more
-                            : Icons.chevron_right
-                      : Icons.chevron_right,
-                  size: 17,
-                  color: isDirectory
-                      ? colorScheme.onSurfaceVariant
+        child: Stack(
+          children: [
+            PositionedDirectional(
+              start: 0,
+              top: 5,
+              bottom: 5,
+              width: 3,
+              child: DecoratedBox(
+                key: ValueKey('workspace-files-entry-rail-${entry.path}'),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? colorScheme.primary
+                      : isDirectory
+                      ? colorScheme.secondary.withValues(alpha: 0.42)
                       : Colors.transparent,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 2),
-              Icon(
-                entry.isSymlink
-                    ? Icons.link
-                    : isDirectory
-                    ? expanded
-                          ? Icons.folder_open
-                          : Icons.folder_outlined
-                    : _fileIcon(entry.path),
-                size: 18,
-                color: selected ? colorScheme.primary : colorScheme.secondary,
+            ),
+            Padding(
+              padding: EdgeInsetsDirectional.only(
+                start: 10.0 + depth * 18,
+                end: 2,
+                top: 4,
+                bottom: 4,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      entry.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: foreground,
-                        fontWeight: selected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                      ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 18,
+                    child: Icon(
+                      isDirectory
+                          ? expanded
+                                ? Icons.expand_more
+                                : Icons.chevron_right
+                          : Icons.chevron_right,
+                      size: 17,
+                      color: isDirectory
+                          ? colorScheme.onSurfaceVariant
+                          : Colors.transparent,
                     ),
-                    const SizedBox(height: 1),
-                    Text(
-                      details.join(' | '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                  ),
+                  const SizedBox(width: 2),
+                  Container(
+                    width: 26,
+                    height: 26,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? colorScheme.primary.withValues(alpha: 0.14)
+                          : colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                  ],
-                ),
+                    child: Icon(
+                      entry.isSymlink
+                          ? Icons.link
+                          : isDirectory
+                          ? expanded
+                                ? Icons.folder_open
+                                : Icons.folder_outlined
+                          : _fileIcon(entry.path),
+                      size: 17,
+                      color: selected
+                          ? colorScheme.primary
+                          : colorScheme.secondary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          entry.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: foreground,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          details.join(' | '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox.square(
+                    dimension: 30,
+                    child: IconButton(
+                      onPressed: onCopy,
+                      tooltip: l10n.workspaceFilesCopyPath,
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.copy, size: 16),
+                    ),
+                  ),
+                ],
               ),
-              SizedBox.square(
-                dimension: 30,
-                child: IconButton(
-                  onPressed: onCopy,
-                  tooltip: l10n.workspaceFilesCopyPath,
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.copy, size: 16),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

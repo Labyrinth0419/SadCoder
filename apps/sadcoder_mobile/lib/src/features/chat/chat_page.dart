@@ -4486,52 +4486,68 @@ class _ChatActivityStripBody extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 5, 8, 5),
-              child: Row(
-                children: [
-                  IconButton(
-                    key: const ValueKey('chat-session-sidebar-toggle'),
-                    tooltip: l10n.sessions,
-                    onPressed: onToggleSidebar,
-                    style: IconButton.styleFrom(
-                      backgroundColor: sidebarVisible
-                          ? colorScheme.primaryContainer
-                          : colorScheme.surfaceContainerHighest,
-                      foregroundColor: sidebarVisible
-                          ? colorScheme.onPrimaryContainer
-                          : colorScheme.onSurfaceVariant,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      minimumSize: const Size.square(36),
-                      padding: EdgeInsets.zero,
-                    ),
-                    icon: const Icon(Icons.menu),
+            Stack(
+              children: [
+                PositionedDirectional(
+                  key: const ValueKey('chat-activity-rail'),
+                  start: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 4,
+                  child: ColoredBox(
+                    color: active
+                        ? indicator
+                        : indicator.withValues(alpha: 0.38),
                   ),
-                  const SizedBox(width: 5),
-                  _ChatTuiStatusMark(
-                    key: const ValueKey('chat-tui-status-mark'),
-                    color: indicator,
-                    active: active,
+                ),
+                Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(10, 5, 8, 5),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        key: const ValueKey('chat-session-sidebar-toggle'),
+                        tooltip: l10n.sessions,
+                        onPressed: onToggleSidebar,
+                        style: IconButton.styleFrom(
+                          backgroundColor: sidebarVisible
+                              ? colorScheme.primaryContainer
+                              : colorScheme.surfaceContainerHighest,
+                          foregroundColor: sidebarVisible
+                              ? colorScheme.onPrimaryContainer
+                              : colorScheme.onSurfaceVariant,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          minimumSize: const Size.square(36),
+                          padding: EdgeInsets.zero,
+                        ),
+                        icon: const Icon(Icons.menu),
+                      ),
+                      const SizedBox(width: 5),
+                      _ChatTuiStatusMark(
+                        key: const ValueKey('chat-tui-status-mark'),
+                        color: indicator,
+                        active: active,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _ChatTuiStatusLine(
+                          status: status,
+                          details: details,
+                          statusLineParts: statusLineParts,
+                          color: indicator,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: connectionControls,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _ChatTuiStatusLine(
-                      status: status,
-                      details: details,
-                      statusLineParts: statusLineParts,
-                      color: indicator,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    fit: FlexFit.loose,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: connectionControls,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
             if (active)
               DecoratedBox(
@@ -5188,33 +5204,94 @@ class _ThreadListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = detailController?.selectedThreadId == thread.id;
-    final colorScheme = Theme.of(context).colorScheme;
-    return ListTile(
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final foreground = selected
+        ? colorScheme.onPrimaryContainer
+        : colorScheme.onSurface;
+    return Material(
       key: ValueKey('thread-summary-${thread.id}'),
-      contentPadding: const EdgeInsetsDirectional.only(start: 8, end: 4),
-      dense: true,
-      visualDensity: VisualDensity.compact,
-      selected: selected,
-      selectedTileColor: colorScheme.primaryContainer.withValues(alpha: 0.46),
-      tileColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-      leading: Icon(
-        selected ? Icons.chat_bubble : Icons.chat_bubble_outline,
-        size: 18,
+      color: selected
+          ? colorScheme.primaryContainer.withValues(alpha: 0.52)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(7),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(7),
+        onTap: detailController == null
+            ? null
+            : () => detailController!.readThread(thread.id),
+        child: Stack(
+          children: [
+            PositionedDirectional(
+              start: 0,
+              top: 5,
+              bottom: 5,
+              width: 3,
+              child: DecoratedBox(
+                key: ValueKey('thread-summary-rail-${thread.id}'),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? colorScheme.primary
+                      : colorScheme.outlineVariant.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(10, 5, 2, 5),
+              child: Row(
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? colorScheme.primary.withValues(alpha: 0.14)
+                          : colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(
+                      selected ? Icons.chat_bubble : Icons.chat_bubble_outline,
+                      size: 16,
+                      color: selected
+                          ? colorScheme.primary
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      thread.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: foreground,
+                        fontWeight: selected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (archived)
+                    SizedBox.square(
+                      dimension: 30,
+                      child: IconButton(
+                        tooltip: context.l10n.unarchiveThread,
+                        onPressed: onUnarchiveThread == null
+                            ? null
+                            : () => unawaited(onUnarchiveThread!(thread)),
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.unarchive_outlined, size: 17),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      title: Text(thread.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: archived
-          ? IconButton(
-              tooltip: context.l10n.unarchiveThread,
-              onPressed: onUnarchiveThread == null
-                  ? null
-                  : () => unawaited(onUnarchiveThread!(thread)),
-              icon: const Icon(Icons.unarchive_outlined),
-            )
-          : null,
-      onTap: detailController == null
-          ? null
-          : () => detailController!.readThread(thread.id),
     );
   }
 }
