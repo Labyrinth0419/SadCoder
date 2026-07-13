@@ -31,6 +31,7 @@ import 'chat_activity_strip.dart';
 import 'chat_appearance_command_handler.dart';
 import 'chat_connection_controls.dart';
 import 'chat_composer_mention.dart';
+import 'chat_composer_submit_handler.dart';
 import 'chat_conversation_command_handler.dart';
 import 'chat_file_context_command_handler.dart';
 import 'chat_layout_metrics.dart';
@@ -183,19 +184,16 @@ class _ChatPageState extends State<ChatPage> {
     final threadListController = widget.threadListController;
     final threadDetailController = widget.threadDetailController;
     final turnController = widget.turnController;
-    final isConnected =
-        sessionController?.status == CodexSessionStatus.connected;
-    final canSend = _canSubmitComposerText(
+    final canSend = _composerSubmitHandler().canSubmit(
       _composerController.text,
-      isConnected: isConnected,
-      turnController: turnController,
     );
     final composerSendShortcut =
         widget.appearanceController?.composerSendShortcut ??
         AppComposerSendShortcut.enter;
-    final sendSlashAsText = _isSlashTextPrompt(
+    final sendSlashAsText = isSlashTextPrompt(
       _composerController.text,
       _slashCommand,
+      _slashTextPrompt,
     );
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -542,71 +540,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _sendComposerText() async {
-    final text = _composerController.text;
-    final parsed = widget.registry.parseComposerText(text);
-    final sendSlashAsText = _isSlashTextPrompt(text, parsed);
-    if (!_canSubmitComposerText(
-      text,
-      isConnected: widget.sessionController?.isConnected == true,
-      turnController: widget.turnController,
-    )) {
-      return;
-    }
-    if (_isShellCommandInput(text)) {
-      await _sendShellCommand(text);
-      return;
-    }
-    if (parsed.kind != SlashCommandParseKind.notSlash && !sendSlashAsText) {
-      await _dispatchSlashCommand(parsed);
-      return;
-    }
-
-    final turnController = widget.turnController;
-    if (turnController == null) {
-      return;
-    }
-    final textElements = _composerTextElements(text);
-    final steeringActiveTurn =
-        turnController.canSteer && !turnController.canSubmit;
-    if (steeringActiveTurn) {
-      await turnController.steerActiveTurn(text, textElements: textElements);
-    } else {
-      await turnController.submitText(text, textElements: textElements);
-    }
-    if (turnController.status != TurnControllerStatus.failed) {
-      _timelineWindowCoordinator.syncActiveTurn(submittedText: text);
-      if (!steeringActiveTurn) {
-        widget.configOverrideController?.clearTurn();
-      }
-      _composerMentions.clear();
-      _slashTextPrompt = null;
-      _composerController.clear();
-      _handleComposerChanged('');
-    }
-  }
-
-  Future<void> _sendShellCommand(String text) async {
-    final command = _shellCommandFromInput(text);
-    final runner = widget.sessionController?.threadShellCommandRunner;
-    final threadId = _nonEmptyText(widget.turnController?.activeThreadId);
-    if (command == null || runner == null || threadId == null) {
-      return;
-    }
-
-    try {
-      await runner.runShellCommand(threadId: threadId, command: command);
-      _composerMentions.clear();
-      _slashTextPrompt = null;
-      _composerController.clear();
-      _handleComposerChanged('');
-    } on Object catch (error) {
-      if (!mounted) {
-        return;
-      }
-      _showChatSnackBar(
-        context.l10n.messageWithDetail(context.l10n.shellCommandFailed, error),
-      );
-    }
+    await _composerSubmitHandler().submit(_composerController.text);
   }
 
   void _showChatSnackBar(String message) {
@@ -666,9 +600,7 @@ class _ChatPageState extends State<ChatPage> {
         result.effect == SlashCommandActionEffect.ideContext;
     if (result.outcome == SlashCommandActionOutcome.executed &&
         !preservesComposer) {
-      _composerMentions.clear();
-      _composerController.clear();
-      _handleComposerChanged('');
+      _clearComposerInput();
     }
     if (result.outcome == SlashCommandActionOutcome.executed &&
         result.effect == SlashCommandActionEffect.mention) {
@@ -884,6 +816,23 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  ChatComposerSubmitHandler _composerSubmitHandler() {
+    return ChatComposerSubmitHandler(
+      context: context,
+      mounted: () => mounted,
+      registry: widget.registry,
+      sessionController: widget.sessionController,
+      turnController: widget.turnController,
+      configOverrideController: widget.configOverrideController,
+      slashTextPromptProvider: () => _slashTextPrompt,
+      textElementsProvider: _composerTextElements,
+      dispatchSlashCommand: _dispatchSlashCommand,
+      syncActiveTurn: _timelineWindowCoordinator.syncActiveTurn,
+      clearComposer: _clearComposerInput,
+      showSnackBar: _showChatSnackBar,
+    );
+  }
+
   void _insertMention(FileSearchMatch match) {
     final token = '@${match.path}';
     final value = _composerController.value;
@@ -926,6 +875,13 @@ class _ChatPageState extends State<ChatPage> {
 
   List<TurnTextElement> _composerTextElements(String text) {
     return chatComposerTextElements(text: text, mentions: _composerMentions);
+  }
+
+  void _clearComposerInput() {
+    _composerMentions.clear();
+    _slashTextPrompt = null;
+    _composerController.clear();
+    _handleComposerChanged('');
   }
 
   Future<void> _showAdvancedControlsSheet() async {
@@ -1277,52 +1233,6 @@ class _ChatPageState extends State<ChatPage> {
         SlashCommandMappingType.debug => l10n.slashCommandUnsupportedDebug,
       },
     };
-  }
-
-  bool _canSubmitComposerText(
-    String text, {
-    required bool isConnected,
-    required TurnController? turnController,
-  }) {
-    if (text.trim().isEmpty) {
-      return false;
-    }
-    if (_isShellCommandInput(text)) {
-      return _shellCommandFromInput(text) != null &&
-          isConnected &&
-          widget.sessionController?.threadShellCommandRunner != null &&
-          turnController != null &&
-          !turnController.isBusy &&
-          _nonEmptyText(turnController.activeThreadId) != null;
-    }
-    final parsed = widget.registry.parseComposerText(text);
-    final canSubmitPrompt =
-        isConnected &&
-        turnController != null &&
-        (turnController.canSubmit || turnController.canSteer);
-    if (_isSlashTextPrompt(text, parsed)) {
-      return canSubmitPrompt;
-    }
-    return switch (parsed.kind) {
-      SlashCommandParseKind.notSlash => canSubmitPrompt,
-      SlashCommandParseKind.empty || SlashCommandParseKind.unknown => false,
-      SlashCommandParseKind.known => true,
-    };
-  }
-
-  bool _isSlashTextPrompt(String text, SlashCommandParseResult parsed) {
-    return _slashTextPrompt == text &&
-        parsed.kind != SlashCommandParseKind.notSlash &&
-        parsed.kind != SlashCommandParseKind.empty;
-  }
-
-  bool _isShellCommandInput(String text) => text.startsWith('!');
-
-  String? _shellCommandFromInput(String text) {
-    if (!_isShellCommandInput(text)) {
-      return null;
-    }
-    return _nonEmptyText(text.substring(1));
   }
 
   void _handleSessionChanged() {
