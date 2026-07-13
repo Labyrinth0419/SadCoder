@@ -67,6 +67,7 @@ class AppLocalizations {
   String sshConfigImported(int count) =>
       _text('sshConfigImported').replaceAll('{count}', formatNumber(count));
   String get sshConfigImportFailed => _text('sshConfigImportFailed');
+  String get sshConfigImportNoHosts => _text('sshConfigImportNoHosts');
   String get importPrivateKeyFile => _text('importPrivateKeyFile');
   String get importingPrivateKey => _text('importingPrivateKey');
   String get privateKeyImportedAndSaved => _text('privateKeyImportedAndSaved');
@@ -1113,6 +1114,7 @@ const _values = <String, Map<String, String>>{
     'importingSshConfig': 'Importing config',
     'sshConfigImported': '{count} SSH profiles imported.',
     'sshConfigImportFailed': 'SSH config import failed',
+    'sshConfigImportNoHosts': 'No importable SSH Host entries were found.',
     'importPrivateKeyFile': 'Import private key',
     'importingPrivateKey': 'Importing private key',
     'privateKeyImportedAndSaved':
@@ -1974,6 +1976,7 @@ const _values = <String, Map<String, String>>{
     'importingSshConfig': '正在导入 config',
     'sshConfigImported': '已导入 {count} 个 SSH 配置。',
     'sshConfigImportFailed': 'SSH config 导入失败',
+    'sshConfigImportNoHosts': '未找到可导入的 SSH Host 条目。',
     'importPrivateKeyFile': '导入私钥',
     'importingPrivateKey': '正在导入私钥',
     'privateKeyImportedAndSaved': '私钥已导入，配置已安全保存。',

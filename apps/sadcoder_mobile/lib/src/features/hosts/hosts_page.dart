@@ -268,7 +268,15 @@ class _HostsPageState extends State<HostsPage> {
       }
       final importedProfiles = const OpenSshConfigParser().parseProfiles(text);
       if (importedProfiles.isEmpty) {
-        throw const FormatException('No importable SSH Host entries found.');
+        if (mounted) {
+          setState(() {
+            _profileError = l10n.messageWithDetail(
+              l10n.sshConfigImportFailed,
+              l10n.sshConfigImportNoHosts,
+            );
+          });
+        }
+        return;
       }
 
       final store = _profileStore;

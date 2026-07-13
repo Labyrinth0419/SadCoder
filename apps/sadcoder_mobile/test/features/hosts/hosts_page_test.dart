@@ -600,6 +600,30 @@ Host prod
     expect(find.byKey(const ValueKey('private-key-field')), findsOneWidget);
   });
 
+  testWidgets('localizes empty OpenSSH config import errors', (tester) async {
+    final runner = _FakeProbeRunner(report: const M0ProbeReport(steps: []));
+    final store = _FakeProfileStore();
+
+    await _pumpHostsPage(
+      tester,
+      runner,
+      profileStore: store,
+      importFileSource: const _FakeImportFileSource('Host *\n  User alice\n'),
+      locale: const Locale('zh', 'CN'),
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('host-import-ssh-config-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(store.profiles, isEmpty);
+    expect(find.textContaining('SSH config 导入失败：'), findsOneWidget);
+    expect(find.textContaining('未找到可导入的 SSH Host 条目。'), findsOneWidget);
+    expect(find.textContaining('No importable SSH Host'), findsNothing);
+    expect(find.textContaining('FormatException'), findsNothing);
+  });
+
   testWidgets('imports a private key file and saves the current profile', (
     tester,
   ) async {
@@ -1316,6 +1340,7 @@ Future<void> _pumpHostsPage(
   ThreadTimelineCursorStore? threadTimelineCursorStore,
   SlashCommandManifestStore? slashCommandManifestStore,
   List<HostSessionSummary> hostSessions = const [],
+  Locale? locale,
 }) {
   tester.view.physicalSize = const Size(800, 900);
   tester.view.devicePixelRatio = 1;
@@ -1323,6 +1348,7 @@ Future<void> _pumpHostsPage(
   addTearDown(tester.view.resetDevicePixelRatio);
   return tester.pumpWidget(
     MaterialApp(
+      locale: locale,
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
