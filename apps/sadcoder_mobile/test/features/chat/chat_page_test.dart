@@ -6024,7 +6024,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Side conversation'), findsOneWidget);
-    expect(find.textContaining('Side thread: thr_side'), findsOneWidget);
+    expect(find.textContaining('Command: /side'), findsOneWidget);
+    expect(find.textContaining('Side thread: thr_side'), findsNothing);
+    expect(find.textContaining('Main thread: thr_selected'), findsNothing);
     expect(find.text('Started side conversation.'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('chat-side-return-main')));

@@ -858,6 +858,7 @@ MVP 可以简化为底部导航：
 - Chat 高级折叠区已按能力拆分：配置覆盖控件只在有 `CodexConfigOverrideController` 时出现，Raw RPC 面板可显示禁用态，但发送只依赖已注入的 session controller，避免 session-only 页面展开高级区时因覆盖 controller 缺失而崩溃；默认对话面仍不显示这些调试控件。
 - 最新 UI pass 已把 active turn 的 raw `Status: inProgress` 从主 timeline 移除，running/working/failed 详情只由顶部 TUI 状态槽承担；高级调试入口改为图标折叠按钮，斜杠命令输入预览改为轻量 inline surface，避免底部输入区继续占用对话主体。
 - 本轮 UI pass 继续强化对话主体权重：顶部 activity strip 增加 TUI 式语义色轨，running/working/failed 详情仍只放在顶部状态槽；会话侧栏行改为紧凑工具行和选中 rail，仅展示会话标题，不回退显示 cwd、status、thread/turn id 等详情。
+- 侧聊提示面板也已去掉 side/main thread id，仅保留侧聊标题、触发命令和返回主线按钮；默认对话画布不再显示内部会话详情。
 
 ### 9.3 Approvals 页面
 

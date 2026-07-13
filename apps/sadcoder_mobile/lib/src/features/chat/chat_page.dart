@@ -2777,11 +2777,9 @@ class _SideConversationPanel extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    [
-                      '${l10n.sideConversationCommand}: ${conversation.slash}',
-                      '${l10n.sideConversationThread}: ${conversation.sideThreadId}',
-                      '${l10n.sideConversationParent}: ${conversation.parentThreadId}',
-                    ].join('\n'),
+                    '${l10n.sideConversationCommand}: ${conversation.slash}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
