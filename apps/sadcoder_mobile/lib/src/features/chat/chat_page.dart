@@ -5,8 +5,6 @@ import 'package:flutter/services.dart';
 
 import '../../accounts/account_snapshot_controller.dart';
 import '../../appearance/app_appearance_controller.dart';
-import '../../approvals/approval_request_mapper.dart';
-import '../../approvals/pending_approval.dart';
 import '../../commands/slash_command_action_dispatcher.dart';
 import '../../commands/slash_command_registry.dart';
 import '../../config/codex_config_override_controller.dart';
@@ -57,6 +55,7 @@ import 'chat_plugins_command.dart';
 import 'chat_plugins_summary.dart';
 import 'chat_raw_transcript_command.dart';
 import 'chat_status_summary.dart';
+import 'chat_test_approval_command.dart';
 import 'chat_timeline_controller.dart';
 import 'chat_goal_summary.dart';
 import 'chat_mcp_summary.dart';
@@ -1084,50 +1083,14 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<String?> _testApprovalRequest(String arguments) async {
-    if (arguments.trim().isNotEmpty) {
-      return null;
-    }
-    final approvalController = widget.sessionController?.approvalController;
-    if (approvalController == null) {
-      return null;
-    }
-    final l10n = context.l10n;
-    final now = DateTime.now();
-    final threadId = _currentThreadId();
-    final turnId = widget.turnController?.activeTurnId ?? 'turn-1';
-    final reason = l10n.slashCommandTestApprovalReason;
-    final rawParams = <String, Object?>{
-      'turnId': turnId,
-      'startedAtMs': now.millisecondsSinceEpoch,
-      'grantRoot': '/tmp',
-      'reason': reason,
-      'changes': [
-        {'path': '/tmp/test.txt', 'kind': 'add', 'content': 'test'},
-        {
-          'path': '/tmp/test2.txt',
-          'kind': 'update',
-          'unifiedDiff': '+test\n-test2',
-        },
-      ],
-    };
-    if (threadId != null) {
-      rawParams['threadId'] = threadId;
-    }
-    approvalController.upsert(
-      PendingApproval(
-        requestId: 'debug-test-approval-${now.microsecondsSinceEpoch}',
-        method: fileChangeApprovalMethod,
-        kind: PendingApprovalKind.fileChange,
-        rawParams: rawParams,
-        title: '${l10n.approvalKindFileChange}: /tmp',
-        threadId: threadId,
-        turnId: turnId,
-        startedAtMs: now.millisecondsSinceEpoch,
-        reason: reason,
-        grantRoot: '/tmp',
-      ),
+    return queueTestApprovalFromCommand(
+      l10n: context.l10n,
+      approvalController: widget.sessionController?.approvalController,
+      threadId: _currentThreadId(),
+      activeTurnId: widget.turnController?.activeTurnId,
+      now: DateTime.now(),
+      arguments: arguments,
     );
-    return l10n.slashCommandTestApprovalQueued;
   }
 
   Future<String?> _buildDiffSummary(String arguments) async {

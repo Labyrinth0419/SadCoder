@@ -895,6 +895,7 @@ MVP 可以简化为底部导航：
 - 本轮结构整理将 `/raw` transcript view 的 `toggle`/`on`/`off` 参数解析从 `ChatPage` 的 `setState` 分支拆到 `features/chat/chat_raw_transcript_command.dart`；`ChatPage` 只根据纯函数返回的下一状态更新本地 raw timeline 显示。
 - 本轮结构整理将 `/ps` 背景终端列表和 `/stop`/`/clean` 后台终端清理的参数边界、thread/runner 可用性检查与 runner 调用从 `ChatPage` 拆到 `features/chat/chat_background_terminal_commands.dart`；`ChatPage` 只传入当前 thread id 和 session runner。
 - 本轮结构整理将 `/diff` 的空参数校验、当前 workspace cwd 选择、`GitDiffReader` 调用和加载失败摘要从 `ChatPage` 拆到 `features/chat/chat_diff_command.dart`；`ChatPage` 只传入当前 cwds 和 session diff reader。
+- 本轮结构整理将 `/test-approval` 的空参数校验、本地 file-change 测试审批 payload 构造和 `ApprovalStateController.upsert` 调用从 `ChatPage` 拆到 `features/chat/chat_test_approval_command.dart`；`ChatPage` 只传入当前 thread/turn context 和时间。
 - 已补齐 active turn 文本追加路径：`CodexAppServerClient`、`CodexTurnRunner`、`TurnController` 和 Chat composer 已支持 `turn/steer`，active turn 中发送普通文本会带 `expectedTurnId` steer 当前回合，而不是启动新 turn 或禁用输入；本次 turn overrides 仍只随 `turn/start` 消耗，不会被 steer 清掉。
 
 ### 9.3 Approvals 页面
