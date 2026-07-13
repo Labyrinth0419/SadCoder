@@ -883,6 +883,7 @@ MVP 可以简化为底部导航：
 - 本轮结构整理将 `/personality` command sheet 从 `ChatPage` 拆到 `features/chat/chat_personality_override_sheet.dart`，公开 `ChatPersonalityOverrideSheet` / `ChatPersonalityOverrideResult` 并复用 `chat_override_scope.dart`，保留 turn/session scope、personality 字段和 apply 返回契约；`ChatPage` 只负责打开 sheet 并写入 override controller。
 - 本轮结构整理将 `/permissions` command sheet 从 `ChatPage` 拆到 `features/chat/chat_permissions_override_sheet.dart`，公开 `ChatPermissionsOverrideSheet` / `ChatPermissionsOverrideResult` 并复用 `chat_override_scope.dart`，保留 approval policy、sandbox/network、permission profile selector、risk warning 和 apply 返回契约；result 自带 `isHighRisk` 判定，`ChatPage` 只负责二次确认和写入 override controller。
 - 本轮结构整理将 `/agent` / `/subagents` topology bottom sheet 从 `ChatPage` 拆到 `features/chat/chat_agent_topology_sheet.dart`，公开 `ChatAgentTopologySheet` 并保留 active thread 标记、agent role/path/status/parent/ancestor 详情、subagent-only title 和点击返回 `ThreadSummary` 的契约；`ChatPage` 只负责刷新 thread/topology 数据和切换 active thread。
+- 本轮结构整理将 side conversation inline banner 从 `ChatPage` 拆到 `features/chat/chat_side_conversation_panel.dart`，公开 `ChatSideConversation` / `ChatSideConversationPanel` 并保留 compact 状态、`/side`/`/btw` 命令提示、不显示 parent/side thread id、返回主线按钮启停契约；`ChatPage` 只保留侧聊生命周期和 thread 切换逻辑。
 - 已补齐 active turn 文本追加路径：`CodexAppServerClient`、`CodexTurnRunner`、`TurnController` 和 Chat composer 已支持 `turn/steer`，active turn 中发送普通文本会带 `expectedTurnId` steer 当前回合，而不是启动新 turn 或禁用输入；本次 turn overrides 仍只随 `turn/start` 消耗，不会被 steer 清掉。
 
 ### 9.3 Approvals 页面
