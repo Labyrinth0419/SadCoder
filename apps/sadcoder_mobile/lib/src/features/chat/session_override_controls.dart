@@ -367,7 +367,12 @@ class _SessionOverrideSheetState extends State<_SessionOverrideSheet> {
       setState(() => _isApplying = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${context.l10n.threadSettingsUpdateFailed}: $error'),
+          content: Text(
+            context.l10n.messageWithDetail(
+              context.l10n.threadSettingsUpdateFailed,
+              error,
+            ),
+          ),
         ),
       );
     }
@@ -413,7 +418,12 @@ Future<void> _applyRemoteClearingOverrides(
 void _showThreadSettingsUpdateFailure(BuildContext context, Object error) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      content: Text('${context.l10n.threadSettingsUpdateFailed}: $error'),
+      content: Text(
+        context.l10n.messageWithDetail(
+          context.l10n.threadSettingsUpdateFailed,
+          error,
+        ),
+      ),
     ),
   );
 }

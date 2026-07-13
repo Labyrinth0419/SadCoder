@@ -294,7 +294,12 @@ class _HostsPageState extends State<HostsPage> {
       });
     } on Object catch (error) {
       if (mounted) {
-        setState(() => _profileError = '${l10n.sshConfigImportFailed}: $error');
+        setState(
+          () => _profileError = l10n.messageWithDetail(
+            l10n.sshConfigImportFailed,
+            error,
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -349,7 +354,10 @@ class _HostsPageState extends State<HostsPage> {
     } on Object catch (error) {
       if (mounted) {
         setState(
-          () => _profileError = '${l10n.privateKeyImportFailed}: $error',
+          () => _profileError = l10n.messageWithDetail(
+            l10n.privateKeyImportFailed,
+            error,
+          ),
         );
       }
     } finally {
@@ -402,7 +410,10 @@ class _HostsPageState extends State<HostsPage> {
     } on Object catch (error) {
       if (mounted) {
         setState(
-          () => _profileError = '${l10n.sshKeyGenerationFailed}: $error',
+          () => _profileError = l10n.messageWithDetail(
+            l10n.sshKeyGenerationFailed,
+            error,
+          ),
         );
       }
     } finally {
@@ -447,7 +458,12 @@ class _HostsPageState extends State<HostsPage> {
       _showSnackBar(l10n.publicKeyExported);
     } on Object catch (error) {
       if (mounted) {
-        setState(() => _profileError = '${l10n.publicKeyExportFailed}: $error');
+        setState(
+          () => _profileError = l10n.messageWithDetail(
+            l10n.publicKeyExportFailed,
+            error,
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -724,7 +740,10 @@ class _HostsPageState extends State<HostsPage> {
       if (mounted) {
         setState(() {
           _profileMessage = null;
-          _profileError = '${l10n.sshProfileDeleteFailed}: $error';
+          _profileError = l10n.messageWithDetail(
+            l10n.sshProfileDeleteFailed,
+            error,
+          );
         });
       }
     }

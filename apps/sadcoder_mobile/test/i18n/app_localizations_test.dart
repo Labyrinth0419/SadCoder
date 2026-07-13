@@ -77,6 +77,14 @@ void main() {
     );
   });
 
+  test('formats localized messages with raw details per locale', () {
+    const en = AppLocalizations(Locale('en', 'US'));
+    const zh = AppLocalizations(Locale('zh', 'CN'));
+
+    expect(en.messageWithDetail('Failed', 'bad input'), 'Failed: bad input');
+    expect(zh.messageWithDetail('失败', 'bad input'), '失败：bad input');
+  });
+
   test('localizes slash command descriptions and command metadata labels', () {
     const en = AppLocalizations(Locale('en', 'US'));
     const zh = AppLocalizations(Locale('zh', 'CN'));

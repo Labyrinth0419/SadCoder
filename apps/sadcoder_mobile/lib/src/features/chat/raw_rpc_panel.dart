@@ -210,7 +210,12 @@ class _RawRpcPanelState extends State<RawRpcPanel> {
         return Map<String, Object?>.from(decoded);
       }
     } on Object catch (error) {
-      setState(() => _error = '${l10n.rawRpcInvalidJsonObject}: $error');
+      setState(
+        () => _error = l10n.messageWithDetail(
+          l10n.rawRpcInvalidJsonObject,
+          error,
+        ),
+      );
       return null;
     }
     setState(() => _error = l10n.rawRpcInvalidJsonObject);

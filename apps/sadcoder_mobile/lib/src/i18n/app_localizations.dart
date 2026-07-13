@@ -20,6 +20,9 @@ class AppLocalizations {
   }
 
   String get appTitle => _text('appTitle');
+  String messageWithDetail(String message, Object detail) => _text(
+    'messageWithDetail',
+  ).replaceAll('{message}', message).replaceAll('{detail}', '$detail');
   String get hosts => _text('hosts');
   String get chat => _text('chat');
   String get files => _text('files');
@@ -1067,6 +1070,7 @@ String _intlLocaleForLanguage(String languageCode) {
 const _values = <String, Map<String, String>>{
   'en': {
     'appTitle': 'SadCoder',
+    'messageWithDetail': '{message}: {detail}',
     'hosts': 'Hosts',
     'chat': 'Chat',
     'files': 'Files',
@@ -1928,6 +1932,7 @@ const _values = <String, Map<String, String>>{
   },
   'zh': {
     'appTitle': 'SadCoder',
+    'messageWithDetail': '{message}：{detail}',
     'hosts': '主机',
     'chat': '对话',
     'files': '文件',

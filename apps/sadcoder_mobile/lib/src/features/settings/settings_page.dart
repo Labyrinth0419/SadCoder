@@ -1588,7 +1588,11 @@ class _DiagnosticLogExportCardState extends State<_DiagnosticLogExportCard> {
     } on Object catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${l10n.diagnosticLogsExportFailed}: $error')),
+          SnackBar(
+            content: Text(
+              l10n.messageWithDetail(l10n.diagnosticLogsExportFailed, error),
+            ),
+          ),
         );
       }
     } finally {

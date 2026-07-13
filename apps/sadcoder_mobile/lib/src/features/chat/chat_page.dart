@@ -516,7 +516,14 @@ class _ChatPageState extends State<ChatPage> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${context.l10n.shellCommandFailed}: $error')),
+        SnackBar(
+          content: Text(
+            context.l10n.messageWithDetail(
+              context.l10n.shellCommandFailed,
+              error,
+            ),
+          ),
+        ),
       );
     }
   }
@@ -647,7 +654,14 @@ class _ChatPageState extends State<ChatPage> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${context.l10n.connectionFailed}: $error')),
+        SnackBar(
+          content: Text(
+            context.l10n.messageWithDetail(
+              context.l10n.connectionFailed,
+              error,
+            ),
+          ),
+        ),
       );
     }
   }

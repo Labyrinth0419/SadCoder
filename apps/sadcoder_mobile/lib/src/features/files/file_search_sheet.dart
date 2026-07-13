@@ -104,7 +104,7 @@ class _FileSearchSheetState extends State<FileSearchSheet> {
       return Padding(
         padding: const EdgeInsets.only(top: 16),
         child: Text(
-          '${l10n.mentionLoadFailed}: $error',
+          l10n.messageWithDetail(l10n.mentionLoadFailed, error),
           style: TextStyle(color: Theme.of(context).colorScheme.error),
         ),
       );
