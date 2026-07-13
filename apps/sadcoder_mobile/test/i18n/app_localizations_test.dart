@@ -129,6 +129,7 @@ void main() {
     expect(zh.slashCommandTestApprovalReason, 'SadCoder 测试审批请求');
     expect(zh.slashCommandTestApprovalQueued, '已加入测试审批请求。');
     expect(zh.pluginLocalVersion('1.2.0'), '本地 1.2.0');
+    expect(zh.debugConfigOriginUnknown, '未知来源');
     expect(zh.slashCommandArgumentHint('rename'), '<名称>');
     expect(en.slashCommandArgumentHint('rename'), '<name>');
 

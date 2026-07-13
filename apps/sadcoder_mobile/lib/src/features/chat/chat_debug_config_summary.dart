@@ -33,7 +33,11 @@ String buildDebugConfigSummary({
     final keys = snapshot.config.keys.toList()..sort();
     for (final key in keys) {
       final value = snapshot.displayValueFor(key) ?? l10n.serverValueUnset;
-      final origin = snapshot.originLabelFor(key) ?? l10n.sourceServerDefault;
+      final origin = _originLabel(
+        l10n,
+        snapshot.originLabelFor(key),
+        fallback: l10n.sourceServerDefault,
+      );
       lines.add('  $key: $value (${l10n.overrideSource}: $origin)');
     }
   }
@@ -45,7 +49,8 @@ String buildDebugConfigSummary({
       final origin = snapshot.origins[key]!;
       final version = origin.version;
       lines.add(
-        '  $key: ${origin.displayLabel}${version == null ? '' : ' [$version]'}',
+        '  $key: ${_originLabel(l10n, origin.displayLabel)}'
+        '${version == null ? '' : ' [$version]'}',
       );
     }
   }
@@ -83,6 +88,17 @@ String _layerLabel(AppLocalizations l10n, Map<String, Object?> layer) {
     return jsonEncode(map);
   }
   return l10n.debugConfigLayerUnknown;
+}
+
+String _originLabel(AppLocalizations l10n, String? label, {String? fallback}) {
+  final trimmed = label?.trim();
+  if (trimmed == null || trimmed.isEmpty) {
+    return fallback ?? l10n.debugConfigOriginUnknown;
+  }
+  if (trimmed == 'unknown') {
+    return l10n.debugConfigOriginUnknown;
+  }
+  return trimmed;
 }
 
 Map<String, Object?> _objectMap(Object? value) {

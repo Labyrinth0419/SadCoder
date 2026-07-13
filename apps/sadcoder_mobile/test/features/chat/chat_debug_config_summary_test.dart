@@ -84,13 +84,14 @@ void main() {
   );
 
   test(
-    'buildDebugConfigSummary localizes unknown config layer labels',
+    'buildDebugConfigSummary localizes unknown origin and layer labels',
     () async {
       const zh = AppLocalizations(Locale('zh', 'CN'));
       final controller = CodexConfigSnapshotController(
         readerProvider: () => _FakeConfigSnapshotReader(
           CodexConfigSnapshot.fromJson({
-            'config': const {},
+            'config': {'model': 'gpt-5-codex'},
+            'origins': {'model': const <String, Object?>{}},
             'layers': [const <String, Object?>{}],
           }),
         ),
@@ -100,6 +101,8 @@ void main() {
 
       final summary = buildDebugConfigSummary(l10n: zh, controller: controller);
 
+      expect(summary, contains('model: gpt-5-codex (来源: 未知来源)'));
+      expect(summary, contains('model: 未知来源'));
       expect(summary, contains('第 1 层: 未知层'));
     },
   );

@@ -831,6 +831,7 @@ class AppLocalizations {
   String get debugConfigNoSnapshot => _text('debugConfigNoSnapshot');
   String get debugConfigEffectiveValues => _text('debugConfigEffectiveValues');
   String get debugConfigOrigins => _text('debugConfigOrigins');
+  String get debugConfigOriginUnknown => _text('debugConfigOriginUnknown');
   String get debugConfigLayerConfig => _text('debugConfigLayerConfig');
   String get debugConfigLayerMetadata => _text('debugConfigLayerMetadata');
   String get debugConfigLayerUnknown => _text('debugConfigLayerUnknown');
@@ -1812,6 +1813,7 @@ const _values = <String, Map<String, String>>{
     'debugConfigNoSnapshot': 'No config snapshot loaded.',
     'debugConfigEffectiveValues': 'Effective values',
     'debugConfigOrigins': 'Origins',
+    'debugConfigOriginUnknown': 'unknown origin',
     'debugConfigLayerConfig': 'config',
     'debugConfigLayerMetadata': 'metadata',
     'debugConfigLayerUnknown': 'unknown layer',
@@ -2627,6 +2629,7 @@ const _values = <String, Map<String, String>>{
     'debugConfigNoSnapshot': '尚未加载配置快照。',
     'debugConfigEffectiveValues': '生效值',
     'debugConfigOrigins': '来源',
+    'debugConfigOriginUnknown': '未知来源',
     'debugConfigLayerConfig': '配置',
     'debugConfigLayerMetadata': '元数据',
     'debugConfigLayerUnknown': '未知层',
