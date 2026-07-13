@@ -24,7 +24,6 @@ import '../../threads/agent_thread_topology.dart';
 import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_item_list_reader.dart';
 import '../../threads/thread_list_controller.dart';
-import '../../threads/thread_mutation_runner.dart';
 import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
 import '../../turns/turn_text_element.dart';
@@ -60,6 +59,7 @@ import 'chat_rollout_diagnostics.dart';
 import 'chat_side_conversation_panel.dart';
 import 'chat_slash_command_preview.dart';
 import 'chat_summary_formatting.dart';
+import 'chat_thread_command_handler.dart';
 import 'chat_thread_sidebar.dart';
 import 'chat_theme_sheet.dart';
 import 'chat_timeline_renderer.dart';
@@ -347,7 +347,9 @@ class _ChatPageState extends State<ChatPage> {
                                         archived: _showArchivedThreads,
                                         onArchivedChanged:
                                             _setThreadArchiveView,
-                                        onUnarchiveThread: _unarchiveThread,
+                                        onUnarchiveThread: (thread) =>
+                                            _threadCommandHandler()
+                                                .unarchiveThread(thread),
                                       ),
                                     ],
                                   ),
@@ -807,9 +809,10 @@ class _ChatPageState extends State<ChatPage> {
           showBackgroundTerminals: _buildBackgroundTerminalsSummary,
           cleanBackgroundTerminals: _cleanBackgroundTerminals,
           toggleRawTranscript: _toggleRawTranscript,
-          startNewThread: _startNewThread,
-          resumeThread: _resumeThread,
-          renameThread: _renameThread,
+          startNewThread: () => _threadCommandHandler().startNewThread(),
+          resumeThread: (threadId) =>
+              _threadCommandHandler().resumeThread(threadId),
+          renameThread: (name) => _threadCommandHandler().renameThread(name),
           logout: _logoutAccount,
           submitFeedback: _submitFeedback,
           configureTheme: _configureTheme,
@@ -823,17 +826,34 @@ class _ChatPageState extends State<ChatPage> {
           mentionFile: _mentionFile,
           startSideConversation: _startSideConversation,
           showAgentTopology: _showAgentTopology,
-          forkThread: _forkCurrentThread,
-          duplicateThread: _duplicateCurrentThread,
-          rewindThread: _rewindCurrentThread,
-          compactThread: _compactCurrentThread,
-          archiveThread: _archiveCurrentThread,
-          deleteThread: _deleteCurrentThread,
+          forkThread: () => _threadCommandHandler().forkCurrentThread(),
+          duplicateThread: () =>
+              _threadCommandHandler().duplicateCurrentThread(),
+          rewindThread: (lastTurnId) =>
+              _threadCommandHandler().rewindCurrentThread(lastTurnId),
+          compactThread: () => _threadCommandHandler().compactCurrentThread(),
+          archiveThread: () => _threadCommandHandler().archiveCurrentThread(),
+          deleteThread: () => _threadCommandHandler().deleteCurrentThread(),
           configureModel: _configureModelOverride,
           configurePersonality: _configurePersonalityOverride,
           configurePermissions: _configurePermissionsOverride,
           confirmHighRisk: _confirmHighRiskSlashCommand,
         );
+  }
+
+  ChatThreadCommandHandler _threadCommandHandler() {
+    return ChatThreadCommandHandler(
+      context: context,
+      mounted: () => mounted,
+      sessionController: widget.sessionController,
+      threadDetailController: widget.threadDetailController,
+      turnController: widget.turnController,
+      timelineController: widget.timelineController,
+      clearSideConversation: _clearSideConversation,
+      clearLocalTranscript: _clearLocalTranscript,
+      refreshVisibleThreads: _refreshVisibleThreads,
+      showSnackBar: _showChatSnackBar,
+    );
   }
 
   Future<String> _buildStatusSummary() async {
@@ -1452,131 +1472,6 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future<bool> _startNewThread() async {
-    final turnController = widget.turnController;
-    if (turnController == null) {
-      return false;
-    }
-    final started = await turnController.startNewThread();
-    if (!started) {
-      return false;
-    }
-    _clearSideConversation();
-    widget.threadDetailController?.clear();
-    widget.timelineController?.selectThread(turnController.activeThreadId);
-    _refreshVisibleThreads();
-    return true;
-  }
-
-  Future<bool> _resumeThread(String threadId) async {
-    final turnController = widget.turnController;
-    if (turnController == null) {
-      return false;
-    }
-    final resumed = await turnController.resumeThread(threadId);
-    if (!resumed) {
-      return false;
-    }
-    final activeThreadId = turnController.activeThreadId;
-    if (activeThreadId == null || activeThreadId.isEmpty) {
-      return false;
-    }
-    _clearSideConversation();
-    widget.timelineController?.selectThread(activeThreadId);
-    unawaited(
-      widget.threadDetailController?.readThread(
-        activeThreadId,
-        includeTurns: false,
-      ),
-    );
-    _refreshVisibleThreads();
-    return true;
-  }
-
-  Future<bool> _renameThread(String name) async {
-    final runner = widget.sessionController?.threadMutationRunner;
-    final threadId = _currentThreadId();
-    if (runner == null || threadId == null) {
-      return false;
-    }
-    await runner.setThreadName(threadId: threadId, name: name);
-    _refreshVisibleThreads();
-    if (widget.threadDetailController?.selectedThreadId == threadId) {
-      unawaited(
-        widget.threadDetailController?.readThread(
-          threadId,
-          includeTurns: false,
-        ),
-      );
-    }
-    return true;
-  }
-
-  Future<SlashCommandCallbackResult> _forkCurrentThread() async {
-    final runner = widget.sessionController?.threadMutationRunner;
-    final threadId = _currentThreadId();
-    final turnController = widget.turnController;
-    if (runner == null || threadId == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    if (turnController != null && !turnController.canSubmit) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    final forked = await runner.forkThread(threadId: threadId);
-    return _activateForkedThread(forked);
-  }
-
-  Future<SlashCommandCallbackResult> _duplicateCurrentThread() async {
-    final runner = widget.sessionController?.threadMutationRunner;
-    final threadId = _currentThreadId();
-    final turnController = widget.turnController;
-    if (runner == null || threadId == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    if (turnController != null && !turnController.canSubmit) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    final duplicated = await runner.duplicateThread(threadId: threadId);
-    return _activateForkedThread(duplicated);
-  }
-
-  Future<SlashCommandCallbackResult> _rewindCurrentThread(
-    String lastTurnId,
-  ) async {
-    final runner = widget.sessionController?.threadMutationRunner;
-    final threadId = _currentThreadId();
-    final checkpoint = lastTurnId.trim();
-    final turnController = widget.turnController;
-    if (runner == null || threadId == null || checkpoint.isEmpty) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    if (turnController != null && !turnController.canSubmit) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    final rewound = await runner.rewindThread(
-      threadId: threadId,
-      lastTurnId: checkpoint,
-    );
-    return _activateForkedThread(rewound);
-  }
-
-  SlashCommandCallbackResult _activateForkedThread(ThreadSummary thread) {
-    if (thread.id.trim().isEmpty) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    final activated = widget.turnController?.activateThread(thread.id) ?? true;
-    if (!activated) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    _clearSideConversation();
-    widget.timelineController?.showThread(thread);
-    unawaited(
-      widget.threadDetailController?.readThread(thread.id, includeTurns: false),
-    );
-    _refreshVisibleThreads();
-    return SlashCommandCallbackResult.executed;
-  }
-
   Future<SlashCommandCallbackResult> _startSideConversation(
     String arguments, {
     required bool btw,
@@ -1751,16 +1646,6 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
     _showChatSnackBar(context.l10n.slashCommandReturnedToMainThread);
-  }
-
-  Future<SlashCommandCallbackResult> _compactCurrentThread() async {
-    final runner = widget.sessionController?.threadMutationRunner;
-    final threadId = _currentThreadId();
-    if (runner == null || threadId == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    await runner.compactThread(threadId: threadId);
-    return SlashCommandCallbackResult.executed;
   }
 
   Future<SlashCommandCallbackResult> _configureTheme() async {
@@ -1962,78 +1847,6 @@ class _ChatPageState extends State<ChatPage> {
       if (widget.accountUsageSnapshotController != null)
         widget.accountUsageSnapshotController!.refresh(),
     ]);
-    return SlashCommandCallbackResult.executed;
-  }
-
-  Future<SlashCommandCallbackResult> _archiveCurrentThread() {
-    final l10n = context.l10n;
-    return _confirmThreadMutation(
-      title: l10n.archiveThreadTitle,
-      body: l10n.archiveThreadBody,
-      confirmLabel: l10n.archiveThreadConfirm,
-      mutate: (runner, threadId) => runner.archiveThread(threadId: threadId),
-    );
-  }
-
-  Future<SlashCommandCallbackResult> _deleteCurrentThread() {
-    final l10n = context.l10n;
-    return _confirmThreadMutation(
-      title: l10n.deleteThreadTitle,
-      body: l10n.deleteThreadBody,
-      confirmLabel: l10n.deleteThreadConfirm,
-      mutate: (runner, threadId) => runner.deleteThread(threadId: threadId),
-    );
-  }
-
-  Future<void> _unarchiveThread(ThreadSummary thread) async {
-    final runner = widget.sessionController?.threadMutationRunner;
-    if (runner == null) {
-      return;
-    }
-    await runner.unarchiveThread(threadId: thread.id);
-    _refreshVisibleThreads();
-    if (!mounted) {
-      return;
-    }
-    _showChatSnackBar(context.l10n.threadUnarchived);
-  }
-
-  Future<SlashCommandCallbackResult> _confirmThreadMutation({
-    required String title,
-    required String body,
-    required String confirmLabel,
-    required Future<void> Function(ThreadMutationRunner runner, String threadId)
-    mutate,
-  }) async {
-    final runner = widget.sessionController?.threadMutationRunner;
-    final threadId = _currentThreadId();
-    if (runner == null || threadId == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    final cancelLabel = context.l10n.approvalCancel;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        content: Text(body),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(cancelLabel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(confirmLabel),
-          ),
-        ],
-      ),
-    );
-    if (!mounted || confirmed != true) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-    await mutate(runner, threadId);
-    _clearLocalTranscript();
-    _refreshVisibleThreads();
     return SlashCommandCallbackResult.executed;
   }
 
