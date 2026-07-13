@@ -50,8 +50,9 @@ import 'chat_feedback_sheet.dart';
 import 'chat_hooks_summary.dart';
 import 'chat_memories_summary.dart';
 import 'chat_model_override_sheet.dart';
-import 'chat_plugins_summary.dart';
 import 'chat_override_scope.dart';
+import 'chat_personality_override_sheet.dart';
+import 'chat_plugins_summary.dart';
 import 'chat_skills_summary.dart';
 import 'chat_status_summary.dart';
 import 'chat_timeline_controller.dart';
@@ -65,7 +66,6 @@ import 'chat_theme_sheet.dart';
 import 'chat_timeline_renderer.dart';
 import 'chat_usage_summary.dart';
 import 'chat_timeline_view.dart';
-import 'config_override_controls.dart';
 import 'config_override_labels.dart';
 import 'slash_command_palette.dart';
 
@@ -1623,10 +1623,11 @@ class _ChatPageState extends State<ChatPage> {
     if (controller == null) {
       return SlashCommandCallbackResult.unavailable;
     }
-    final result = await showModalBottomSheet<_PersonalityOverrideResult>(
+    final result = await showModalBottomSheet<ChatPersonalityOverrideResult>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _PersonalityOverrideSheet(controller: controller),
+      builder: (context) =>
+          ChatPersonalityOverrideSheet(controller: controller),
     );
     if (!mounted || result == null) {
       return SlashCommandCallbackResult.cancelled;
@@ -3708,117 +3709,6 @@ class _PermissionsRiskWarning extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _PersonalityOverrideResult {
-  const _PersonalityOverrideResult({
-    required this.scope,
-    required this.personality,
-  });
-
-  final ChatOverrideScope scope;
-  final String personality;
-}
-
-class _PersonalityOverrideSheet extends StatefulWidget {
-  const _PersonalityOverrideSheet({required this.controller});
-
-  final CodexConfigOverrideController controller;
-
-  @override
-  State<_PersonalityOverrideSheet> createState() =>
-      _PersonalityOverrideSheetState();
-}
-
-class _PersonalityOverrideSheetState extends State<_PersonalityOverrideSheet> {
-  late ChatOverrideScope _scope;
-  late final TextEditingController _personalityController;
-
-  @override
-  void initState() {
-    super.initState();
-    _scope = ChatOverrideScope.turn;
-    final overrides = chatOverridesForScope(widget.controller, _scope);
-    _personalityController = TextEditingController(
-      text: overrides.personality ?? '',
-    );
-  }
-
-  @override
-  void dispose() {
-    _personalityController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l10n.personalityCommandTitle,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            ChatOverrideScopeSelector(
-              scope: _scope,
-              onChanged: (scope) {
-                setState(() {
-                  _scope = scope;
-                  _loadScopeValues();
-                });
-              },
-            ),
-            const SizedBox(height: 12),
-            ConfigOverrideField(
-              keyValue: 'chat-personality-command-personality',
-              controller: _personalityController,
-              label: l10n.personalityOverride,
-            ),
-            const SizedBox(height: 16),
-            OverflowBar(
-              alignment: MainAxisAlignment.end,
-              spacing: 8,
-              overflowSpacing: 8,
-              children: [
-                TextButton.icon(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
-                  label: Text(l10n.approvalCancel),
-                ),
-                FilledButton.icon(
-                  key: const ValueKey('chat-personality-command-apply'),
-                  onPressed: _apply,
-                  icon: const Icon(Icons.check),
-                  label: Text(l10n.applyPersonalityOverride),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _apply() {
-    Navigator.of(context).pop(
-      _PersonalityOverrideResult(
-        scope: _scope,
-        personality: _personalityController.text,
-      ),
-    );
-  }
-
-  void _loadScopeValues() {
-    final overrides = chatOverridesForScope(widget.controller, _scope);
-    _personalityController.text = overrides.personality ?? '';
   }
 }
 
