@@ -359,6 +359,23 @@ void main() {
       fileReader: const _FakeWorkspaceFileReader(),
     );
 
+    final sidebar = find.byKey(const ValueKey('workspace-files-sidebar'));
+    expect(sidebar, findsOneWidget);
+    expect(find.byKey(const ValueKey('workspace-files-main')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: sidebar,
+        matching: find.byKey(const ValueKey('workspace-files-root-selector')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: sidebar,
+        matching: find.byKey(const ValueKey('workspace-files-filter')),
+      ),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey('workspace-files-root-field')),
       findsNothing,

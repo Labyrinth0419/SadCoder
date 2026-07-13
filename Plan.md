@@ -861,6 +861,7 @@ MVP 可以简化为底部导航：
 - 本轮 UI pass 已补强 Chat 主画布权重和 TUI 状态 marker/status chip，侧栏开关固定为左上三横线且默认收起会话侧栏，timeline turn 作为主内容渲染并有 widget 测试覆盖；会话侧栏已改为工具侧栏式列表 surface，点选会话只切换/加载 timeline，不展示 Thread detail/cwd/turn id 详情；顶栏状态和主机选择器支持窄屏 flex 收缩，斜杠命令预览仍保留为输入附近的轻提示，不再抢占默认对话信息架构。
 - Chat 高级折叠区已按能力拆分：配置覆盖控件只在有 `CodexConfigOverrideController` 时出现，Raw RPC 面板可显示禁用态，但发送只依赖已注入的 session controller，避免 session-only 页面展开高级区时因覆盖 controller 缺失而崩溃；默认对话面仍不显示这些调试控件。
 - 最新 UI pass 已把 active turn 的 raw `Status: inProgress` 从主 timeline 移除，running/working/failed 详情只由顶部 TUI 状态槽承担；高级调试入口改为图标折叠按钮，斜杠命令输入预览改为轻量 inline surface，避免底部输入区继续占用对话主体。
+- 最新 UI contract 已将斜杠命令输入预览固定到 composer chrome：预览仍作为输入框上方的轻提示展示，但不再作为 `chat-main-conversation` 主滚动区的子节点，避免命令解析提示混入用户/Codex 文本、工具调用和命令输出 transcript。
 - 本轮 UI pass 将 Chat 高级调试入口从 inline 展开区迁到可滚动 bottom sheet：默认对话页不再把 Raw RPC、会话覆盖、本次回合覆盖插入输入框上方；用户点调试图标才进入独立高级工具面板，关闭后回到以 timeline 文本、工具调用和 composer 为主体的对话界面。
 - 本轮 UI pass 继续强化对话主体权重：顶部 activity strip 增加 TUI 式语义色轨，running/working/failed 详情仍只放在顶部状态槽；会话侧栏行改为紧凑工具行和选中 rail，仅展示会话标题，不回退显示 cwd、status、thread/turn id 等详情。
 - 本轮 UI polish 将会话侧栏的 active / archived 模式切换从横向 segmented control 改为竖向紧凑工具按钮，保留 tooltip、选中 rail 和图标语义，避免窄侧栏横向挤压对话主体。
@@ -1013,6 +1014,7 @@ MVP 可以简化为底部导航：
 - 本轮 UI pass 为文件树行增加轻量语义色轨和固定尺寸图标容器，保留只读文件浏览边界；工作区 root 选择继续折叠，搜索栏保持紧凑，主界面仍只承担 status page 或已打开文件预览。
 - 本轮 UI polish 将文件树行进一步收成单行导航项，默认只显示图标、文件名、展开/复制动作和选中 rail；绝对路径、大小、修改时间仍按 locale 格式化但移入 tooltip，避免侧栏元数据抢占主预览区域。
 - 本轮 UI polish 将工作区 root 折叠入口补充为当前 root 路径摘要：默认仍不显示输入框和保存默认 root 动作，用户展开后才可手动指定 root、恢复默认 root 或保存默认 workspace；顶部仍保留 `Root: ...` 状态文本，侧栏折叠标题只显示路径，避免主区域和侧栏重复抢占空间。
+- 本轮可见 UI 里程碑已补文件页 widget 契约：`workspace-files-root-selector`、紧凑 `workspace-files-filter` 和文件树入口均属于左侧 `workspace-files-sidebar`，主区域仍由 `workspace-files-main` 承担 status page 或打开文件预览，避免工作区选择/搜索控件回流到主内容区。
 - 已覆盖路径归一化、目录响应 path/name 校验、目录分页 `nextCursor`/`cursor`、拒绝 `..` / 绝对 child path、符号链接祖先拒绝、二进制文件拒绝、UTF-8 range 边界、后续 chunk 失败重试和大 Markdown raw 保护。
 - 已补充文件页 widget 覆盖：可手动指定工作区 root，目录读取使用该 root；可保存 App 默认工作区 root 到 cwd 覆盖，并可从临时 root 恢复默认 root。
 - 已补充文件页只读边界 widget 覆盖：打开文件预览后仍不出现 terminal、新建文件/文件夹、重命名、删除、编辑、保存或写文件入口，确保后续 UI polish 不会把受控编辑能力混入只读 Files 页面。
@@ -1029,6 +1031,7 @@ MVP 可以简化为底部导航：
 - 本轮 Chat UI 收口将 side conversation 提示从大 Card 改为单行 inline banner：只显示侧聊状态和 `/side`/`/btw` 入口命令，返回主线使用图标按钮；不显示 parent/side thread id，也不再显示 “Command:” 调试标签，避免侧聊状态抢占 Codex 对话和工具调用主体。
 - 本轮外观 polish 将配色选择器从默认 Material ChoiceChip 改为自定义 swatch tile：每个 palette 直接展示多色糖果/主题色条、选中勾选和轻量边界层次；字号仍保留极小/小/中/大/极大五档。
 - 已将字号五档从默认 ChoiceChip 调整为带示例字形、语义色轨、选中勾选和固定宽度约束的自定义 tile；配色 swatch tile 在极窄宽度下按容器收缩，避免设置侧栏或小屏布局出现横向溢出。
+- 本轮可见 UI 里程碑已补 Appearance 测试契约：设置页必须渲染 `candy`、`pastel-candy`、`candy-tones`、`candy-pop`、`sugar-rush` 五套糖果色板入口，控制器必须暴露五套各 5 个互异 swatch 的真实糖果配色；字号入口必须完整渲染并按 `extra-small`、`small`、`medium`、`large`、`extra-large` 五档有序提供。
 
 ### 9.7.1 主机、设置与主题后续改造
 

@@ -547,6 +547,18 @@ void main() {
     await _openSettingsSection(tester, 'appearance');
 
     expect(appearanceController.colorPalette, AppColorPalette.sadcoder);
+    for (final palette in const [
+      AppColorPalette.candy,
+      AppColorPalette.pastelCandy,
+      AppColorPalette.candyTones,
+      AppColorPalette.candyPop,
+      AppColorPalette.sugarRush,
+    ]) {
+      expect(
+        find.byKey(ValueKey('settings-color-palette-${palette.commandValue}')),
+        findsOneWidget,
+      );
+    }
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('settings-color-palette-candy')),
       160,
@@ -575,6 +587,12 @@ void main() {
     await _openSettingsSection(tester, 'appearance');
 
     expect(appearanceController.fontSize, AppFontSizePreference.medium);
+    for (final size in AppFontSizePreference.values) {
+      expect(
+        find.byKey(ValueKey('settings-font-size-${size.commandValue}')),
+        findsOneWidget,
+      );
+    }
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('settings-font-size-extra-large')),
       160,

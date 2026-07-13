@@ -89,6 +89,41 @@ void main() {
     ]);
   });
 
+  test('appearance exposes five real candy palette variants', () {
+    final candyPalettes = AppColorPalette.values
+        .where(
+          (palette) => switch (palette) {
+            AppColorPalette.candy ||
+            AppColorPalette.pastelCandy ||
+            AppColorPalette.candyTones ||
+            AppColorPalette.candyPop ||
+            AppColorPalette.sugarRush => true,
+            _ => false,
+          },
+        )
+        .toList(growable: false);
+
+    expect(candyPalettes, hasLength(5));
+    for (final palette in candyPalettes) {
+      expect(palette.swatchColors, hasLength(5));
+      expect(palette.swatchColors.toSet(), hasLength(5));
+    }
+  });
+
+  test('appearance exposes exactly five ordered font size preferences', () {
+    expect(AppFontSizePreference.values, const [
+      AppFontSizePreference.extraSmall,
+      AppFontSizePreference.small,
+      AppFontSizePreference.medium,
+      AppFontSizePreference.large,
+      AppFontSizePreference.extraLarge,
+    ]);
+    expect(
+      AppFontSizePreference.values.map((size) => size.commandValue),
+      const ['extra-small', 'small', 'medium', 'large', 'extra-large'],
+    );
+  });
+
   test('controller notifies when theme changes', () {
     final controller = AppAppearanceController();
     addTearDown(controller.dispose);

@@ -84,6 +84,20 @@ void main() {
 
     expect(find.text('/stop'), findsOneWidget);
     expect(find.text('stop all background terminals'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('chat-composer-command-preview')),
+        matching: find.text('/stop'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('chat-main-conversation')),
+        matching: find.text('/stop'),
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('unknown slash commands are not treated as prompts', (

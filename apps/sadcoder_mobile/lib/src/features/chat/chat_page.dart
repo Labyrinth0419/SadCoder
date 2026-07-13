@@ -197,6 +197,10 @@ class _ChatPageState extends State<ChatPage> {
     final terminalPetPreference =
         widget.appearanceController?.terminalPetPreference ??
         AppTerminalPetPreference.tuiOnly;
+    final sendSlashAsText = _isSlashTextPrompt(
+      _composerController.text,
+      _slashCommand,
+    );
     return LayoutBuilder(
       builder: (context, constraints) {
         final compactHeight = constraints.maxHeight < 240;
@@ -252,12 +256,6 @@ class _ChatPageState extends State<ChatPage> {
                           onReturnToMain: _returnToMainThread,
                           timelineController: widget.timelineController,
                           showRawTranscript: _showRawTranscript,
-                          slashCommand: _slashCommand,
-                          sendSlashAsText: _isSlashTextPrompt(
-                            _composerController.text,
-                            _slashCommand,
-                          ),
-                          onSendSlashAsText: _markSlashInputAsText,
                         ),
                       ),
                       if (sidebarVisible)
@@ -297,6 +295,18 @@ class _ChatPageState extends State<ChatPage> {
                       ),
                       const SizedBox(height: 8),
                     ],
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: ConstrainedBox(
+                        key: const ValueKey('chat-composer-command-preview'),
+                        constraints: const BoxConstraints(maxWidth: 620),
+                        child: _SlashCommandPreview(
+                          result: _slashCommand,
+                          sendAsText: sendSlashAsText,
+                          onSendAsText: _markSlashInputAsText,
+                        ),
+                      ),
+                    ),
                     CallbackShortcuts(
                       bindings: <ShortcutActivator, VoidCallback>{
                         if (composerSendShortcut ==
@@ -4898,9 +4908,6 @@ class _ChatMainConversation extends StatelessWidget {
     required this.onReturnToMain,
     required this.timelineController,
     required this.showRawTranscript,
-    required this.slashCommand,
-    required this.sendSlashAsText,
-    required this.onSendSlashAsText,
   });
 
   final bool compact;
@@ -4909,9 +4916,6 @@ class _ChatMainConversation extends StatelessWidget {
   final VoidCallback onReturnToMain;
   final ChatTimelineController? timelineController;
   final bool showRawTranscript;
-  final SlashCommandParseResult slashCommand;
-  final bool sendSlashAsText;
-  final VoidCallback onSendSlashAsText;
 
   @override
   Widget build(BuildContext context) {
@@ -4936,17 +4940,6 @@ class _ChatMainConversation extends StatelessWidget {
           _ChatTimelinePanel(
             controller: timelineController,
             showRaw: showRawTranscript,
-          ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 620),
-              child: _SlashCommandPreview(
-                result: slashCommand,
-                sendAsText: sendSlashAsText,
-                onSendAsText: onSendSlashAsText,
-              ),
-            ),
           ),
         ],
       ),
@@ -6166,7 +6159,7 @@ class _PreviewCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(bottom: 8),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerLow,
