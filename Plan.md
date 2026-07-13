@@ -875,6 +875,7 @@ MVP 可以简化为底部导航：
 - 本轮结构整理将 Chat timeline renderer、消息气泡、reasoning 折叠块、command/file/tool 执行块、Markdown raw fallback、terminal output 折叠和 diff 渲染从 `ChatPage` 拆到 `features/chat/chat_timeline_renderer.dart`；`ChatPage` 不再直接依赖 Markdown preview / diff block / terminal renderer 细节。后续 `ChatPage` 主要剩余解耦点是 slash command dispatcher callbacks 和各类 command sheets。
 - 本轮结构整理将 composer 上方的 slash command preview 从 `ChatPage` 拆到 `features/chat/chat_slash_command_preview.dart`，保留 known/unknown/empty slash 的轻提示与“作为文本发送”入口；`ChatPage` 只传入解析结果和回调。后续可继续把 slash command dispatcher callbacks 与 command sheets 从页面层拆出。
 - 本轮结构整理将 Chat 顶部 activity strip / TUI 状态线从 `ChatPage` 拆到 `features/chat/chat_activity_strip.dart`，保留 sidebar toggle、running/working 状态 rail、状态行 chips 和当前 active timeline work 摘要；`ChatPage` 只传入状态 controllers、status line parts 和连接控件。后续 `ChatPage` 仍主要剩余 slash command dispatcher callbacks、command sheets 和高级控制 sheet 可继续拆分。
+- 本轮结构整理将 Chat 右上连接/主机选择控件从 `ChatPage` 拆到 `features/chat/chat_connection_controls.dart`，保留已保存主机别名显示、popup profile 选择、per-host 状态 chip 和连接忙碌态；`ChatPage` 只提供 profiles/session summaries 与选择回调。后续主机管理和多 host 同时连接仍按 9.7.1 的 HostSessionManager 路线推进。
 - 已补齐 active turn 文本追加路径：`CodexAppServerClient`、`CodexTurnRunner`、`TurnController` 和 Chat composer 已支持 `turn/steer`，active turn 中发送普通文本会带 `expectedTurnId` steer 当前回合，而不是启动新 turn 或禁用输入；本次 turn overrides 仍只随 `turn/start` 消耗，不会被 steer 清掉。
 
 ### 9.3 Approvals 页面
