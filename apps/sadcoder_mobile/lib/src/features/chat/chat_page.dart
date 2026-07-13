@@ -19,7 +19,6 @@ import '../../session/codex_session_state_controller.dart';
 import '../../session/host_session_summary.dart';
 import '../../ssh/ssh_profile.dart';
 import '../../ssh/ssh_profile_store.dart';
-import '../../threads/agent_thread_topology.dart';
 import '../../threads/thread_detail_controller.dart';
 import '../../threads/thread_item_list_reader.dart';
 import '../../threads/thread_list_controller.dart';
@@ -30,11 +29,11 @@ import '../../usage/account_usage_snapshot_controller.dart';
 import '../../usage/thread_token_usage_controller.dart';
 import 'chat_account_command_handler.dart';
 import 'chat_advanced_controls_sheet.dart';
-import 'chat_agent_topology_sheet.dart';
 import 'chat_activity_strip.dart';
 import 'chat_appearance_command_handler.dart';
 import 'chat_connection_controls.dart';
 import 'chat_composer_mention.dart';
+import 'chat_conversation_command_handler.dart';
 import 'chat_file_context_command_handler.dart';
 import 'chat_layout_metrics.dart';
 import 'chat_override_command_handler.dart';
@@ -256,7 +255,10 @@ class _ChatPageState extends State<ChatPage> {
                                   conversation: _sideConversation!,
                                   canReturn:
                                       widget.turnController?.canSubmit == true,
-                                  onReturn: _returnToMainThread,
+                                  onReturn: () => unawaited(
+                                    _conversationCommandHandler()
+                                        .returnToMainThread(),
+                                  ),
                                 ),
                           timeline: ChatTimelinePanel(
                             controller: widget.timelineController,
@@ -819,8 +821,15 @@ class _ChatPageState extends State<ChatPage> {
       configurePlanMode: (arguments) =>
           _overrideCommandHandler().configurePlanMode(arguments),
       mentionFile: () => _fileContextCommandHandler().mentionFile(),
-      startSideConversation: _startSideConversation,
-      showAgentTopology: _showAgentTopology,
+      startSideConversation: (arguments, {required btw}) =>
+          _conversationCommandHandler().startSideConversation(
+            arguments,
+            btw: btw,
+          ),
+      showAgentTopology: ({required subagentsOnly}) =>
+          _conversationCommandHandler().showAgentTopology(
+            subagentsOnly: subagentsOnly,
+          ),
       forkThread: () => _threadCommandHandler().forkCurrentThread(),
       duplicateThread: () => _threadCommandHandler().duplicateCurrentThread(),
       rewindThread: (lastTurnId) =>
@@ -916,6 +925,27 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  ChatConversationCommandHandler _conversationCommandHandler() {
+    return ChatConversationCommandHandler(
+      context: context,
+      mounted: () => mounted,
+      sessionController: widget.sessionController,
+      threadListController: widget.threadListController,
+      threadDetailController: widget.threadDetailController,
+      turnController: widget.turnController,
+      timelineController: widget.timelineController,
+      currentThreadIdProvider: _currentThreadId,
+      sideConversationProvider: () => _sideConversation,
+      setSideConversation: (conversation) {
+        setState(() => _sideConversation = conversation);
+      },
+      clearSideConversation: _clearSideConversation,
+      refreshVisibleThreads: _refreshVisibleThreads,
+      syncActiveTurnToTimeline: _syncActiveTurnToTimeline,
+      showSnackBar: _showChatSnackBar,
+    );
+  }
+
   void _insertMention(FileSearchMatch match) {
     final token = '@${match.path}';
     final value = _composerController.value;
@@ -1001,182 +1031,6 @@ class _ChatPageState extends State<ChatPage> {
         ),
       );
     }
-  }
-
-  Future<SlashCommandCallbackResult> _startSideConversation(
-    String arguments, {
-    required bool btw,
-  }) async {
-    final runner = widget.sessionController?.threadMutationRunner;
-    final turnController = widget.turnController;
-    final parentThreadId = _currentThreadId();
-    if (runner == null || turnController == null || parentThreadId == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    if (!turnController.canSubmit || _sideConversation != null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    final sideThread = await runner.startSideConversation(
-      threadId: parentThreadId,
-    );
-    if (sideThread.id.trim().isEmpty) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    final activated = turnController.activateThread(sideThread.id);
-    if (!activated) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    setState(() {
-      _sideConversation = ChatSideConversation(
-        parentThreadId: parentThreadId,
-        sideThreadId: sideThread.id,
-        slash: btw ? '/btw' : '/side',
-      );
-    });
-    widget.timelineController?.showThread(sideThread);
-    unawaited(
-      widget.threadDetailController?.readThread(
-        sideThread.id,
-        includeTurns: false,
-      ),
-    );
-    _refreshVisibleThreads();
-
-    final initialPrompt = arguments.trim();
-    if (initialPrompt.isNotEmpty) {
-      await turnController.submitText(initialPrompt);
-      if (turnController.status != TurnControllerStatus.failed) {
-        _syncActiveTurnToTimeline(submittedText: initialPrompt);
-      }
-    }
-    return SlashCommandCallbackResult.executed;
-  }
-
-  Future<SlashCommandCallbackResult> _showAgentTopology({
-    required bool subagentsOnly,
-  }) async {
-    final threadListController = widget.threadListController;
-    final turnController = widget.turnController;
-    if (threadListController == null || turnController == null) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    await threadListController.refresh(limit: 100);
-    if (!mounted) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-    final activeThreadDetail = await _readActiveThreadForAgentTopology();
-    if (!mounted) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-    final topology = AgentThreadTopology.fromThreads(
-      _agentTopologyThreads(threadListController.threads, activeThreadDetail),
-    );
-    final entries = subagentsOnly ? topology.subagentEntries : topology.entries;
-    if (entries.isEmpty) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    final selectedThread = await showModalBottomSheet<ThreadSummary>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => ChatAgentTopologySheet(
-        entries: entries,
-        subagentsOnly: subagentsOnly,
-        activeThreadId: _currentThreadId(),
-      ),
-    );
-    if (!mounted || selectedThread == null) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-    if (!turnController.canSubmit) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-    final activated = turnController.activateThread(selectedThread.id);
-    if (!activated) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    _clearSideConversation();
-    widget.timelineController?.selectThread(selectedThread.id);
-    unawaited(
-      widget.threadDetailController?.readThread(
-        selectedThread.id,
-        includeTurns: false,
-      ),
-    );
-    return SlashCommandCallbackResult.executed;
-  }
-
-  Future<ThreadSummary?> _readActiveThreadForAgentTopology() async {
-    final threadId = _currentThreadId();
-    if (threadId == null) {
-      return null;
-    }
-    final cachedThread = widget.threadDetailController?.detail?.thread;
-    if (cachedThread?.id == threadId && cachedThread!.turns.isNotEmpty) {
-      return cachedThread;
-    }
-    final reader = widget.sessionController?.threadDetailReader;
-    if (reader == null) {
-      return cachedThread?.id == threadId ? cachedThread : null;
-    }
-    try {
-      final detail = await reader.readThread(threadId: threadId);
-      if (detail.thread.id == threadId) {
-        return detail.thread;
-      }
-      return cachedThread?.id == threadId ? cachedThread : null;
-    } on Object {
-      return cachedThread?.id == threadId ? cachedThread : null;
-    }
-  }
-
-  List<ThreadSummary> _agentTopologyThreads(
-    List<ThreadSummary> threads,
-    ThreadSummary? detailThread,
-  ) {
-    if (detailThread == null || detailThread.id.trim().isEmpty) {
-      return threads;
-    }
-    final merged = List<ThreadSummary>.from(threads);
-    final index = merged.indexWhere((thread) => thread.id == detailThread.id);
-    if (index == -1) {
-      merged.add(detailThread);
-    } else {
-      merged[index] = detailThread;
-    }
-    return merged;
-  }
-
-  Future<void> _returnToMainThread() async {
-    final sideConversation = _sideConversation;
-    final turnController = widget.turnController;
-    if (sideConversation == null ||
-        turnController == null ||
-        !turnController.canSubmit) {
-      return;
-    }
-    final activated = turnController.activateThread(
-      sideConversation.parentThreadId,
-    );
-    if (!activated) {
-      return;
-    }
-    _clearSideConversation();
-    widget.timelineController?.selectThread(sideConversation.parentThreadId);
-    unawaited(
-      widget.threadDetailController?.readThread(
-        sideConversation.parentThreadId,
-        includeTurns: false,
-      ),
-    );
-    if (!mounted) {
-      return;
-    }
-    _showChatSnackBar(context.l10n.slashCommandReturnedToMainThread);
   }
 
   Future<bool> _confirmHighRiskSlashCommand(
