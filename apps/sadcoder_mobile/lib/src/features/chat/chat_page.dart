@@ -38,7 +38,6 @@ import '../../turns/turn_controller.dart';
 import '../../turns/turn_text_element.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import '../../usage/thread_token_usage_controller.dart';
-import '../appearance/app_color_palette_picker.dart';
 import '../files/file_search_sheet.dart';
 import 'chat_advanced_controls_sheet.dart';
 import 'chat_apps_summary.dart';
@@ -61,6 +60,7 @@ import 'chat_review_summary.dart';
 import 'chat_slash_command_preview.dart';
 import 'chat_summary_formatting.dart';
 import 'chat_thread_sidebar.dart';
+import 'chat_theme_sheet.dart';
 import 'chat_timeline_renderer.dart';
 import 'chat_usage_summary.dart';
 import 'chat_timeline_view.dart';
@@ -2009,10 +2009,10 @@ class _ChatPageState extends State<ChatPage> {
       return SlashCommandCallbackResult.unavailable;
     }
 
-    final selection = await showModalBottomSheet<_ThemeSheetResult>(
+    final selection = await showModalBottomSheet<ChatThemeSheetResult>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _ThemeSheet(
+      builder: (context) => ChatThemeSheet(
         initialTheme: controller.theme,
         initialColorPalette: controller.colorPalette,
       ),
@@ -3305,127 +3305,6 @@ const _goalStatuses = {
   'budgetLimited',
   'complete',
 };
-
-class _ThemeSheet extends StatefulWidget {
-  const _ThemeSheet({
-    required this.initialTheme,
-    required this.initialColorPalette,
-  });
-
-  final AppThemePreference initialTheme;
-  final AppColorPalette initialColorPalette;
-
-  @override
-  State<_ThemeSheet> createState() => _ThemeSheetState();
-}
-
-class _ThemeSheetState extends State<_ThemeSheet> {
-  late AppThemePreference _theme;
-  late AppColorPalette _colorPalette;
-
-  @override
-  void initState() {
-    super.initState();
-    _theme = widget.initialTheme;
-    _colorPalette = widget.initialColorPalette;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return SafeArea(
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                l10n.themeCommandTitle,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              SegmentedButton<AppThemePreference>(
-                segments: [
-                  ButtonSegment(
-                    value: AppThemePreference.system,
-                    icon: const Icon(Icons.brightness_auto_outlined),
-                    label: Text(l10n.themeSystem),
-                  ),
-                  ButtonSegment(
-                    value: AppThemePreference.light,
-                    icon: const Icon(Icons.light_mode_outlined),
-                    label: Text(l10n.themeLight),
-                  ),
-                  ButtonSegment(
-                    value: AppThemePreference.dark,
-                    icon: const Icon(Icons.dark_mode_outlined),
-                    label: Text(l10n.themeDark),
-                  ),
-                ],
-                selected: {_theme},
-                onSelectionChanged: (selection) {
-                  setState(() => _theme = selection.single);
-                },
-              ),
-              const SizedBox(height: 16),
-              Text(
-                l10n.colorPalette,
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                l10n.colorPaletteBody,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 8),
-              AppColorPalettePicker(
-                keyPrefix: 'chat-color-palette',
-                selectedPalette: _colorPalette,
-                onSelected: (palette) {
-                  setState(() => _colorPalette = palette);
-                },
-              ),
-              const SizedBox(height: 16),
-              OverflowBar(
-                alignment: MainAxisAlignment.end,
-                spacing: 8,
-                overflowSpacing: 8,
-                children: [
-                  TextButton.icon(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                    label: Text(l10n.approvalCancel),
-                  ),
-                  FilledButton.icon(
-                    key: const ValueKey('chat-theme-command-apply'),
-                    onPressed: () => Navigator.of(context).pop(
-                      _ThemeSheetResult(
-                        theme: _theme,
-                        colorPalette: _colorPalette,
-                      ),
-                    ),
-                    icon: const Icon(Icons.check),
-                    label: Text(l10n.applyTheme),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ThemeSheetResult {
-  const _ThemeSheetResult({required this.theme, required this.colorPalette});
-
-  final AppThemePreference theme;
-  final AppColorPalette colorPalette;
-}
 
 class _FeedbackFormResult {
   const _FeedbackFormResult({
