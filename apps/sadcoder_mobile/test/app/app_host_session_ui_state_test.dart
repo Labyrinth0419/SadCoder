@@ -501,6 +501,103 @@ void main() {
   );
 
   test(
+    'conservatively recovers an active turn thread after snapshot cursor gap',
+    () async {
+      final threadStore = _MemoryThreadCacheStore();
+      final cursorStore = _MemoryThreadTimelineCursorStore({
+        'profile-a::thr_active': const ThreadTimelineCursorSnapshot(
+          threadId: 'thr_active',
+          turnIds: ['turn_seen'],
+          itemIds: [],
+          lastTurnId: 'turn_seen',
+          cachedAtMs: 1,
+        ),
+      });
+      final detailReader = _RecordingThreadDetailReader();
+      final turnListReader = _RecordingThreadTurnListReader.pages([
+        ThreadTurnsPage(
+          turns: [
+            _turn('turn_active', 'active'),
+            _turn('turn_seen', 'seen updated'),
+          ],
+          nextCursor: 'older_turns',
+        ),
+        ThreadTurnsPage(turns: [_turn('turn_old', 'old')]),
+      ]);
+      final approvalController = ApprovalStateController();
+      final configOverrideController = CodexConfigOverrideController();
+      final sessionController = CodexSessionStateController(
+        connector: _RecoverySnapshotSessionStarter(
+          snapshot: const AgentSnapshot(
+            schemaVersion: 1,
+            pendingApprovals: [],
+            recentEvents: [
+              AgentCachedEvent(
+                method: 'turn/started',
+                cursor: 'event-9',
+                params: {
+                  'threadId': 'thr_active',
+                  'turn': {
+                    'id': 'turn_active',
+                    'status': 'inProgress',
+                    'items': <Object?>[],
+                  },
+                },
+              ),
+            ],
+            deliveredCursor: 'event-9',
+            cursorGap: true,
+          ),
+          threadDetailReader: detailReader,
+          threadTurnListReader: turnListReader,
+        ),
+        approvalController: approvalController,
+      );
+      final state = AppHostSessionUiState(
+        sessionController: sessionController,
+        configOverrideController: configOverrideController,
+        threadCacheProfileId: 'profile-a',
+        threadCacheStore: threadStore,
+        threadTimelineCursorStore: cursorStore,
+      );
+      state.attachEvents();
+      addTearDown(state.dispose);
+      addTearDown(sessionController.dispose);
+      addTearDown(configOverrideController.dispose);
+      addTearDown(approvalController.dispose);
+
+      await sessionController.connect(_profileA);
+      await _flushMicrotasks();
+
+      expect(state.turnController.activeThreadId, 'thr_active');
+      expect(state.turnController.activeTurnId, 'turn_active');
+      expect(detailReader.calls, [
+        (threadId: 'thr_active', includeTurns: false),
+      ]);
+      expect(turnListReader.calls, [
+        (
+          threadId: 'thr_active',
+          cursor: null,
+          limit: 50,
+          sortDirection: 'desc',
+          itemsView: 'full',
+        ),
+        (
+          threadId: 'thr_active',
+          cursor: 'older_turns',
+          limit: 50,
+          sortDirection: 'desc',
+          itemsView: 'full',
+        ),
+      ]);
+      expect(
+        state.threadDetailController.detail?.turns.map((turn) => turn.id),
+        ['turn_old', 'turn_seen', 'turn_active'],
+      );
+    },
+  );
+
+  test(
     'conservatively recovers a thread selected after thread snapshot gap',
     () async {
       final threadStore = _MemoryThreadCacheStore();

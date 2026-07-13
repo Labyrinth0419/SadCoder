@@ -319,7 +319,26 @@ class AppHostSessionUiState {
 
   void _handleTurnChanged() {
     _syncActiveTurnToTimeline();
+    _recoverActiveThreadIfCursorGapPending();
     _persistThreadCache();
+  }
+
+  void _recoverActiveThreadIfCursorGapPending() {
+    if (sessionController.status != CodexSessionStatus.connected) {
+      return;
+    }
+    final threadId = _normalized(turnController.activeThreadId);
+    if (threadId == null) {
+      return;
+    }
+    final hasPendingThreadGap = _cursorGapThreadIds.contains(threadId);
+    final hasPendingUnknownGap =
+        _unknownCursorGapActive &&
+        !_unknownCursorGapRecoveredThreadIds.contains(threadId);
+    if (!hasPendingThreadGap && !hasPendingUnknownGap) {
+      return;
+    }
+    _sessionRecoveryCoordinator.recoverCurrentThread();
   }
 
   void _syncActiveTurnToTimeline() {
