@@ -8,7 +8,6 @@ import '../../appearance/app_appearance_controller.dart';
 import '../../commands/slash_command_action_dispatcher.dart';
 import '../../commands/slash_command_registry.dart';
 import '../../config/codex_config_override_controller.dart';
-import '../../config/codex_config_overrides.dart';
 import '../../config/codex_config_snapshot_controller.dart';
 import '../../files/file_search_reader.dart';
 import '../../i18n/app_localizations.dart';
@@ -26,7 +25,7 @@ import '../../turns/turn_text_element.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import '../../usage/thread_token_usage_controller.dart';
 import 'chat_account_command_handler.dart';
-import 'chat_advanced_controls_sheet.dart';
+import 'chat_advanced_controls_handler.dart';
 import 'chat_activity_strip.dart';
 import 'chat_appearance_command_handler.dart';
 import 'chat_connection_controls.dart';
@@ -313,7 +312,8 @@ class _ChatPageState extends State<ChatPage> {
                                             widget.configOverrideController !=
                                                     null ||
                                                 widget.sessionController != null
-                                            ? _showAdvancedControlsSheet
+                                            ? _advancedControlsHandler()
+                                                  .showSheet
                                             : null,
                                       ),
                                       if (widget.hostSessions.isNotEmpty) ...[
@@ -833,6 +833,17 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  ChatAdvancedControlsHandler _advancedControlsHandler() {
+    return ChatAdvancedControlsHandler(
+      context: context,
+      sessionController: widget.sessionController,
+      configOverrideController: widget.configOverrideController,
+      threadDetailController: widget.threadDetailController,
+      currentThreadIdProvider: _currentThreadId,
+      refreshVisibleThreads: _refreshVisibleThreads,
+    );
+  }
+
   void _insertMention(FileSearchMatch match) {
     final token = '@${match.path}';
     final value = _composerController.value;
@@ -884,19 +895,6 @@ class _ChatPageState extends State<ChatPage> {
     _handleComposerChanged('');
   }
 
-  Future<void> _showAdvancedControlsSheet() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (context) => ChatAdvancedControlsSheet(
-        configOverrideController: widget.configOverrideController,
-        rawRpcSender: widget.sessionController?.requestRaw,
-        onApplySessionOverrides: _applySessionOverrides,
-      ),
-    );
-  }
-
   bool? _toggleRawTranscript(String arguments) {
     final next = rawTranscriptVisibilityForCommand(
       current: _showRawTranscript,
@@ -907,24 +905,6 @@ class _ChatPageState extends State<ChatPage> {
     }
     setState(() => _showRawTranscript = next);
     return next;
-  }
-
-  Future<void> _applySessionOverrides(CodexConfigOverrides overrides) async {
-    final runner = widget.sessionController?.threadMutationRunner;
-    final threadId = _currentThreadId();
-    if (runner == null || threadId == null) {
-      return;
-    }
-    await runner.updateThreadSettings(threadId: threadId, overrides: overrides);
-    _refreshVisibleThreads();
-    if (widget.threadDetailController?.selectedThreadId == threadId) {
-      unawaited(
-        widget.threadDetailController?.readThread(
-          threadId,
-          includeTurns: false,
-        ),
-      );
-    }
   }
 
   Future<bool> _confirmHighRiskSlashCommand(
