@@ -1156,6 +1156,11 @@ MVP 可以简化为底部导航：
 
 导出日志前再次提示用户可能包含路径、命令、项目名。
 
+当前实现状态：
+
+- JSON-RPC diagnostic log buffer 默认通过 `LogRedactor` 保存 redacted payload，并在复制/导出前再次弹出确认，提示可能包含路径、命令和项目名。
+- agent/app-server service logs 在进入移动端模型与 Settings UI controller 前都会再次通过 `LogRedactor` 脱敏；`content` 与 `error` 会清理 password、private key、API key、access token、Authorization header 和 cookie-like values，日志 path、大小、tail/truncated 等诊断元数据保留。
+
 ## 12. 测试计划
 
 ### 12.1 单元测试

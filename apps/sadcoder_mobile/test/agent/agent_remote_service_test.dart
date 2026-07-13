@@ -271,8 +271,8 @@ void main() {
       "sizeBytes": 4096,
       "tailBytes": 128,
       "truncated": true,
-      "content": "last line\\n",
-      "error": null
+      "content": "password=hunter2\\nAuthorization: Bearer access-secret\\nlast line\\n",
+      "error": "api_key=sk-abcdefghijklmnopqrstuvwxyz"
     }
   ]
 }
@@ -297,8 +297,15 @@ void main() {
     expect(logs.logs.single.sizeBytes, 4096);
     expect(logs.logs.single.tailBytes, 128);
     expect(logs.logs.single.truncated, true);
-    expect(logs.logs.single.content, 'last line\n');
-    expect(logs.logs.single.error, isNull);
+    expect(logs.logs.single.content, contains('password=[REDACTED]'));
+    expect(
+      logs.logs.single.content,
+      contains('Authorization: Bearer [REDACTED]'),
+    );
+    expect(logs.logs.single.content, contains('last line'));
+    expect(logs.logs.single.content, isNot(contains('hunter2')));
+    expect(logs.logs.single.content, isNot(contains('access-secret')));
+    expect(logs.logs.single.error, 'api_key=[REDACTED]');
   });
 
   test('readSchema parses cached app-server schema diagnostics', () async {

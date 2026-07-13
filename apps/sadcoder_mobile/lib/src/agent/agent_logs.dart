@@ -1,3 +1,5 @@
+import '../security/log_redactor.dart';
+
 class AgentLogsResult {
   const AgentLogsResult({
     required this.schemaVersion,
@@ -5,19 +7,32 @@ class AgentLogsResult {
     required this.logs,
   });
 
-  factory AgentLogsResult.fromJson(Map<String, Object?> json) {
+  factory AgentLogsResult.fromJson(
+    Map<String, Object?> json, {
+    LogRedactor redactor = LogRedactor.defaultRedactor,
+  }) {
     return AgentLogsResult(
       schemaVersion: _intField(json, ['schemaVersion', 'schema_version']) ?? 1,
       maxTailBytes: _intField(json, ['maxTailBytes', 'max_tail_bytes']) ?? 0,
-      logs: _listOfMaps(
-        _valueField(json, ['logs']),
-      ).map(AgentLogEntry.fromJson).toList(growable: false),
+      logs: _listOfMaps(_valueField(json, ['logs']))
+          .map((entry) => AgentLogEntry.fromJson(entry, redactor: redactor))
+          .toList(growable: false),
     );
   }
 
   final int schemaVersion;
   final int maxTailBytes;
   final List<AgentLogEntry> logs;
+
+  AgentLogsResult redacted({
+    LogRedactor redactor = LogRedactor.defaultRedactor,
+  }) {
+    return AgentLogsResult(
+      schemaVersion: schemaVersion,
+      maxTailBytes: maxTailBytes,
+      logs: [for (final log in logs) log.redacted(redactor: redactor)],
+    );
+  }
 }
 
 class AgentLogEntry {
@@ -32,7 +47,10 @@ class AgentLogEntry {
     this.error,
   });
 
-  factory AgentLogEntry.fromJson(Map<String, Object?> json) {
+  factory AgentLogEntry.fromJson(
+    Map<String, Object?> json, {
+    LogRedactor redactor = LogRedactor.defaultRedactor,
+  }) {
     return AgentLogEntry(
       name: _stringField(json, ['name']) ?? 'log',
       path: _stringField(json, ['path']) ?? '',
@@ -40,8 +58,8 @@ class AgentLogEntry {
       sizeBytes: _intField(json, ['sizeBytes', 'size_bytes']) ?? 0,
       tailBytes: _intField(json, ['tailBytes', 'tail_bytes']) ?? 0,
       truncated: _boolField(json, ['truncated']) ?? false,
-      content: _stringValue(json['content']) ?? '',
-      error: _stringField(json, ['error']),
+      content: redactor.redactText(_stringValue(json['content']) ?? ''),
+      error: _redactedStringField(json, ['error'], redactor),
     );
   }
 
@@ -53,6 +71,19 @@ class AgentLogEntry {
   final bool truncated;
   final String content;
   final String? error;
+
+  AgentLogEntry redacted({LogRedactor redactor = LogRedactor.defaultRedactor}) {
+    return AgentLogEntry(
+      name: name,
+      path: path,
+      exists: exists,
+      sizeBytes: sizeBytes,
+      tailBytes: tailBytes,
+      truncated: truncated,
+      content: redactor.redactText(content),
+      error: error == null ? null : redactor.redactText(error!),
+    );
+  }
 }
 
 List<Map<String, Object?>> _listOfMaps(Object? value) {
@@ -80,6 +111,18 @@ String? _stringField(Map<String, Object?> map, List<String> keys) {
     }
   }
   return null;
+}
+
+String? _redactedStringField(
+  Map<String, Object?> map,
+  List<String> keys,
+  LogRedactor redactor,
+) {
+  final value = _stringField(map, keys);
+  if (value == null) {
+    return null;
+  }
+  return redactor.redactText(value);
 }
 
 bool? _boolField(Map<String, Object?> map, List<String> keys) {

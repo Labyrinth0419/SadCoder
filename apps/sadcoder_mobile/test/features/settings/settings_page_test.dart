@@ -959,7 +959,12 @@ void main() {
             sizeBytes: 4096,
             tailBytes: 128,
             truncated: true,
-            content: 'first line\nlast line\n',
+            content:
+                'first line\n'
+                'Authorization: Bearer access-secret\n'
+                'password=hunter2\n'
+                'last line\n',
+            error: 'api_key=sk-abcdefghijklmnopqrstuvwxyz',
           ),
         ],
       ),
@@ -997,6 +1002,14 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('last line'), findsOneWidget);
+    expect(
+      find.textContaining('Authorization: Bearer [REDACTED]'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('password=[REDACTED]'), findsOneWidget);
+    expect(find.textContaining('access-secret'), findsNothing);
+    expect(find.textContaining('hunter2'), findsNothing);
+    expect(find.textContaining('sk-abcdefghijklmnopqrstuvwxyz'), findsNothing);
   });
 
   testWidgets('refreshes and renders app-server schema diagnostics read-only', (

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../security/log_redactor.dart';
 import '../ssh/ssh_profile.dart';
 import 'agent_logs.dart';
 import 'agent_logs_reader.dart';
@@ -14,12 +15,14 @@ class AgentLogsController extends ChangeNotifier {
     required AgentLogsReaderProvider readerProvider,
     required AgentLogsProfileProvider profileProvider,
     this.tailBytes = 64 * 1024,
+    this.redactor = LogRedactor.defaultRedactor,
   }) : _readerProvider = readerProvider,
        _profileProvider = profileProvider;
 
   final AgentLogsReaderProvider _readerProvider;
   final AgentLogsProfileProvider _profileProvider;
   final int tailBytes;
+  final LogRedactor redactor;
   AgentLogsStatus _status = AgentLogsStatus.idle;
   AgentLogsResult? _result;
   Object? _error;
@@ -42,7 +45,10 @@ class AgentLogsController extends ChangeNotifier {
     final generation = ++_generation;
     _setState(status: AgentLogsStatus.loading, error: null);
     try {
-      final result = await reader.readLogs(profile, tailBytes: tailBytes);
+      final result = (await reader.readLogs(
+        profile,
+        tailBytes: tailBytes,
+      )).redacted(redactor: redactor);
       if (generation != _generation) {
         return;
       }
