@@ -28,7 +28,6 @@ import '../../turns/turn_controller.dart';
 import '../../turns/turn_text_element.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import '../../usage/thread_token_usage_controller.dart';
-import '../files/file_search_sheet.dart';
 import 'chat_account_command_handler.dart';
 import 'chat_advanced_controls_sheet.dart';
 import 'chat_agent_topology_sheet.dart';
@@ -36,6 +35,7 @@ import 'chat_activity_strip.dart';
 import 'chat_appearance_command_handler.dart';
 import 'chat_connection_controls.dart';
 import 'chat_composer_mention.dart';
+import 'chat_file_context_command_handler.dart';
 import 'chat_layout_metrics.dart';
 import 'chat_override_command_handler.dart';
 import 'chat_raw_transcript_command.dart';
@@ -814,10 +814,11 @@ class _ChatPageState extends State<ChatPage> {
           _appearanceCommandHandler().toggleComposerVimMode(),
       configureTerminalPets: (arguments) =>
           _appearanceCommandHandler().configureTerminalPets(arguments),
-      attachIdeContext: _attachIdeContext,
+      attachIdeContext: (arguments) =>
+          _fileContextCommandHandler().attachIdeContext(arguments),
       configurePlanMode: (arguments) =>
           _overrideCommandHandler().configurePlanMode(arguments),
-      mentionFile: _mentionFile,
+      mentionFile: () => _fileContextCommandHandler().mentionFile(),
       startSideConversation: _startSideConversation,
       showAgentTopology: _showAgentTopology,
       forkThread: () => _threadCommandHandler().forkCurrentThread(),
@@ -905,55 +906,14 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Future<SlashCommandCallbackResult> _mentionFile() async {
-    final reader = widget.sessionController?.fileSearchReader;
-    final roots = _currentWorkspaceCwds();
-    if (reader == null || roots.isEmpty) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    final match = await showModalBottomSheet<FileSearchMatch>(
+  ChatFileContextCommandHandler _fileContextCommandHandler() {
+    return ChatFileContextCommandHandler(
       context: context,
-      isScrollControlled: true,
-      builder: (context) => FileSearchSheet(
-        reader: reader,
-        roots: roots,
-        title: context.l10n.mentionCommandTitle,
-        searchHint: context.l10n.mentionSearchHint,
-      ),
+      mounted: () => mounted,
+      fileSearchReader: widget.sessionController?.fileSearchReader,
+      currentWorkspaceCwdsProvider: _currentWorkspaceCwds,
+      insertMention: _insertMention,
     );
-    if (!mounted || match == null) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-
-    _insertMention(match);
-    return SlashCommandCallbackResult.executed;
-  }
-
-  Future<SlashCommandCallbackResult> _attachIdeContext(String arguments) async {
-    final reader = widget.sessionController?.fileSearchReader;
-    final roots = _currentWorkspaceCwds();
-    if (reader == null || roots.isEmpty) {
-      return SlashCommandCallbackResult.unavailable;
-    }
-
-    final match = await showModalBottomSheet<FileSearchMatch>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => FileSearchSheet(
-        reader: reader,
-        roots: roots,
-        title: context.l10n.ideContextCommandTitle,
-        searchHint: context.l10n.ideContextSearchHint,
-        initialQuery: arguments.trim(),
-      ),
-    );
-    if (!mounted || match == null) {
-      return SlashCommandCallbackResult.cancelled;
-    }
-
-    _insertMention(match);
-    return SlashCommandCallbackResult.executed;
   }
 
   void _insertMention(FileSearchMatch match) {
