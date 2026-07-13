@@ -43,6 +43,7 @@ import 'raw_rpc_panel.dart';
 import '../appearance/app_color_palette_picker.dart';
 import '../diffs/diff_text_block.dart';
 import '../files/file_search_sheet.dart';
+import '../files/workspace_markdown_preview.dart';
 import 'chat_apps_summary.dart';
 import 'chat_background_terminal_summary.dart';
 import 'chat_debug_config_summary.dart';
@@ -188,15 +189,9 @@ class _ChatPageState extends State<ChatPage> {
       isConnected: isConnected,
       turnController: turnController,
     );
-    final composerInputMode =
-        widget.appearanceController?.composerInputMode ??
-        AppComposerInputMode.standard;
     final composerSendShortcut =
         widget.appearanceController?.composerSendShortcut ??
         AppComposerSendShortcut.enter;
-    final terminalPetPreference =
-        widget.appearanceController?.terminalPetPreference ??
-        AppTerminalPetPreference.tuiOnly;
     final sendSlashAsText = _isSlashTextPrompt(
       _composerController.text,
       _slashCommand,
@@ -266,12 +261,26 @@ class _ChatPageState extends State<ChatPage> {
                           width: sidebarWidth,
                           child: _ChatThreadSidebar(
                             overlay: overlaySidebar,
-                            child: _ThreadListPanel(
-                              controller: threadListController,
-                              detailController: threadDetailController,
-                              archived: _showArchivedThreads,
-                              onArchivedChanged: _setThreadArchiveView,
-                              onUnarchiveThread: _unarchiveThread,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _ChatSidebarWorkspaceHeader(
+                                  workspace: _workspaceSummary(l10n),
+                                  onOpenAdvanced:
+                                      widget.configOverrideController != null ||
+                                          widget.sessionController != null
+                                      ? _showAdvancedControlsSheet
+                                      : null,
+                                ),
+                                const SizedBox(height: 10),
+                                _ThreadListPanel(
+                                  controller: threadListController,
+                                  detailController: threadDetailController,
+                                  archived: _showArchivedThreads,
+                                  onArchivedChanged: _setThreadArchiveView,
+                                  onUnarchiveThread: _unarchiveThread,
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -283,18 +292,16 @@ class _ChatPageState extends State<ChatPage> {
             SafeArea(
               top: false,
               child: Padding(
-                padding: EdgeInsets.all(compactHeight ? 8 : 12),
+                key: const ValueKey('chat-composer-chrome'),
+                padding: EdgeInsets.fromLTRB(
+                  compactHeight ? 8 : 10,
+                  compactHeight ? 4 : 8,
+                  compactHeight ? 8 : 10,
+                  compactHeight ? 4 : 10,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (!compactHeight &&
-                        (widget.configOverrideController != null ||
-                            widget.sessionController != null)) ...[
-                      _AdvancedChatControlsToggle(
-                        onPressed: _showAdvancedControlsSheet,
-                      ),
-                      const SizedBox(height: 8),
-                    ],
                     Align(
                       alignment: Alignment.centerLeft,
                       child: ConstrainedBox(
@@ -328,14 +335,9 @@ class _ChatPageState extends State<ChatPage> {
                             composerSendShortcut ==
                                 AppComposerSendShortcut.ctrlEnter
                             ? TextInputType.multiline
-                            : TextInputType.text,
+                            : TextInputType.multiline,
                         minLines: 1,
-                        maxLines:
-                            !compactHeight &&
-                                composerSendShortcut ==
-                                    AppComposerSendShortcut.ctrlEnter
-                            ? 4
-                            : 1,
+                        maxLines: compactHeight ? 3 : 6,
                         textInputAction:
                             composerSendShortcut ==
                                 AppComposerSendShortcut.enter
@@ -349,15 +351,11 @@ class _ChatPageState extends State<ChatPage> {
                             : null,
                         decoration: InputDecoration(
                           hintText: l10n.connectBeforeTurn,
-                          helperText: compactHeight
-                              ? null
-                              : _composerHelperText(
-                                  l10n,
-                                  composerInputMode,
-                                  composerSendShortcut,
-                                  terminalPetPreference,
-                                ),
-                          helperMaxLines: compactHeight ? null : 2,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 9,
+                          ),
                           prefixIcon: IconButton(
                             key: const ValueKey('chat-slash-command-button'),
                             onPressed: _openSlashCommandPalette,
@@ -368,6 +366,9 @@ class _ChatPageState extends State<ChatPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
+                                key: const ValueKey(
+                                  'chat-composer-stop-button',
+                                ),
                                 onPressed: turnController?.canInterrupt == true
                                     ? _interruptActiveTurn
                                     : null,
@@ -375,6 +376,9 @@ class _ChatPageState extends State<ChatPage> {
                                 tooltip: l10n.interruptTurn,
                               ),
                               IconButton(
+                                key: const ValueKey(
+                                  'chat-composer-send-button',
+                                ),
                                 onPressed: canSend ? _sendComposerText : null,
                                 icon: const Icon(Icons.send),
                                 tooltip: l10n.send,
@@ -504,17 +508,20 @@ class _ChatPageState extends State<ChatPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n.messageWithDetail(
-              context.l10n.shellCommandFailed,
-              error,
-            ),
-          ),
-        ),
+      _showChatSnackBar(
+        context.l10n.messageWithDetail(context.l10n.shellCommandFailed, error),
       );
     }
+  }
+
+  void _showChatSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 92),
+      ),
+    );
   }
 
   void _markSlashInputAsText() {
@@ -642,15 +649,8 @@ class _ChatPageState extends State<ChatPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n.messageWithDetail(
-              context.l10n.connectionFailed,
-              error,
-            ),
-          ),
-        ),
+      _showChatSnackBar(
+        context.l10n.messageWithDetail(context.l10n.connectionFailed, error),
       );
     }
   }
@@ -680,9 +680,7 @@ class _ChatPageState extends State<ChatPage> {
         result.effect == SlashCommandActionEffect.mention) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(_slashCommandResultMessage(context.l10n, result))),
-    );
+    _showChatSnackBar(_slashCommandResultMessage(context.l10n, result));
   }
 
   SlashCommandActionDispatcher _slashCommandDispatcher() {
@@ -1875,9 +1873,7 @@ class _ChatPageState extends State<ChatPage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.slashCommandReturnedToMainThread)),
-    );
+    _showChatSnackBar(context.l10n.slashCommandReturnedToMainThread);
   }
 
   Future<SlashCommandCallbackResult> _compactCurrentThread() async {
@@ -2122,9 +2118,7 @@ class _ChatPageState extends State<ChatPage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(context.l10n.threadUnarchived)));
+    _showChatSnackBar(context.l10n.threadUnarchived);
   }
 
   Future<SlashCommandCallbackResult> _confirmThreadMutation({
@@ -2666,52 +2660,17 @@ class _ChatPageState extends State<ChatPage> {
     return cwds.isEmpty ? null : cwds.first;
   }
 
+  String _workspaceSummary(AppLocalizations l10n) {
+    final cwd = _currentWorkspaceCwd();
+    if (cwd == null) {
+      return l10n.workspaceFilesNoCwd;
+    }
+    return cwd;
+  }
+
   String? _nonEmptyText(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
-  }
-
-  String _composerHelperText(
-    AppLocalizations l10n,
-    AppComposerInputMode inputMode,
-    AppComposerSendShortcut sendShortcut,
-    AppTerminalPetPreference terminalPetPreference,
-  ) {
-    return [
-      _composerInputModeLabel(l10n, inputMode),
-      _composerSendShortcutLabel(l10n, sendShortcut),
-      _terminalPetPreferenceLabel(l10n, terminalPetPreference),
-    ].join(' | ');
-  }
-
-  String _composerInputModeLabel(
-    AppLocalizations l10n,
-    AppComposerInputMode mode,
-  ) {
-    return switch (mode) {
-      AppComposerInputMode.standard => l10n.composerInputModeStandard,
-      AppComposerInputMode.vim => l10n.composerInputModeVim,
-    };
-  }
-
-  String _composerSendShortcutLabel(
-    AppLocalizations l10n,
-    AppComposerSendShortcut shortcut,
-  ) {
-    return switch (shortcut) {
-      AppComposerSendShortcut.enter => l10n.composerSendShortcutEnter,
-      AppComposerSendShortcut.ctrlEnter => l10n.composerSendShortcutCtrlEnter,
-    };
-  }
-
-  String _terminalPetPreferenceLabel(
-    AppLocalizations l10n,
-    AppTerminalPetPreference preference,
-  ) {
-    return switch (preference) {
-      AppTerminalPetPreference.tuiOnly => l10n.composerTerminalPetTuiOnly,
-      AppTerminalPetPreference.hidden => l10n.composerTerminalPetHidden,
-    };
   }
 
   String _connectionLabel(AppLocalizations l10n, CodexSessionStatus? status) {
@@ -2761,9 +2720,7 @@ class _ChatPageState extends State<ChatPage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.sideConversationDropped)),
-    );
+    _showChatSnackBar(context.l10n.sideConversationDropped);
   }
 }
 
@@ -4900,7 +4857,7 @@ String _chatActivityTurnStatusLabel(
   };
 }
 
-class _ChatMainConversation extends StatelessWidget {
+class _ChatMainConversation extends StatefulWidget {
   const _ChatMainConversation({
     required this.compact,
     required this.sideConversation,
@@ -4918,29 +4875,145 @@ class _ChatMainConversation extends StatelessWidget {
   final bool showRawTranscript;
 
   @override
+  State<_ChatMainConversation> createState() => _ChatMainConversationState();
+}
+
+class _ChatMainConversationState extends State<_ChatMainConversation> {
+  final ScrollController _scrollController = ScrollController();
+  String? _lastSelectedThreadId;
+  bool _nearBottom = true;
+  bool _showJumpToLatest = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastSelectedThreadId = widget.timelineController?.selectedThreadId;
+    _scrollController.addListener(_handleScroll);
+    widget.timelineController?.addListener(_handleTimelineChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToLatest());
+  }
+
+  @override
+  void didUpdateWidget(_ChatMainConversation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.timelineController != widget.timelineController) {
+      oldWidget.timelineController?.removeListener(_handleTimelineChanged);
+      widget.timelineController?.addListener(_handleTimelineChanged);
+      _lastSelectedThreadId = widget.timelineController?.selectedThreadId;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToLatest());
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.timelineController?.removeListener(_handleTimelineChanged);
+    _scrollController.removeListener(_handleScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _handleScroll() {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+    final nearBottom = _scrollController.position.extentAfter < 96;
+    if (nearBottom != _nearBottom || (_showJumpToLatest && nearBottom)) {
+      setState(() {
+        _nearBottom = nearBottom;
+        if (nearBottom) {
+          _showJumpToLatest = false;
+        }
+      });
+    }
+  }
+
+  void _handleTimelineChanged() {
+    final selectedThreadId = widget.timelineController?.selectedThreadId;
+    final selectedThreadChanged = selectedThreadId != _lastSelectedThreadId;
+    _lastSelectedThreadId = selectedThreadId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      if (selectedThreadChanged) {
+        _jumpToLatest();
+        return;
+      }
+      if (_nearBottom) {
+        _animateToLatest();
+      } else if (!_showJumpToLatest) {
+        setState(() => _showJumpToLatest = true);
+      }
+    });
+  }
+
+  void _jumpToLatest() {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+    _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    if (mounted) {
+      setState(() {
+        _nearBottom = true;
+        _showJumpToLatest = false;
+      });
+    }
+  }
+
+  void _animateToLatest() {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+    );
+    if (mounted && _showJumpToLatest) {
+      setState(() => _showJumpToLatest = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(color: colorScheme.surfaceContainerLowest),
-      child: ListView(
-        key: const ValueKey('chat-main-conversation'),
-        padding: EdgeInsets.fromLTRB(
-          compact ? 8 : 16,
-          compact ? 8 : 14,
-          compact ? 8 : 16,
-          compact ? 8 : 16,
-        ),
+      child: Stack(
         children: [
-          if (sideConversation != null)
-            _SideConversationPanel(
-              conversation: sideConversation!,
-              canReturn: canReturnToMain,
-              onReturn: onReturnToMain,
+          ListView(
+            key: const ValueKey('chat-main-conversation'),
+            controller: _scrollController,
+            padding: EdgeInsets.fromLTRB(
+              widget.compact ? 8 : 16,
+              widget.compact ? 8 : 14,
+              widget.compact ? 8 : 16,
+              widget.compact ? 48 : 52,
             ),
-          _ChatTimelinePanel(
-            controller: timelineController,
-            showRaw: showRawTranscript,
+            children: [
+              if (widget.sideConversation != null)
+                _SideConversationPanel(
+                  conversation: widget.sideConversation!,
+                  canReturn: widget.canReturnToMain,
+                  onReturn: widget.onReturnToMain,
+                ),
+              _ChatTimelinePanel(
+                controller: widget.timelineController,
+                showRaw: widget.showRawTranscript,
+              ),
+            ],
           ),
+          if (_showJumpToLatest)
+            PositionedDirectional(
+              end: widget.compact ? 8 : 16,
+              bottom: widget.compact ? 8 : 12,
+              child: FilledButton.tonalIcon(
+                key: const ValueKey('chat-jump-to-latest'),
+                onPressed: _jumpToLatest,
+                icon: const Icon(Icons.south, size: 17),
+                label: Text(context.l10n.timelineJumpToLatest),
+              ),
+            ),
         ],
       ),
     );
@@ -4975,29 +5048,86 @@ class _ChatThreadSidebar extends StatelessWidget {
   }
 }
 
-class _AdvancedChatControlsToggle extends StatelessWidget {
-  const _AdvancedChatControlsToggle({required this.onPressed});
+class _ChatSidebarWorkspaceHeader extends StatelessWidget {
+  const _ChatSidebarWorkspaceHeader({
+    required this.workspace,
+    required this.onOpenAdvanced,
+  });
 
-  final VoidCallback onPressed;
+  final String workspace;
+  final VoidCallback? onOpenAdvanced;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final colorScheme = Theme.of(context).colorScheme;
-    return Align(
-      alignment: Alignment.centerRight,
-      child: IconButton.outlined(
-        key: const ValueKey('chat-advanced-controls-toggle'),
-        onPressed: onPressed,
-        tooltip: l10n.showChatAdvancedControls,
-        style: IconButton.styleFrom(
-          backgroundColor: colorScheme.surfaceContainerHighest,
-          foregroundColor: colorScheme.onSurfaceVariant,
-          minimumSize: const Size.square(34),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          padding: EdgeInsets.zero,
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return DecoratedBox(
+      key: const ValueKey('chat-sidebar-workspace-header'),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        border: Border.all(color: colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 9, 8, 9),
+        child: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer.withValues(alpha: 0.58),
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Icon(
+                Icons.folder_copy_outlined,
+                size: 17,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.workspaceFilesRootLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    workspace,
+                    key: const ValueKey('chat-sidebar-workspace-summary'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            IconButton(
+              key: const ValueKey('chat-sidebar-advanced-controls'),
+              onPressed: onOpenAdvanced,
+              tooltip: l10n.showChatAdvancedControls,
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+              icon: const Icon(Icons.tune, size: 18),
+            ),
+          ],
         ),
-        icon: const Icon(Icons.tune, size: 19),
       ),
     );
   }
@@ -5647,7 +5777,6 @@ class _TimelineItemView extends StatelessWidget {
       return _TimelineMessageItem(
         item: item,
         title: title,
-        icon: icon,
         body: body,
         rawJson: _rawJson,
         showRaw: showRaw,
@@ -5739,7 +5868,6 @@ class _TimelineMessageItem extends StatelessWidget {
   const _TimelineMessageItem({
     required this.item,
     required this.title,
-    required this.icon,
     required this.body,
     required this.rawJson,
     required this.showRaw,
@@ -5747,7 +5875,6 @@ class _TimelineMessageItem extends StatelessWidget {
 
   final ChatTimelineItem item;
   final String title;
-  final IconData icon;
   final String body;
   final String rawJson;
   final bool showRaw;
@@ -5757,48 +5884,98 @@ class _TimelineMessageItem extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final isUser = item.itemType == 'userMessage';
     final accent = isUser ? colorScheme.primary : colorScheme.tertiary;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _TimelineGlyph(icon: icon, color: accent),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: _TimelineRoleLabel(
-                    label: title,
-                    foreground: accent,
-                    background: accent.withValues(alpha: 0.10),
-                  ),
-                ),
-                if (body.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  SelectableText(
-                    body,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      height: 1.38,
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                ],
-                if (showRaw) ...[
-                  const SizedBox(height: 8),
-                  SelectableText(
-                    rawJson,
-                    key: ValueKey('timeline-raw-${item.itemId}'),
-                  ),
-                ],
-              ],
-            ),
+    final bubbleColor = isUser
+        ? colorScheme.primaryContainer.withValues(alpha: 0.58)
+        : colorScheme.tertiaryContainer.withValues(alpha: 0.52);
+    final borderColor = isUser
+        ? colorScheme.primary.withValues(alpha: 0.22)
+        : colorScheme.tertiary.withValues(alpha: 0.22);
+    final alignment = isUser
+        ? AlignmentDirectional.centerStart
+        : AlignmentDirectional.centerEnd;
+    final bubble = ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 680),
+      child: DecoratedBox(
+        key: ValueKey('timeline-message-bubble-${item.itemId}'),
+        decoration: BoxDecoration(
+          color: bubbleColor,
+          border: Border.all(color: borderColor),
+          borderRadius: BorderRadiusDirectional.only(
+            topStart: const Radius.circular(8),
+            topEnd: const Radius.circular(8),
+            bottomStart: Radius.circular(isUser ? 2 : 8),
+            bottomEnd: Radius.circular(isUser ? 8 : 2),
           ),
-        ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 9, 12, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _TimelineRoleLabel(
+                label: title,
+                foreground: accent,
+                background: accent.withValues(alpha: 0.10),
+              ),
+              if (body.isNotEmpty) ...[
+                const SizedBox(height: 7),
+                _TimelineMarkdownMessage(
+                  key: ValueKey('timeline-message-markdown-${item.itemId}'),
+                  text: body,
+                ),
+              ],
+              if (showRaw) ...[
+                const SizedBox(height: 8),
+                SelectableText(
+                  rawJson,
+                  key: ValueKey('timeline-raw-${item.itemId}'),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Align(
+        alignment: alignment,
+        child: FractionallySizedBox(
+          widthFactor: 0.78,
+          alignment: alignment,
+          child: bubble,
+        ),
+      ),
+    );
+  }
+}
+
+const _markdownMessageRawFallbackChars = 12000;
+const _markdownMessageRawFallbackLines = 160;
+
+class _TimelineMarkdownMessage extends StatelessWidget {
+  const _TimelineMarkdownMessage({super.key, required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_shouldUsePlainMessage(text)) {
+      return SelectableText(
+        text,
+        key: const ValueKey('timeline-message-plain-raw'),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.38),
+      );
+    }
+    return WorkspaceMarkdownPreview(content: text);
+  }
+
+  bool _shouldUsePlainMessage(String value) {
+    if (value.length > _markdownMessageRawFallbackChars) {
+      return true;
+    }
+    return '\n'.allMatches(value).length > _markdownMessageRawFallbackLines;
   }
 }
 
@@ -6036,7 +6213,7 @@ class _TimelineBodyBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (item.itemType == 'commandExecution') {
-      return _TerminalOutputBlock(text: body);
+      return _CollapsibleTerminalOutputBlock(itemId: item.itemId, text: body);
     }
     if (item.itemType == 'fileChange') {
       return DiffTextBlock(
@@ -6046,6 +6223,124 @@ class _TimelineBodyBlock extends StatelessWidget {
     }
     return SelectableText(body);
   }
+}
+
+const _terminalOutputCollapseChars = 1800;
+const _terminalOutputCollapseLines = 28;
+const _terminalOutputSummaryLines = 5;
+
+class _CollapsibleTerminalOutputBlock extends StatefulWidget {
+  const _CollapsibleTerminalOutputBlock({
+    required this.itemId,
+    required this.text,
+  });
+
+  final String itemId;
+  final String text;
+
+  @override
+  State<_CollapsibleTerminalOutputBlock> createState() =>
+      _CollapsibleTerminalOutputBlockState();
+}
+
+class _CollapsibleTerminalOutputBlockState
+    extends State<_CollapsibleTerminalOutputBlock> {
+  bool _expanded = false;
+
+  @override
+  void didUpdateWidget(_CollapsibleTerminalOutputBlock oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.itemId != widget.itemId || oldWidget.text != widget.text) {
+      _expanded = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = _terminalLines(widget.text);
+    final bytes = utf8.encode(widget.text).length;
+    final shouldCollapse =
+        widget.text.length > _terminalOutputCollapseChars ||
+        lines.length > _terminalOutputCollapseLines;
+    if (!shouldCollapse || _expanded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _TerminalOutputBlock(text: widget.text),
+          if (shouldCollapse) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: ValueKey(
+                  'timeline-command-output-collapse-${widget.itemId}',
+                ),
+                onPressed: () => setState(() => _expanded = false),
+                icon: const Icon(Icons.unfold_less, size: 18),
+                label: Text(context.l10n.timelineCommandOutputCollapse),
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+
+    final colors = SadCoderThemeColors.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final summaryStart = lines.length > _terminalOutputSummaryLines
+        ? lines.length - _terminalOutputSummaryLines
+        : 0;
+    final summary = lines.skip(summaryStart).join('\n').trimRight();
+    return Container(
+      key: ValueKey('timeline-command-output-collapsed-${widget.itemId}'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.terminalBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            context.l10n.timelineCommandOutputSummary(lines.length, bytes),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: colors.terminalForeground.withValues(alpha: 0.78),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (summary.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SelectableText(
+              summary,
+              key: ValueKey('timeline-command-output-summary-${widget.itemId}'),
+              style: TextStyle(
+                color: colors.terminalForeground,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton.tonalIcon(
+              key: ValueKey('timeline-command-output-expand-${widget.itemId}'),
+              onPressed: () => setState(() => _expanded = true),
+              icon: const Icon(Icons.unfold_more, size: 18),
+              label: Text(context.l10n.timelineCommandOutputExpand),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+List<String> _terminalLines(String text) {
+  if (text.isEmpty) {
+    return const [];
+  }
+  return text.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n');
 }
 
 class _TerminalOutputBlock extends StatelessWidget {

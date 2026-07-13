@@ -128,6 +128,24 @@ void main() {
     expect(find.text('Type a command name'), findsOneWidget);
   });
 
+  testWidgets('composer is compact and supports multiline wrapping', (
+    tester,
+  ) async {
+    await _pumpChatPage(tester);
+
+    expect(find.textContaining('Input mode:'), findsNothing);
+    expect(find.textContaining('Send: Enter'), findsNothing);
+    expect(find.textContaining('Pet:'), findsNothing);
+
+    final composer = tester.widget<TextField>(
+      find.byKey(const ValueKey('chat-composer-field')),
+    );
+    expect(composer.keyboardType, TextInputType.multiline);
+    expect(composer.minLines, 1);
+    expect(composer.maxLines, 6);
+    expect(composer.decoration?.isDense, isTrue);
+  });
+
   testWidgets('keeps diagnostic controls out of the default chat surface', (
     tester,
   ) async {
@@ -148,15 +166,38 @@ void main() {
     );
     expect(find.byKey(const ValueKey('chat-raw-rpc-panel')), findsNothing);
     expect(
-      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
-      findsOneWidget,
+      find.descendant(
+        of: find.byKey(const ValueKey('chat-composer-chrome')),
+        matching: find.byKey(const ValueKey('chat-advanced-controls-toggle')),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('chat-sidebar-advanced-controls')),
+      findsNothing,
     );
     expect(find.text('Advanced controls'), findsNothing);
 
-    await tester.tap(
-      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
-    );
+    await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
     await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('chat-sidebar-workspace-header')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('chat-sidebar-advanced-controls')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('chat-composer-chrome')),
+        matching: find.byKey(const ValueKey('chat-sidebar-advanced-controls')),
+      ),
+      findsNothing,
+    );
+
+    await _openAdvancedControls(tester);
 
     expect(
       find.byKey(const ValueKey('chat-advanced-controls-sheet')),
@@ -201,10 +242,7 @@ void main() {
 
     await _pumpChatPage(tester, sessionController: sessionController);
 
-    await tester.tap(
-      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
-    );
-    await tester.pumpAndSettle();
+    await _openAdvancedControls(tester);
 
     expect(
       find.byKey(const ValueKey('chat-advanced-controls-sheet')),
@@ -244,10 +282,7 @@ void main() {
       locale: const Locale('zh', 'CN'),
     );
 
-    await tester.tap(
-      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
-    );
-    await tester.pumpAndSettle();
+    await _openAdvancedControls(tester);
     await tester.tap(find.text('原始 RPC'));
     await tester.pumpAndSettle();
 
@@ -776,7 +811,7 @@ void main() {
       ' Fix login bug ',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(turnRunner.startedThreads, 1);
@@ -837,10 +872,7 @@ void main() {
       configOverrideController: overrideController,
     );
 
-    await tester.tap(
-      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
-    );
-    await tester.pumpAndSettle();
+    await _openAdvancedControls(tester);
     expect(find.textContaining('Model: gpt-5 / app default'), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey('chat-turn-overrides-edit')));
@@ -887,7 +919,7 @@ void main() {
       'Use turn overrides',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(turnRunner.startedTurnOverrides.single.toTurnStartParams(), {
@@ -899,10 +931,7 @@ void main() {
     });
     expect(overrideController.layers.turn.toTurnStartParams(), isEmpty);
 
-    await tester.tap(
-      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
-    );
-    await tester.pumpAndSettle();
+    await _openAdvancedControls(tester);
     expect(find.textContaining('Model: gpt-5 / app default'), findsWidgets);
   });
 
@@ -947,10 +976,7 @@ void main() {
       configOverrideController: overrideController,
     );
 
-    await tester.tap(
-      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
-    );
-    await tester.pumpAndSettle();
+    await _openAdvancedControls(tester);
     expect(find.textContaining('Model: gpt-5 / app default'), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey('chat-session-overrides-edit')));
@@ -1009,7 +1035,7 @@ void main() {
       'Use session overrides',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(turnRunner.startedTurnOverrides.single.toTurnStartParams(), {
@@ -1026,10 +1052,7 @@ void main() {
       'serviceTier': 'priority',
     });
 
-    await tester.tap(
-      find.byKey(const ValueKey('chat-advanced-controls-toggle')),
-    );
-    await tester.pumpAndSettle();
+    await _openAdvancedControls(tester);
     await tester.tap(
       find.byKey(const ValueKey('chat-session-overrides-clear')),
     );
@@ -1116,7 +1139,7 @@ void main() {
     expect(sendButton.onPressed, isNotNull);
     expect(find.text('Will be sent as a prompt'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(harness.turnRunner.startedTurns, [
@@ -1455,7 +1478,7 @@ void main() {
       '/permissions',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(find.text('Permission override'), findsOneWidget);
@@ -1530,7 +1553,7 @@ void main() {
       '/permissions',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Session'));
     await tester.pumpAndSettle();
@@ -1634,7 +1657,7 @@ void main() {
       '/permissions',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     await _selectDropdownOption(
@@ -1722,7 +1745,7 @@ void main() {
       '/permissions',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(permissionProfileReader.cwdValues, ['/repo']);
@@ -1787,7 +1810,7 @@ void main() {
       '/model',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(find.text('Model override'), findsOneWidget);
@@ -1878,7 +1901,7 @@ void main() {
       '/model',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(modelReader.calls, 1);
@@ -1962,7 +1985,7 @@ void main() {
       '/model',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Session'));
     await tester.pumpAndSettle();
@@ -2043,7 +2066,7 @@ void main() {
       '/personality',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(find.text('Personality override'), findsOneWidget);
@@ -2108,7 +2131,7 @@ void main() {
       '/personality',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Session'));
     await tester.pumpAndSettle();
@@ -2360,7 +2383,7 @@ void main() {
       '/copy',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(clipboardText, 'Copied response');
@@ -2416,7 +2439,7 @@ void main() {
       '/status',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(turnRunner.startedTurns, [
@@ -2582,7 +2605,7 @@ void main() {
       '/status',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(detailReader.threadIds, ['thr_new']);
@@ -2689,7 +2712,7 @@ void main() {
       '/debug-config',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(configReader.cwdValues, ['/repo']);
@@ -2736,7 +2759,7 @@ void main() {
       '/debug-config sideways',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(configReader.cwdValues, isEmpty);
@@ -3027,7 +3050,7 @@ void main() {
       '/diff',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(diffReader.cwdValues, ['/repo']);
@@ -3092,7 +3115,7 @@ void main() {
       '/mention',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('chat-mention-search-field')),
@@ -3116,7 +3139,7 @@ void main() {
       '@lib/main.dart explain',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(turnRunner.startedTurns, [
@@ -3204,7 +3227,7 @@ void main() {
       '@lib/main.dart explain',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(turnRunner.startedTurns, [
@@ -3261,7 +3284,7 @@ void main() {
       '/usage',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(usageReader.calls, 1);
@@ -3329,7 +3352,7 @@ void main() {
       '/usage',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(usageReader.calls, 1);
@@ -3392,7 +3415,7 @@ void main() {
       '/logout',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
     expect(find.text('Sign out of Codex?'), findsOneWidget);
 
@@ -3454,7 +3477,7 @@ void main() {
       '/feedback',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
     expect(find.text('Send feedback'), findsWidgets);
 
@@ -3506,7 +3529,7 @@ void main() {
       '/feedback',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Include server logs'));
     await tester.pumpAndSettle();
@@ -3537,7 +3560,7 @@ void main() {
       '/theme',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(find.text('Theme'), findsWidgets);
@@ -3780,13 +3803,14 @@ void main() {
       appearanceController.composerSendShortcut,
       AppComposerSendShortcut.enter,
     );
-    expect(find.textContaining('Send: Enter'), findsOneWidget);
+    expect(find.textContaining('Send: Enter'), findsNothing);
 
     var composer = tester.widget<TextField>(
       find.byKey(const ValueKey('chat-composer-field')),
     );
     expect(composer.textInputAction, TextInputAction.send);
-    expect(composer.maxLines, 1);
+    expect(composer.keyboardType, TextInputType.multiline);
+    expect(composer.maxLines, 6);
 
     await _submitComposerText(tester, '/keymap');
 
@@ -3800,14 +3824,15 @@ void main() {
       appearanceController.composerSendShortcut,
       AppComposerSendShortcut.ctrlEnter,
     );
-    expect(find.textContaining('Send: Ctrl+Enter'), findsOneWidget);
+    expect(find.textContaining('Send: Ctrl+Enter'), findsNothing);
     expect(find.text('Keyboard shortcut settings updated.'), findsOneWidget);
 
     composer = tester.widget<TextField>(
       find.byKey(const ValueKey('chat-composer-field')),
     );
     expect(composer.textInputAction, TextInputAction.newline);
-    expect(composer.maxLines, 4);
+    expect(composer.keyboardType, TextInputType.multiline);
+    expect(composer.maxLines, 6);
   });
 
   testWidgets('/keymap inline argument restores Enter send shortcut', (
@@ -3820,7 +3845,7 @@ void main() {
 
     await _pumpChatPage(tester, appearanceController: appearanceController);
 
-    expect(find.textContaining('Send: Ctrl+Enter'), findsOneWidget);
+    expect(find.textContaining('Send: Ctrl+Enter'), findsNothing);
 
     await _submitComposerText(tester, '/keymap enter');
 
@@ -3828,7 +3853,7 @@ void main() {
       appearanceController.composerSendShortcut,
       AppComposerSendShortcut.enter,
     );
-    expect(find.textContaining('Send: Enter'), findsOneWidget);
+    expect(find.textContaining('Send: Enter'), findsNothing);
     expect(find.text('Keyboard shortcut settings updated.'), findsOneWidget);
   });
 
@@ -3885,12 +3910,12 @@ void main() {
       appearanceController.composerInputMode,
       AppComposerInputMode.standard,
     );
-    expect(find.textContaining('Input mode: Standard'), findsOneWidget);
+    expect(find.textContaining('Input mode: Standard'), findsNothing);
 
     await _submitComposerText(tester, '/vim');
 
     expect(appearanceController.composerInputMode, AppComposerInputMode.vim);
-    expect(find.textContaining('Input mode: Vim'), findsOneWidget);
+    expect(find.textContaining('Input mode: Vim'), findsNothing);
     expect(find.text('Composer Vim mode enabled.'), findsOneWidget);
   });
 
@@ -3903,7 +3928,7 @@ void main() {
     await _pumpChatPage(tester, appearanceController: appearanceController);
 
     expect(appearanceController.composerInputMode, AppComposerInputMode.vim);
-    expect(find.textContaining('Input mode: Vim'), findsOneWidget);
+    expect(find.textContaining('Input mode: Vim'), findsNothing);
 
     await _submitComposerText(tester, '/vim');
 
@@ -3911,7 +3936,7 @@ void main() {
       appearanceController.composerInputMode,
       AppComposerInputMode.standard,
     );
-    expect(find.textContaining('Input mode: Standard'), findsOneWidget);
+    expect(find.textContaining('Input mode: Standard'), findsNothing);
     expect(find.text('Composer Vim mode disabled.'), findsOneWidget);
   });
 
@@ -3927,7 +3952,7 @@ void main() {
       appearanceController.terminalPetPreference,
       AppTerminalPetPreference.tuiOnly,
     );
-    expect(find.textContaining('Pet: TUI-only'), findsOneWidget);
+    expect(find.textContaining('Pet: TUI-only'), findsNothing);
 
     await _submitComposerText(tester, '/pets');
 
@@ -3941,7 +3966,7 @@ void main() {
       appearanceController.terminalPetPreference,
       AppTerminalPetPreference.hidden,
     );
-    expect(find.textContaining('Pet: hidden'), findsOneWidget);
+    expect(find.textContaining('Pet: hidden'), findsNothing);
     expect(find.text('Terminal pet hidden on mobile.'), findsOneWidget);
   });
 
@@ -3955,7 +3980,7 @@ void main() {
 
     await _pumpChatPage(tester, appearanceController: appearanceController);
 
-    expect(find.textContaining('Pet: hidden'), findsOneWidget);
+    expect(find.textContaining('Pet: hidden'), findsNothing);
 
     await _submitComposerText(tester, '/pet show');
 
@@ -3963,7 +3988,7 @@ void main() {
       appearanceController.terminalPetPreference,
       AppTerminalPetPreference.tuiOnly,
     );
-    expect(find.textContaining('Pet: TUI-only'), findsOneWidget);
+    expect(find.textContaining('Pet: TUI-only'), findsNothing);
     expect(
       find.text('Terminal pet remains TUI-only on mobile.'),
       findsOneWidget,
@@ -4042,7 +4067,7 @@ void main() {
       '/goal',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(goalRunner.getGoalThreadIds, ['thr_selected']);
@@ -4084,7 +4109,7 @@ void main() {
       '/goal Ship goal support',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(goalRunner.setGoalCalls, [
@@ -4133,7 +4158,7 @@ void main() {
       '/goal budget 7500 Finish benchmark',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(goalRunner.setGoalCalls.single, (
@@ -4181,7 +4206,7 @@ void main() {
       '/goal status complete',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(goalRunner.setGoalCalls.single, (
@@ -4226,7 +4251,7 @@ void main() {
       '/goal clear',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(goalRunner.clearGoalThreadIds, ['thr_active']);
@@ -4269,7 +4294,7 @@ void main() {
       '/goal status sideways',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(goalRunner.getGoalThreadIds, isEmpty);
@@ -4315,7 +4340,7 @@ void main() {
       '/review',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(turnRunner.startedTurns, isEmpty);
@@ -4368,7 +4393,7 @@ void main() {
       '/review detached commit abc123 Polish colors',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     final call = reviewRunner.calls.single;
@@ -4418,7 +4443,7 @@ void main() {
       '/review commit',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(reviewRunner.calls, isEmpty);
@@ -4476,7 +4501,7 @@ void main() {
       '/ps',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(backgroundRunner.listCalls.single.threadId, 'thr_selected');
@@ -4536,7 +4561,7 @@ void main() {
       '/stop',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(backgroundRunner.cleanCalls, ['thr_active']);
@@ -4599,7 +4624,7 @@ void main() {
       '/mcp',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(mcpReader.threadIds, ['thr_selected']);
@@ -4656,7 +4681,7 @@ void main() {
       '/mcp verbose',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(mcpReader.details, [McpServerStatusDetail.full]);
@@ -4712,7 +4737,7 @@ void main() {
       '/mcp reload',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(configRunner.reloadCalls, 1);
@@ -4759,7 +4784,7 @@ void main() {
       '/mcp login github',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(oauthRunner.serverNames, ['github']);
@@ -4793,7 +4818,7 @@ void main() {
       '/mcp sideways',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(mcpReader.calls, 0);
@@ -4870,7 +4895,7 @@ void main() {
       '/skills',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(skillReader.cwds, [
@@ -4923,7 +4948,7 @@ void main() {
       '/skills reload',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(skillReader.cwds, [
@@ -5007,7 +5032,7 @@ void main() {
       '/plugins',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(pluginReader.cwds, [
@@ -5090,7 +5115,7 @@ void main() {
       '/plugins read linear',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(pluginDetailReader.calls.single.pluginId, 'linear');
@@ -5172,7 +5197,7 @@ void main() {
       '/plugins install linear',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(pluginMutationRunner.installCalls, hasLength(1));
@@ -5235,7 +5260,7 @@ void main() {
       '/plugins marketplace workspace-directory',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(pluginReader.marketplaceKinds, [
@@ -5273,7 +5298,7 @@ void main() {
         '/plugins sideways',
       );
       await tester.pump();
-      await tester.tap(find.byTooltip('Send'));
+      await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
       await tester.pumpAndSettle();
 
       expect(pluginReader.cwds, isEmpty);
@@ -5357,7 +5382,7 @@ void main() {
       '/hooks',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(hookReader.cwds, [
@@ -5402,7 +5427,7 @@ void main() {
       '/hooks sideways',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(hookReader.cwds, isEmpty);
@@ -5478,7 +5503,7 @@ void main() {
       '/apps',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(appReader.threadIds, ['thr_selected']);
@@ -5521,7 +5546,7 @@ void main() {
       '/apps sideways',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(appReader.threadIds, isEmpty);
@@ -5564,7 +5589,7 @@ void main() {
       '/raw on',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(find.text('Raw transcript view enabled.'), findsOneWidget);
@@ -5582,7 +5607,7 @@ void main() {
       '/raw off',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(find.text('Raw transcript view disabled.'), findsOneWidget);
@@ -5653,7 +5678,7 @@ void main() {
       '/new',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(turnRunner.startedThreads, 1);
@@ -5726,7 +5751,7 @@ void main() {
       '/resume thr_existing',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(turnRunner.resumedThreads, ['thr_existing']);
@@ -5800,7 +5825,7 @@ void main() {
       '/rename Release prep',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(mutationRunner.renamedThreads, [
@@ -5898,7 +5923,7 @@ void main() {
       '/fork',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(mutationRunner.forkedThreads, [
@@ -6001,7 +6026,7 @@ void main() {
       '/duplicate',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(mutationRunner.duplicatedThreads, ['thr_selected']);
@@ -6104,7 +6129,7 @@ void main() {
       '/rewind turn_selected',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(mutationRunner.rewoundThreads, [
@@ -6207,7 +6232,7 @@ void main() {
       '/side',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(mutationRunner.sideStartedThreads, ['thr_selected']);
@@ -6322,7 +6347,7 @@ void main() {
       '/btw quick question',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(mutationRunner.sideStartedThreads, ['thr_selected']);
@@ -6411,7 +6436,7 @@ void main() {
       '/side',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
@@ -6421,7 +6446,7 @@ void main() {
       '/fork',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(mutationRunner.sideStartedThreads, ['thr_selected']);
@@ -6524,7 +6549,7 @@ void main() {
       '/side',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(turnController.activeThreadId, 'thr_side');
@@ -6671,7 +6696,7 @@ void main() {
       '/agent',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(find.text('Agent threads'), findsOneWidget);
@@ -6832,7 +6857,7 @@ void main() {
       '/subagents',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(find.text('Subagents'), findsOneWidget);
@@ -6918,7 +6943,7 @@ void main() {
       '/compact',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(mutationRunner.compactedThreads, ['thr_selected']);
@@ -7002,7 +7027,7 @@ void main() {
       '/archive',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
     expect(find.text('Archive thread?'), findsOneWidget);
 
@@ -7075,7 +7100,7 @@ void main() {
       '/delete',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
     expect(find.text('Delete thread?'), findsOneWidget);
 
@@ -7148,7 +7173,7 @@ void main() {
       '/clear',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(timelineController.turns, isEmpty);
@@ -7301,6 +7326,232 @@ void main() {
     expect(find.byKey(const ValueKey('timeline-turn-turn_1')), findsOneWidget);
   });
 
+  testWidgets('renders user and agent text as opposing markdown bubbles', (
+    tester,
+  ) async {
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+
+    timelineController.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Markdown chat',
+        'ephemeral': false,
+        'turns': [
+          {
+            'id': 'turn_1',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': [
+              {
+                'id': 'user_1',
+                'type': 'userMessage',
+                'content': [
+                  {'type': 'text', 'text': '**Review** this code'},
+                ],
+              },
+              {
+                'id': 'assistant_1',
+                'type': 'agentMessage',
+                'text': 'Use `dart format` before review.',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    await _pumpChatPage(tester, timelineController: timelineController);
+
+    expect(
+      find.byKey(const ValueKey('timeline-message-bubble-user_1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('timeline-message-bubble-assistant_1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('timeline-message-markdown-user_1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('timeline-message-markdown-assistant_1')),
+      findsOneWidget,
+    );
+
+    final userBubble = tester.getCenter(
+      find.byKey(const ValueKey('timeline-message-bubble-user_1')),
+    );
+    final agentBubble = tester.getCenter(
+      find.byKey(const ValueKey('timeline-message-bubble-assistant_1')),
+    );
+    expect(userBubble.dx, lessThan(agentBubble.dx));
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('timeline-message-markdown-user_1')),
+        matching: find.byKey(const ValueKey('workspace-markdown-preview')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('timeline-message-markdown-assistant_1')),
+        matching: find.byKey(const ValueKey('workspace-markdown-preview')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('timeline-message-plain-raw')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('very long chat messages fall back to selectable raw text', (
+    tester,
+  ) async {
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    final longText = List.filled(180, 'line').join('\n');
+
+    timelineController.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Long output',
+        'ephemeral': false,
+        'turns': [
+          {
+            'id': 'turn_1',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': [
+              {'id': 'assistant_1', 'type': 'agentMessage', 'text': longText},
+            ],
+          },
+        ],
+      }),
+    );
+
+    await _pumpChatPage(tester, timelineController: timelineController);
+
+    expect(
+      find.byKey(const ValueKey('timeline-message-plain-raw')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('timeline-message-markdown-assistant_1')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('timeline preserves history position and can jump to latest', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(480, 520);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+
+    ThreadSummary threadWithMessages(int count) => ThreadSummary.fromJson({
+      'id': 'thr_1',
+      'sessionId': 'sess_1',
+      'preview': 'Long chat',
+      'ephemeral': false,
+      'turns': [
+        {
+          'id': 'turn_1',
+          'status': 'completed',
+          'itemsView': 'full',
+          'items': [
+            for (var i = 0; i < count; i++)
+              {
+                'id': 'assistant_$i',
+                'type': 'agentMessage',
+                'text': 'Message $i\n\nDetails for message $i.',
+              },
+          ],
+        },
+      ],
+    });
+
+    timelineController.showThread(threadWithMessages(24));
+    await _pumpChatPage(tester, timelineController: timelineController);
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const ValueKey('chat-main-conversation')),
+      const Offset(0, 280),
+    );
+    await tester.pumpAndSettle();
+
+    timelineController.showThread(threadWithMessages(25));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('chat-jump-to-latest')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('chat-jump-to-latest')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('chat-jump-to-latest')), findsNothing);
+    expect(find.textContaining('Message 24'), findsOneWidget);
+  });
+
+  testWidgets('timeline jumps to latest when the selected thread changes', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(480, 520);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+
+    ThreadSummary threadWithMessages(String id, int count) =>
+        ThreadSummary.fromJson({
+          'id': id,
+          'sessionId': 'sess_1',
+          'preview': 'Long chat',
+          'ephemeral': false,
+          'turns': [
+            {
+              'id': 'turn_1',
+              'status': 'completed',
+              'itemsView': 'full',
+              'items': [
+                for (var i = 0; i < count; i++)
+                  {
+                    'id': '${id}_assistant_$i',
+                    'type': 'agentMessage',
+                    'text': 'Thread $id message $i\n\nDetails for message $i.',
+                  },
+              ],
+            },
+          ],
+        });
+
+    timelineController.showThread(threadWithMessages('thr_1', 24));
+    await _pumpChatPage(tester, timelineController: timelineController);
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const ValueKey('chat-main-conversation')),
+      const Offset(0, 280),
+    );
+    await tester.pumpAndSettle();
+
+    timelineController.showThread(threadWithMessages('thr_2', 24));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('chat-jump-to-latest')), findsNothing);
+    expect(find.textContaining('Thread thr_2 message 23'), findsOneWidget);
+  });
+
   testWidgets('renders structured command file and MCP timeline items', (
     tester,
   ) async {
@@ -7430,6 +7681,64 @@ void main() {
     expect(find.text('github/search_issues'), findsOneWidget);
     expect(find.textContaining('Tool: search_issues'), findsNothing);
     expect(find.byKey(const ValueKey('timeline-details-mcp_1')), findsNothing);
+  });
+
+  testWidgets('long command output is collapsed and can expand', (
+    tester,
+  ) async {
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    final output = List.generate(40, (index) => 'line $index').join('\n');
+
+    timelineController.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Long command output',
+        'ephemeral': false,
+        'turns': [
+          {
+            'id': 'turn_1',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': [
+              {
+                'id': 'cmd_long',
+                'type': 'commandExecution',
+                'command': 'cargo test',
+                'status': 'completed',
+                'aggregatedOutput': output,
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    await _pumpChatPage(tester, timelineController: timelineController);
+
+    expect(
+      find.byKey(const ValueKey('timeline-command-output-collapsed-cmd_long')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('40 lines'), findsOneWidget);
+    expect(find.textContaining('line 39'), findsOneWidget);
+    expect(find.textContaining('line 0'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('timeline-terminal-output')),
+      findsNothing,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('timeline-command-output-expand-cmd_long')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('timeline-terminal-output')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('line 0'), findsOneWidget);
   });
 
   testWidgets(
@@ -7618,7 +7927,7 @@ void main() {
       '!echo hi',
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('Send'));
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
     expect(shellRunner.commands, [
@@ -7737,7 +8046,19 @@ Future<void> _submitComposerText(WidgetTester tester, String text) async {
     text,
   );
   await tester.pump();
-  await tester.tap(find.byTooltip('Send'));
+  await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openAdvancedControls(WidgetTester tester) async {
+  final advancedEntry = find.byKey(
+    const ValueKey('chat-sidebar-advanced-controls'),
+  );
+  if (advancedEntry.evaluate().isEmpty) {
+    await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
+    await tester.pumpAndSettle();
+  }
+  await tester.tap(advancedEntry);
   await tester.pumpAndSettle();
 }
 

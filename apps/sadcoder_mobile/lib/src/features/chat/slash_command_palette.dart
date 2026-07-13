@@ -71,6 +71,7 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
         ? minSheetHeight
         : preferredSheetHeight;
     final compactHeight = sheetHeight < 180;
+    final ultraCompactHeight = sheetHeight < 120;
     final commands = _filteredCommands(l10n);
     final groups = _groupsFor(commands);
     final selectedGroup = groups.isEmpty
@@ -88,7 +89,9 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
         child: SizedBox(
           height: sheetHeight,
           child: Padding(
-            padding: compactHeight
+            padding: ultraCompactHeight
+                ? const EdgeInsets.fromLTRB(8, 2, 8, 2)
+                : compactHeight
                 ? const EdgeInsets.fromLTRB(12, 8, 12, 8)
                 : const EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: Column(
@@ -110,20 +113,49 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                TextField(
-                  key: const ValueKey('slash-command-search-field'),
-                  controller: _filterController,
-                  autofocus: true,
-                  autocorrect: false,
-                  decoration: InputDecoration(
-                    isDense: compactHeight,
-                    labelText: l10n.typeCommandName,
-                    prefixIcon: const Icon(Icons.search),
-                    border: const OutlineInputBorder(),
+                SizedBox(
+                  height: ultraCompactHeight ? 52 : null,
+                  child: TextField(
+                    key: const ValueKey('slash-command-search-field'),
+                    controller: _filterController,
+                    autofocus: true,
+                    autocorrect: false,
+                    style: ultraCompactHeight
+                        ? Theme.of(context).textTheme.bodySmall
+                        : null,
+                    decoration: InputDecoration(
+                      isDense: compactHeight,
+                      labelText: ultraCompactHeight
+                          ? null
+                          : l10n.typeCommandName,
+                      hintText: ultraCompactHeight
+                          ? l10n.typeCommandName
+                          : null,
+                      prefixIcon: Icon(
+                        Icons.search,
+                        size: ultraCompactHeight ? 18 : null,
+                      ),
+                      contentPadding: ultraCompactHeight
+                          ? const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6,
+                            )
+                          : null,
+                      prefixIconConstraints: ultraCompactHeight
+                          ? const BoxConstraints.tightFor(width: 32, height: 32)
+                          : null,
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (value) => setState(() => _filter = value),
                   ),
-                  onChanged: (value) => setState(() => _filter = value),
                 ),
-                SizedBox(height: compactHeight ? 8 : 12),
+                SizedBox(
+                  height: ultraCompactHeight
+                      ? 2
+                      : compactHeight
+                      ? 8
+                      : 12,
+                ),
                 Expanded(
                   child: selectedGroup == null
                       ? const SizedBox.shrink()

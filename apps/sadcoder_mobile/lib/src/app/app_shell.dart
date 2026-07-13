@@ -289,6 +289,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         ),
       ),
       bottomNavigationBar: NavigationBar(
+        height: 58,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         selectedIndex: _index,
         destinations: [
           NavigationDestination(

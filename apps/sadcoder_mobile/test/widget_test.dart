@@ -831,6 +831,15 @@ void main() {
     expect(find.text('设置'), findsWidgets);
   });
 
+  testWidgets('bottom navigation uses compact height', (tester) async {
+    await tester.pumpWidget(const SadCoderApp());
+
+    final navigationBar = tester.widget<NavigationBar>(
+      find.byType(NavigationBar),
+    );
+    expect(navigationBar.height, 58);
+  });
+
   testWidgets('applies injected appearance theme mode', (tester) async {
     final appearanceController = AppAppearanceController(
       theme: AppThemePreference.dark,
