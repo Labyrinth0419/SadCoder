@@ -1249,6 +1249,14 @@ void main() {
 
     await _submitComposerText(tester, '/setup-default-sandbox');
 
+    expect(find.text('Confirm high-risk command'), findsOneWidget);
+    expect(
+      find.textContaining('/setup-default-sandbox is a high-risk command'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
     expect(harness.turnRunner.startedTurns, isEmpty);
     expect(
       find.text(
@@ -1260,12 +1268,44 @@ void main() {
     );
   });
 
+  testWidgets('/setup-default-sandbox can cancel high-risk confirmation', (
+    tester,
+  ) async {
+    final harness = await _pumpConnectedChatPage(tester);
+
+    await _submitComposerText(tester, '/setup-default-sandbox');
+
+    expect(find.text('Confirm high-risk command'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Cancel'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(find.text('Canceled /setup-default-sandbox.'), findsOneWidget);
+    expect(
+      find.textContaining('Default sandbox setup is not wired'),
+      findsNothing,
+    );
+  });
+
   testWidgets('/sandbox-add-read-dir reports guarded fallback diagnostic', (
     tester,
   ) async {
     final harness = await _pumpConnectedChatPage(tester);
 
     await _submitComposerText(tester, r'/sandbox-add-read-dir C:\repo');
+
+    expect(find.text('Confirm high-risk command'), findsOneWidget);
+    expect(
+      find.textContaining('/sandbox-add-read-dir is a high-risk command'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
 
     expect(harness.turnRunner.startedTurns, isEmpty);
     expect(

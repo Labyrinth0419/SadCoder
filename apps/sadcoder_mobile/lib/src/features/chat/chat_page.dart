@@ -747,6 +747,7 @@ class _ChatPageState extends State<ChatPage> {
           configureModel: _configureModelOverride,
           configurePersonality: _configurePersonalityOverride,
           configurePermissions: _configurePermissionsOverride,
+          confirmHighRisk: _confirmHighRiskSlashCommand,
         );
   }
 
@@ -2126,6 +2127,35 @@ class _ChatPageState extends State<ChatPage> {
     _clearLocalTranscript();
     _refreshVisibleThreads();
     return SlashCommandCallbackResult.executed;
+  }
+
+  Future<bool> _confirmHighRiskSlashCommand(
+    SlashCommandSpec command,
+    String arguments,
+  ) async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(
+          Icons.warning_amber_outlined,
+          color: Theme.of(dialogContext).colorScheme.error,
+        ),
+        title: Text(l10n.slashCommandHighRiskConfirmTitle),
+        content: Text(l10n.slashCommandHighRiskConfirmBody(command.slash)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.slashCommandHighRiskConfirmContinue),
+          ),
+        ],
+      ),
+    );
+    return mounted && confirmed == true;
   }
 
   String? _currentThreadId() {

@@ -65,6 +65,8 @@ typedef SlashCommandConfirmedThreadAction =
     Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandConfiguredAction =
     Future<SlashCommandCallbackResult> Function();
+typedef SlashCommandConfirmHighRisk =
+    Future<bool> Function(SlashCommandSpec command, String arguments);
 
 enum SlashCommandCallbackResult { executed, cancelled, unavailable }
 
@@ -282,6 +284,7 @@ class SlashCommandActionDispatcher {
     this.configureModel,
     this.configurePersonality,
     this.configurePermissions,
+    this.confirmHighRisk,
   });
 
   final SlashCommandDisconnect? disconnect;
@@ -332,6 +335,7 @@ class SlashCommandActionDispatcher {
   final SlashCommandConfiguredAction? configureModel;
   final SlashCommandConfiguredAction? configurePersonality;
   final SlashCommandConfiguredAction? configurePermissions;
+  final SlashCommandConfirmHighRisk? confirmHighRisk;
 
   Future<SlashCommandActionResult> dispatch(
     SlashCommandParseResult parsed, {
@@ -909,15 +913,30 @@ class SlashCommandActionDispatcher {
     );
   }
 
-  SlashCommandActionResult _setupDefaultSandboxDiagnostic(
+  Future<SlashCommandActionResult> _setupDefaultSandboxDiagnostic(
     SlashCommandParseResult parsed,
-  ) {
+  ) async {
     if (parsed.arguments.trim().isNotEmpty) {
       return SlashCommandActionResult.unavailable(
         command: parsed.command!,
         rawCommand: parsed.rawCommand,
         arguments: parsed.arguments,
       );
+    }
+    final confirmed = await _confirmHighRiskCommand(parsed);
+    if (confirmed != true) {
+      return confirmed == false
+          ? SlashCommandActionResult.cancelled(
+              command: parsed.command!,
+              rawCommand: parsed.rawCommand,
+              arguments: parsed.arguments,
+            )
+          : SlashCommandActionResult.failed(
+              command: parsed.command!,
+              rawCommand: parsed.rawCommand,
+              arguments: parsed.arguments,
+              error: StateError('High-risk command confirmation failed.'),
+            );
     }
     return SlashCommandActionResult.executed(
       command: parsed.command!,
@@ -927,9 +946,9 @@ class SlashCommandActionDispatcher {
     );
   }
 
-  SlashCommandActionResult _sandboxReadDirDiagnostic(
+  Future<SlashCommandActionResult> _sandboxReadDirDiagnostic(
     SlashCommandParseResult parsed,
-  ) {
+  ) async {
     if (!_isWindowsAbsolutePath(parsed.arguments.trim())) {
       return SlashCommandActionResult.unavailable(
         command: parsed.command!,
@@ -937,12 +956,39 @@ class SlashCommandActionDispatcher {
         arguments: parsed.arguments,
       );
     }
+    final confirmed = await _confirmHighRiskCommand(parsed);
+    if (confirmed != true) {
+      return confirmed == false
+          ? SlashCommandActionResult.cancelled(
+              command: parsed.command!,
+              rawCommand: parsed.rawCommand,
+              arguments: parsed.arguments,
+            )
+          : SlashCommandActionResult.failed(
+              command: parsed.command!,
+              rawCommand: parsed.rawCommand,
+              arguments: parsed.arguments,
+              error: StateError('High-risk command confirmation failed.'),
+            );
+    }
     return SlashCommandActionResult.executed(
       command: parsed.command!,
       rawCommand: parsed.rawCommand,
       arguments: parsed.arguments,
       effect: SlashCommandActionEffect.sandboxReadDir,
     );
+  }
+
+  Future<bool?> _confirmHighRiskCommand(SlashCommandParseResult parsed) async {
+    final confirmHighRisk = this.confirmHighRisk;
+    if (confirmHighRisk == null) {
+      return true;
+    }
+    try {
+      return await confirmHighRisk(parsed.command!, parsed.arguments);
+    } on Object {
+      return null;
+    }
   }
 
   SlashCommandActionResult _toggleRawTranscript(

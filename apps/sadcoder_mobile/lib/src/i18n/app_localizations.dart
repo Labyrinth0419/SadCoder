@@ -396,6 +396,12 @@ class AppLocalizations {
       _text('slashCommandPlanModeUpdated');
   String slashCommandCancelled(String slash) =>
       _text('slashCommandCancelled').replaceAll('{slash}', slash);
+  String get slashCommandHighRiskConfirmTitle =>
+      _text('slashCommandHighRiskConfirmTitle');
+  String slashCommandHighRiskConfirmBody(String slash) =>
+      _text('slashCommandHighRiskConfirmBody').replaceAll('{slash}', slash);
+  String get slashCommandHighRiskConfirmContinue =>
+      _text('slashCommandHighRiskConfirmContinue');
   String slashCommandExecuted(String slash) =>
       _text('slashCommandExecuted').replaceAll('{slash}', slash);
   String slashCommandUnsupported(String slash) =>
@@ -1420,6 +1426,10 @@ const _values = <String, Map<String, String>>{
     'slashCommandPermissionsUpdated': 'Permission override updated.',
     'slashCommandPlanModeUpdated': 'Plan mode applied.',
     'slashCommandCancelled': 'Canceled {slash}.',
+    'slashCommandHighRiskConfirmTitle': 'Confirm high-risk command',
+    'slashCommandHighRiskConfirmBody':
+        '{slash} is a high-risk command. SadCoder will only show the guarded fallback diagnostic right now; it will not run an agent command or change server settings. Continue only if you meant to inspect this path.',
+    'slashCommandHighRiskConfirmContinue': 'Continue',
     'slashCommandExecuted': 'Executed {slash}.',
     'slashCommandUnsupported': '{slash} is not implemented yet.',
     'slashCommandUnsupportedWithStatus':
@@ -2282,6 +2292,10 @@ const _values = <String, Map<String, String>>{
     'slashCommandPermissionsUpdated': '已更新权限覆盖。',
     'slashCommandPlanModeUpdated': '已应用计划模式。',
     'slashCommandCancelled': '已取消 {slash}。',
+    'slashCommandHighRiskConfirmTitle': '确认高风险命令',
+    'slashCommandHighRiskConfirmBody':
+        '{slash} 是高风险命令。当前 SadCoder 只会显示受保护 fallback 诊断，不会执行 agent 命令，也不会修改服务器设置。只有在你确实要检查该路径时才继续。',
+    'slashCommandHighRiskConfirmContinue': '继续',
     'slashCommandExecuted': '已执行 {slash}。',
     'slashCommandUnsupported': '{slash} 暂未实现。',
     'slashCommandUnsupportedWithStatus': '{slash} 已注册但当前不可用：{status}。',

@@ -943,7 +943,8 @@ MVP 可以简化为底部导航：
 - 已将 `/app` 接成移动端 UI-only 诊断：无参数时明确提示 Codex Desktop handoff 在移动端不可用，不调用 app-server、不发送 prompt；带参数时返回 unavailable。后续只有在服务器明确暴露 Desktop handoff 能力时再改成结构化接入。
 - 已将 `/import` 接成移动端 UI-only 诊断：无参数时明确提示 Claude Code import 仍需要受保护的 agent fallback，不调用 app-server、不扫描远端文件、不发送 prompt；带参数时返回 unavailable。后续实现必须先设计确认、可预览迁移摘要和回滚/跳过策略。
 - 已将 `/init` 接成移动端 UI-only 诊断：无参数时明确提示 AGENTS.md 初始化需要先生成 diff 预览并审批，不调用 app-server、不写文件、不发送 prompt；带参数时返回 unavailable。后续实现必须复用受控编辑/审批链路，不能直接通过 SSH 命令写入工作区。
-- 已将 `/setup-default-sandbox` 和 `/sandbox-add-read-dir` 接成移动端高风险诊断：前者无参数时提示需要受保护的 agent fallback 和高风险确认；后者先做 Windows 绝对路径/UNC 路径校验，合法路径只显示受保护 fallback 诊断，不调用 app-server、不执行 agent 命令、不修改沙箱配置；无效路径或不支持参数返回 unavailable。后续实现必须接入高风险确认和可审计变更摘要。
+- 已将 `/setup-default-sandbox` 和 `/sandbox-add-read-dir` 接成移动端高风险诊断：前者无参数时提示需要受保护的 agent fallback 和高风险确认；后者先做 Windows 绝对路径/UNC 路径校验，合法路径只显示受保护 fallback 诊断，不调用 app-server、不执行 agent 命令、不修改沙箱配置；无效路径或不支持参数返回 unavailable。后续真正执行 fallback 前仍必须接入可审计变更摘要。
+- 已为 `/setup-default-sandbox` 与合法 Windows `/sandbox-add-read-dir <absolute_path>` 接入高风险确认门：用户确认后仍只显示 guarded fallback 诊断，不执行 agent 命令、不修改服务器设置；取消时返回 command cancelled，且非法路径不会触发确认。
 
 ### 9.6 工作区文件浏览与只读查看
 

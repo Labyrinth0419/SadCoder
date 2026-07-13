@@ -417,6 +417,24 @@ void main() {
     expect(result.command?.command, 'setup-default-sandbox');
   });
 
+  test('/setup-default-sandbox honors high-risk confirmation', () async {
+    final confirmations = <({String command, String arguments})>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      confirmHighRisk: (command, arguments) async {
+        confirmations.add((command: command.command, arguments: arguments));
+        return false;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText('/setup-default-sandbox'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.cancelled);
+    expect(confirmations, [(command: 'setup-default-sandbox', arguments: '')]);
+  });
+
   test(
     '/sandbox-add-read-dir reports the guarded fallback diagnostic',
     () async {
@@ -458,6 +476,27 @@ void main() {
     expect(relative.outcome, SlashCommandActionOutcome.unavailable);
     expect(unix.outcome, SlashCommandActionOutcome.unavailable);
     expect(missing.outcome, SlashCommandActionOutcome.unavailable);
+  });
+
+  test('/sandbox-add-read-dir confirms before guarded diagnostic', () async {
+    final confirmations = <({String command, String arguments})>[];
+    final dispatcher = SlashCommandActionDispatcher(
+      confirmHighRisk: (command, arguments) async {
+        confirmations.add((command: command.command, arguments: arguments));
+        return true;
+      },
+    );
+
+    final result = await dispatcher.dispatch(
+      registry.parseComposerText(r'/sandbox-add-read-dir C:\repo'),
+      hasActiveTurn: false,
+    );
+
+    expect(result.outcome, SlashCommandActionOutcome.executed);
+    expect(result.effect, SlashCommandActionEffect.sandboxReadDir);
+    expect(confirmations, [
+      (command: 'sandbox-add-read-dir', arguments: r'C:\repo'),
+    ]);
   });
 
   test('/debug-config returns the injected debug config summary', () async {
