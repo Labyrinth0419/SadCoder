@@ -375,7 +375,7 @@ class AppHostSessionUiState {
       }
       if (gapThreadIds.isNotEmpty &&
           sessionController.status == CodexSessionStatus.connected) {
-        _sessionRecoveryCoordinator.recoverCurrentThread();
+        _recoverVisibleThreadForCursorGap(gapThreadIds);
       }
     }
 
@@ -403,6 +403,19 @@ class AppHostSessionUiState {
       _normalized(threadDetailController.selectedThreadId),
       _normalized(turnController.activeThreadId),
     }.whereType<String>().toSet();
+  }
+
+  void _recoverVisibleThreadForCursorGap(Set<String> gapThreadIds) {
+    for (final threadId in [
+      _normalized(threadDetailController.selectedThreadId),
+      _normalized(timelineController.selectedThreadId),
+      _normalized(turnController.activeThreadId),
+    ]) {
+      if (threadId != null && gapThreadIds.contains(threadId)) {
+        _sessionRecoveryCoordinator.recoverThread(threadId);
+        return;
+      }
+    }
   }
 
   void _persistThreadCache() {

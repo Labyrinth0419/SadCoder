@@ -638,6 +638,106 @@ void main() {
   });
 
   test(
+    'immediately recovers selected snapshot gap without switching to active',
+    () async {
+      final threadStore = _MemoryThreadCacheStore();
+      final cursorStore = _MemoryThreadTimelineCursorStore({
+        'profile-a::thr_gap': const ThreadTimelineCursorSnapshot(
+          threadId: 'thr_gap',
+          turnIds: ['turn_seen'],
+          itemIds: [],
+          lastTurnId: 'turn_seen',
+          cachedAtMs: 1,
+        ),
+        'profile-a::thr_active': const ThreadTimelineCursorSnapshot(
+          threadId: 'thr_active',
+          turnIds: ['turn_active'],
+          itemIds: [],
+          lastTurnId: 'turn_active',
+          cachedAtMs: 1,
+        ),
+      });
+      final detailReader = _RecordingThreadDetailReader();
+      final turnListReader = _RecordingThreadTurnListReader.pages([
+        ThreadTurnsPage(
+          turns: [_turn('turn_new', 'new'), _turn('turn_seen', 'seen updated')],
+        ),
+      ]);
+      final snapshotReader = _PendingAgentSnapshotReader();
+      final approvalController = ApprovalStateController();
+      final configOverrideController = CodexConfigOverrideController();
+      final sessionController = CodexSessionStateController(
+        connector: _PendingRecoverySnapshotSessionStarter(
+          snapshotReader: snapshotReader,
+          threadDetailReader: detailReader,
+          threadTurnListReader: turnListReader,
+        ),
+        approvalController: approvalController,
+      );
+      final state = AppHostSessionUiState(
+        sessionController: sessionController,
+        configOverrideController: configOverrideController,
+        threadCacheProfileId: 'profile-a',
+        threadCacheStore: threadStore,
+        threadTimelineCursorStore: cursorStore,
+      );
+      addTearDown(state.dispose);
+      addTearDown(sessionController.dispose);
+      addTearDown(configOverrideController.dispose);
+      addTearDown(approvalController.dispose);
+
+      await sessionController.connect(_profileA);
+      await _flushMicrotasks();
+      expect(snapshotReader.pendingCount, 1);
+      expect(detailReader.calls, isEmpty);
+
+      state.threadDetailController.restoreCachedDetail(
+        _threadWithTurn('thr_gap', 'Selected gap task'),
+      );
+      state.turnController.trackStartedTurn(
+        threadId: 'thr_active',
+        turn: const TurnSummary(
+          id: 'turn_active',
+          status: 'inProgress',
+          itemCount: 0,
+          itemsView: 'notLoaded',
+        ),
+      );
+
+      snapshotReader.complete(
+        const AgentSnapshot(
+          schemaVersion: 1,
+          pendingApprovals: [],
+          recentEvents: [],
+          threads: [
+            AgentCachedThread(
+              threadId: 'thr_gap',
+              lastTurnId: 'turn_new',
+              lastEventCursor: 'event-9',
+            ),
+          ],
+          deliveredCursor: 'event-9',
+          cursorGap: true,
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(state.turnController.activeThreadId, 'thr_active');
+      expect(state.threadDetailController.selectedThreadId, 'thr_gap');
+      expect(detailReader.calls, [(threadId: 'thr_gap', includeTurns: false)]);
+      expect(turnListReader.calls, [
+        (
+          threadId: 'thr_gap',
+          cursor: null,
+          limit: 50,
+          sortDirection: 'desc',
+          itemsView: 'full',
+        ),
+      ]);
+    },
+  );
+
+  test(
     'conservatively recovers an active turn thread after snapshot cursor gap',
     () async {
       final threadStore = _MemoryThreadCacheStore();
@@ -1058,6 +1158,32 @@ class _RecoverySnapshotSessionStarter implements CodexSessionConnectionStarter {
   }
 }
 
+class _PendingRecoverySnapshotSessionStarter
+    implements CodexSessionConnectionStarter {
+  const _PendingRecoverySnapshotSessionStarter({
+    required this.snapshotReader,
+    required this.threadDetailReader,
+    required this.threadTurnListReader,
+  });
+
+  final AgentSnapshotReader snapshotReader;
+  final ThreadDetailReader threadDetailReader;
+  final ThreadTurnListReader threadTurnListReader;
+
+  @override
+  Future<CodexSessionConnectionHandle> connect(
+    SshProfile profile, {
+    ApprovalStateController? approvalController,
+  }) async {
+    return _RecoverySnapshotConnection(
+      profile: profile,
+      snapshotReader: snapshotReader,
+      threadDetailReader: threadDetailReader,
+      threadTurnListReader: threadTurnListReader,
+    );
+  }
+}
+
 class _SnapshotConnection
     implements CodexSessionConnectionHandle, AgentSnapshotConnectionHandle {
   _SnapshotConnection({required this.profile, required this.snapshotReader});
@@ -1354,6 +1480,29 @@ class _StaticAgentSnapshotReader implements AgentSnapshotReader {
     String? sinceCursor,
   }) async {
     return snapshot;
+  }
+}
+
+class _PendingAgentSnapshotReader implements AgentSnapshotReader {
+  final _pending = <Completer<AgentSnapshot>>[];
+
+  int get pendingCount => _pending.length;
+
+  @override
+  Future<AgentSnapshot> readSnapshot(
+    SshProfile profile, {
+    String? sinceCursor,
+  }) {
+    final completer = Completer<AgentSnapshot>();
+    _pending.add(completer);
+    return completer.future;
+  }
+
+  void complete(AgentSnapshot snapshot) {
+    if (_pending.isEmpty) {
+      throw StateError('No pending snapshot read.');
+    }
+    _pending.removeAt(0).complete(snapshot);
   }
 }
 

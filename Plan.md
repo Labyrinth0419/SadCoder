@@ -1071,6 +1071,7 @@ MVP 可以简化为底部导航：
 - 已落地 cursor gap 驱动的移动端保守恢复：`AppHostSessionUiState` 会把 agent snapshot 的 `cursorGap` 映射到对应 thread 的一次性 recovery hint；`AppSessionRecoveryCoordinator` 在 gap 存在时不再用本地 lastTurnId/lastItemId 提前截断 turn/item 有界回填，并会在 snapshot 晚于 connected 状态到达时主动对当前 thread 再触发一次恢复。
 - 已落地 cursor gap 的延迟 thread 切换恢复：如果 agent snapshot gap 属于非当前 thread，App 不会立刻切换 UI；用户之后打开该 thread 时，`AppHostSessionUiState` 会消费对应 gap hint 并触发一次保守 turn/item 回填，避免断线期间非当前 thread 的事件缺口长期停留。
 - 已落地未知归属 cursor gap 的保守恢复：当 agent snapshot 只报告 `cursorGap=true` 但没有 recent event/thread id 可归因时，App 会保留一个 unknown gap 信号；用户之后打开任一尚未消费该 gap 的 thread 时，会按保守策略有界回填，避免因为缺少 thread id 而误用旧 cursor 提前截断。
+- 已落地明确归属 cursor gap 的即时恢复路由修正：当 snapshot gap 明确属于当前可见 thread，而另一个 thread 有 active turn 时，恢复目标会绑定到该 gap thread，不再通过 active-thread-first 的 `recoverCurrentThread()` 误切到无关 active thread；测试覆盖 pending snapshot 到达时的 selected-gap + unrelated-active-turn 场景。
 - 已落地 active turn snapshot gap 恢复：当 `agent/snapshot` 先标记 cursor gap、随后才回放 `turn/started` recent event 时，`AppHostSessionUiState` 会在 active turn 建立后再次检查该 thread 的 gap hint，并触发现有保守 turn/item 回填；无需用户先打开会话详情，也不会把恢复目标错误绑定到当前 UI 选中 thread。
 - 已落地显式 thread cursor-gap 恢复入口：当 UI 已知缺口归属的 threadId 时会直接调用 `recoverThread(threadId)`，不再通过 active-thread-first 的 `recoverCurrentThread()` 路由，避免用户打开非 active 缺口会话时被正在运行的 active turn 抢走恢复目标。
 - 已落地 agent `--backend auto` 的 service-only 生产语义：auto 会启动并连接 SadCoder service，service 启动或 proxy 连接失败时返回错误，不再静默降级到 direct stdio；direct stdio 仅保留给显式 `--backend stdio` 或兼容 `--backend daemon` 路径。
