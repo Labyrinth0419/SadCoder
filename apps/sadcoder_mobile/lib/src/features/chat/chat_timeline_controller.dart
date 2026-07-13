@@ -11,6 +11,11 @@ typedef TurnCompletedHandler =
 typedef TurnStartedHandler =
     void Function({required String threadId, required TurnSummary turn});
 
+const chatTimelineInitialItemLimit = 80;
+const chatTimelineMaxItemWindow = 480;
+
+enum ChatTimelineHistoryStatus { idle, loading, failed }
+
 class ChatTimelineController extends ChangeNotifier {
   ChatTimelineController({
     TurnCompletedHandler? onTurnCompleted,
@@ -24,12 +29,30 @@ class ChatTimelineController extends ChangeNotifier {
   final RecentAutoReviewDenials _recentAutoReviewDenials =
       RecentAutoReviewDenials();
   String? _selectedThreadId;
+  String? _olderItemsCursor;
+  ChatTimelineHistoryStatus _olderHistoryStatus =
+      ChatTimelineHistoryStatus.idle;
+  Object? _olderHistoryError;
   Stream<CodexEvent>? _attachedEvents;
   StreamSubscription<CodexEvent>? _subscription;
 
   List<ChatTimelineTurn> get turns => List.unmodifiable(_turns);
 
   String? get selectedThreadId => _selectedThreadId;
+
+  String? get olderItemsCursor => _olderItemsCursor;
+
+  bool get hasOlderItems => _olderItemsCursor != null;
+
+  ChatTimelineHistoryStatus get olderHistoryStatus => _olderHistoryStatus;
+
+  Object? get olderHistoryError => _olderHistoryError;
+
+  bool get isLoadingOlderHistory =>
+      _olderHistoryStatus == ChatTimelineHistoryStatus.loading;
+
+  int get itemCount =>
+      _turns.fold<int>(0, (count, turn) => count + turn.items.length);
 
   ChatTimelineCursor get cursor =>
       ChatTimelineCursor.fromTurns(threadId: _selectedThreadId, turns: _turns);
@@ -120,7 +143,10 @@ class ChatTimelineController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void showThread(ThreadSummary thread) {
+  void showThread(
+    ThreadSummary thread, {
+    int maxItems = chatTimelineInitialItemLimit,
+  }) {
     if (thread.id.isEmpty) {
       clear();
       return;
@@ -129,6 +155,7 @@ class ChatTimelineController extends ChangeNotifier {
         ? List<ChatTimelineTurn>.from(_turns)
         : const <ChatTimelineTurn>[];
     _selectedThreadId = thread.id;
+    _resetHistoryPaging();
     _turns
       ..clear()
       ..addAll(
@@ -137,9 +164,104 @@ class ChatTimelineController extends ChangeNotifier {
               ChatTimelineTurn.fromTurnSummary(threadId: thread.id, turn: turn),
         ),
       );
+    _trimToMaxItems(maxItems);
     for (final liveTurn in liveTurns) {
       _mergeTurn(liveTurn);
     }
+    _trimToMaxItems(chatTimelineMaxItemWindow);
+    notifyListeners();
+  }
+
+  void showThreadItemWindow({
+    required ThreadSummary thread,
+    required List<ThreadItemSummary> items,
+    String? olderItemsCursor,
+    int maxItems = chatTimelineInitialItemLimit,
+  }) {
+    final normalizedThreadId = _normalized(thread.id);
+    if (normalizedThreadId == null) {
+      clear();
+      return;
+    }
+    final liveTurns = _selectedThreadId == normalizedThreadId
+        ? List<ChatTimelineTurn>.from(_turns)
+        : const <ChatTimelineTurn>[];
+    _selectedThreadId = normalizedThreadId;
+    _olderItemsCursor = _normalized(olderItemsCursor);
+    _olderHistoryStatus = ChatTimelineHistoryStatus.idle;
+    _olderHistoryError = null;
+    _turns.clear();
+    for (final item in _latestItems(items, maxItems: maxItems)) {
+      _mergeCachedItem(
+        threadId: normalizedThreadId,
+        turnId: item.turnId,
+        item: item,
+      );
+    }
+    for (final liveTurn in liveTurns) {
+      _mergeTurn(liveTurn);
+    }
+    _trimToMaxItems(chatTimelineMaxItemWindow);
+    notifyListeners();
+  }
+
+  void prependThreadItems({
+    required String threadId,
+    required List<ThreadItemSummary> items,
+    String? olderItemsCursor,
+  }) {
+    final normalizedThreadId = _normalized(threadId);
+    if (normalizedThreadId == null || normalizedThreadId != _selectedThreadId) {
+      return;
+    }
+    final currentTurns = List<ChatTimelineTurn>.from(_turns);
+    final currentItemIds = {
+      for (final turn in currentTurns)
+        for (final item in turn.items) item.itemId,
+    };
+    _turns.clear();
+    for (final item in items) {
+      if (currentItemIds.contains(item.id)) {
+        continue;
+      }
+      _mergeCachedItem(
+        threadId: normalizedThreadId,
+        turnId: item.turnId,
+        item: item,
+      );
+    }
+    for (final currentTurn in currentTurns) {
+      _mergeTurn(currentTurn);
+    }
+    _olderItemsCursor = _normalized(olderItemsCursor);
+    _olderHistoryStatus = ChatTimelineHistoryStatus.idle;
+    _olderHistoryError = null;
+    _trimToMaxItems(chatTimelineMaxItemWindow);
+    notifyListeners();
+  }
+
+  void beginOlderHistoryLoad() {
+    if (_olderHistoryStatus == ChatTimelineHistoryStatus.loading) {
+      return;
+    }
+    _olderHistoryStatus = ChatTimelineHistoryStatus.loading;
+    _olderHistoryError = null;
+    notifyListeners();
+  }
+
+  void failOlderHistoryLoad(Object error) {
+    _olderHistoryStatus = ChatTimelineHistoryStatus.failed;
+    _olderHistoryError = error;
+    notifyListeners();
+  }
+
+  void clearOlderHistoryError() {
+    if (_olderHistoryStatus == ChatTimelineHistoryStatus.idle &&
+        _olderHistoryError == null) {
+      return;
+    }
+    _olderHistoryStatus = ChatTimelineHistoryStatus.idle;
+    _olderHistoryError = null;
     notifyListeners();
   }
 
@@ -154,6 +276,7 @@ class ChatTimelineController extends ChangeNotifier {
     }
     _selectedThreadId = normalizedThreadId;
     _turns.removeWhere((turn) => turn.threadId != normalizedThreadId);
+    _resetHistoryPaging();
     notifyListeners();
   }
 
@@ -164,6 +287,7 @@ class ChatTimelineController extends ChangeNotifier {
     }
     if (_selectedThreadId != normalizedThreadId) {
       _turns.clear();
+      _resetHistoryPaging();
     }
     _selectedThreadId = normalizedThreadId;
     _mergeTurn(
@@ -172,6 +296,7 @@ class ChatTimelineController extends ChangeNotifier {
         turn: turn,
       ),
     );
+    _trimToMaxItems(chatTimelineMaxItemWindow);
     notifyListeners();
   }
 
@@ -191,6 +316,7 @@ class ChatTimelineController extends ChangeNotifier {
     if (_selectedThreadId != normalizedThreadId) {
       _selectedThreadId = normalizedThreadId;
       _turns.removeWhere((turn) => turn.threadId != normalizedThreadId);
+      _resetHistoryPaging();
     }
     _mergeCachedItemIntoTurn(
       threadId: normalizedThreadId,
@@ -200,6 +326,7 @@ class ChatTimelineController extends ChangeNotifier {
         text: normalizedText,
       ),
     );
+    _trimToMaxItems(chatTimelineMaxItemWindow);
     notifyListeners();
   }
 
@@ -221,6 +348,7 @@ class ChatTimelineController extends ChangeNotifier {
     final selectedChanged = _selectedThreadId != normalizedThreadId;
     if (selectedChanged) {
       _turns.clear();
+      _resetHistoryPaging();
     }
     _selectedThreadId = normalizedThreadId;
     var changed = selectedChanged;
@@ -237,6 +365,7 @@ class ChatTimelineController extends ChangeNotifier {
           changed;
     }
     if (changed) {
+      _trimToMaxItems(chatTimelineMaxItemWindow);
       notifyListeners();
     }
   }
@@ -244,6 +373,7 @@ class ChatTimelineController extends ChangeNotifier {
   void clear() {
     _selectedThreadId = null;
     _turns.clear();
+    _resetHistoryPaging();
     _recentAutoReviewDenials.clear();
     notifyListeners();
   }
@@ -271,6 +401,7 @@ class ChatTimelineController extends ChangeNotifier {
           items: const [],
         ),
       );
+      _trimToMaxItems(chatTimelineMaxItemWindow);
       return;
     }
     _turns[index] = _turns[index].copyWith(status: status);
@@ -280,6 +411,7 @@ class ChatTimelineController extends ChangeNotifier {
     final index = _turns.indexWhere((turn) => turn.turnId == next.turnId);
     if (index == -1) {
       _turns.add(next);
+      _trimToMaxItems(chatTimelineMaxItemWindow);
       return;
     }
     _turns[index] = _turns[index].mergeLive(next);
@@ -422,6 +554,7 @@ class ChatTimelineController extends ChangeNotifier {
       items[itemIndex] = items[itemIndex].merge(item);
     }
     _turns[turnIndex] = turn.copyWith(items: items);
+    _trimToMaxItems(chatTimelineMaxItemWindow);
   }
 
   void _appendDelta(
@@ -460,6 +593,7 @@ class ChatTimelineController extends ChangeNotifier {
       );
     }
     _turns[turnIndex] = turn.copyWith(items: items);
+    _trimToMaxItems(chatTimelineMaxItemWindow);
   }
 
   void _appendReasoningSectionBreak(CodexEvent event) {
@@ -522,6 +656,7 @@ class ChatTimelineController extends ChangeNotifier {
       );
     }
     _turns[turnIndex] = turn.copyWith(items: items);
+    _trimToMaxItems(chatTimelineMaxItemWindow);
   }
 
   int? _ensureTurn(CodexEvent event) {
@@ -552,6 +687,46 @@ class ChatTimelineController extends ChangeNotifier {
       return;
     }
     _selectedThreadId = normalizedThreadId;
+  }
+
+  void _resetHistoryPaging() {
+    _olderItemsCursor = null;
+    _olderHistoryStatus = ChatTimelineHistoryStatus.idle;
+    _olderHistoryError = null;
+  }
+
+  void _trimToMaxItems(int maxItems) {
+    if (maxItems <= 0) {
+      _turns.clear();
+      return;
+    }
+    var overflow = itemCount - maxItems;
+    while (overflow > 0 && _turns.isNotEmpty) {
+      final first = _turns.first;
+      if (first.items.isEmpty) {
+        _turns.removeAt(0);
+        continue;
+      }
+      if (first.items.length <= overflow) {
+        overflow -= first.items.length;
+        _turns.removeAt(0);
+        continue;
+      }
+      _turns[0] = first.copyWith(
+        items: first.items.skip(overflow).toList(growable: false),
+      );
+      overflow = 0;
+    }
+  }
+
+  List<ThreadItemSummary> _latestItems(
+    List<ThreadItemSummary> items, {
+    required int maxItems,
+  }) {
+    if (maxItems <= 0 || items.length <= maxItems) {
+      return items;
+    }
+    return items.skip(items.length - maxItems).toList(growable: false);
   }
 }
 

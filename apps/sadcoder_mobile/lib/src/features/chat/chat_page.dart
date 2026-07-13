@@ -32,6 +32,7 @@ import '../../ssh/ssh_profile_store.dart';
 import '../../theme/sadcoder_theme.dart';
 import '../../threads/agent_thread_topology.dart';
 import '../../threads/thread_detail_controller.dart';
+import '../../threads/thread_item_list_reader.dart';
 import '../../threads/thread_list_controller.dart';
 import '../../threads/thread_mutation_runner.dart';
 import '../../threads/thread_summary.dart';
@@ -132,16 +133,20 @@ class _ChatPageState extends State<ChatPage> {
   List<SshProfile> _savedProfiles = const [];
   String? _selectedProfileId;
   Object? _profileLoadError;
+  String? _lastTimelineWindowThreadId;
+  int _timelineWindowGeneration = 0;
 
   @override
   void initState() {
     super.initState();
     widget.sessionController?.addListener(_handleSessionChanged);
+    widget.threadDetailController?.addListener(_handleThreadDetailChanged);
     widget.turnController?.addListener(_handleTurnChanged);
     widget.appearanceController?.addListener(_handleAppearanceChanged);
     _lastSessionStatus = widget.sessionController?.status;
     unawaited(_loadSavedProfiles());
     _refreshThreadsIfConnected();
+    _handleThreadDetailChanged();
   }
 
   @override
@@ -152,6 +157,14 @@ class _ChatPageState extends State<ChatPage> {
       widget.sessionController?.addListener(_handleSessionChanged);
       _lastSessionStatus = widget.sessionController?.status;
       _refreshThreadsIfConnected();
+    }
+    if (oldWidget.threadDetailController != widget.threadDetailController) {
+      oldWidget.threadDetailController?.removeListener(
+        _handleThreadDetailChanged,
+      );
+      widget.threadDetailController?.addListener(_handleThreadDetailChanged);
+      _lastTimelineWindowThreadId = null;
+      _handleThreadDetailChanged();
     }
     if (oldWidget.turnController != widget.turnController) {
       oldWidget.turnController?.removeListener(_handleTurnChanged);
@@ -169,6 +182,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void dispose() {
     widget.sessionController?.removeListener(_handleSessionChanged);
+    widget.threadDetailController?.removeListener(_handleThreadDetailChanged);
     widget.turnController?.removeListener(_handleTurnChanged);
     widget.appearanceController?.removeListener(_handleAppearanceChanged);
     _composerController.dispose();
@@ -239,10 +253,15 @@ class _ChatPageState extends State<ChatPage> {
                   );
                   return Stack(
                     children: [
-                      Positioned.fill(
+                      AnimatedPositioned(
+                        duration: const Duration(milliseconds: 210),
+                        curve: Curves.easeOutCubic,
+                        top: 0,
+                        bottom: 0,
                         left: sidebarVisible && !overlaySidebar
                             ? sidebarWidth
                             : 0,
+                        right: 0,
                         child: _ChatMainConversation(
                           compact: compactHeight,
                           sideConversation: _sideConversation,
@@ -251,39 +270,72 @@ class _ChatPageState extends State<ChatPage> {
                           onReturnToMain: _returnToMainThread,
                           timelineController: widget.timelineController,
                           showRawTranscript: _showRawTranscript,
+                          onLoadOlderHistory: _requestOlderTimelineItems,
                         ),
                       ),
-                      if (sidebarVisible)
-                        Positioned(
-                          top: 0,
-                          bottom: 0,
-                          left: 0,
-                          width: sidebarWidth,
-                          child: _ChatThreadSidebar(
-                            overlay: overlaySidebar,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _ChatSidebarWorkspaceHeader(
-                                  workspace: _workspaceSummary(l10n),
-                                  onOpenAdvanced:
-                                      widget.configOverrideController != null ||
-                                          widget.sessionController != null
-                                      ? _showAdvancedControlsSheet
-                                      : null,
+                      Positioned(
+                        top: 0,
+                        bottom: 0,
+                        left: 0,
+                        width: sidebarWidth,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 210),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInOutCubic,
+                          transitionBuilder: (child, animation) {
+                            final curved = CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.easeOutCubic,
+                              reverseCurve: Curves.easeInOutCubic,
+                            );
+                            return FadeTransition(
+                              opacity: curved,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(-0.08, 0),
+                                  end: Offset.zero,
+                                ).animate(curved),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: sidebarVisible
+                              ? _ChatThreadSidebar(
+                                  key: const ValueKey('chat-sidebar-visible'),
+                                  overlay: overlaySidebar,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      _ChatSidebarWorkspaceHeader(
+                                        workspace: _workspaceSummary(l10n),
+                                        onOpenAdvanced:
+                                            widget.configOverrideController !=
+                                                    null ||
+                                                widget.sessionController != null
+                                            ? _showAdvancedControlsSheet
+                                            : null,
+                                      ),
+                                      const SizedBox(height: 10),
+                                      _ThreadListPanel(
+                                        controller: threadListController,
+                                        detailController:
+                                            threadDetailController,
+                                        archived: _showArchivedThreads,
+                                        onArchivedChanged:
+                                            _setThreadArchiveView,
+                                        onUnarchiveThread: _unarchiveThread,
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : const SizedBox(
+                                  key: ValueKey('chat-sidebar-hidden'),
+                                  width: 0,
+                                  height: 0,
                                 ),
-                                const SizedBox(height: 10),
-                                _ThreadListPanel(
-                                  controller: threadListController,
-                                  detailController: threadDetailController,
-                                  archived: _showArchivedThreads,
-                                  onArchivedChanged: _setThreadArchiveView,
-                                  onUnarchiveThread: _unarchiveThread,
-                                ),
-                              ],
-                            ),
-                          ),
                         ),
+                      ),
                     ],
                   );
                 },
@@ -1327,7 +1379,12 @@ class _ChatPageState extends State<ChatPage> {
       turn: result.turn,
     );
     _refreshVisibleThreads();
-    unawaited(widget.threadDetailController?.readThread(reviewThreadId));
+    unawaited(
+      widget.threadDetailController?.readThread(
+        reviewThreadId,
+        includeTurns: false,
+      ),
+    );
     return buildThreadReviewStartedSummary(
       l10n: l10n,
       result: result,
@@ -1618,7 +1675,12 @@ class _ChatPageState extends State<ChatPage> {
     await runner.updateThreadSettings(threadId: threadId, overrides: overrides);
     _refreshVisibleThreads();
     if (widget.threadDetailController?.selectedThreadId == threadId) {
-      unawaited(widget.threadDetailController?.readThread(threadId));
+      unawaited(
+        widget.threadDetailController?.readThread(
+          threadId,
+          includeTurns: false,
+        ),
+      );
     }
   }
 
@@ -1653,7 +1715,12 @@ class _ChatPageState extends State<ChatPage> {
     }
     _clearSideConversation();
     widget.timelineController?.selectThread(activeThreadId);
-    unawaited(widget.threadDetailController?.readThread(activeThreadId));
+    unawaited(
+      widget.threadDetailController?.readThread(
+        activeThreadId,
+        includeTurns: false,
+      ),
+    );
     _refreshVisibleThreads();
     return true;
   }
@@ -1667,7 +1734,12 @@ class _ChatPageState extends State<ChatPage> {
     await runner.setThreadName(threadId: threadId, name: name);
     _refreshVisibleThreads();
     if (widget.threadDetailController?.selectedThreadId == threadId) {
-      unawaited(widget.threadDetailController?.readThread(threadId));
+      unawaited(
+        widget.threadDetailController?.readThread(
+          threadId,
+          includeTurns: false,
+        ),
+      );
     }
     return true;
   }
@@ -1730,7 +1802,9 @@ class _ChatPageState extends State<ChatPage> {
     }
     _clearSideConversation();
     widget.timelineController?.showThread(thread);
-    unawaited(widget.threadDetailController?.readThread(thread.id));
+    unawaited(
+      widget.threadDetailController?.readThread(thread.id, includeTurns: false),
+    );
     _refreshVisibleThreads();
     return SlashCommandCallbackResult.executed;
   }
@@ -1768,7 +1842,12 @@ class _ChatPageState extends State<ChatPage> {
       );
     });
     widget.timelineController?.showThread(sideThread);
-    unawaited(widget.threadDetailController?.readThread(sideThread.id));
+    unawaited(
+      widget.threadDetailController?.readThread(
+        sideThread.id,
+        includeTurns: false,
+      ),
+    );
     _refreshVisibleThreads();
 
     final initialPrompt = arguments.trim();
@@ -1828,7 +1907,12 @@ class _ChatPageState extends State<ChatPage> {
 
     _clearSideConversation();
     widget.timelineController?.selectThread(selectedThread.id);
-    unawaited(widget.threadDetailController?.readThread(selectedThread.id));
+    unawaited(
+      widget.threadDetailController?.readThread(
+        selectedThread.id,
+        includeTurns: false,
+      ),
+    );
     return SlashCommandCallbackResult.executed;
   }
 
@@ -1892,6 +1976,7 @@ class _ChatPageState extends State<ChatPage> {
     unawaited(
       widget.threadDetailController?.readThread(
         sideConversation.parentThreadId,
+        includeTurns: false,
       ),
     );
     if (!mounted) {
@@ -2583,6 +2668,144 @@ class _ChatPageState extends State<ChatPage> {
     _lastSessionStatus = status;
     if (mounted) {
       setState(() {});
+    }
+  }
+
+  void _handleThreadDetailChanged() {
+    final detailController = widget.threadDetailController;
+    switch (detailController?.status) {
+      case ThreadDetailStatus.loading:
+        widget.timelineController?.selectThread(
+          detailController?.selectedThreadId,
+        );
+      case ThreadDetailStatus.loaded:
+        final detail = detailController?.detail;
+        final thread = detail?.thread;
+        final selectedThreadId = _nonEmptyText(
+          detailController?.selectedThreadId,
+        );
+        if (thread != null && thread.id == selectedThreadId) {
+          _loadInitialTimelineWindow(thread);
+        }
+      case ThreadDetailStatus.idle:
+        _lastTimelineWindowThreadId = null;
+      case ThreadDetailStatus.failed:
+      case null:
+        break;
+    }
+  }
+
+  void _loadInitialTimelineWindow(ThreadSummary thread) {
+    final threadId = _nonEmptyText(thread.id);
+    final timelineController = widget.timelineController;
+    if (threadId == null || timelineController == null) {
+      return;
+    }
+    if (thread.turns.isNotEmpty) {
+      _lastTimelineWindowThreadId = threadId;
+      timelineController.showThread(thread);
+      return;
+    }
+    final reader = widget.sessionController?.threadItemListReader;
+    if (reader == null) {
+      _lastTimelineWindowThreadId = threadId;
+      timelineController.showThread(thread);
+      return;
+    }
+    if (_lastTimelineWindowThreadId == threadId &&
+        timelineController.selectedThreadId == threadId &&
+        timelineController.itemCount > 0) {
+      return;
+    }
+    _lastTimelineWindowThreadId = threadId;
+    final generation = ++_timelineWindowGeneration;
+    unawaited(
+      _readInitialTimelineWindow(
+        generation: generation,
+        reader: reader,
+        thread: thread,
+      ),
+    );
+  }
+
+  Future<void> _readInitialTimelineWindow({
+    required int generation,
+    required ThreadItemListReader reader,
+    required ThreadSummary thread,
+  }) async {
+    try {
+      final page = await reader.listItems(
+        threadId: thread.id,
+        limit: chatTimelineInitialItemLimit,
+        sortDirection: 'desc',
+      );
+      if (!mounted || generation != _timelineWindowGeneration) {
+        return;
+      }
+      widget.timelineController?.showThreadItemWindow(
+        thread: thread,
+        items: page.items.reversed.toList(growable: false),
+        olderItemsCursor: page.nextCursor,
+      );
+    } on Object {
+      if (!mounted || generation != _timelineWindowGeneration) {
+        return;
+      }
+      widget.timelineController?.showThread(thread);
+    }
+  }
+
+  void _requestOlderTimelineItems() {
+    final timelineController = widget.timelineController;
+    final reader = widget.sessionController?.threadItemListReader;
+    final threadId = _nonEmptyText(timelineController?.selectedThreadId);
+    final cursor = _normalizedText(timelineController?.olderItemsCursor);
+    if (timelineController == null ||
+        reader == null ||
+        threadId == null ||
+        cursor == null ||
+        timelineController.isLoadingOlderHistory) {
+      return;
+    }
+    timelineController.beginOlderHistoryLoad();
+    final generation = ++_timelineWindowGeneration;
+    unawaited(
+      _readOlderTimelineItems(
+        generation: generation,
+        reader: reader,
+        threadId: threadId,
+        cursor: cursor,
+      ),
+    );
+  }
+
+  Future<void> _readOlderTimelineItems({
+    required int generation,
+    required ThreadItemListReader reader,
+    required String threadId,
+    required String cursor,
+  }) async {
+    try {
+      final page = await reader.listItems(
+        threadId: threadId,
+        cursor: cursor,
+        limit: chatTimelineInitialItemLimit,
+        sortDirection: 'desc',
+      );
+      if (!mounted || generation != _timelineWindowGeneration) {
+        return;
+      }
+      final nextCursor = _normalizedText(page.nextCursor);
+      widget.timelineController?.prependThreadItems(
+        threadId: threadId,
+        items: page.items.reversed.toList(growable: false),
+        olderItemsCursor: nextCursor == cursor ? null : nextCursor,
+      );
+    } on Object catch (error) {
+      if (!mounted || generation != _timelineWindowGeneration) {
+        return;
+      }
+      widget.timelineController?.failOlderHistoryLoad(error);
     }
   }
 
@@ -4687,7 +4910,7 @@ class _ChatTuiStatusLine extends StatelessWidget {
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: colorScheme.onSurface,
                       fontWeight: FontWeight.w800,
-                      fontFamily: 'monospace',
+                      fontFamily: sadCoderMonospaceFontFamily,
                     ),
                   ),
                 ),
@@ -4716,7 +4939,7 @@ class _ChatTuiStatusLine extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
-                        fontFamily: 'monospace',
+                        fontFamily: sadCoderMonospaceFontFamily,
                       ),
                     ),
                   ),
@@ -4891,6 +5114,7 @@ class _ChatMainConversation extends StatefulWidget {
     required this.onReturnToMain,
     required this.timelineController,
     required this.showRawTranscript,
+    required this.onLoadOlderHistory,
   });
 
   final bool compact;
@@ -4899,6 +5123,7 @@ class _ChatMainConversation extends StatefulWidget {
   final VoidCallback onReturnToMain;
   final ChatTimelineController? timelineController;
   final bool showRawTranscript;
+  final VoidCallback onLoadOlderHistory;
 
   @override
   State<_ChatMainConversation> createState() => _ChatMainConversationState();
@@ -4909,6 +5134,9 @@ class _ChatMainConversationState extends State<_ChatMainConversation> {
   String? _lastSelectedThreadId;
   bool _nearBottom = true;
   bool _showJumpToLatest = false;
+  Offset? _jumpButtonOffset;
+
+  static const Size _jumpButtonSize = Size(46, 46);
 
   @override
   void initState() {
@@ -4943,6 +5171,9 @@ class _ChatMainConversationState extends State<_ChatMainConversation> {
       return;
     }
     final nearBottom = _scrollController.position.extentAfter < 96;
+    if (_scrollController.position.extentBefore < 96) {
+      widget.onLoadOlderHistory();
+    }
     if (nearBottom != _nearBottom || (_showJumpToLatest && nearBottom)) {
       setState(() {
         _nearBottom = nearBottom;
@@ -5026,28 +5257,92 @@ class _ChatMainConversationState extends State<_ChatMainConversation> {
               _ChatTimelinePanel(
                 controller: widget.timelineController,
                 showRaw: widget.showRawTranscript,
+                onRetryOlderHistory: widget.onLoadOlderHistory,
               ),
             ],
           ),
           if (_showJumpToLatest)
-            PositionedDirectional(
-              end: widget.compact ? 8 : 16,
-              bottom: widget.compact ? 8 : 12,
-              child: FilledButton.tonalIcon(
-                key: const ValueKey('chat-jump-to-latest'),
-                onPressed: _jumpToLatest,
-                icon: const Icon(Icons.south, size: 17),
-                label: Text(context.l10n.timelineJumpToLatest),
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final size = Size(
+                    constraints.maxWidth,
+                    constraints.maxHeight,
+                  );
+                  final offset = _clampJumpButtonOffset(
+                    _jumpButtonOffset ?? _defaultJumpButtonOffset(size),
+                    size,
+                  );
+                  if (_jumpButtonOffset != offset) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() => _jumpButtonOffset = offset);
+                      }
+                    });
+                  }
+                  return Stack(
+                    children: [
+                      Positioned(
+                        left: offset.dx,
+                        top: offset.dy,
+                        width: _jumpButtonSize.width,
+                        height: _jumpButtonSize.height,
+                        child: GestureDetector(
+                          key: const ValueKey('chat-jump-to-latest'),
+                          onPanUpdate: (details) {
+                            setState(() {
+                              _jumpButtonOffset = _clampJumpButtonOffset(
+                                offset + details.delta,
+                                size,
+                              );
+                            });
+                          },
+                          child: FloatingActionButton.small(
+                            heroTag: null,
+                            tooltip: context.l10n.timelineJumpToLatest,
+                            onPressed: _jumpToLatest,
+                            child: const Icon(Icons.south, size: 19),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
         ],
       ),
     );
   }
+
+  Offset _defaultJumpButtonOffset(Size size) {
+    return Offset(size.width - _jumpButtonSize.width - 16, size.height - 64);
+  }
+
+  Offset _clampJumpButtonOffset(Offset offset, Size size) {
+    const margin = 8.0;
+    final maxX = size.width - _jumpButtonSize.width - margin;
+    final maxY = size.height - _jumpButtonSize.height - margin;
+    return Offset(
+      _clampDouble(offset.dx, margin, maxX),
+      _clampDouble(offset.dy, margin, maxY),
+    );
+  }
+
+  double _clampDouble(double value, double min, double max) {
+    if (max < min) {
+      return min;
+    }
+    return value.clamp(min, max).toDouble();
+  }
 }
 
 class _ChatThreadSidebar extends StatelessWidget {
-  const _ChatThreadSidebar({required this.overlay, required this.child});
+  const _ChatThreadSidebar({
+    super.key,
+    required this.overlay,
+    required this.child,
+  });
 
   final bool overlay;
   final Widget child;
@@ -5617,7 +5912,8 @@ class _ThreadListTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(7),
         onTap: detailController == null
             ? null
-            : () => detailController!.readThread(thread.id),
+            : () =>
+                  detailController!.readThread(thread.id, includeTurns: false),
         child: Stack(
           children: [
             PositionedDirectional(
@@ -5695,10 +5991,15 @@ class _ThreadListTile extends StatelessWidget {
 }
 
 class _ChatTimelinePanel extends StatelessWidget {
-  const _ChatTimelinePanel({required this.controller, required this.showRaw});
+  const _ChatTimelinePanel({
+    required this.controller,
+    required this.showRaw,
+    required this.onRetryOlderHistory,
+  });
 
   final ChatTimelineController? controller;
   final bool showRaw;
+  final VoidCallback onRetryOlderHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -5708,17 +6009,25 @@ class _ChatTimelinePanel extends StatelessWidget {
     }
     return AnimatedBuilder(
       animation: controller,
-      builder: (context, _) =>
-          _ChatTimelineContent(controller: controller, showRaw: showRaw),
+      builder: (context, _) => _ChatTimelineContent(
+        controller: controller,
+        showRaw: showRaw,
+        onRetryOlderHistory: onRetryOlderHistory,
+      ),
     );
   }
 }
 
 class _ChatTimelineContent extends StatelessWidget {
-  const _ChatTimelineContent({required this.controller, required this.showRaw});
+  const _ChatTimelineContent({
+    required this.controller,
+    required this.showRaw,
+    required this.onRetryOlderHistory,
+  });
 
   final ChatTimelineController controller;
   final bool showRaw;
+  final VoidCallback onRetryOlderHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -5729,9 +6038,78 @@ class _ChatTimelineContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _TimelineOlderHistoryStatus(
+          controller: controller,
+          onRetry: onRetryOlderHistory,
+        ),
         for (final turn in turns)
           _TimelineTurnView(turn: turn, showRaw: showRaw),
       ],
+    );
+  }
+}
+
+class _TimelineOlderHistoryStatus extends StatelessWidget {
+  const _TimelineOlderHistoryStatus({
+    required this.controller,
+    required this.onRetry,
+  });
+
+  final ChatTimelineController controller;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = controller.olderHistoryStatus;
+    if (status == ChatTimelineHistoryStatus.idle) {
+      return const SizedBox.shrink();
+    }
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: DecoratedBox(
+        key: const ValueKey('timeline-older-history-status'),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLow,
+          border: Border.all(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            children: [
+              if (status == ChatTimelineHistoryStatus.loading)
+                const SizedBox(
+                  key: ValueKey('timeline-older-history-loading'),
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Icon(Icons.error_outline, size: 17, color: colorScheme.error),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  status == ChatTimelineHistoryStatus.loading
+                      ? 'Loading earlier history'
+                      : 'Earlier history failed',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: status == ChatTimelineHistoryStatus.failed
+                        ? colorScheme.error
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              if (status == ChatTimelineHistoryStatus.failed)
+                TextButton(
+                  key: const ValueKey('timeline-older-history-retry'),
+                  onPressed: onRetry,
+                  child: Text(context.l10n.workspaceFilesRetry),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -5917,48 +6295,51 @@ class _TimelineMessageItem extends StatelessWidget {
         ? colorScheme.primary.withValues(alpha: 0.22)
         : colorScheme.tertiary.withValues(alpha: 0.22);
     final alignment = isUser
-        ? AlignmentDirectional.centerStart
-        : AlignmentDirectional.centerEnd;
+        ? AlignmentDirectional.centerEnd
+        : AlignmentDirectional.centerStart;
     final bubble = ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 680),
-      child: DecoratedBox(
-        key: ValueKey('timeline-message-bubble-${item.itemId}'),
-        decoration: BoxDecoration(
-          color: bubbleColor,
-          border: Border.all(color: borderColor),
-          borderRadius: BorderRadiusDirectional.only(
-            topStart: const Radius.circular(8),
-            topEnd: const Radius.circular(8),
-            bottomStart: Radius.circular(isUser ? 2 : 8),
-            bottomEnd: Radius.circular(isUser ? 8 : 2),
+      child: SizedBox(
+        width: double.infinity,
+        child: DecoratedBox(
+          key: ValueKey('timeline-message-bubble-${item.itemId}'),
+          decoration: BoxDecoration(
+            color: bubbleColor,
+            border: Border.all(color: borderColor),
+            borderRadius: BorderRadiusDirectional.only(
+              topStart: const Radius.circular(8),
+              topEnd: const Radius.circular(8),
+              bottomStart: Radius.circular(isUser ? 8 : 2),
+              bottomEnd: Radius.circular(isUser ? 2 : 8),
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 9, 12, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _TimelineRoleLabel(
-                label: title,
-                foreground: accent,
-                background: accent.withValues(alpha: 0.10),
-              ),
-              if (body.isNotEmpty) ...[
-                const SizedBox(height: 7),
-                _TimelineMarkdownMessage(
-                  key: ValueKey('timeline-message-markdown-${item.itemId}'),
-                  text: body,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 9, 12, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _TimelineRoleLabel(
+                  label: title,
+                  foreground: accent,
+                  background: accent.withValues(alpha: 0.10),
                 ),
+                if (body.isNotEmpty) ...[
+                  const SizedBox(height: 7),
+                  _TimelineMarkdownMessage(
+                    key: ValueKey('timeline-message-markdown-${item.itemId}'),
+                    text: body,
+                  ),
+                ],
+                if (showRaw) ...[
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    rawJson,
+                    key: ValueKey('timeline-raw-${item.itemId}'),
+                  ),
+                ],
               ],
-              if (showRaw) ...[
-                const SizedBox(height: 8),
-                SelectableText(
-                  rawJson,
-                  key: ValueKey('timeline-raw-${item.itemId}'),
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ),
@@ -5966,9 +6347,10 @@ class _TimelineMessageItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Align(
+        key: ValueKey('timeline-message-align-${item.itemId}'),
         alignment: alignment,
         child: FractionallySizedBox(
-          widthFactor: 0.78,
+          widthFactor: 0.90,
           alignment: alignment,
           child: bubble,
         ),
@@ -6342,7 +6724,7 @@ class _CollapsibleTerminalOutputBlockState
               key: ValueKey('timeline-command-output-summary-${widget.itemId}'),
               style: TextStyle(
                 color: colors.terminalForeground,
-                fontFamily: 'monospace',
+                fontFamily: sadCoderMonospaceFontFamily,
               ),
             ),
           ],
@@ -6388,7 +6770,7 @@ class _TerminalOutputBlock extends StatelessWidget {
         text,
         style: TextStyle(
           color: colors.terminalForeground,
-          fontFamily: 'monospace',
+          fontFamily: sadCoderMonospaceFontFamily,
         ),
       ),
     );

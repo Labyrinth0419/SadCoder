@@ -226,6 +226,30 @@ void main() {
     expect(find.byKey(const ValueKey('chat-raw-rpc-panel')), findsNothing);
   });
 
+  testWidgets('sidebar opens and closes with a stable transition', (
+    tester,
+  ) async {
+    await _pumpChatPage(tester);
+
+    await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
+    await tester.pump(const Duration(milliseconds: 105));
+
+    expect(find.byKey(const ValueKey('chat-session-sidebar')), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is SlideTransition && widget.position.value.dx < 0,
+      ),
+      findsWidgets,
+    );
+
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('chat-session-sidebar')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('chat-session-sidebar')), findsNothing);
+  });
+
   testWidgets('advanced chat controls tolerate raw RPC without overrides', (
     tester,
   ) async {
@@ -7433,7 +7457,20 @@ void main() {
     final agentBubble = tester.getCenter(
       find.byKey(const ValueKey('timeline-message-bubble-assistant_1')),
     );
-    expect(userBubble.dx, lessThan(agentBubble.dx));
+    expect(userBubble.dx, greaterThan(agentBubble.dx));
+    final timelineWidth = tester
+        .getSize(find.byKey(const ValueKey('chat-main-conversation')))
+        .width;
+    final userBubbleWidth = tester
+        .getSize(find.byKey(const ValueKey('timeline-message-bubble-user_1')))
+        .width;
+    final agentBubbleWidth = tester
+        .getSize(
+          find.byKey(const ValueKey('timeline-message-bubble-assistant_1')),
+        )
+        .width;
+    expect(userBubbleWidth, greaterThan(timelineWidth * 0.72));
+    expect(agentBubbleWidth, greaterThan(timelineWidth * 0.72));
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('timeline-message-markdown-user_1')),
@@ -7452,6 +7489,61 @@ void main() {
       find.byKey(const ValueKey('timeline-message-plain-raw')),
       findsNothing,
     );
+  });
+
+  testWidgets('long bilingual markdown stays inside widened chat bubbles', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    final longText = [
+      '请检查这个非常长的中文句子是否会在气泡内部自动换行而不是撑破布局。',
+      'A long English sentence should wrap naturally inside the bubble without horizontal overflow.',
+      '```dart',
+      'final message = "this code block should stay constrained";',
+      '```',
+    ].join('\n\n');
+
+    timelineController.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Long markdown',
+        'ephemeral': false,
+        'turns': [
+          {
+            'id': 'turn_1',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': [
+              {'id': 'user_1', 'type': 'userMessage', 'text': longText},
+              {'id': 'assistant_1', 'type': 'agentMessage', 'text': longText},
+            ],
+          },
+        ],
+      }),
+    );
+
+    await _pumpChatPage(tester, timelineController: timelineController);
+    await tester.pumpAndSettle();
+
+    final timelineWidth = tester
+        .getSize(find.byKey(const ValueKey('chat-main-conversation')))
+        .width;
+    for (final key in const [
+      ValueKey('timeline-message-bubble-user_1'),
+      ValueKey('timeline-message-bubble-assistant_1'),
+    ]) {
+      final bubbleWidth = tester.getSize(find.byKey(key)).width;
+      expect(bubbleWidth, lessThanOrEqualTo(timelineWidth * 0.94));
+      expect(bubbleWidth, greaterThan(timelineWidth * 0.80));
+    }
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('very long chat messages fall back to selectable raw text', (
@@ -7539,8 +7631,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('chat-jump-to-latest')), findsOneWidget);
+    final jumpFinder = find.byKey(const ValueKey('chat-jump-to-latest'));
+    final beforeDrag = tester.getTopLeft(jumpFinder);
+    await tester.drag(jumpFinder, const Offset(-120, -70));
+    await tester.pump();
+    final afterDrag = tester.getTopLeft(jumpFinder);
+    expect(afterDrag.dx, lessThan(beforeDrag.dx));
+    expect(afterDrag.dy, lessThan(beforeDrag.dy));
+    expect(afterDrag.dx, greaterThanOrEqualTo(0));
+    expect(afterDrag.dy, greaterThanOrEqualTo(0));
 
-    await tester.tap(find.byKey(const ValueKey('chat-jump-to-latest')));
+    await tester.tap(jumpFinder);
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('chat-jump-to-latest')), findsNothing);
@@ -7597,6 +7698,240 @@ void main() {
     expect(find.byKey(const ValueKey('chat-jump-to-latest')), findsNothing);
     expect(find.textContaining('Thread thr_2 message 23'), findsOneWidget);
   });
+
+  testWidgets('thread selection loads a bounded latest item page', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(480, 620);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final approvalController = ApprovalStateController();
+    final itemReader = _RecordingThreadItemListReader([
+      ThreadItemsPage(
+        nextCursor: 'older_1',
+        items: [
+          for (var i = 99; i >= 20; i--)
+            ThreadItemSummary.fromJson({
+              'id': 'item_$i',
+              'turnId': 'turn_1',
+              'type': 'agentMessage',
+              'text': 'Paged message $i',
+            }),
+        ],
+      ),
+    ]);
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      threadItemListReader: itemReader,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_1',
+            'sessionId': 'sess_1',
+            'preview': 'Paged thread',
+            'ephemeral': false,
+            'turns': <Object?>[],
+          }),
+        ),
+      ),
+    );
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    addTearDown(detailController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_1', includeTurns: false);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+      timelineController: timelineController,
+    );
+    await tester.pumpAndSettle();
+
+    expect(itemReader.calls, hasLength(1));
+    expect(itemReader.calls.single.limit, chatTimelineInitialItemLimit);
+    expect(itemReader.calls.single.sortDirection, 'desc');
+    expect(timelineController.itemCount, chatTimelineInitialItemLimit);
+    expect(find.textContaining('Paged message 99'), findsOneWidget);
+    expect(find.textContaining('Paged message 0'), findsNothing);
+  });
+
+  testWidgets(
+    'scrolling to top loads older timeline items without duplicates',
+    (tester) async {
+      tester.view.physicalSize = const Size(480, 520);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final approvalController = ApprovalStateController();
+      final itemReader = _RecordingThreadItemListReader([
+        ThreadItemsPage(
+          nextCursor: 'older_1',
+          items: [
+            for (var i = 49; i >= 20; i--)
+              ThreadItemSummary.fromJson({
+                'id': 'item_$i',
+                'turnId': 'turn_1',
+                'type': 'agentMessage',
+                'text': 'Paged message $i',
+              }),
+          ],
+        ),
+        ThreadItemsPage(
+          nextCursor: 'older_2',
+          items: [
+            for (var i = 20; i >= 10; i--)
+              ThreadItemSummary.fromJson({
+                'id': 'item_$i',
+                'turnId': 'turn_1',
+                'type': 'agentMessage',
+                'text': 'Paged message $i',
+              }),
+          ],
+        ),
+      ]);
+      final starter = _FakeSessionStarter(
+        threadListReader: const _FakeThreadListReader(
+          page: ThreadListPage(threads: []),
+        ),
+        threadItemListReader: itemReader,
+      );
+      final sessionController = CodexSessionStateController(
+        connector: starter,
+        approvalController: approvalController,
+      );
+      final detailController = ThreadDetailController(
+        readerProvider: () => _FakeThreadDetailReader(
+          detail: ThreadDetail(
+            thread: ThreadSummary.fromJson({
+              'id': 'thr_1',
+              'sessionId': 'sess_1',
+              'preview': 'Paged thread',
+              'ephemeral': false,
+              'turns': <Object?>[],
+            }),
+          ),
+        ),
+      );
+      final timelineController = ChatTimelineController();
+      addTearDown(timelineController.dispose);
+      addTearDown(detailController.dispose);
+      addTearDown(sessionController.dispose);
+      addTearDown(approvalController.dispose);
+
+      await sessionController.connect(_profile);
+      await detailController.readThread('thr_1', includeTurns: false);
+      await _pumpChatPage(
+        tester,
+        sessionController: sessionController,
+        threadDetailController: detailController,
+        timelineController: timelineController,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('timeline-message-bubble-item_20')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(itemReader.calls, hasLength(2));
+      expect(itemReader.calls.last.cursor, 'older_1');
+      expect(timelineController.cursor.itemIds.where((id) => id == 'item_20'), [
+        'item_20',
+      ]);
+      expect(find.textContaining('Paged message 10'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'older timeline load failure keeps current items and offers retry',
+    (tester) async {
+      tester.view.physicalSize = const Size(480, 520);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final approvalController = ApprovalStateController();
+      final itemReader = _RecordingThreadItemListReader([
+        ThreadItemsPage(
+          nextCursor: 'older_1',
+          items: [
+            for (var i = 30; i >= 1; i--)
+              ThreadItemSummary.fromJson({
+                'id': 'item_$i',
+                'turnId': 'turn_1',
+                'type': 'agentMessage',
+                'text': 'Paged message $i',
+              }),
+          ],
+        ),
+        StateError('older page failed'),
+      ]);
+      final starter = _FakeSessionStarter(
+        threadListReader: const _FakeThreadListReader(
+          page: ThreadListPage(threads: []),
+        ),
+        threadItemListReader: itemReader,
+      );
+      final sessionController = CodexSessionStateController(
+        connector: starter,
+        approvalController: approvalController,
+      );
+      final detailController = ThreadDetailController(
+        readerProvider: () => _FakeThreadDetailReader(
+          detail: ThreadDetail(
+            thread: ThreadSummary.fromJson({
+              'id': 'thr_1',
+              'sessionId': 'sess_1',
+              'preview': 'Paged thread',
+              'ephemeral': false,
+              'turns': <Object?>[],
+            }),
+          ),
+        ),
+      );
+      final timelineController = ChatTimelineController();
+      addTearDown(timelineController.dispose);
+      addTearDown(detailController.dispose);
+      addTearDown(sessionController.dispose);
+      addTearDown(approvalController.dispose);
+
+      await sessionController.connect(_profile);
+      await detailController.readThread('thr_1', includeTurns: false);
+      await _pumpChatPage(
+        tester,
+        sessionController: sessionController,
+        threadDetailController: detailController,
+        timelineController: timelineController,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('timeline-message-bubble-item_1')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(timelineController.cursor.itemIds, contains('item_30'));
+      expect(
+        find.byKey(const ValueKey('timeline-older-history-retry')),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('renders structured command file and MCP timeline items', (
     tester,
@@ -8287,6 +8622,56 @@ class _NoopThreadItemListReader implements ThreadItemListReader {
   }
 }
 
+class _RecordingThreadItemListReader implements ThreadItemListReader {
+  _RecordingThreadItemListReader(this._results);
+
+  final List<Object> _results;
+  final calls = <_ThreadItemListCall>[];
+  int _index = 0;
+
+  @override
+  Future<ThreadItemsPage> listItems({
+    required String threadId,
+    String? turnId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+  }) async {
+    calls.add(
+      _ThreadItemListCall(
+        threadId: threadId,
+        turnId: turnId,
+        cursor: cursor,
+        limit: limit,
+        sortDirection: sortDirection,
+      ),
+    );
+    final resultIndex = _index < _results.length ? _index : _results.length - 1;
+    final result = _results[resultIndex];
+    _index++;
+    if (result is ThreadItemsPage) {
+      return result;
+    }
+    throw result;
+  }
+}
+
+class _ThreadItemListCall {
+  const _ThreadItemListCall({
+    required this.threadId,
+    this.turnId,
+    this.cursor,
+    this.limit,
+    this.sortDirection,
+  });
+
+  final String threadId;
+  final String? turnId;
+  final String? cursor;
+  final int? limit;
+  final String? sortDirection;
+}
+
 class _FakeSessionStarter implements CodexSessionConnectionStarter {
   const _FakeSessionStarter({
     required this.threadListReader,
@@ -8297,6 +8682,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
         const _FakeThreadBackgroundTerminalRunner(),
     this.threadGoalRunner = const _FakeThreadGoalRunner(),
     this.threadReviewRunner = const _FakeThreadReviewRunner(),
+    this.threadItemListReader = const _NoopThreadItemListReader(),
     this.skillListReader = const _FakeSkillListReader(),
     this.pluginListReader = const _FakePluginListReader(),
     this.pluginDetailReader = const _FakePluginDetailReader(),
@@ -8319,6 +8705,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final ThreadBackgroundTerminalRunner threadBackgroundTerminalRunner;
   final ThreadGoalRunner threadGoalRunner;
   final ThreadReviewRunner threadReviewRunner;
+  final ThreadItemListReader threadItemListReader;
   final SkillListReader skillListReader;
   final PluginListReader pluginListReader;
   final PluginDetailReader pluginDetailReader;
@@ -8349,6 +8736,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
         threadBackgroundTerminalRunner: threadBackgroundTerminalRunner,
         threadGoalRunner: threadGoalRunner,
         threadReviewRunner: threadReviewRunner,
+        threadItemListReader: threadItemListReader,
         skillListReader: skillListReader,
         pluginListReader: pluginListReader,
         pluginDetailReader: pluginDetailReader,
@@ -8374,6 +8762,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       threadBackgroundTerminalRunner: threadBackgroundTerminalRunner,
       threadGoalRunner: threadGoalRunner,
       threadReviewRunner: threadReviewRunner,
+      threadItemListReader: threadItemListReader,
       skillListReader: skillListReader,
       pluginListReader: pluginListReader,
       pluginDetailReader: pluginDetailReader,
@@ -8402,6 +8791,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.threadBackgroundTerminalRunner,
     required this.threadGoalRunner,
     required this.threadReviewRunner,
+    required this.threadItemListReader,
     required this.skillListReader,
     required this.pluginListReader,
     required this.pluginDetailReader,
@@ -8432,8 +8822,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
       const _NoopThreadTurnListReader();
 
   @override
-  ThreadItemListReader get threadItemListReader =>
-      const _NoopThreadItemListReader();
+  final ThreadItemListReader threadItemListReader;
 
   @override
   final TurnRunner turnRunner;
@@ -8591,6 +8980,7 @@ class _FakeThreadShellCommandConnection extends _FakeSessionConnection
     required super.threadBackgroundTerminalRunner,
     required super.threadGoalRunner,
     required super.threadReviewRunner,
+    required super.threadItemListReader,
     required super.skillListReader,
     required super.pluginListReader,
     required super.pluginDetailReader,

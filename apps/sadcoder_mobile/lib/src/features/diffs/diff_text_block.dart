@@ -142,7 +142,7 @@ class _DiffLine extends StatelessWidget {
               : isHeader
               ? colors.diffHeaderForeground
               : colors.codeForeground,
-          fontFamily: 'monospace',
+          fontFamily: sadCoderMonospaceFontFamily,
         ),
       ),
     );

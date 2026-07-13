@@ -143,6 +143,114 @@ void main() {
     expect(controller.turns.single.items[2].output, 'tests passed');
   });
 
+  test('showThread keeps a bounded latest item window', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Long thread',
+        'ephemeral': false,
+        'turns': [
+          {
+            'id': 'turn_1',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': [
+              for (var i = 0; i < 120; i++)
+                {'id': 'item_$i', 'type': 'agentMessage', 'text': 'Message $i'},
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(controller.itemCount, chatTimelineInitialItemLimit);
+    expect(controller.cursor.itemIds.first, 'item_40');
+    expect(controller.cursor.itemIds.last, 'item_119');
+  });
+
+  test('thread item windows keep latest items and expose older cursor', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.showThreadItemWindow(
+      thread: ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Items',
+        'ephemeral': false,
+      }),
+      olderItemsCursor: 'older_1',
+      items: [
+        for (var i = 0; i < 90; i++) _threadItem('item_$i', 'Message $i'),
+      ],
+    );
+
+    expect(controller.selectedThreadId, 'thr_1');
+    expect(controller.itemCount, chatTimelineInitialItemLimit);
+    expect(controller.olderItemsCursor, 'older_1');
+    expect(controller.cursor.itemIds.first, 'item_10');
+    expect(controller.cursor.itemIds.last, 'item_89');
+  });
+
+  test('prepended older item pages dedupe with current timeline', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    final thread = ThreadSummary.fromJson({
+      'id': 'thr_1',
+      'sessionId': 'sess_1',
+      'preview': 'Items',
+      'ephemeral': false,
+    });
+    controller.showThreadItemWindow(
+      thread: thread,
+      olderItemsCursor: 'older_1',
+      items: [
+        _threadItem('item_2', 'Current 2', turnId: 'turn_1'),
+        _threadItem('item_3', 'Current 3', turnId: 'turn_1'),
+      ],
+    );
+
+    controller.prependThreadItems(
+      threadId: 'thr_1',
+      olderItemsCursor: 'older_2',
+      items: [
+        _threadItem('item_1', 'Older 1', turnId: 'turn_1'),
+        _threadItem('item_2', 'Older duplicate', turnId: 'turn_1'),
+      ],
+    );
+
+    expect(controller.cursor.itemIds, ['item_1', 'item_2', 'item_3']);
+    expect(controller.turns.single.items[1].text, 'Current 2');
+    expect(controller.olderItemsCursor, 'older_2');
+  });
+
+  test('older history failure preserves current timeline for retry', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.showThreadItemWindow(
+      thread: ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Items',
+        'ephemeral': false,
+      }),
+      olderItemsCursor: 'older_1',
+      items: [_threadItem('item_1', 'Current')],
+    );
+    controller.beginOlderHistoryLoad();
+    controller.failOlderHistoryLoad(StateError('network'));
+
+    expect(controller.olderHistoryStatus, ChatTimelineHistoryStatus.failed);
+    expect(controller.cursor.itemIds, ['item_1']);
+    expect(controller.olderItemsCursor, 'older_1');
+  });
+
   test('cursor reports selected thread and seen turn item ids', () {
     final controller = ChatTimelineController();
     addTearDown(controller.dispose);

@@ -9,7 +9,7 @@ class WorkspaceSyntaxHighlighter extends SyntaxHighlighter {
     this.language,
     TextStyle? baseStyle,
   }) : _baseStyle = (baseStyle ?? const TextStyle()).copyWith(
-         fontFamily: 'monospace',
+         fontFamily: sadCoderMonospaceFontFamily,
          color: colors.codeForeground,
        ),
        _keywordStyle = TextStyle(

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../../i18n/app_localizations.dart';
+import '../../theme/sadcoder_theme.dart';
 
 typedef RawRpcSender =
     Future<Map<String, Object?>> Function({
@@ -259,7 +260,7 @@ class _RawRpcOutput extends StatelessWidget {
             SelectableText(
               text,
               style: theme.textTheme.bodySmall?.copyWith(
-                fontFamily: 'monospace',
+                fontFamily: sadCoderMonospaceFontFamily,
                 color: foreground,
               ),
             ),

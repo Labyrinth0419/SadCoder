@@ -324,7 +324,7 @@ class _RawPreview extends StatelessWidget {
         child: SelectableText(
           content,
           style: TextStyle(
-            fontFamily: 'monospace',
+            fontFamily: sadCoderMonospaceFontFamily,
             color: colors.codeForeground,
           ),
         ),
@@ -343,7 +343,7 @@ class _CodePreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = SadCoderThemeColors.of(context);
     final base = Theme.of(context).textTheme.bodyMedium?.copyWith(
-      fontFamily: 'monospace',
+      fontFamily: sadCoderMonospaceFontFamily,
       color: colors.codeForeground,
     );
     final highlighter = WorkspaceSyntaxHighlighter(

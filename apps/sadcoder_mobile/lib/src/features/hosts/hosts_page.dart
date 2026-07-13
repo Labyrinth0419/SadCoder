@@ -20,6 +20,7 @@ import '../../ssh/ssh_key_generator.dart';
 import '../../ssh/ssh_profile.dart';
 import '../../ssh/ssh_profile_store.dart';
 import '../../ssh/ssh_public_key_exporter.dart';
+import '../../theme/sadcoder_theme.dart';
 import '../../threads/thread_cache_store.dart';
 import '../../threads/thread_item_cache_store.dart';
 import '../../threads/thread_timeline_cursor_store.dart';
@@ -1407,9 +1408,9 @@ class _HostImportActionsPanel extends StatelessWidget {
                     child: SelectableText(
                       key: const ValueKey('host-generated-public-key-text'),
                       generatedKeyPair!.publicKeyOpenSsh,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontFamily: sadCoderMonospaceFontFamily,
+                      ),
                     ),
                   ),
                 ),

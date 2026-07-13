@@ -868,6 +868,8 @@ MVP 可以简化为底部导航：
 - 侧聊提示面板也已去掉 side/main thread id，仅保留侧聊标题、触发命令和返回主线按钮；默认对话画布不再显示内部会话详情。
 - 本轮 Chat 可见 UI 里程碑已将 user / Codex 文本改为左右气泡式阅读流，并默认复用 Files Markdown 预览的 MarkdownBody、代码高亮和图片占位策略；command/file/tool/reasoning 仍保持中性 timeline block，超长文本回退 selectable raw，长 command output 默认折叠并提供行数/字节数、尾部摘要和展开动作。Composer 已压缩为多行自动换行输入，移除输入模式/发送快捷键/terminal pet helper 文案，高级控制入口迁入左上三横线侧栏，timeline 增加跳到最新行为：同一 thread 新事件尊重用户历史位置，切换 thread/session 默认滚到最新。
 - 后续 Chat 输入框修复已将 composer 改为受最大高度约束的真正多行输入区：移动端键盘动作保留换行，长文本软换行后输入框增高到上限再内部滚动；硬件 Enter / Ctrl+Enter 发送仍按 keymap 执行，widget 测试覆盖长中文输入不再把布局向右撑开。
+- 本轮 Chat UI / timeline 性能里程碑已修正消息方向契约：user 消息固定右侧、Codex/assistant 消息固定左侧，文本气泡使用约 90% 可用 timeline 宽度且保留左右方向感；command/file/tool/reasoning 仍为中性 timeline block。Chat timeline 新增可拖动的浮层“跳到最新”按钮，位置限制在对话内容区域内，不占 composer 或 timeline layout 空间；左上三横线会话侧栏使用 210ms ease-out slide/fade 过渡，打开/关闭不再跳变。全局正文、中文、英文、代码块和 terminal/diff/raw 输出统一到随包发布的 LXGW WenKai Mono 字体，并在 `assets/fonts` 保留 OFL 授权文本。
+- 本轮 Chat timeline 已改为有界窗口与按需分页：普通 thread 选择先读取 metadata，再通过 `thread/items/list(sortDirection=desc, limit=80)` 拉最新窗口，向上滚动接近顶部后按 cursor 继续加载更早 item page；controller 对 item id 去重，失败时保留当前 timeline 并显示 retry 状态，live event / reconnect recovery 的 turn backfill 路径仍保留且同样受窗口上限保护。后续仍需根据真实 app-server cursor 语义做端到端设备验证，确认 `nextCursor` 在各 Codex 版本上均表示更早历史页。
 - 已补齐 active turn 文本追加路径：`CodexAppServerClient`、`CodexTurnRunner`、`TurnController` 和 Chat composer 已支持 `turn/steer`，active turn 中发送普通文本会带 `expectedTurnId` steer 当前回合，而不是启动新 turn 或禁用输入；本次 turn overrides 仍只随 `turn/start` 消耗，不会被 steer 清掉。
 
 ### 9.3 Approvals 页面
@@ -1019,6 +1021,7 @@ MVP 可以简化为底部导航：
 - 本轮 UI polish 将工作区 root 折叠入口补充为当前 root 路径摘要：默认仍不显示输入框和保存默认 root 动作，用户展开后才可手动指定 root、恢复默认 root 或保存默认 workspace；顶部仍保留 `Root: ...` 状态文本，侧栏折叠标题只显示路径，避免主区域和侧栏重复抢占空间。
 - 本轮可见 UI 里程碑已补文件页 widget 契约：`workspace-files-root-selector`、紧凑 `workspace-files-filter` 和文件树入口均属于左侧 `workspace-files-sidebar`，主区域仍由 `workspace-files-main` 承担 status page 或打开文件预览，避免工作区选择/搜索控件回流到主内容区。
 - 本轮 Chat 可见 UI 里程碑已在 Chat 左侧会话侧栏顶部显示当前 workspace/cwd 摘要，并把高级控制入口收归侧栏；cwd/session/turn override 等调试信息不回流到主对话流。Files 页面继续负责完整 root selector、默认工作区保存、搜索和文件树，Chat 只展示当前上下文摘要与入口。
+- 本轮 Chat UI / timeline 性能里程碑没有改变 Files 只读边界；9.6 仍以 Files 页面作为完整工作区选择、默认 workspace、搜索和文件树入口。Chat 侧栏只保留当前 workspace/cwd 摘要与切换入口，避免把 cwd/session/turn override 调试信息重新塞回主对话流。
 - 已覆盖路径归一化、目录响应 path/name 校验、目录分页 `nextCursor`/`cursor`、拒绝 `..` / 绝对 child path、符号链接祖先拒绝、二进制文件拒绝、UTF-8 range 边界、后续 chunk 失败重试和大 Markdown raw 保护。
 - 已补充文件页 widget 覆盖：可手动指定工作区 root，目录读取使用该 root；可保存 App 默认工作区 root 到 cwd 覆盖，并可从临时 root 恢复默认 root。
 - 已补充文件页只读边界 widget 覆盖：打开文件预览后仍不出现 terminal、新建文件/文件夹、重命名、删除、编辑、保存或写文件入口，确保后续 UI polish 不会把受控编辑能力混入只读 Files 页面。
@@ -1058,6 +1061,7 @@ MVP 可以简化为底部导航：
 - 已落地 Chat 顶栏主机选择器、Settings 二级菜单、candy/lagoon/ember palette 和斜杠命令高级可见性开关。
 - Settings 菜单已明确收敛为最多二级：一级分组为 Codex、Interface、Connection、System，二级才进入 Permissions、Account、Models、Appearance、SSH、Diagnostics；Diagnostics 默认折叠在 System 下，避免低频诊断项和常用设置平铺混杂，窄屏仍保持“菜单页 -> 具体设置页”的单详情导航。
 - 本轮 Chat 可见 UI 里程碑已压低 AppShell 底部 `NavigationBar` 高度到 58px，先减少主对话页被全局导航占用的垂直空间。后续二级 Chat detail 路由方案记录为：主页 -> 对话 -> 选择已连接服务器/session 或新建 session -> 对话详情；对话详情页隐藏 bottom nav，由详情页自己的左上返回/侧栏入口承担导航。
+- 本轮 Chat UI / timeline 性能里程碑保持 9.7.1 的二级 Chat detail 路由为后续设计，不在本轮重做导航架构；当前只增强 Chat 页面内侧栏动效、气泡阅读宽度、字体一致性和 timeline 按需加载。
 - 已落地配置覆盖三层恢复入口：Settings 可一键清除 App 默认覆盖、会话覆盖和本次覆盖并回到服务器默认来源；本地恢复动作不伪造 `thread/settings/update` 普通字段显式清理语义。
 - 已落地 per-host pending approval 聚合与动作路由：Approvals 页面展示所有已连接 host 的待审批项，审批响应回到所属 host 的 `ApprovalStateController`。
 - 已落地 per-host thread summary/detail cache 持久化/恢复：每个 host 的最近线程列表、选中 threadId 和当前 thread detail 通过 `ThreadCacheStore` 独立保存，重建 host UI state 时优先恢复缓存，再由远端权威 thread/detail 读取刷新。

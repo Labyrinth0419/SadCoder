@@ -179,4 +179,15 @@ void main() {
       greaterThan(medium.textTheme.bodyMedium!.fontSize!),
     );
   });
+
+  test('theme uses LXGW WenKai Mono as the global text family', () {
+    final theme = sadCoderThemeData(
+      colorPalette: AppColorPalette.sadcoder,
+      brightness: Brightness.light,
+    );
+
+    expect(theme.textTheme.bodyMedium!.fontFamily, sadCoderFontFamily);
+    expect(theme.primaryTextTheme.bodyMedium!.fontFamily, sadCoderFontFamily);
+    expect(sadCoderMonospaceFontFamily, sadCoderFontFamily);
+  });
 }

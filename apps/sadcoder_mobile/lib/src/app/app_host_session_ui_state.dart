@@ -285,8 +285,13 @@ class AppHostSessionUiState {
         );
       case ThreadDetailStatus.loaded:
         final detail = threadDetailController.detail;
-        if (detail != null) {
-          timelineController.showThread(detail.thread);
+        if (detail != null &&
+            detail.thread.id == threadDetailController.selectedThreadId) {
+          if (detail.thread.turns.isEmpty) {
+            timelineController.selectThread(detail.thread.id);
+          } else {
+            timelineController.showThread(detail.thread);
+          }
         }
         _recoverCurrentThreadIfCursorGapPending();
       case ThreadDetailStatus.idle:

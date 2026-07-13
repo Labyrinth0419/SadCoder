@@ -252,7 +252,7 @@ class _TerminalOutputPanel extends StatelessWidget {
             output,
             key: const ValueKey('terminal-output-text'),
             style: theme.textTheme.bodyMedium?.copyWith(
-              fontFamily: 'monospace',
+              fontFamily: sadCoderMonospaceFontFamily,
               color: sadCoderColors?.terminalForeground,
             ),
           ),

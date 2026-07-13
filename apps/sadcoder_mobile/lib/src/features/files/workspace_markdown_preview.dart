@@ -16,7 +16,7 @@ class WorkspaceMarkdownPreview extends StatelessWidget {
     final colors = SadCoderThemeColors.of(context);
     final bodyStyle = theme.textTheme.bodyMedium;
     final codeStyle = bodyStyle?.copyWith(
-      fontFamily: 'monospace',
+      fontFamily: sadCoderMonospaceFontFamily,
       color: colors.codeForeground,
     );
 

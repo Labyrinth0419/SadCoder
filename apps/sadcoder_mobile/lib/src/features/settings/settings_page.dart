@@ -23,6 +23,7 @@ import '../../models/model_list_controller.dart';
 import '../../models/model_list_reader.dart';
 import '../../protocol/codex_client_info.dart';
 import '../../security/permission_risk.dart';
+import '../../theme/sadcoder_theme.dart';
 import '../appearance/app_color_palette_picker.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -1513,9 +1514,9 @@ class _AgentLogContent extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: SelectableText(
             content,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontFamily: sadCoderMonospaceFontFamily,
+            ),
           ),
         ),
       ),

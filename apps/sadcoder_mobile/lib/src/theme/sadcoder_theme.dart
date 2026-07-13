@@ -2,14 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../appearance/app_appearance_controller.dart';
 
+const sadCoderFontFamily = 'LXGW WenKai Mono';
+const sadCoderMonospaceFontFamily = sadCoderFontFamily;
+
 ThemeData sadCoderThemeData({
   required AppColorPalette colorPalette,
   required Brightness brightness,
   AppFontSizePreference fontSize = AppFontSizePreference.medium,
 }) {
-  final baseTextTheme = _sadCoderBaseTextTheme();
+  final baseTextTheme = _sadCoderBaseTextTheme().apply(
+    fontFamily: sadCoderFontFamily,
+  );
   final theme = ThemeData(
     useMaterial3: true,
+    fontFamily: sadCoderFontFamily,
     colorScheme: sadCoderColorScheme(
       colorPalette: colorPalette,
       brightness: brightness,
