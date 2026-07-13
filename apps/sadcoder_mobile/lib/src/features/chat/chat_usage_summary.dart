@@ -2,6 +2,7 @@ import '../../i18n/app_localizations.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import '../../usage/account_usage_snapshot_reader.dart';
 import '../../usage/thread_token_usage_controller.dart';
+import 'chat_summary_formatting.dart';
 
 String buildAccountUsageSummary({
   required AppLocalizations l10n,
@@ -16,9 +17,12 @@ String buildAccountUsageSummary({
   }
 
   if (controller.status == AccountUsageSnapshotStatus.failed) {
-    final error = controller.error;
     lines.add(
-      '${l10n.accountUsageLoadFailed}${error == null ? '' : ': $error'}',
+      chatSummaryMessageWithOptionalDetail(
+        l10n,
+        l10n.accountUsageLoadFailed,
+        controller.error,
+      ),
     );
     lines.addAll(threadTokenUsageStatusLines(l10n, threadUsage));
     return lines.join('\n');
@@ -77,8 +81,7 @@ Iterable<String> accountUsageStatusLines(
   AccountUsageSnapshotController controller,
 ) sync* {
   if (controller.status == AccountUsageSnapshotStatus.failed) {
-    final error = controller.error;
-    yield '${l10n.accountUsageStatus}: ${l10n.accountUsageLoadFailed}${error == null ? '' : ': $error'}';
+    yield '${l10n.accountUsageStatus}: ${chatSummaryMessageWithOptionalDetail(l10n, l10n.accountUsageLoadFailed, controller.error)}';
     return;
   }
 

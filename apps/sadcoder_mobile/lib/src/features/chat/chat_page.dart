@@ -58,6 +58,7 @@ import 'chat_timeline_controller.dart';
 import 'chat_goal_summary.dart';
 import 'chat_mcp_summary.dart';
 import 'chat_review_summary.dart';
+import 'chat_summary_formatting.dart';
 import 'chat_usage_summary.dart';
 import 'config_override_controls.dart';
 import 'config_override_labels.dart';
@@ -854,7 +855,14 @@ class _ChatPageState extends State<ChatPage> {
       );
       return buildSkillsSummary(l10n: l10n, page: page);
     } on Object catch (error) {
-      return '${l10n.skillsTitle}\n${l10n.skillsLoadFailed}: $error';
+      return [
+        l10n.skillsTitle,
+        chatSummaryMessageWithOptionalDetail(
+          l10n,
+          l10n.skillsLoadFailed,
+          error,
+        ),
+      ].join('\n');
     }
   }
 
@@ -895,7 +903,14 @@ class _ChatPageState extends State<ChatPage> {
         );
         return buildPluginDetailSummary(l10n: l10n, detail: detail);
       } on Object catch (error) {
-        return '${l10n.pluginsTitle}\n${l10n.pluginsLoadFailed}: $error';
+        return [
+          l10n.pluginsTitle,
+          chatSummaryMessageWithOptionalDetail(
+            l10n,
+            l10n.pluginsLoadFailed,
+            error,
+          ),
+        ].join('\n');
       }
     }
     if (install || uninstall) {
@@ -916,7 +931,14 @@ class _ChatPageState extends State<ChatPage> {
         }
         return lines.join('\n');
       } on Object catch (error) {
-        return '${l10n.pluginsTitle}\n${l10n.pluginMutationFailed}: $error';
+        return [
+          l10n.pluginsTitle,
+          chatSummaryMessageWithOptionalDetail(
+            l10n,
+            l10n.pluginMutationFailed,
+            error,
+          ),
+        ].join('\n');
       }
     }
 
@@ -931,7 +953,14 @@ class _ChatPageState extends State<ChatPage> {
       );
       return buildPluginsSummary(l10n: l10n, page: page);
     } on Object catch (error) {
-      return '${l10n.pluginsTitle}\n${l10n.pluginsLoadFailed}: $error';
+      return [
+        l10n.pluginsTitle,
+        chatSummaryMessageWithOptionalDetail(
+          l10n,
+          l10n.pluginsLoadFailed,
+          error,
+        ),
+      ].join('\n');
     }
   }
 
@@ -950,7 +979,10 @@ class _ChatPageState extends State<ChatPage> {
       final page = await reader.listHooks(cwds: _currentWorkspaceCwds());
       return buildHooksSummary(l10n: l10n, page: page);
     } on Object catch (error) {
-      return '${l10n.hooksTitle}\n${l10n.hooksLoadFailed}: $error';
+      return [
+        l10n.hooksTitle,
+        chatSummaryMessageWithOptionalDetail(l10n, l10n.hooksLoadFailed, error),
+      ].join('\n');
     }
   }
 
@@ -972,7 +1004,10 @@ class _ChatPageState extends State<ChatPage> {
       );
       return buildAppsSummary(l10n: l10n, page: page);
     } on Object catch (error) {
-      return '${l10n.appsTitle}\n${l10n.appsLoadFailed}: $error';
+      return [
+        l10n.appsTitle,
+        chatSummaryMessageWithOptionalDetail(l10n, l10n.appsLoadFailed, error),
+      ].join('\n');
     }
   }
 
@@ -1101,7 +1136,10 @@ class _ChatPageState extends State<ChatPage> {
       );
       return buildGitDiffSummary(l10n: l10n, result: result);
     } on Object catch (error) {
-      return '${l10n.diffTitle}\n${l10n.diffLoadFailed}: $error';
+      return [
+        l10n.diffTitle,
+        chatSummaryMessageWithOptionalDetail(l10n, l10n.diffLoadFailed, error),
+      ].join('\n');
     }
   }
 
@@ -3593,7 +3631,11 @@ class _PermissionProfileSelectorContent extends StatelessWidget {
         ] else if (controller.status == PermissionProfileListStatus.failed) ...[
           const SizedBox(height: 8),
           Text(
-            '${l10n.permissionProfileLoadFailed}: ${controller.error}',
+            chatSummaryMessageWithOptionalDetail(
+              l10n,
+              l10n.permissionProfileLoadFailed,
+              controller.error,
+            ),
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         ] else if (controller.status == PermissionProfileListStatus.loaded &&

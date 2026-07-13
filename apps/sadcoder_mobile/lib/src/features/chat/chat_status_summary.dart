@@ -12,6 +12,7 @@ import '../../threads/thread_list_controller.dart';
 import '../../turns/turn_controller.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import '../../usage/thread_token_usage_controller.dart';
+import 'chat_summary_formatting.dart';
 import 'chat_timeline_controller.dart';
 import 'chat_usage_summary.dart';
 import 'config_override_labels.dart';
@@ -139,8 +140,7 @@ Iterable<String> _serverConfigStatusLines(
 ) sync* {
   final snapshot = controller.snapshot;
   if (controller.status == CodexConfigSnapshotStatus.failed) {
-    final error = controller.error;
-    yield '${l10n.serverConfigSnapshot}: ${l10n.serverConfigLoadFailed}${error == null ? '' : ': $error'}';
+    yield '${l10n.serverConfigSnapshot}: ${chatSummaryMessageWithOptionalDetail(l10n, l10n.serverConfigLoadFailed, controller.error)}';
     return;
   }
   if (snapshot == null) {
@@ -170,8 +170,7 @@ Iterable<String> _accountStatusLines(
 ) sync* {
   final snapshot = controller.snapshot;
   if (controller.status == AccountSnapshotStatus.failed) {
-    final error = controller.error;
-    yield '${l10n.accountStatus}: ${l10n.accountLoadFailed}${error == null ? '' : ': $error'}';
+    yield '${l10n.accountStatus}: ${chatSummaryMessageWithOptionalDetail(l10n, l10n.accountLoadFailed, controller.error)}';
     return;
   }
   if (snapshot == null) {

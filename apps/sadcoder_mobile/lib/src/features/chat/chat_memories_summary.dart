@@ -1,6 +1,7 @@
 import '../../config/codex_config_snapshot.dart';
 import '../../config/codex_config_snapshot_controller.dart';
 import '../../i18n/app_localizations.dart';
+import 'chat_summary_formatting.dart';
 
 String buildMemoriesSummary({
   required AppLocalizations l10n,
@@ -18,8 +19,13 @@ String buildMemoriesSummary({
     return lines.join('\n');
   }
   if (controller.status == CodexConfigSnapshotStatus.failed) {
-    final error = controller.error;
-    lines.add('${l10n.memoriesLoadFailed}${error == null ? '' : ': $error'}');
+    lines.add(
+      chatSummaryMessageWithOptionalDetail(
+        l10n,
+        l10n.memoriesLoadFailed,
+        controller.error,
+      ),
+    );
     return lines.join('\n');
   }
 

@@ -2,6 +2,7 @@ import '../../i18n/app_localizations.dart';
 import '../../mcp/mcp_server_oauth_runner.dart';
 import '../../mcp/mcp_server_status_controller.dart';
 import '../../mcp/mcp_server_status_reader.dart';
+import 'chat_summary_formatting.dart';
 
 String buildMcpServerStatusSummary({
   required AppLocalizations l10n,
@@ -15,8 +16,13 @@ String buildMcpServerStatusSummary({
   }
 
   if (controller.status == McpServerStatusListStatus.failed) {
-    final error = controller.error;
-    lines.add('${l10n.mcpServersLoadFailed}${error == null ? '' : ': $error'}');
+    lines.add(
+      chatSummaryMessageWithOptionalDetail(
+        l10n,
+        l10n.mcpServersLoadFailed,
+        controller.error,
+      ),
+    );
     return lines.join('\n');
   }
 

@@ -146,6 +146,30 @@ void main() {
     expect(summary, isNot(contains('Thread tokens')));
     expect(summary, isNot(contains('160 tokens')));
   });
+
+  test('buildChatStatusSummary localizes failure details', () async {
+    const zh = AppLocalizations(Locale('zh', 'CN'));
+    final configController = CodexConfigSnapshotController(
+      readerProvider: () => _FailingConfigSnapshotReader(),
+    );
+    final accountController = AccountSnapshotController(
+      readerProvider: () => _FailingAccountSnapshotReader(),
+    );
+    addTearDown(configController.dispose);
+    addTearDown(accountController.dispose);
+
+    await configController.refresh();
+    await accountController.refresh();
+
+    final summary = buildChatStatusSummary(
+      l10n: zh,
+      configSnapshotController: configController,
+      accountSnapshotController: accountController,
+    );
+
+    expect(summary, contains('服务器配置快照: 服务器配置加载失败：Bad state: config failed'));
+    expect(summary, contains('账户: 账户加载失败：Bad state: account failed'));
+  });
 }
 
 class _FakeAccountSnapshotReader implements AccountSnapshotReader {
@@ -170,5 +194,22 @@ class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {
     String? cwd,
   }) async {
     return snapshot;
+  }
+}
+
+class _FailingConfigSnapshotReader implements CodexConfigSnapshotReader {
+  @override
+  Future<CodexConfigSnapshot> readConfig({
+    bool includeLayers = true,
+    String? cwd,
+  }) async {
+    throw StateError('config failed');
+  }
+}
+
+class _FailingAccountSnapshotReader implements AccountSnapshotReader {
+  @override
+  Future<AccountSnapshot> readAccount({bool refreshToken = false}) async {
+    throw StateError('account failed');
   }
 }

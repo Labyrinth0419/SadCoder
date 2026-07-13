@@ -80,6 +80,12 @@ void main() {
         summary,
         contains('Failed to load debug config: Bad state: failed'),
       );
+
+      final zhSummary = buildDebugConfigSummary(
+        l10n: const AppLocalizations(Locale('zh', 'CN')),
+        controller: controller,
+      );
+      expect(zhSummary, contains('调试配置加载失败：Bad state: failed'));
     },
   );
 

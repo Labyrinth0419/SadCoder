@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../config/codex_config_snapshot_controller.dart';
 import '../../i18n/app_localizations.dart';
+import 'chat_summary_formatting.dart';
 
 String buildDebugConfigSummary({
   required AppLocalizations l10n,
@@ -13,9 +14,12 @@ String buildDebugConfigSummary({
     return lines.join('\n');
   }
   if (controller.status == CodexConfigSnapshotStatus.failed) {
-    final error = controller.error;
     lines.add(
-      '${l10n.debugConfigLoadFailed}${error == null ? '' : ': $error'}',
+      chatSummaryMessageWithOptionalDetail(
+        l10n,
+        l10n.debugConfigLoadFailed,
+        controller.error,
+      ),
     );
     return lines.join('\n');
   }
