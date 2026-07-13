@@ -317,7 +317,14 @@ class _ChatPageState extends State<ChatPage> {
                     CallbackShortcuts(
                       bindings: <ShortcutActivator, VoidCallback>{
                         if (composerSendShortcut ==
-                            AppComposerSendShortcut.ctrlEnter)
+                            AppComposerSendShortcut.enter)
+                          const SingleActivator(LogicalKeyboardKey.enter): () {
+                            if (canSend) {
+                              unawaited(_sendComposerText());
+                            }
+                          },
+                        if (composerSendShortcut ==
+                            AppComposerSendShortcut.ctrlEnter) ...{
                           const SingleActivator(
                             LogicalKeyboardKey.enter,
                             control: true,
@@ -326,66 +333,75 @@ class _ChatPageState extends State<ChatPage> {
                               unawaited(_sendComposerText());
                             }
                           },
+                          const SingleActivator(
+                            LogicalKeyboardKey.enter,
+                            meta: true,
+                          ): () {
+                            if (canSend) {
+                              unawaited(_sendComposerText());
+                            }
+                          },
+                        },
                       },
-                      child: TextField(
-                        key: const ValueKey('chat-composer-field'),
-                        controller: _composerController,
-                        onChanged: _handleComposerChanged,
-                        keyboardType:
-                            composerSendShortcut ==
-                                AppComposerSendShortcut.ctrlEnter
-                            ? TextInputType.multiline
-                            : TextInputType.multiline,
-                        minLines: 1,
-                        maxLines: compactHeight ? 3 : 6,
-                        textInputAction:
-                            composerSendShortcut ==
-                                AppComposerSendShortcut.enter
-                            ? TextInputAction.send
-                            : TextInputAction.newline,
-                        onSubmitted:
-                            composerSendShortcut ==
-                                    AppComposerSendShortcut.enter &&
-                                canSend
-                            ? (_) => unawaited(_sendComposerText())
-                            : null,
-                        decoration: InputDecoration(
-                          hintText: l10n.connectBeforeTurn,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 9,
-                          ),
-                          prefixIcon: IconButton(
-                            key: const ValueKey('chat-slash-command-button'),
-                            onPressed: _openSlashCommandPalette,
-                            icon: const Icon(Icons.manage_search),
-                            tooltip: l10n.slashCommands,
-                          ),
-                          suffixIcon: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                key: const ValueKey(
-                                  'chat-composer-stop-button',
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: compactHeight ? 112 : 172,
+                        ),
+                        child: TextField(
+                          key: const ValueKey('chat-composer-field'),
+                          controller: _composerController,
+                          onChanged: _handleComposerChanged,
+                          keyboardType: TextInputType.multiline,
+                          minLines: 1,
+                          maxLines: compactHeight ? 3 : null,
+                          textAlignVertical: TextAlignVertical.top,
+                          scrollPhysics: const ClampingScrollPhysics(),
+                          textInputAction: TextInputAction.newline,
+                          onSubmitted:
+                              composerSendShortcut ==
+                                      AppComposerSendShortcut.enter &&
+                                  canSend
+                              ? (_) => unawaited(_sendComposerText())
+                              : null,
+                          decoration: InputDecoration(
+                            hintText: l10n.connectBeforeTurn,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 9,
+                            ),
+                            prefixIcon: IconButton(
+                              key: const ValueKey('chat-slash-command-button'),
+                              onPressed: _openSlashCommandPalette,
+                              icon: const Icon(Icons.manage_search),
+                              tooltip: l10n.slashCommands,
+                            ),
+                            suffixIcon: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  key: const ValueKey(
+                                    'chat-composer-stop-button',
+                                  ),
+                                  onPressed:
+                                      turnController?.canInterrupt == true
+                                      ? _interruptActiveTurn
+                                      : null,
+                                  icon: const Icon(Icons.stop_circle_outlined),
+                                  tooltip: l10n.interruptTurn,
                                 ),
-                                onPressed: turnController?.canInterrupt == true
-                                    ? _interruptActiveTurn
-                                    : null,
-                                icon: const Icon(Icons.stop_circle_outlined),
-                                tooltip: l10n.interruptTurn,
-                              ),
-                              IconButton(
-                                key: const ValueKey(
-                                  'chat-composer-send-button',
+                                IconButton(
+                                  key: const ValueKey(
+                                    'chat-composer-send-button',
+                                  ),
+                                  onPressed: canSend ? _sendComposerText : null,
+                                  icon: const Icon(Icons.send),
+                                  tooltip: l10n.send,
                                 ),
-                                onPressed: canSend ? _sendComposerText : null,
-                                icon: const Icon(Icons.send),
-                                tooltip: l10n.send,
-                              ),
-                            ],
+                              ],
+                            ),
+                            border: const OutlineInputBorder(),
                           ),
-                          border: const OutlineInputBorder(),
                         ),
                       ),
                     ),

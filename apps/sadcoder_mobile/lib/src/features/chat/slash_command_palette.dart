@@ -114,7 +114,7 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
                   const SizedBox(height: 12),
                 ],
                 SizedBox(
-                  height: ultraCompactHeight ? 52 : null,
+                  height: ultraCompactHeight ? 42 : null,
                   child: TextField(
                     key: const ValueKey('slash-command-search-field'),
                     controller: _filterController,
@@ -125,6 +125,7 @@ class _SlashCommandPaletteState extends State<_SlashCommandPalette> {
                         : null,
                     decoration: InputDecoration(
                       isDense: compactHeight,
+                      isCollapsed: ultraCompactHeight,
                       labelText: ultraCompactHeight
                           ? null
                           : l10n.typeCommandName,

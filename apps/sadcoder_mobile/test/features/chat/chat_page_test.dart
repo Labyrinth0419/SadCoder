@@ -142,7 +142,8 @@ void main() {
     );
     expect(composer.keyboardType, TextInputType.multiline);
     expect(composer.minLines, 1);
-    expect(composer.maxLines, 6);
+    expect(composer.maxLines, isNull);
+    expect(composer.textInputAction, TextInputAction.newline);
     expect(composer.decoration?.isDense, isTrue);
   });
 
@@ -3808,9 +3809,9 @@ void main() {
     var composer = tester.widget<TextField>(
       find.byKey(const ValueKey('chat-composer-field')),
     );
-    expect(composer.textInputAction, TextInputAction.send);
+    expect(composer.textInputAction, TextInputAction.newline);
     expect(composer.keyboardType, TextInputType.multiline);
-    expect(composer.maxLines, 6);
+    expect(composer.maxLines, isNull);
 
     await _submitComposerText(tester, '/keymap');
 
@@ -3832,7 +3833,35 @@ void main() {
     );
     expect(composer.textInputAction, TextInputAction.newline);
     expect(composer.keyboardType, TextInputType.multiline);
-    expect(composer.maxLines, 6);
+    expect(composer.maxLines, isNull);
+  });
+
+  testWidgets('composer wraps long text and grows within the viewport', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpChatPage(tester);
+
+    final composerFinder = find.byKey(const ValueKey('chat-composer-field'));
+    final initialSize = tester.getSize(composerFinder);
+    final longPrompt = List.filled(28, '这是一段很长的输入内容').join();
+
+    await tester.enterText(composerFinder, longPrompt);
+    await tester.pumpAndSettle();
+
+    final wrappedSize = tester.getSize(composerFinder);
+    final composer = tester.widget<TextField>(composerFinder);
+    expect(composer.keyboardType, TextInputType.multiline);
+    expect(composer.maxLines, isNull);
+    expect(composer.textInputAction, TextInputAction.newline);
+    expect(wrappedSize.width, lessThanOrEqualTo(360));
+    expect(wrappedSize.height, greaterThan(initialSize.height));
+    expect(wrappedSize.height, lessThanOrEqualTo(172));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('/keymap inline argument restores Enter send shortcut', (
@@ -3857,7 +3886,7 @@ void main() {
     expect(find.text('Keyboard shortcut settings updated.'), findsOneWidget);
   });
 
-  testWidgets('Enter action submits when keymap uses Enter to send', (
+  testWidgets('hardware Enter submits when keymap uses Enter to send', (
     tester,
   ) async {
     final appearanceController = AppAppearanceController();
@@ -3867,12 +3896,11 @@ void main() {
     );
     addTearDown(appearanceController.dispose);
 
-    await tester.enterText(
-      find.byKey(const ValueKey('chat-composer-field')),
-      'Ship shortcut handling',
-    );
+    final composerFinder = find.byKey(const ValueKey('chat-composer-field'));
+    await tester.tap(composerFinder);
+    await tester.enterText(composerFinder, 'Ship shortcut handling');
     await tester.pump();
-    await tester.testTextInput.receiveAction(TextInputAction.send);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
 
     expect(harness.turnRunner.startedTurns, [
