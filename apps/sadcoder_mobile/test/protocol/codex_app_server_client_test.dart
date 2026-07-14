@@ -490,6 +490,20 @@ void main() {
     expect(requests.single.params, isNull);
   });
 
+  test('readConfigRequirements uses parameterless app-server method', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {'requirements': null};
+    });
+
+    final client = CodexAppServerClient(transport);
+    await client.readConfigRequirements();
+
+    expect(requests.single.method, 'configRequirements/read');
+    expect(requests.single.params, isNull);
+  });
+
   test('listThreads can request archived threads', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {

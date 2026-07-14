@@ -369,8 +369,9 @@ agent 负责：
 4. `initialize`
 5. `model/list`
 6. `config/read`
-7. `account/read`
-8. 可选：通过 `sadcoder-agent schema --json` 或 `agent/schema` 生成/读取服务器 app-server JSON Schema cache；App 设置诊断页展示缓存模式、Codex 版本、digest、bundle/cache 路径和文件摘要，且不直接依赖交互式 shell 环境，也不自行执行 `codex`。
+7. `configRequirements/read`；旧 app-server 返回 method-not-found 时保留普通配置快照并标记 requirements 不可用。
+8. `account/read`
+9. 可选：通过 `sadcoder-agent schema --json` 或 `agent/schema` 生成/读取服务器 app-server JSON Schema cache；App 设置诊断页展示缓存模式、Codex 版本、digest、bundle/cache 路径和文件摘要，且不直接依赖交互式 shell 环境，也不自行执行 `codex`。
 
 客户端内置一个“最低支持 Codex 版本”，低于该版本只允许 stdio 调试或提示升级。
 
@@ -393,6 +394,7 @@ agent 负责：
 配置读取：
 
 - 连接后通过 `config/read` 读取服务器当前有效配置，用于展示和诊断。
+- 通过 `configRequirements/read` 读取受管 approval、sandbox、permission profile、feature、network、model 等企业约束；该结果只读，不允许 App 绕过或改写。
 - 通过 `model/list`、`permissionProfile/list`、`mcpServerStatus/list` 等接口读取服务器实际可用能力。
 - App 本地只缓存“展示快照”和“用户显式覆盖偏好”，不能把本地缓存当作服务器真实配置。
 
@@ -580,6 +582,7 @@ UI 必须清楚标识每个生效值来自哪里：`服务器默认`、`App 默�
 - `account/read`
 - `model/list`
 - `config/read`
+- `configRequirements/read`
 - 显示服务器 Codex 当前有效配置摘要。
 - model、reasoning effort、approval policy、sandbox/permission profile 基础选择。
 - 支持本次 turn 覆盖和当前会话覆盖。
@@ -988,6 +991,7 @@ MVP 可以简化为底部导航：
 - 已落地与 `refs/codex/codex-rs/tui/src/slash_command.rs` 的防漂移测试：自动校验命令名、展示顺序、alias、inline args、side conversation 可用性和 active turn 可用性；SadCoder 自有扩展 `/duplicate`、`/rewind`、`/plugins` 的差异需要显式白名单。
 - 已接入 `agent/slashCommands/list` 远端 manifest 的 reconnect cache：`SlashCommandRegistryController` 按 host/profile 加载远端 manifest，成功后写入本地 cache；远端加载失败时优先回退同 profile/cache 的 manifest，再回退内置 registry。
 - 已将 `/rollout` 接成只读 UI 诊断命令：有参数时不可用；无线程 raw path 时按 Codex TUI 语义显示 `Rollout path is not available yet.`，如果 thread raw 后续暴露 rollout path，则显示当前路径。
+- 已将稳定的 `configRequirements/read` 合并进服务器配置快照和 `/debug-config`：新 app-server 会展示受管 approval/sandbox/model/feature 等约束，明确区别于普通 `config/read` 生效值和 layers；旧版本 method-not-found 时仍保留普通配置摘要并显示 requirements 不可用，其他读取错误不会被静默吞掉。
 - 已将 `/test-approval` 接成移动端本地 debug-only 审批链路测试：注入一条 file-change `PendingApproval` 到当前 session 的 `ApprovalStateController`，不调用 app-server、不修改服务器状态。
 - `/experimental` 保留 `config/read` 只读摘要作为不支持 `experimentalFeature/list` 的旧服务端回退路径。
 - 已将 `/experimental` 升级为按 `experimentalFeature/list` 自动读取服务端 Beta feature catalog 的可操作 bottom sheet；开关修改前展示旧值/新值与全局服务器影响并二次确认，确认后通过 `config/batchWrite` 写入 `features.<name>`、热重载用户配置，再刷新能力状态；旧服务端不支持该接口时回退到原有只读配置摘要。

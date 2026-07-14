@@ -5,6 +5,8 @@ class CodexConfigSnapshot {
     required this.config,
     required this.origins,
     required this.layers,
+    this.requirements,
+    this.requirementsSupported = false,
   });
 
   factory CodexConfigSnapshot.fromJson(Map<String, Object?> json) {
@@ -12,12 +14,29 @@ class CodexConfigSnapshot {
       config: _objectMap(json['config']),
       origins: _originMap(json['origins']),
       layers: _objectList(json['layers']),
+      requirements: _nullableObjectMap(json['requirements']),
+      requirementsSupported: json['requirementsSupported'] == true,
     );
   }
 
   final Map<String, Object?> config;
   final Map<String, CodexConfigOrigin> origins;
   final List<Map<String, Object?>> layers;
+  final Map<String, Object?>? requirements;
+  final bool requirementsSupported;
+
+  CodexConfigSnapshot withRequirements({
+    required bool supported,
+    required Map<String, Object?>? value,
+  }) {
+    return CodexConfigSnapshot(
+      config: config,
+      origins: origins,
+      layers: layers,
+      requirements: value,
+      requirementsSupported: supported,
+    );
+  }
 
   Object? valueFor(String key) => config[key];
 
@@ -40,6 +59,8 @@ class CodexConfigSnapshot {
     'config': config,
     'origins': origins.map((key, value) => MapEntry(key, value.raw)),
     'layers': layers,
+    'requirementsSupported': requirementsSupported,
+    if (requirements != null) 'requirements': requirements,
   };
 }
 
@@ -106,6 +127,13 @@ Map<String, Object?> _objectMap(Object? value) {
     );
   }
   return const {};
+}
+
+Map<String, Object?>? _nullableObjectMap(Object? value) {
+  if (value == null) {
+    return null;
+  }
+  return _objectMap(value);
 }
 
 Map<String, CodexConfigOrigin> _originMap(Object? value) {

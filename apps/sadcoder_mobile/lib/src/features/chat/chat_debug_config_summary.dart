@@ -59,6 +59,20 @@ String buildDebugConfigSummary({
     }
   }
 
+  lines.add(l10n.debugConfigRequirements);
+  if (!snapshot.requirementsSupported) {
+    lines.add('  ${l10n.debugConfigRequirementsUnavailable}');
+  } else if (snapshot.requirements == null || snapshot.requirements!.isEmpty) {
+    lines.add('  ${l10n.debugConfigRequirementsNone}');
+  } else {
+    final keys = snapshot.requirements!.keys.toList()..sort();
+    for (final key in keys) {
+      lines.add(
+        '  $key: ${_displayRequirement(snapshot.requirements![key], l10n)}',
+      );
+    }
+  }
+
   lines.add(l10n.debugConfigLayers(snapshot.layers.length));
   for (var i = 0; i < snapshot.layers.length; i++) {
     final layer = snapshot.layers[i];
@@ -119,4 +133,21 @@ String? _stringValue(Object? value) {
     return value.trim();
   }
   return null;
+}
+
+String _displayRequirement(Object? value, AppLocalizations l10n) {
+  if (value == null) {
+    return l10n.serverValueUnset;
+  }
+  if (value is String && value.trim().isEmpty) {
+    return l10n.serverValueUnset;
+  }
+  if (value is String || value is num || value is bool) {
+    return value.toString();
+  }
+  try {
+    return jsonEncode(value);
+  } on Object {
+    return value.toString();
+  }
 }

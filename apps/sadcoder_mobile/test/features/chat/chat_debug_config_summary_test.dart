@@ -112,6 +112,33 @@ void main() {
       expect(summary, contains('第 1 层: 未知层'));
     },
   );
+
+  test('buildDebugConfigSummary renders managed requirements', () async {
+    final controller = CodexConfigSnapshotController(
+      readerProvider: () => _FakeConfigSnapshotReader(
+        CodexConfigSnapshot.fromJson({
+          'config': const <String, Object?>{},
+          'requirementsSupported': true,
+          'requirements': {
+            'allowedApprovalPolicies': ['on-request'],
+            'allowRemoteControl': false,
+            'models': {
+              'newThread': {'model': 'gpt-5-codex'},
+            },
+          },
+        }),
+      ),
+    );
+    addTearDown(controller.dispose);
+    await controller.refresh();
+
+    final summary = buildDebugConfigSummary(l10n: l10n, controller: controller);
+
+    expect(summary, contains('Managed requirements'));
+    expect(summary, contains('allowRemoteControl: false'));
+    expect(summary, contains('allowedApprovalPolicies: ["on-request"]'));
+    expect(summary, contains('models: {"newThread":{"model":"gpt-5-codex"}}'));
+  });
 }
 
 class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {

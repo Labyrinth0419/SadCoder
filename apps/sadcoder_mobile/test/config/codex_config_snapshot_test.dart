@@ -61,4 +61,19 @@ void main() {
     expect(snapshot.displayValueFor('service_tier'), isNull);
     expect(snapshot.originLabelFor('model'), isNull);
   });
+
+  test('preserves managed requirements and support state', () {
+    final snapshot = CodexConfigSnapshot.fromJson({
+      'config': const <String, Object?>{},
+      'requirementsSupported': true,
+      'requirements': {
+        'allowedSandboxModes': ['workspace-write'],
+        'featureRequirements': {'remote_control': false},
+      },
+    });
+
+    expect(snapshot.requirementsSupported, isTrue);
+    expect(snapshot.requirements?['allowedSandboxModes'], ['workspace-write']);
+    expect(snapshot.toRawJson(), containsPair('requirementsSupported', true));
+  });
 }

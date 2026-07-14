@@ -660,6 +660,10 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> readConfigRequirements() {
+    return _request('configRequirements/read');
+  }
+
   Future<Map<String, Object?>> listExperimentalFeatures({
     String? cursor,
     int? limit,

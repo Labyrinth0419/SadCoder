@@ -1137,6 +1137,11 @@ class AppLocalizations {
   String get debugConfigNoSnapshot => _text('debugConfigNoSnapshot');
   String get debugConfigEffectiveValues => _text('debugConfigEffectiveValues');
   String get debugConfigOrigins => _text('debugConfigOrigins');
+  String get debugConfigRequirements => _text('debugConfigRequirements');
+  String get debugConfigRequirementsUnavailable =>
+      _text('debugConfigRequirementsUnavailable');
+  String get debugConfigRequirementsNone =>
+      _text('debugConfigRequirementsNone');
   String get debugConfigOriginUnknown => _text('debugConfigOriginUnknown');
   String get debugConfigLayerConfig => _text('debugConfigLayerConfig');
   String get debugConfigLayerMetadata => _text('debugConfigLayerMetadata');
@@ -2432,6 +2437,9 @@ const _values = <String, Map<String, String>>{
     'debugConfigNoSnapshot': 'No config snapshot loaded.',
     'debugConfigEffectiveValues': 'Effective values',
     'debugConfigOrigins': 'Origins',
+    'debugConfigRequirements': 'Managed requirements',
+    'debugConfigRequirementsUnavailable': 'Not supported by this app-server.',
+    'debugConfigRequirementsNone': 'No managed requirements reported.',
     'debugConfigOriginUnknown': 'unknown origin',
     'debugConfigLayerConfig': 'config',
     'debugConfigLayerMetadata': 'metadata',
@@ -3522,6 +3530,9 @@ const _values = <String, Map<String, String>>{
     'debugConfigNoSnapshot': '尚未加载配置快照。',
     'debugConfigEffectiveValues': '生效值',
     'debugConfigOrigins': '来源',
+    'debugConfigRequirements': '受管约束',
+    'debugConfigRequirementsUnavailable': '当前 app-server 不支持。',
+    'debugConfigRequirementsNone': '服务器未报告受管约束。',
     'debugConfigOriginUnknown': '未知来源',
     'debugConfigLayerConfig': '配置',
     'debugConfigLayerMetadata': '元数据',
