@@ -173,6 +173,10 @@ void main() {
     );
     expect(find.byKey(const ValueKey('chat-raw-rpc-panel')), findsNothing);
     expect(
+      find.byKey(const ValueKey('chat-composer-realtime-button')),
+      findsNothing,
+    );
+    expect(
       find.descendant(
         of: find.byKey(const ValueKey('chat-composer-chrome')),
         matching: find.byKey(const ValueKey('chat-advanced-controls-toggle')),

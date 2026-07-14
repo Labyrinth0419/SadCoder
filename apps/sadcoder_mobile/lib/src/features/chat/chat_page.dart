@@ -43,7 +43,6 @@ import 'chat_layout_metrics.dart';
 import 'chat_override_command_handler.dart';
 import 'chat_profile_selection_handler.dart';
 import 'chat_raw_transcript_command.dart';
-import 'chat_realtime_sheet.dart';
 import 'chat_status_summary.dart';
 import 'chat_summary_command_handler.dart';
 import 'chat_timeline_controller.dart';
@@ -479,19 +478,6 @@ class _ChatPageState extends State<ChatPage> {
                               children: [
                                 IconButton(
                                   key: const ValueKey(
-                                    'chat-composer-realtime-button',
-                                  ),
-                                  onPressed:
-                                      sessionController?.realtimeRunner !=
-                                              null &&
-                                          _currentThreadId() != null
-                                      ? _openRealtime
-                                      : null,
-                                  icon: const Icon(Icons.graphic_eq),
-                                  tooltip: l10n.realtimeTitle,
-                                ),
-                                IconButton(
-                                  key: const ValueKey(
                                     'chat-composer-stop-button',
                                   ),
                                   onPressed:
@@ -618,14 +604,6 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> _interruptActiveTurn() async {
     await widget.turnController?.interruptActiveTurn();
-  }
-
-  Future<void> _openRealtime() {
-    return showChatRealtimeSheet(
-      context: context,
-      runner: widget.sessionController?.realtimeRunner,
-      threadId: _currentThreadId(),
-    );
   }
 
   List<SshProfile> _headerProfiles() {
