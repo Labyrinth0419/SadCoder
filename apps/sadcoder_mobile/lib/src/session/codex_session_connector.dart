@@ -47,6 +47,8 @@ import '../mcp/codex_mcp_server_config_runner.dart';
 import '../mcp/codex_mcp_server_oauth_runner.dart';
 import '../mcp/codex_mcp_server_status_reader.dart';
 import '../mcp/mcp_server_config_runner.dart';
+import '../mcp/codex_mcp_resource_reader.dart';
+import '../mcp/mcp_resource_reader.dart';
 import '../mcp/mcp_server_oauth_runner.dart';
 import '../mcp/mcp_server_status_reader.dart';
 import '../memories/codex_memory_runner.dart';
@@ -239,6 +241,10 @@ abstract interface class PluginSkillReadConnectionHandle {
   PluginSkillReader get pluginSkillReader;
 }
 
+abstract interface class McpResourceReadConnectionHandle {
+  McpResourceReader get mcpResourceReader;
+}
+
 abstract interface class RealtimeConnectionHandle {
   RealtimeRunner get realtimeRunner;
 }
@@ -338,6 +344,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         mcpServerConfigRunner: CodexMcpServerConfigRunner(session.client),
         mcpServerOAuthRunner: CodexMcpServerOAuthRunner(session.client),
         mcpServerStatusReader: CodexMcpServerStatusReader(session.client),
+        mcpResourceReader: CodexMcpResourceReader(session.client),
         modelListReader: CodexModelListReader(session.client),
         permissionProfileListReader: CodexPermissionProfileListReader(
           session.client,
@@ -443,6 +450,7 @@ class CodexSessionConnection
         HookMutationConnectionHandle,
         SkillMutationConnectionHandle,
         PluginSkillReadConnectionHandle,
+        McpResourceReadConnectionHandle,
         RealtimeConnectionHandle,
         WorkspaceFileMutationConnectionHandle {
   CodexSessionConnection({
@@ -474,6 +482,7 @@ class CodexSessionConnection
     required this.mcpServerConfigRunner,
     required this.mcpServerOAuthRunner,
     required this.mcpServerStatusReader,
+    required this.mcpResourceReader,
     required this.modelListReader,
     required this.permissionProfileListReader,
     required this.skillListReader,
@@ -550,6 +559,8 @@ class CodexSessionConnection
   final McpServerOAuthRunner mcpServerOAuthRunner;
   @override
   final McpServerStatusReader mcpServerStatusReader;
+  @override
+  final McpResourceReader mcpResourceReader;
   @override
   final ModelListReader modelListReader;
   @override

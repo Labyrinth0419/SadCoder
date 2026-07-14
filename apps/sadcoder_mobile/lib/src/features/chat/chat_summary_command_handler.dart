@@ -113,6 +113,7 @@ class ChatSummaryCommandHandler {
       statusController: mcpServerStatusController,
       oauthRunner: sessionController?.mcpServerOAuthRunner,
       configRunner: sessionController?.mcpServerConfigRunner,
+      resourceReader: sessionController?.mcpResourceReader,
       threadId: currentThreadIdProvider(),
       arguments: arguments,
     );

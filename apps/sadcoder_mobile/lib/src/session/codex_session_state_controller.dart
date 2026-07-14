@@ -29,6 +29,7 @@ import '../hooks/hook_mutation_runner.dart';
 import '../mcp/mcp_server_config_runner.dart';
 import '../mcp/mcp_server_oauth_runner.dart';
 import '../mcp/mcp_server_status_reader.dart';
+import '../mcp/mcp_resource_reader.dart';
 import '../memories/memory_runner.dart';
 import '../models/model_list_reader.dart';
 import '../permissions/permission_profile_list_reader.dart';
@@ -242,6 +243,14 @@ class CodexSessionStateController extends ChangeNotifier {
 
   McpServerStatusReader? get mcpServerStatusReader =>
       _connection?.mcpServerStatusReader;
+
+  McpResourceReader? get mcpResourceReader {
+    final connection = _connection;
+    if (connection == null || connection is! McpResourceReadConnectionHandle) {
+      return null;
+    }
+    return (connection as McpResourceReadConnectionHandle).mcpResourceReader;
+  }
 
   ModelListReader? get modelListReader => _connection?.modelListReader;
 

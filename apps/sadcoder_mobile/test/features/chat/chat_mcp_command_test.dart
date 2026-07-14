@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_mcp_command.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_resource_reader.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_config_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_oauth_runner.dart'
     show McpServerOAuthLoginResult, McpServerOAuthRunner;
@@ -48,10 +49,32 @@ void main() {
     expect((auth as ChatMcpLoginCommand).serverName, 'service-1');
   });
 
+  test('resource aliases parse the server name and URI', () {
+    final resource = parseChatMcpCommand('resource docs docs://guide');
+    final alias = parseChatMcpCommand('read-resource github repo://readme');
+
+    expect(resource, isA<ChatMcpResourceReadCommand>());
+    expect(
+      resource,
+      isA<ChatMcpResourceReadCommand>()
+          .having((command) => command.serverName, 'serverName', 'docs')
+          .having((command) => command.uri, 'uri', 'docs://guide'),
+    );
+    expect(
+      alias,
+      isA<ChatMcpResourceReadCommand>()
+          .having((command) => command.serverName, 'serverName', 'github')
+          .having((command) => command.uri, 'uri', 'repo://readme'),
+    );
+  });
+
   test('unsupported arguments are rejected', () {
     expect(parseChatMcpCommand('verbose extra'), isNull);
     expect(parseChatMcpCommand('reload now'), isNull);
     expect(parseChatMcpCommand('login'), isNull);
+    expect(parseChatMcpCommand('resource'), isNull);
+    expect(parseChatMcpCommand('resource docs'), isNull);
+    expect(parseChatMcpCommand('resource docs docs://guide extra'), isNull);
     expect(parseChatMcpCommand('unknown'), isNull);
   });
 
@@ -171,6 +194,108 @@ void main() {
       expect(summary, contains('Code: ABCD-1234'));
     });
 
+    test('reads MCP resource text for the current thread exactly', () async {
+      final reader = _RecordingMcpResourceReader(
+        result: McpResourceReadResult.fromJson({
+          'contents': [
+            {
+              'uri': 'docs://guide',
+              'mimeType': 'text/markdown',
+              'text': '  First line\nSecond line\n',
+            },
+          ],
+        }),
+      );
+
+      final summary = await buildMcpSummaryFromCommand(
+        l10n: l10n,
+        statusController: null,
+        oauthRunner: null,
+        configRunner: null,
+        resourceReader: reader,
+        threadId: 'thr_1',
+        arguments: 'resource docs docs://guide',
+      );
+
+      expect(reader.calls, [
+        (threadId: 'thr_1', server: 'docs', uri: 'docs://guide'),
+      ]);
+      expect(
+        summary,
+        'MCP servers\n'
+        'server: docs\n'
+        'resources: docs://guide\n'
+        'docs://guide (text/markdown)\n'
+        '  First line\nSecond line\n',
+      );
+    });
+
+    test('summarizes blob and empty MCP resource results', () async {
+      final blobReader = _RecordingMcpResourceReader(
+        result: McpResourceReadResult.fromJson({
+          'contents': [
+            {'uri': 'docs://logo', 'mimeType': 'image/png', 'blob': 'AAEC'},
+          ],
+        }),
+      );
+      final emptyReader = _RecordingMcpResourceReader(
+        result: McpResourceReadResult.fromJson({'contents': <Object?>[]}),
+      );
+
+      final blobSummary = await buildMcpSummaryFromCommand(
+        l10n: l10n,
+        statusController: null,
+        oauthRunner: null,
+        configRunner: null,
+        resourceReader: blobReader,
+        threadId: null,
+        arguments: 'read-resource docs docs://logo',
+      );
+      final emptySummary = await buildMcpSummaryFromCommand(
+        l10n: l10n,
+        statusController: null,
+        oauthRunner: null,
+        configRunner: null,
+        resourceReader: emptyReader,
+        threadId: null,
+        arguments: 'resource docs docs://empty',
+      );
+
+      expect(blobSummary, contains('docs://logo (image/png)'));
+      expect(blobSummary, contains('Binary resource (4 base64 characters).'));
+      expect(blobSummary, isNot(contains('AAEC')));
+      expect(emptySummary, contains('The MCP resource returned no contents.'));
+    });
+
+    test('localizes MCP resource failures and preserves raw detail', () async {
+      final summary = await buildMcpSummaryFromCommand(
+        l10n: const AppLocalizations(Locale('zh')),
+        statusController: null,
+        oauthRunner: null,
+        configRunner: null,
+        resourceReader: _ThrowingMcpResourceReader(StateError('raw detail')),
+        threadId: 'thr_1',
+        arguments: 'resource docs docs://guide',
+      );
+
+      expect(summary, contains('MCP 资源读取失败'));
+      expect(summary, contains('raw detail'));
+    });
+
+    test('resource commands require a connected resource reader', () async {
+      final summary = await buildMcpSummaryFromCommand(
+        l10n: l10n,
+        statusController: null,
+        oauthRunner: null,
+        configRunner: null,
+        resourceReader: null,
+        threadId: 'thr_1',
+        arguments: 'resource docs docs://guide',
+      );
+
+      expect(summary, isNull);
+    });
+
     test('rejects missing runners and unsupported inputs', () async {
       final summaryUnavailable = await buildMcpSummaryFromCommand(
         l10n: l10n,
@@ -259,5 +384,37 @@ class _RecordingMcpServerConfigRunner implements McpServerConfigRunner {
   @override
   Future<void> reloadMcpServers() async {
     reloadCalls++;
+  }
+}
+
+class _RecordingMcpResourceReader implements McpResourceReader {
+  _RecordingMcpResourceReader({required this.result});
+
+  final McpResourceReadResult result;
+  final calls = <({String? threadId, String server, String uri})>[];
+
+  @override
+  Future<McpResourceReadResult> readResource({
+    String? threadId,
+    required String server,
+    required String uri,
+  }) async {
+    calls.add((threadId: threadId, server: server, uri: uri));
+    return result;
+  }
+}
+
+class _ThrowingMcpResourceReader implements McpResourceReader {
+  const _ThrowingMcpResourceReader(this.error);
+
+  final Object error;
+
+  @override
+  Future<McpResourceReadResult> readResource({
+    String? threadId,
+    required String server,
+    required String uri,
+  }) async {
+    throw error;
   }
 }

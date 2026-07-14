@@ -151,6 +151,28 @@ class CodexAppServerClient {
     return _request('mcpServerStatus/list', params);
   }
 
+  Future<Map<String, Object?>> readMcpResource({
+    String? threadId,
+    required String server,
+    required String uri,
+  }) {
+    final normalizedThreadId = threadId?.trim();
+    final normalizedServer = server.trim();
+    final normalizedUri = uri.trim();
+    if (normalizedServer.isEmpty) {
+      throw ArgumentError.value(server, 'server', 'must not be blank');
+    }
+    if (normalizedUri.isEmpty) {
+      throw ArgumentError.value(uri, 'uri', 'must not be blank');
+    }
+    return _request('mcpServer/resource/read', {
+      if (normalizedThreadId != null && normalizedThreadId.isNotEmpty)
+        'threadId': normalizedThreadId,
+      'server': normalizedServer,
+      'uri': normalizedUri,
+    });
+  }
+
   Future<Map<String, Object?>> reloadMcpServers() {
     return _request('config/mcpServer/reload');
   }

@@ -991,6 +991,11 @@ class AppLocalizations {
   String get mcpServerAuthStatus => _text('mcpServerAuthStatus');
   String get mcpServerTools => _text('mcpServerTools');
   String get mcpServerResources => _text('mcpServerResources');
+  String get mcpResourceReadFailed => _text('mcpResourceReadFailed');
+  String get mcpResourceContentsEmpty => _text('mcpResourceContentsEmpty');
+  String mcpResourceBinaryContent(int encodedCharacters) => _text(
+    'mcpResourceBinaryContent',
+  ).replaceAll('{encodedCharacters}', encodedCharacters.toString());
   String get mcpServerResourceTemplates => _text('mcpServerResourceTemplates');
   String get mcpServerInfo => _text('mcpServerInfo');
   String get mcpServerStartupStatus => _text('mcpServerStartupStatus');
@@ -2334,6 +2339,10 @@ const _values = <String, Map<String, String>>{
     'mcpServerAuthStatus': 'auth',
     'mcpServerTools': 'tools',
     'mcpServerResources': 'resources',
+    'mcpResourceReadFailed': 'Failed to read MCP resource',
+    'mcpResourceContentsEmpty': 'The MCP resource returned no contents.',
+    'mcpResourceBinaryContent':
+        'Binary resource ({encodedCharacters} base64 characters).',
     'mcpServerResourceTemplates': 'templates',
     'mcpServerInfo': 'server',
     'mcpServerStartupStatus': 'startup',
@@ -3455,6 +3464,9 @@ const _values = <String, Map<String, String>>{
     'mcpServerAuthStatus': '认证',
     'mcpServerTools': '工具',
     'mcpServerResources': '资源',
+    'mcpResourceReadFailed': 'MCP 资源读取失败',
+    'mcpResourceContentsEmpty': 'MCP 资源未返回正文。',
+    'mcpResourceBinaryContent': '二进制资源（{encodedCharacters} 个 base64 字符）。',
     'mcpServerResourceTemplates': '模板',
     'mcpServerInfo': '服务器',
     'mcpServerStartupStatus': '启动',

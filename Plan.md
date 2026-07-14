@@ -913,6 +913,7 @@ MVP 可以简化为底部导航：
 - 已将 `/plugins read` 与 `/plugins install` 对齐当前稳定 app-server 契约：操作前先从 `plugin/list` 权威 catalog 解析唯一目标，本地 marketplace 发送 `marketplacePath + pluginName`，远端 catalog 发送 `remoteMarketplaceName + remotePluginId`，同名插件冲突时要求使用列表中显示的唯一 plugin id，不猜测 marketplace；`plugin/read` 同时解析稳定的 `plugin.summary` detail 结构并兼容旧响应，`plugin/uninstall` 只发送协议允许的 `pluginId`。
 - 已接入稳定的远端插件技能正文读取：`/plugins read <plugin>` 会展示 `plugin/read` detail 中的技能名、说明和启用状态，`/plugins skill <plugin> <skill>` 先通过同一 `plugin/list` catalog 解析唯一远端目标，再调用 `plugin/skill/read { remoteMarketplaceName, remotePluginId, skillName }` 并原样展示服务端返回的正文；本地 marketplace 不会错误调用远端 skill API，仍使用已有本地 plugin/skills/workspace 路径查看。
 - 本轮结构整理继续将 `/mcp` inline argument parser、MCP status/OAuth/config runner 调用和本地化 summary 生成从 `ChatPage` 拆到 `features/chat/chat_mcp_command.dart`，公开 summary/reload/login 结构化 command、`parseChatMcpCommand` 与 `buildMcpSummaryFromCommand`，覆盖 `verbose`、`reload`/`refresh`、`login`/`oauth`/`auth`、runner 不可用和非法参数边界；`ChatPage` 只传入当前 thread/context controllers。
+- 已接入稳定的只读 MCP resource API：`/mcp resource <server> <uri>`（兼容 `/mcp read-resource`）通过类型化 `mcpServer/resource/read` 读取内容，存在当前 thread 时携带 `threadId` 复用该线程的 MCP runtime/environment，没有当前 thread 时允许 threadless 读取；文本正文原样展示，二进制内容只显示 MIME 与 base64 字符数，不在对话区展开完整 payload。任意 MCP tool call 仍不属于本里程碑，后续必须单独审计确认、执行权限和结果归属语义。
 - 本轮结构整理将 `/skills`、`/hooks`、`/apps` 的 catalog summary 命令加载、reader 不可用处理和加载失败摘要从 `ChatPage` 拆到 `features/chat/chat_catalog_summary_commands.dart`；`ChatPage` 只传入当前 cwd/thread context，summary 模块负责参数边界、reader 调用和本地化错误摘要。
 - `/hooks` 已从只读 snackbar 摘要升级为可管理 bottom sheet：`hooks/list` 显示 cwd、event、handler、source、matcher、enabled 和 trust 状态；用户管理的 hook 可在二次确认后通过 `config/batchWrite` 的 `hooks.state` 启用/禁用或写入当前 `trusted_hash`，每次修改后重新读取列表；受管 hook 保持只读，旧连接没有 mutation runner 时回退原摘要路径。
 - 本轮结构整理将 `/debug-config`、`/experimental`、`/memories` 的只读配置 summary 命令 refresh、cwd 选择和参数边界从 `ChatPage` 拆到 `features/chat/chat_config_summary_commands.dart`；`ChatPage` 只传入 config snapshot controller、当前 workspace cwds 和 thread raw memory context。
@@ -1400,7 +1401,7 @@ MVP 可以简化为底部导航：
 - goal/compact。
 - workspace file browser：目录树浏览、只读文件查看、range read 大文件加载、代码高亮、Markdown render/raw 切换。
 - shell command / command exec。
-- MCP server status/oauth。
+- MCP server status/oauth/resource read。
 - plugin/skill marketplace。
 - review。
 - rate limits/usage。

@@ -35,6 +35,7 @@ import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
 import 'package:sadcoder_mobile/src/hooks/codex_hook_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_config_runner.dart';
+import 'package:sadcoder_mobile/src/mcp/codex_mcp_resource_reader.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_oauth_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
 import 'package:sadcoder_mobile/src/memories/codex_memory_runner.dart';
@@ -108,6 +109,7 @@ void main() {
     expect(controller.environmentRunner, isNotNull);
     expect(controller.mcpServerConfigRunner, isNotNull);
     expect(controller.mcpServerOAuthRunner, isNotNull);
+    expect(controller.mcpResourceReader, isNotNull);
     expect(controller.modelListReader, isNotNull);
     expect(controller.permissionProfileListReader, isNotNull);
     expect(controller.skillListReader, isNotNull);
@@ -1329,6 +1331,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       mcpServerConfigRunner: const _FakeMcpServerConfigRunner(),
       mcpServerOAuthRunner: const _FakeMcpServerOAuthRunner(),
       mcpServerStatusReader: const _FakeMcpServerStatusReader(),
+      mcpResourceReader: CodexMcpResourceReader(session.client),
       modelListReader: const _FakeModelListReader(),
       permissionProfileListReader: const _FakePermissionProfileListReader(),
       skillListReader: const _FakeSkillListReader(),

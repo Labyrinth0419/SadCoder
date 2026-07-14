@@ -35,6 +35,7 @@ import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/mcp/mcp_resource_reader.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_config_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_oauth_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_controller.dart';
@@ -4932,6 +4933,76 @@ void main() {
     expect(find.textContaining('Code: ABCD-1234'), findsOneWidget);
   });
 
+  testWidgets('/mcp resource reads through the selected thread session', (
+    tester,
+  ) async {
+    final resourceReader = _RecordingMcpResourceReader(
+      result: McpResourceReadResult.fromJson({
+        'contents': [
+          {
+            'uri': 'docs://guide',
+            'mimeType': 'text/plain',
+            'text': '  Guide body\nSecond line\n',
+          },
+        ],
+      }),
+    );
+    final turnRunner = _FakeTurnRunner();
+    final sessionController = CodexSessionStateController(
+      connector: _FakeSessionStarter(
+        threadListReader: const _FakeThreadListReader(
+          page: ThreadListPage(threads: []),
+        ),
+        turnRunner: turnRunner,
+        mcpResourceReader: resourceReader,
+      ),
+      approvalController: ApprovalStateController(),
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_selected',
+            'sessionId': 'sess_1',
+            'preview': 'Selected thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+            'turns': <Object?>[],
+          }),
+        ),
+      ),
+    );
+    addTearDown(detailController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(sessionController.approvalController.dispose);
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_selected');
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/mcp resource docs docs://guide',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
+    await tester.pumpAndSettle();
+
+    expect(resourceReader.calls, [
+      (threadId: 'thr_selected', server: 'docs', uri: 'docs://guide'),
+    ]);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(find.textContaining('docs://guide (text/plain)'), findsOneWidget);
+    expect(find.textContaining('Guide body'), findsOneWidget);
+    expect(find.textContaining('Second line'), findsOneWidget);
+  });
+
   testWidgets('/mcp unsupported arguments do not refresh or send a prompt', (
     tester,
   ) async {
@@ -9278,6 +9349,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.fileSearchReader = const _FakeFileSearchReader(),
     this.mcpServerConfigRunner = const _FakeMcpServerConfigRunner(),
     this.mcpServerOAuthRunner = const _FakeMcpServerOAuthRunner(),
+    this.mcpResourceReader = const _FakeMcpResourceReader(),
     this.windowsSandboxRunner = const _NoopWindowsSandboxRunner(),
     this.events = const Stream.empty(),
     this.rawRpcError,
@@ -9306,6 +9378,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final FileSearchReader fileSearchReader;
   final McpServerConfigRunner mcpServerConfigRunner;
   final McpServerOAuthRunner mcpServerOAuthRunner;
+  final McpResourceReader mcpResourceReader;
   final WindowsSandboxRunner windowsSandboxRunner;
   final Stream<CodexEvent> events;
   final Object? rawRpcError;
@@ -9344,6 +9417,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
         workspaceFileReader: const _FakeWorkspaceFileReader(),
         mcpServerConfigRunner: mcpServerConfigRunner,
         mcpServerOAuthRunner: mcpServerOAuthRunner,
+        mcpResourceReader: mcpResourceReader,
         windowsSandboxRunner: windowsSandboxRunner,
         events: events,
         rawRpcError: rawRpcError,
@@ -9375,6 +9449,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       workspaceFileReader: const _FakeWorkspaceFileReader(),
       mcpServerConfigRunner: mcpServerConfigRunner,
       mcpServerOAuthRunner: mcpServerOAuthRunner,
+      mcpResourceReader: mcpResourceReader,
       windowsSandboxRunner: windowsSandboxRunner,
       events: events,
       rawRpcError: rawRpcError,
@@ -9388,7 +9463,8 @@ class _FakeSessionConnection
         WindowsSandboxConnectionHandle,
         MarketplaceMutationConnectionHandle,
         SkillMutationConnectionHandle,
-        PluginSkillReadConnectionHandle {
+        PluginSkillReadConnectionHandle,
+        McpResourceReadConnectionHandle {
   _FakeSessionConnection({
     required this.profile,
     required this.threadListReader,
@@ -9415,6 +9491,7 @@ class _FakeSessionConnection
     required this.workspaceFileReader,
     required this.mcpServerConfigRunner,
     required this.mcpServerOAuthRunner,
+    required this.mcpResourceReader,
     required this.windowsSandboxRunner,
     required this.events,
     this.rawRpcError,
@@ -9504,6 +9581,8 @@ class _FakeSessionConnection
 
   @override
   final McpServerOAuthRunner mcpServerOAuthRunner;
+  @override
+  final McpResourceReader mcpResourceReader;
   @override
   final WindowsSandboxRunner windowsSandboxRunner;
   @override
@@ -9619,6 +9698,7 @@ class _FakeThreadShellCommandConnection extends _FakeSessionConnection
     required super.workspaceFileReader,
     required super.mcpServerConfigRunner,
     required super.mcpServerOAuthRunner,
+    required super.mcpResourceReader,
     required super.windowsSandboxRunner,
     required super.events,
     super.rawRpcError,
@@ -9769,6 +9849,19 @@ class _FakeMcpServerStatusReader implements McpServerStatusReader {
     McpServerStatusDetail detail = McpServerStatusDetail.toolsAndAuthOnly,
   }) async {
     return const McpServerStatusPage(servers: []);
+  }
+}
+
+class _FakeMcpResourceReader implements McpResourceReader {
+  const _FakeMcpResourceReader();
+
+  @override
+  Future<McpResourceReadResult> readResource({
+    String? threadId,
+    required String server,
+    required String uri,
+  }) async {
+    return McpResourceReadResult.fromJson({'contents': <Object?>[]});
   }
 }
 
@@ -10182,6 +10275,23 @@ class _RecordingMcpServerStatusReader implements McpServerStatusReader {
     limits.add(limit);
     details.add(detail);
     return page;
+  }
+}
+
+class _RecordingMcpResourceReader implements McpResourceReader {
+  _RecordingMcpResourceReader({required this.result});
+
+  final McpResourceReadResult result;
+  final calls = <({String? threadId, String server, String uri})>[];
+
+  @override
+  Future<McpResourceReadResult> readResource({
+    String? threadId,
+    required String server,
+    required String uri,
+  }) async {
+    calls.add((threadId: threadId, server: server, uri: uri));
+    return result;
   }
 }
 

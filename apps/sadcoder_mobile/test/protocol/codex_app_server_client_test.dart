@@ -84,6 +84,29 @@ void main() {
     );
   });
 
+  test('readMcpResource uses the stable app-server request shape', () async {
+    final requests = <JsonRpcRequest>[];
+    final client = CodexAppServerClient(
+      MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        return {'contents': <Object?>[]};
+      }),
+    );
+
+    await client.readMcpResource(
+      threadId: ' thr_1 ',
+      server: ' docs ',
+      uri: ' docs://guide ',
+    );
+
+    expect(requests.single.method, 'mcpServer/resource/read');
+    expect(requests.single.params, {
+      'threadId': 'thr_1',
+      'server': 'docs',
+      'uri': 'docs://guide',
+    });
+  });
+
   test('model and thread methods use app-server method names', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {

@@ -107,6 +107,13 @@ void main() {
     );
     await connection.appListReader.listApps();
     await connection.mcpServerOAuthRunner.startOAuthLogin(serverName: 'github');
+    final mcpResourceReader =
+        (connection as McpResourceReadConnectionHandle).mcpResourceReader;
+    final mcpResource = await mcpResourceReader.readResource(
+      threadId: 'thr_1',
+      server: 'docs',
+      uri: 'docs://guide',
+    );
     await connection.accountSnapshotReader.readAccount();
     await connection.accountLogoutRunner.logout();
     await connection.feedbackUploadRunner.uploadFeedback(
@@ -219,6 +226,7 @@ void main() {
       'config/batchWrite',
       'app/list',
       'mcpServer/oauth/login',
+      'mcpServer/resource/read',
       'account/read',
       'account/logout',
       'feedback/upload',
@@ -255,6 +263,15 @@ void main() {
       'version': '1.0.0',
     });
     expect(connection.profile, _profile);
+    expect(mcpResource.contents.single.text, 'Guide');
+    final mcpResourceRequest = proxyConnector.requests.singleWhere(
+      (request) => request['method'] == 'mcpServer/resource/read',
+    );
+    expect(mcpResourceRequest['params'], {
+      'threadId': 'thr_1',
+      'server': 'docs',
+      'uri': 'docs://guide',
+    });
     expect(snapshot.pendingApprovals.single.id, 'approval-proxy');
     final feedbackLog = connection.diagnosticLogs.lastWhere(
       (entry) => entry.redactedJson['method'] == 'feedback/upload',
@@ -593,6 +610,11 @@ class _LineServerProxyConnector implements AgentProxyConnector {
     'hooks/list' => {'data': <Object?>[]},
     'app/list' => {'data': <Object?>[]},
     'mcpServer/oauth/login' => {'serverName': 'github'},
+    'mcpServer/resource/read' => {
+      'contents': [
+        {'uri': 'docs://guide', 'mimeType': 'text/plain', 'text': 'Guide'},
+      ],
+    },
     'agent/snapshot' => {
       'schemaVersion': 1,
       'pendingApprovals': [

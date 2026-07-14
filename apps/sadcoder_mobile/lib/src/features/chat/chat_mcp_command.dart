@@ -3,6 +3,7 @@ import '../../mcp/mcp_server_config_runner.dart';
 import '../../mcp/mcp_server_oauth_runner.dart';
 import '../../mcp/mcp_server_status_controller.dart';
 import '../../mcp/mcp_server_status_reader.dart';
+import '../../mcp/mcp_resource_reader.dart';
 import 'chat_mcp_summary.dart';
 
 sealed class ChatMcpCommand {
@@ -27,6 +28,16 @@ final class ChatMcpLoginCommand extends ChatMcpCommand {
   final String serverName;
 }
 
+final class ChatMcpResourceReadCommand extends ChatMcpCommand {
+  const ChatMcpResourceReadCommand({
+    required this.serverName,
+    required this.uri,
+  });
+
+  final String serverName;
+  final String uri;
+}
+
 ChatMcpCommand? parseChatMcpCommand(String arguments) {
   final parts = arguments
       .trim()
@@ -48,6 +59,10 @@ ChatMcpCommand? parseChatMcpCommand(String arguments) {
       (command == 'login' || command == 'oauth' || command == 'auth')) {
     return ChatMcpLoginCommand(serverName: parts[1]);
   }
+  if (parts.length == 3 &&
+      (command == 'resource' || command == 'read-resource')) {
+    return ChatMcpResourceReadCommand(serverName: parts[1], uri: parts[2]);
+  }
   return null;
 }
 
@@ -56,6 +71,7 @@ Future<String?> buildMcpSummaryFromCommand({
   required McpServerStatusController? statusController,
   required McpServerOAuthRunner? oauthRunner,
   required McpServerConfigRunner? configRunner,
+  McpResourceReader? resourceReader,
   required String? threadId,
   required String arguments,
   int limit = 25,
@@ -86,7 +102,73 @@ Future<String?> buildMcpSummaryFromCommand({
       verbose: verbose,
       limit: limit,
     ),
+    ChatMcpResourceReadCommand(:final serverName, :final uri) => _readResource(
+      l10n: l10n,
+      resourceReader: resourceReader,
+      threadId: threadId,
+      serverName: serverName,
+      uri: uri,
+    ),
   };
+}
+
+Future<String?> _readResource({
+  required AppLocalizations l10n,
+  required McpResourceReader? resourceReader,
+  required String? threadId,
+  required String serverName,
+  required String uri,
+}) async {
+  final reader = resourceReader;
+  if (reader == null) {
+    return null;
+  }
+  try {
+    final result = await reader.readResource(
+      threadId: threadId,
+      server: serverName,
+      uri: uri,
+    );
+    return _buildResourceSummary(
+      l10n: l10n,
+      serverName: serverName,
+      requestedUri: uri,
+      result: result,
+    );
+  } on Object catch (error) {
+    return [
+      l10n.mcpServersStatus,
+      l10n.messageWithDetail(l10n.mcpResourceReadFailed, error),
+    ].join('\n');
+  }
+}
+
+String _buildResourceSummary({
+  required AppLocalizations l10n,
+  required String serverName,
+  required String requestedUri,
+  required McpResourceReadResult result,
+}) {
+  final lines = <String>[
+    l10n.mcpServersStatus,
+    '${l10n.mcpServerInfo}: $serverName',
+    '${l10n.mcpServerResources}: $requestedUri',
+  ];
+  if (result.contents.isEmpty) {
+    lines.add(l10n.mcpResourceContentsEmpty);
+    return lines.join('\n');
+  }
+  for (final content in result.contents) {
+    final mimeType = content.mimeType;
+    lines.add(mimeType == null ? content.uri : '${content.uri} ($mimeType)');
+    switch (content.kind) {
+      case McpResourceContentKind.text:
+        lines.add(content.text!);
+      case McpResourceContentKind.blob:
+        lines.add(l10n.mcpResourceBinaryContent(content.blob!.length));
+    }
+  }
+  return lines.join('\n');
 }
 
 Future<String?> _startLogin({
