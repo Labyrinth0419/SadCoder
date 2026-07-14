@@ -699,6 +699,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           profileStore: widget.profileStore,
           hostSessions: _hostSessions(),
           profileConnector: _connectProfile,
+          threadConnector: _selectHostThread,
         ),
       ),
       2 => WorkspaceFilesPage(
@@ -825,7 +826,16 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           _nonEmpty(selectedThread?.id) ??
           _nonEmpty(uiState?.threadDetailController.selectedThreadId),
       selectedThreadTitle: _nonEmpty(selectedThread?.title),
+      threads: uiState?.threadListController.threads ?? const [],
     );
+  }
+
+  Future<void> _selectHostThread(SshProfile profile, String threadId) async {
+    await _connectProfile(profile);
+    if (!mounted || _sessionController.profile?.id != profile.id) {
+      return;
+    }
+    await _threadDetailController.readThread(threadId);
   }
 
   ThreadSummary? _selectedThreadForHost(AppHostSessionUiState? uiState) {

@@ -1,16 +1,19 @@
 import '../ssh/ssh_profile.dart';
+import '../threads/thread_summary.dart';
 import 'codex_session_state_controller.dart';
 
 class HostSessionSummary {
   const HostSessionSummary({
     required this.profile,
     required this.status,
+    this.threads = const [],
     this.selectedThreadId,
     this.selectedThreadTitle,
   });
 
   final SshProfile profile;
   final CodexSessionStatus status;
+  final List<ThreadSummary> threads;
   final String? selectedThreadId;
   final String? selectedThreadTitle;
 

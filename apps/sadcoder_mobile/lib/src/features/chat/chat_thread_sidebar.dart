@@ -11,6 +11,9 @@ import '../../threads/thread_list_controller.dart';
 import '../../threads/thread_summary.dart';
 import 'chat_status_summary.dart';
 
+typedef ChatHostThreadConnector =
+    Future<void> Function(SshProfile profile, String threadId);
+
 class ChatThreadSidebar extends StatelessWidget {
   const ChatThreadSidebar({
     super.key,
@@ -135,11 +138,13 @@ class ChatHostSessionsPanel extends StatelessWidget {
     required this.hostSessions,
     required this.selectedProfile,
     required this.onProfileSelected,
+    this.onThreadSelected,
   });
 
   final List<HostSessionSummary> hostSessions;
   final SshProfile? selectedProfile;
   final ValueChanged<SshProfile>? onProfileSelected;
+  final ChatHostThreadConnector? onThreadSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -190,6 +195,7 @@ class ChatHostSessionsPanel extends StatelessWidget {
             summary: hostSessions[index],
             selected: selectedProfile?.id == hostSessions[index].profile.id,
             onSelected: onProfileSelected,
+            onThreadSelected: onThreadSelected,
           ),
           if (index != hostSessions.length - 1) const SizedBox(height: 6),
         ],
@@ -203,11 +209,13 @@ class _HostSessionTile extends StatelessWidget {
     required this.summary,
     required this.selected,
     required this.onSelected,
+    required this.onThreadSelected,
   });
 
   final HostSessionSummary summary;
   final bool selected;
   final ValueChanged<SshProfile>? onSelected;
+  final ChatHostThreadConnector? onThreadSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -222,109 +230,144 @@ class _HostSessionTile extends StatelessWidget {
     return Semantics(
       button: enabled,
       selected: selected,
-      child: Material(
-        key: ValueKey('chat-sidebar-host-session-${profile.id}'),
-        color: selected
-            ? colorScheme.primaryContainer.withValues(alpha: 0.52)
-            : colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          onTap: enabled ? () => onSelected!(profile) : null,
-          borderRadius: BorderRadius.circular(8),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: selected
-                    ? colorScheme.primary.withValues(alpha: 0.52)
-                    : colorScheme.outlineVariant,
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Material(
+            key: ValueKey('chat-sidebar-host-session-${profile.id}'),
+            color: selected
+                ? colorScheme.primaryContainer.withValues(alpha: 0.52)
+                : colorScheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(8),
+            child: InkWell(
+              onTap: enabled ? () => onSelected!(profile) : null,
               borderRadius: BorderRadius.circular(8),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(9, 8, 8, 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? colorScheme.primary.withValues(alpha: 0.16)
-                          : colorScheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(7),
-                    ),
-                    child: Icon(
-                      selected ? Icons.check : Icons.dns_outlined,
-                      size: 17,
-                      color: selected ? colorScheme.primary : foreground,
-                    ),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: selected
+                        ? colorScheme.primary.withValues(alpha: 0.52)
+                        : colorScheme.outlineVariant,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(9, 8, 8, 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? colorScheme.primary.withValues(alpha: 0.16)
+                              : colorScheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Icon(
+                          selected ? Icons.check : Icons.dns_outlined,
+                          size: 17,
+                          color: selected ? colorScheme.primary : foreground,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Expanded(
-                              child: Text(
-                                profile.displayName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.labelLarge?.copyWith(
-                                  color: foreground,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            _HostSessionStatusPill(status: summary.status),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          profile.endpoint,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        if (threadLabel != null) ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.forum_outlined,
-                                size: 13,
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  threadLabel,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: colorScheme.onSurface,
-                                    fontWeight: FontWeight.w600,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    profile.displayName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.labelLarge?.copyWith(
+                                      color: foreground,
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ),
+                                const SizedBox(width: 6),
+                                _HostSessionStatusPill(status: summary.status),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              profile.endpoint,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            if (threadLabel != null) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.forum_outlined,
+                                    size: 13,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      threadLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: colorScheme.onSurface,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
-                          ),
-                        ],
-                      ],
-                    ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
+          if (summary.threads.isNotEmpty)
+            ExpansionTile(
+              key: ValueKey('chat-sidebar-host-thread-list-${profile.id}'),
+              initiallyExpanded: selected,
+              tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+              childrenPadding: const EdgeInsets.only(left: 8, right: 8),
+              visualDensity: VisualDensity.compact,
+              leading: const Icon(Icons.forum_outlined, size: 17),
+              title: Text(context.l10n.sessions),
+              children: [
+                for (final thread in summary.threads)
+                  ListTile(
+                    key: ValueKey(
+                      'chat-sidebar-host-thread-${profile.id}-${thread.id}',
+                    ),
+                    dense: true,
+                    selected: thread.id == summary.selectedThreadId,
+                    leading: const Icon(Icons.chat_bubble_outline, size: 17),
+                    title: Text(
+                      thread.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: !enabled || onThreadSelected == null
+                        ? null
+                        : () => onThreadSelected!(profile, thread.id),
+                  ),
+              ],
+            ),
+        ],
       ),
     );
   }

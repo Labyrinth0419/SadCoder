@@ -55,6 +55,8 @@ import 'chat_timeline_window_coordinator.dart';
 import 'slash_command_palette.dart';
 
 typedef ChatProfileConnector = Future<void> Function(SshProfile profile);
+typedef ChatThreadConnector =
+    Future<void> Function(SshProfile profile, String threadId);
 
 class ChatPage extends StatefulWidget {
   const ChatPage({
@@ -77,6 +79,7 @@ class ChatPage extends StatefulWidget {
     this.profileStore,
     this.hostSessions = const [],
     this.profileConnector,
+    this.threadConnector,
     this.slashCommandDispatcher,
   });
 
@@ -98,6 +101,7 @@ class ChatPage extends StatefulWidget {
   final SshProfileStore? profileStore;
   final List<HostSessionSummary> hostSessions;
   final ChatProfileConnector? profileConnector;
+  final ChatThreadConnector? threadConnector;
   final SlashCommandActionDispatcher? slashCommandDispatcher;
 
   @override
@@ -337,6 +341,8 @@ class _ChatPageState extends State<ChatPage> {
                                               ? null
                                               : _profileSelectionHandler()
                                                     .selectProfile,
+                                          onThreadSelected:
+                                              widget.threadConnector,
                                         ),
                                       ],
                                       const SizedBox(height: 10),

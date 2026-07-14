@@ -8,6 +8,7 @@ import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart'
 import 'package:sadcoder_mobile/src/session/host_session_summary.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/theme/sadcoder_theme.dart';
+import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 
 void main() {
   testWidgets('thread sidebar owns its scroll surface slot', (tester) async {
@@ -132,6 +133,52 @@ void main() {
     expect(find.text('thread-without-title'), findsOneWidget);
   });
 
+  testWidgets('host sessions panel exposes and routes per-host threads', (
+    tester,
+  ) async {
+    final host = _profile(id: 'host-a', name: 'Build Host', host: 'build.dev');
+    SshProfile? selectedProfile;
+    String? selectedThreadId;
+
+    await _pumpSidebar(
+      tester,
+      ChatHostSessionsPanel(
+        hostSessions: [
+          HostSessionSummary(
+            profile: host,
+            status: CodexSessionStatus.connected,
+            selectedThreadId: 'thread-1',
+            threads: [
+              _thread(id: 'thread-1', name: 'Release build'),
+              _thread(id: 'thread-2', name: 'Fix CI'),
+            ],
+          ),
+        ],
+        selectedProfile: host,
+        onProfileSelected: (_) {},
+        onThreadSelected: (profile, threadId) async {
+          selectedProfile = profile;
+          selectedThreadId = threadId;
+        },
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey('chat-sidebar-host-thread-list-host-a')),
+      findsOneWidget,
+    );
+    expect(find.text('Release build'), findsOneWidget);
+    expect(find.text('Fix CI'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('chat-sidebar-host-thread-host-a-thread-2')),
+    );
+    await tester.pump();
+
+    expect(selectedProfile, same(host));
+    expect(selectedThreadId, 'thread-2');
+  });
+
   testWidgets('thread list panel shows disconnected state without controller', (
     tester,
   ) async {
@@ -177,4 +224,17 @@ SshProfile _profile({
   required String host,
 }) {
   return SshProfile(id: id, name: name, host: host, username: 'codex');
+}
+
+ThreadSummary _thread({required String id, required String name}) {
+  return ThreadSummary(
+    id: id,
+    sessionId: 'session-$id',
+    preview: '',
+    ephemeral: false,
+    status: 'idle',
+    cwd: '/repo',
+    updatedAtSeconds: 1,
+    name: name,
+  );
 }
