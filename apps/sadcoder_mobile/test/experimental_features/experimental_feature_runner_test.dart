@@ -58,7 +58,7 @@ void main() {
     });
   });
 
-  test('writes a feature as a confirmed user config batch edit', () async {
+  test('persists feature changes with the Codex TUI config path', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {
       requests.add(request);

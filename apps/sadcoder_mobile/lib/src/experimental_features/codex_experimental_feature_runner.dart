@@ -51,6 +51,9 @@ class CodexExperimentalFeatureRunner implements ExperimentalFeatureRunner {
         'featureName must not be blank',
       );
     }
+    // Codex TUI persists /experimental selections. The similarly named
+    // experimentalFeature/enablement/set RPC is only a lower-precedence,
+    // process-local override and silently filters unsupported feature keys.
     final response = await _client.batchWriteConfig(
       edits: [
         {

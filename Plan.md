@@ -994,7 +994,7 @@ MVP 可以简化为底部导航：
 - 已将稳定的 `configRequirements/read` 合并进服务器配置快照和 `/debug-config`：新 app-server 会展示受管 approval/sandbox/model/feature 等约束，明确区别于普通 `config/read` 生效值和 layers；旧版本 method-not-found 时仍保留普通配置摘要并显示 requirements 不可用，其他读取错误不会被静默吞掉。
 - 已将 `/test-approval` 接成移动端本地 debug-only 审批链路测试：注入一条 file-change `PendingApproval` 到当前 session 的 `ApprovalStateController`，不调用 app-server、不修改服务器状态。
 - `/experimental` 保留 `config/read` 只读摘要作为不支持 `experimentalFeature/list` 的旧服务端回退路径。
-- 已将 `/experimental` 升级为按 `experimentalFeature/list` 自动读取服务端 Beta feature catalog 的可操作 bottom sheet；开关修改前展示旧值/新值与全局服务器影响并二次确认，确认后通过 `config/batchWrite` 写入 `features.<name>`、热重载用户配置，再刷新能力状态；旧服务端不支持该接口时回退到原有只读配置摘要。
+- 已将 `/experimental` 升级为按 `experimentalFeature/list` 自动读取服务端 Beta feature catalog 的可操作 bottom sheet；开关修改前展示旧值/新值与全局服务器影响并二次确认，确认后通过 `config/batchWrite` 写入 `features.<name>`、热重载用户配置，再刷新能力状态；旧服务端不支持该接口时回退到原有只读配置摘要。当前稳定 app-server 另有 `experimentalFeature/enablement/set`，但它只提供低于 `config.toml` 的进程内运行时覆盖、不会持久化，并会静默忽略不在服务端白名单中的 feature key，因此不等价于 Codex TUI `/experimental`，不能替换这里的持久化配置路径。
 - `/memories` 保留 `config/read` 摘要作为旧服务端或没有 thread memory metadata 时的回退路径。
 - 已将 `/memories` 升级为当前线程记忆模式与全局记忆清空 bottom sheet：线程模式通过 `thread/memoryMode/set` 修改并单独确认；`memory/reset` 会明确提示其会清空服务器记忆文件和数据库记录，使用独立高风险确认；操作完成后刷新当前 thread。
 - 已将 `/app` 接成移动端 UI-only 诊断：无参数时明确提示 Codex Desktop handoff 在移动端不可用，不调用 app-server、不发送 prompt；带参数时返回 unavailable。后续只有在服务器明确暴露 Desktop handoff 能力时再改成结构化接入。
