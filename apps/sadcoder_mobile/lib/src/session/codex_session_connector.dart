@@ -73,7 +73,9 @@ import '../reviews/thread_review_runner.dart';
 import '../realtime/codex_realtime_runner.dart';
 import '../realtime/realtime_runner.dart';
 import '../skills/codex_skill_list_reader.dart';
+import '../skills/codex_skill_mutation_runner.dart';
 import '../skills/skill_list_reader.dart';
+import '../skills/skill_mutation_runner.dart';
 import '../ssh/ssh_profile.dart';
 import '../ssh/ssh_proxy_connector.dart';
 import '../threads/codex_thread_mutation_runner.dart';
@@ -227,6 +229,10 @@ abstract interface class HookMutationConnectionHandle {
   HookMutationRunner get hookMutationRunner;
 }
 
+abstract interface class SkillMutationConnectionHandle {
+  SkillMutationRunner get skillMutationRunner;
+}
+
 abstract interface class RealtimeConnectionHandle {
   RealtimeRunner get realtimeRunner;
 }
@@ -331,6 +337,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
           session.client,
         ),
         skillListReader: CodexSkillListReader(session.client),
+        skillMutationRunner: CodexSkillMutationRunner(session.client),
         pluginListReader: CodexPluginListReader(session.client),
         pluginDetailReader: CodexPluginDetailReader(session.client),
         pluginMutationRunner: CodexPluginMutationRunner(session.client),
@@ -427,6 +434,7 @@ class CodexSessionConnection
         MarketplaceMutationConnectionHandle,
         EnvironmentConnectionHandle,
         HookMutationConnectionHandle,
+        SkillMutationConnectionHandle,
         RealtimeConnectionHandle,
         WorkspaceFileMutationConnectionHandle {
   CodexSessionConnection({
@@ -447,6 +455,7 @@ class CodexSessionConnection
     required this.windowsSandboxRunner,
     required this.environmentRunner,
     required this.hookMutationRunner,
+    required this.skillMutationRunner,
     required this.realtimeRunner,
     required this.workspaceFileMutationRunner,
     required this.externalAgentConfigRunner,
@@ -550,6 +559,8 @@ class CodexSessionConnection
   final HookListReader hookListReader;
   @override
   final HookMutationRunner hookMutationRunner;
+  @override
+  final SkillMutationRunner skillMutationRunner;
   @override
   final RealtimeRunner realtimeRunner;
   @override

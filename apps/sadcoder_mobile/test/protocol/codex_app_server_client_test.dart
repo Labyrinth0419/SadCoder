@@ -523,6 +523,38 @@ void main() {
     expect(requests.single.params, isEmpty);
   });
 
+  test('writeSkillConfig uses exactly one normalized selector', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {'effectiveEnabled': request.params?['enabled']};
+    });
+    addTearDown(transport.close);
+
+    final client = CodexAppServerClient(transport);
+    await client.writeSkillConfig(path: ' /skill/SKILL.md ', enabled: false);
+    await client.writeSkillConfig(name: ' review ', enabled: true);
+
+    expect(requests.map((request) => request.method), [
+      'skills/config/write',
+      'skills/config/write',
+    ]);
+    expect(requests[0].params, {'path': '/skill/SKILL.md', 'enabled': false});
+    expect(requests[1].params, {'name': 'review', 'enabled': true});
+    expect(
+      () => client.writeSkillConfig(enabled: true),
+      throwsA(isA<ArgumentError>()),
+    );
+    expect(
+      () => client.writeSkillConfig(
+        path: '/skill/SKILL.md',
+        name: 'review',
+        enabled: true,
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
   test('listThreads can request archived threads', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {

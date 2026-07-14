@@ -53,6 +53,7 @@ import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
+import 'package:sadcoder_mobile/src/skills/skill_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile_store.dart';
 import 'package:sadcoder_mobile/src/theme/sadcoder_theme.dart';
@@ -4982,11 +4983,13 @@ void main() {
         ],
       }),
     );
+    const skillMutationRunner = _FakeSkillMutationRunner();
     final starter = _FakeSessionStarter(
       threadListReader: const _FakeThreadListReader(
         page: ThreadListPage(threads: []),
       ),
       skillListReader: skillReader,
+      skillMutationRunner: skillMutationRunner,
     );
     final sessionController = CodexSessionStateController(
       connector: starter,
@@ -5032,10 +5035,12 @@ void main() {
       ['/repo'],
     ]);
     expect(skillReader.forceReloadValues, [false]);
-    expect(find.textContaining('Skills'), findsOneWidget);
-    expect(find.textContaining('PR Babysitter (pr-review)'), findsOneWidget);
+    expect(find.byKey(const ValueKey('chat-skills-search')), findsOneWidget);
+    expect(find.text('PR Babysitter'), findsOneWidget);
     expect(
-      find.textContaining('Description: Review changed files'),
+      find.text(
+        'Review changed files\n/repo/.codex/skills/pr-review/SKILL.md\nrepo',
+      ),
       findsOneWidget,
     );
   });
@@ -9125,6 +9130,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.threadReviewRunner = const _FakeThreadReviewRunner(),
     this.threadItemListReader = const _NoopThreadItemListReader(),
     this.skillListReader = const _FakeSkillListReader(),
+    this.skillMutationRunner = const _FakeSkillMutationRunner(),
     this.pluginListReader = const _FakePluginListReader(),
     this.pluginDetailReader = const _FakePluginDetailReader(),
     this.pluginMutationRunner = const _FakePluginMutationRunner(),
@@ -9151,6 +9157,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final ThreadReviewRunner threadReviewRunner;
   final ThreadItemListReader threadItemListReader;
   final SkillListReader skillListReader;
+  final SkillMutationRunner skillMutationRunner;
   final PluginListReader pluginListReader;
   final PluginDetailReader pluginDetailReader;
   final PluginMutationRunner pluginMutationRunner;
@@ -9185,6 +9192,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
         threadReviewRunner: threadReviewRunner,
         threadItemListReader: threadItemListReader,
         skillListReader: skillListReader,
+        skillMutationRunner: skillMutationRunner,
         pluginListReader: pluginListReader,
         pluginDetailReader: pluginDetailReader,
         pluginMutationRunner: pluginMutationRunner,
@@ -9214,6 +9222,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       threadReviewRunner: threadReviewRunner,
       threadItemListReader: threadItemListReader,
       skillListReader: skillListReader,
+      skillMutationRunner: skillMutationRunner,
       pluginListReader: pluginListReader,
       pluginDetailReader: pluginDetailReader,
       pluginMutationRunner: pluginMutationRunner,
@@ -9239,7 +9248,8 @@ class _FakeSessionConnection
     implements
         CodexSessionConnectionHandle,
         WindowsSandboxConnectionHandle,
-        MarketplaceMutationConnectionHandle {
+        MarketplaceMutationConnectionHandle,
+        SkillMutationConnectionHandle {
   _FakeSessionConnection({
     required this.profile,
     required this.threadListReader,
@@ -9250,6 +9260,7 @@ class _FakeSessionConnection
     required this.threadReviewRunner,
     required this.threadItemListReader,
     required this.skillListReader,
+    required this.skillMutationRunner,
     required this.pluginListReader,
     required this.pluginDetailReader,
     required this.pluginMutationRunner,
@@ -9301,6 +9312,9 @@ class _FakeSessionConnection
 
   @override
   final SkillListReader skillListReader;
+
+  @override
+  final SkillMutationRunner skillMutationRunner;
 
   @override
   final PluginListReader pluginListReader;
@@ -9446,6 +9460,7 @@ class _FakeThreadShellCommandConnection extends _FakeSessionConnection
     required super.threadReviewRunner,
     required super.threadItemListReader,
     required super.skillListReader,
+    required super.skillMutationRunner,
     required super.pluginListReader,
     required super.pluginDetailReader,
     required super.pluginMutationRunner,
@@ -9622,6 +9637,22 @@ class _FakeSkillListReader implements SkillListReader {
     bool forceReload = false,
   }) async {
     return const SkillListPage(entries: []);
+  }
+}
+
+class _FakeSkillMutationRunner implements SkillMutationRunner {
+  const _FakeSkillMutationRunner();
+
+  @override
+  Future<SkillMutationResult> setSkillEnabled({
+    String? path,
+    String? name,
+    required bool enabled,
+  }) async {
+    return SkillMutationResult(
+      effectiveEnabled: enabled,
+      raw: {'effectiveEnabled': enabled},
+    );
   }
 }
 

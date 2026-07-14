@@ -27,6 +27,7 @@ import 'chat_plugins_command.dart';
 import 'chat_plugins_summary.dart' as plugins_summary;
 import 'chat_review_command.dart';
 import 'chat_rollout_diagnostics.dart';
+import 'chat_skills_sheet.dart';
 import 'chat_status_summary.dart';
 import 'chat_summary_formatting.dart';
 import 'chat_test_approval_command.dart';
@@ -118,9 +119,23 @@ class ChatSummaryCommandHandler {
   }
 
   Future<String?> buildSkillsSummary(String arguments) async {
+    final reader = sessionController?.skillListReader;
+    final mutationRunner = sessionController?.skillMutationRunner;
+    if (arguments.trim().isEmpty && reader != null && mutationRunner != null) {
+      await showChatSkillsSheet(
+        context: context,
+        reader: reader,
+        mutationRunner: mutationRunner,
+        cwds: currentWorkspaceCwdsProvider(),
+      );
+      if (!context.mounted) {
+        return null;
+      }
+      return context.l10n.skillsManagementClosed;
+    }
     return buildSkillsSummaryFromCommand(
       l10n: context.l10n,
-      reader: sessionController?.skillListReader,
+      reader: reader,
       cwds: currentWorkspaceCwdsProvider(),
       arguments: arguments,
     );

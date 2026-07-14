@@ -41,6 +41,7 @@ import '../protocol/json_rpc_diagnostic_log.dart';
 import '../reviews/thread_review_runner.dart';
 import '../realtime/realtime_runner.dart';
 import '../skills/skill_list_reader.dart';
+import '../skills/skill_mutation_runner.dart';
 import '../ssh/ssh_profile.dart';
 import '../threads/cached_thread_item_list_reader.dart';
 import '../threads/thread_detail_reader.dart';
@@ -247,6 +248,14 @@ class CodexSessionStateController extends ChangeNotifier {
       _connection?.permissionProfileListReader;
 
   SkillListReader? get skillListReader => _connection?.skillListReader;
+
+  SkillMutationRunner? get skillMutationRunner {
+    final connection = _connection;
+    if (connection == null || connection is! SkillMutationConnectionHandle) {
+      return null;
+    }
+    return (connection as SkillMutationConnectionHandle).skillMutationRunner;
+  }
 
   PluginListReader? get pluginListReader => _connection?.pluginListReader;
 

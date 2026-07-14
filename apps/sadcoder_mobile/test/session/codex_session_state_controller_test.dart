@@ -55,6 +55,7 @@ import 'package:sadcoder_mobile/src/session/reconnect_policy.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
 import 'package:sadcoder_mobile/src/session/session_heartbeat.dart';
 import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
+import 'package:sadcoder_mobile/src/skills/codex_skill_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_proxy_connector.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
@@ -109,6 +110,7 @@ void main() {
     expect(controller.modelListReader, isNotNull);
     expect(controller.permissionProfileListReader, isNotNull);
     expect(controller.skillListReader, isNotNull);
+    expect(controller.skillMutationRunner, isNotNull);
     expect(controller.pluginListReader, isNotNull);
     expect(controller.pluginDetailReader, isNotNull);
     expect(controller.pluginMutationRunner, isNotNull);
@@ -1328,6 +1330,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       modelListReader: const _FakeModelListReader(),
       permissionProfileListReader: const _FakePermissionProfileListReader(),
       skillListReader: const _FakeSkillListReader(),
+      skillMutationRunner: CodexSkillMutationRunner(session.client),
       pluginListReader: const _FakePluginListReader(),
       pluginDetailReader: const _FakePluginDetailReader(),
       pluginMutationRunner: const _FakePluginMutationRunner(),

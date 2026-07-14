@@ -1050,6 +1050,27 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> writeSkillConfig({
+    String? path,
+    String? name,
+    required bool enabled,
+  }) {
+    final normalizedPath = path?.trim();
+    final normalizedName = name?.trim();
+    final hasPath = normalizedPath != null && normalizedPath.isNotEmpty;
+    final hasName = normalizedName != null && normalizedName.isNotEmpty;
+    if (hasPath == hasName) {
+      throw ArgumentError(
+        'skills/config/write requires exactly one non-blank path or name',
+      );
+    }
+    return _request('skills/config/write', {
+      if (hasPath) 'path': normalizedPath,
+      if (hasName) 'name': normalizedName,
+      'enabled': enabled,
+    });
+  }
+
   Future<Map<String, Object?>> listPlugins({
     List<String> cwds = const [],
     List<String> marketplaceKinds = const [],

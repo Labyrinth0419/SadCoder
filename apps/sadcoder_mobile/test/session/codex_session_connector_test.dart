@@ -29,6 +29,12 @@ void main() {
     await connection.modelListReader.listModels();
     await connection.permissionProfileListReader.listPermissionProfiles();
     await connection.skillListReader.listSkills();
+    final skillMutationRunner =
+        (connection as SkillMutationConnectionHandle).skillMutationRunner;
+    await skillMutationRunner.setSkillEnabled(
+      path: '/repo/.codex/skills/review/SKILL.md',
+      enabled: false,
+    );
     await connection.pluginListReader.listPlugins();
     await connection.pluginDetailReader.readPlugin(pluginId: 'linear');
     await connection.pluginMutationRunner.installPlugin(pluginId: 'linear');
@@ -173,6 +179,7 @@ void main() {
       'model/list',
       'permissionProfile/list',
       'skills/list',
+      'skills/config/write',
       'plugin/list',
       'plugin/read',
       'plugin/install',
@@ -530,6 +537,7 @@ class _LineServerProxyConnector implements AgentProxyConnector {
     },
     'environment/status' => {'status': 'ready'},
     'skills/list' => {'data': <Object?>[]},
+    'skills/config/write' => {'effectiveEnabled': false},
     'plugin/list' => {'marketplaces': <Object?>[]},
     'plugin/read' => {
       'plugin': {

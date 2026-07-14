@@ -1002,6 +1002,12 @@ class AppLocalizations {
   String get skillsUnavailable => _text('skillsUnavailable');
   String get skillsLoadFailed => _text('skillsLoadFailed');
   String get skillsEmpty => _text('skillsEmpty');
+  String get skillsNoMatches => _text('skillsNoMatches');
+  String get skillsManagementBody => _text('skillsManagementBody');
+  String get skillsManagementClosed => _text('skillsManagementClosed');
+  String get refreshSkills => _text('refreshSkills');
+  String get searchSkills => _text('searchSkills');
+  String get clearSkillSearch => _text('clearSkillSearch');
   String get skillsCwd => _text('skillsCwd');
   String get skillDescription => _text('skillDescription');
   String get skillPath => _text('skillPath');
@@ -1009,6 +1015,15 @@ class AppLocalizations {
   String get skillEnabled => _text('skillEnabled');
   String get skillDisabled => _text('skillDisabled');
   String get skillScope => _text('skillScope');
+  String get skillEnable => _text('skillEnable');
+  String get skillDisable => _text('skillDisable');
+  String get skillEnableAction => _text('skillEnableAction');
+  String get skillDisableAction => _text('skillDisableAction');
+  String get skillMutationConfirmTitle => _text('skillMutationConfirmTitle');
+  String skillMutationConfirmBody(String name, String action) => _text(
+    'skillMutationConfirmBody',
+  ).replaceAll('{name}', name).replaceAll('{action}', action);
+  String get skillMutationFailed => _text('skillMutationFailed');
   String get pluginsTitle => _text('pluginsTitle');
   String get pluginsUnavailable => _text('pluginsUnavailable');
   String get pluginsLoadFailed => _text('pluginsLoadFailed');
@@ -2326,6 +2341,13 @@ const _values = <String, Map<String, String>>{
     'skillsUnavailable': 'Connect to a host, then run /skills.',
     'skillsLoadFailed': 'Failed to load skills',
     'skillsEmpty': 'No skills available.',
+    'skillsNoMatches': 'No matching skills.',
+    'skillsManagementBody':
+        'Enable or disable skills in the server Codex configuration.',
+    'skillsManagementClosed': 'Skills management closed.',
+    'refreshSkills': 'Refresh skills',
+    'searchSkills': 'Search skills',
+    'clearSkillSearch': 'Clear skill search',
     'skillsCwd': 'cwd',
     'skillDescription': 'Description',
     'skillPath': 'Path',
@@ -2333,6 +2355,14 @@ const _values = <String, Map<String, String>>{
     'skillEnabled': 'enabled',
     'skillDisabled': 'disabled',
     'skillScope': 'scope',
+    'skillEnable': 'Enable',
+    'skillDisable': 'Disable',
+    'skillEnableAction': 'enable',
+    'skillDisableAction': 'disable',
+    'skillMutationConfirmTitle': 'Confirm skill change',
+    'skillMutationConfirmBody':
+        'This will {action} "{name}" by updating the server Codex configuration. The change affects other Codex clients using the same CODEX_HOME.',
+    'skillMutationFailed': 'Failed to update skill',
     'pluginsTitle': 'Plugins',
     'pluginsUnavailable': 'Connect to a host, then run /plugins.',
     'pluginsLoadFailed': 'Failed to load plugins',
@@ -3430,6 +3460,12 @@ const _values = <String, Map<String, String>>{
     'skillsUnavailable': '连接主机后运行 /skills。',
     'skillsLoadFailed': '技能加载失败',
     'skillsEmpty': '暂无可用技能。',
+    'skillsNoMatches': '没有匹配的技能。',
+    'skillsManagementBody': '启用或禁用服务器 Codex 配置中的技能。',
+    'skillsManagementClosed': '技能管理已关闭。',
+    'refreshSkills': '刷新技能',
+    'searchSkills': '搜索技能',
+    'clearSkillSearch': '清除技能搜索',
     'skillsCwd': '工作目录',
     'skillDescription': '说明',
     'skillPath': '路径',
@@ -3437,6 +3473,14 @@ const _values = <String, Map<String, String>>{
     'skillEnabled': '已启用',
     'skillDisabled': '已禁用',
     'skillScope': '范围',
+    'skillEnable': '启用',
+    'skillDisable': '禁用',
+    'skillEnableAction': '启用',
+    'skillDisableAction': '禁用',
+    'skillMutationConfirmTitle': '确认技能变更',
+    'skillMutationConfirmBody':
+        '这会通过修改服务器 Codex 配置来{action}“{name}”。使用同一 CODEX_HOME 的其他 Codex 客户端也会受到影响。',
+    'skillMutationFailed': '技能更新失败',
     'pluginsTitle': '插件',
     'pluginsUnavailable': '连接主机后运行 /plugins。',
     'pluginsLoadFailed': '插件加载失败',
