@@ -2,6 +2,86 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 
 void main() {
+  test('maps realtime notification family with thread identity', () {
+    final cases =
+        <({String method, CodexEventKind kind, Map<String, Object?> params})>[
+          (
+            method: 'thread/realtime/started',
+            kind: CodexEventKind.threadRealtimeStarted,
+            params: {'threadId': 'thr_1', 'version': 'v2'},
+          ),
+          (
+            method: 'thread/realtime/itemAdded',
+            kind: CodexEventKind.threadRealtimeItemAdded,
+            params: {
+              'threadId': 'thr_1',
+              'item': {'type': 'message'},
+            },
+          ),
+          (
+            method: 'thread/realtime/transcript/delta',
+            kind: CodexEventKind.threadRealtimeTranscriptDelta,
+            params: {'threadId': 'thr_1', 'role': 'assistant', 'delta': 'hi'},
+          ),
+          (
+            method: 'thread/realtime/transcript/done',
+            kind: CodexEventKind.threadRealtimeTranscriptDone,
+            params: {'threadId': 'thr_1', 'role': 'assistant', 'text': 'hi'},
+          ),
+          (
+            method: 'thread/realtime/outputAudio/delta',
+            kind: CodexEventKind.threadRealtimeOutputAudioDelta,
+            params: {
+              'threadId': 'thr_1',
+              'audio': {'data': 'AA=='},
+            },
+          ),
+          (
+            method: 'thread/realtime/sdp',
+            kind: CodexEventKind.threadRealtimeSdp,
+            params: {'threadId': 'thr_1', 'sdp': 'offer'},
+          ),
+          (
+            method: 'thread/realtime/error',
+            kind: CodexEventKind.threadRealtimeError,
+            params: {'threadId': 'thr_1', 'message': 'failed'},
+          ),
+          (
+            method: 'thread/realtime/closed',
+            kind: CodexEventKind.threadRealtimeClosed,
+            params: {'threadId': 'thr_1', 'reason': 'user'},
+          ),
+        ];
+
+    for (final testCase in cases) {
+      final event = CodexEvent.fromNotification({
+        'method': testCase.method,
+        'params': testCase.params,
+      });
+      expect(event.kind, testCase.kind, reason: testCase.method);
+      expect(event.threadId, 'thr_1', reason: testCase.method);
+      expect(event.payload, testCase.params, reason: testCase.method);
+    }
+  });
+
+  test('maps Windows sandbox setup completion notifications', () {
+    final event = CodexEvent.fromNotification({
+      'method': 'windowsSandbox/setupCompleted',
+      'params': {
+        'mode': 'elevated',
+        'success': false,
+        'error': 'administrator approval was cancelled',
+      },
+    });
+
+    expect(event.kind, CodexEventKind.windowsSandboxSetupCompleted);
+    expect(event.payload, {
+      'mode': 'elevated',
+      'success': false,
+      'error': 'administrator approval was cancelled',
+    });
+  });
+
   test('maps thread and turn lifecycle notifications', () {
     final threadStarted = CodexEvent.fromNotification({
       'method': 'thread/started',
@@ -266,6 +346,14 @@ void main() {
         'failureReason': 'reauthenticationRequired',
       },
     });
+    final importProgress = CodexEvent.fromNotification({
+      'method': 'externalAgentConfig/import/progress',
+      'params': {'importId': 'import_1', 'itemTypeResults': <Object?>[]},
+    });
+    final importCompleted = CodexEvent.fromNotification({
+      'method': 'externalAgentConfig/import/completed',
+      'params': {'importId': 'import_1', 'itemTypeResults': <Object?>[]},
+    });
 
     expect(tokenUsage.kind, CodexEventKind.threadTokenUsageUpdated);
     expect(tokenUsage.threadId, 'thr_1');
@@ -286,6 +374,17 @@ void main() {
     expect(mcpStartup.threadId, 'thr_1');
     expect(mcpStartup.payload?['name'], 'filesystem');
     expect(mcpStartup.payload?['status'], 'failed');
+
+    expect(
+      importProgress.kind,
+      CodexEventKind.externalAgentConfigImportProgress,
+    );
+    expect(importProgress.payload?['importId'], 'import_1');
+    expect(
+      importCompleted.kind,
+      CodexEventKind.externalAgentConfigImportCompleted,
+    );
+    expect(importCompleted.payload?['importId'], 'import_1');
   });
 
   test('preserves unknown notifications without throwing', () {
@@ -297,5 +396,31 @@ void main() {
     expect(event.kind, CodexEventKind.unknown);
     expect(event.method, 'future/event');
     expect(event.raw['params'], {'value': true});
+  });
+
+  test('maps process lifecycle notifications as typed payload events', () {
+    final output = CodexEvent.fromNotification({
+      'method': 'process/outputDelta',
+      'params': {
+        'processHandle': 'host_1',
+        'stream': 'stdout',
+        'deltaBase64': 'aGk=',
+        'capReached': false,
+      },
+    });
+    final exited = CodexEvent.fromNotification({
+      'method': 'process/exited',
+      'params': {
+        'processHandle': 'host_1',
+        'exitCode': 0,
+        'stdout': '',
+        'stderr': '',
+      },
+    });
+
+    expect(output.kind, CodexEventKind.processOutputDelta);
+    expect(output.payload?['processHandle'], 'host_1');
+    expect(exited.kind, CodexEventKind.processExited);
+    expect(exited.payload?['exitCode'], 0);
   });
 }

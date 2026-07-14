@@ -383,6 +383,7 @@ agent 负责：
 - 已补强移动端 model catalog 解析：`supportedReasoningEfforts` / `supported_reasoning_levels` 和 `serviceTiers` / `service_tiers` 同时支持对象数组与紧凑字符串数组，避免不同 Codex 版本或缓存来源把 reasoning/service tier 能力信息丢失。
 - 已将 model catalog 能力摘要接入 Settings 模型列表：每个可见模型除 label/default/provider 外，可显示 reasoning levels（含默认值）、service tiers（含默认值）和 availability announcement，避免 `model/list` 返回的能力信息只停留在解析层。
 - 已将同一 model catalog 能力摘要接入 Chat `/model` 选择器：下拉菜单展开时显示 reasoning/service tier/announcement，选中态仍保持单行模型 label，避免影响输入区密度。
+- 已将 `/model` 的推理强度改为按所选模型自动读取 `model/list` 的 `supportedReasoningEfforts` 与 `defaultReasoningEffort`：有能力元数据时提供服务器默认值和服务端声明的可选项，切换模型时清理不兼容覆盖；旧服务端、未知模型或自定义模型仍保留自由输入兼容路径。
 - 已将 model catalog 能力摘要中的默认值片段资源化，英文显示 `default: ...`，中文显示 `默认：...`，避免 UI helper 内硬编码可见文案。
 
 ### 5.6 Codex 配置策略
@@ -494,7 +495,7 @@ UI 必须清楚标识每个生效值来自哪里：`服务器默认`、`App 默�
 | `/plugins` | `plugin/*` + `marketplace/*` | 第二阶段 |
 | `/skills` | `skills/list` + skill detail/enable 状态 | 第二阶段 |
 | `/apps` | `apps` 相关 app-server 能力；无结构化接口时 agent fallback | 第二阶段 |
-| `/hooks` | hooks list/read/update；无接口时 agent fallback | 第二阶段 |
+| `/hooks` | `hooks/list` + `config/batchWrite hooks.state` 管理启用状态与 trusted hash | 第二阶段 |
 | `/logout` | `account/logout`，必须确认影响服务器 Codex 登录态 | 第二阶段 |
 | `/ps` | background terminals/process list | 第二阶段 |
 | `/stop`、`/clean` | 停止后台 terminals/process；不等价于中断当前 turn | 第二阶段 |
@@ -506,7 +507,7 @@ UI 必须清楚标识每个生效值来自哪里：`服务器默认`、`App 默�
 | `/experimental` | `config/read` + experimental feature toggles；写配置需确认 | 第三阶段 |
 | `/approve` | auto-review retry approval 语义；优先 app-server，缺失时 agent fallback | 第三阶段 |
 | `/memories` | memory 配置读取/编辑；写服务器配置需确认 | 第三阶段 |
-| `/import` | Claude Code import 流程；agent/SSH fallback | 第三阶段 |
+| `/import` | `externalAgentConfig/detect` 预览 + `externalAgentConfig/import` 结构化导入 | 第三阶段 |
 | `/app` | 移动端通常显示“不适用”；若服务器支持 Codex Desktop handoff，再接入 | 第三阶段/可选 |
 | `/init` | app-server 若无接口则 agent/SSH fallback 生成 AGENTS.md；需 diff 审批 | 第三阶段 |
 | `/plan` | collaboration mode 切换/本次 turn 覆盖 | 第三阶段 |
@@ -609,7 +610,7 @@ Codex 高级会话：
 - `workspace/directoryList`
 - `workspace/fileStat`
 - `workspace/fileRead`
-- `fs/writeFile` / `fs/watch` 留作后续受控编辑与监听设计，不进入只读文件浏览 MVP。
+- `fs/writeFile` / `fs/watch` 已通过独立 `WorkspaceFileMutationRunner` 接入受控编辑：只对完整加载的现有文本文件显示编辑入口，保存前展示 diff 并二次确认，写入前按 `contentVersion` 或完整旧内容做乐观冲突检查，路径与符号链接继续走 workspace guard；`fs/watch` 为当前文件提供外部变更提示。服务端协议没有 compare-and-swap，因此检查与写入之间仍是 best-effort 乐观并发控制，不声称原子写入。
 - `fuzzyFileSearch/*`
 - `thread/shellCommand`
 - `command/exec` PTY streaming。
@@ -617,8 +618,8 @@ Codex 高级会话：
 
 认证：
 
-- `account/login/start`：API key、ChatGPT browser/device code。
-- `account/login/cancel`
+- 主路径使用服务器侧已配置的 API key；App 读取账号状态但不把交互式登录作为主要功能。
+- `account/login/start`（API key、ChatGPT browser/device code）与 `account/login/cancel` 仅作为后续兼容能力，不阻塞当前主线。
 - `account/logout`
 - `account/rateLimits/read`
 - `account/usage/read`
@@ -641,9 +642,12 @@ MCP/插件/技能：
 
 - Review：`review/start`。
 - Remote environment：`environment/add/info`。
-- Realtime text/audio：`thread/realtime/*`，需要单独评估移动端音频与 WebRTC。
+- 已接入 `environment/add`、`environment/info`、`environment/status`：Settings Diagnostics 提供环境 ID、exec-server WebSocket URL、可选连接超时的注册表单；注册或替换环境前要求二次确认，info/status 作为只读状态检查并兼容未知状态值。环境注册遵循 app-server 当前进程内存语义，不伪装成持久化 `CODEX_HOME` 配置。
+- Realtime：已接入 text-only 的 `thread/realtime/start`、`appendText`、`stop`、`listVoices`，以及可供后续设备 transport 使用的 typed `appendAudio` / `appendSpeech` runner，强制 WebSocket transport，并在对话输入区提供实验性实时文本面板；音频设备采集/播放、WebRTC SDP 建连和端到端语音 UX 仍待后续实现，不能视为 realtime audio 完成。
 - `process/spawn` 高级进程管理。
+  - 已接入 `process/spawn`、`process/writeStdin`、`process/resizePty`、`process/kill` 以及 `process/outputDelta` / `process/exited` 通知；连接层提供类型化 `ProcessRunner`，Files 顶栏可进入实际 Terminal 页面。终端默认使用受 Codex sandbox 约束的 `command/exec`，只有用户显式切换到宿主机进程模式并逐次确认命令、cwd 与无沙箱风险后才调用 `process/spawn`，取消确认不发送 RPC。
 - `externalAgentConfig/*`。
+  - 已接入 `externalAgentConfig/detect`、`externalAgentConfig/import` 和 `externalAgentConfig/import/readHistories`；移动端保留检测项 raw JSON 以兼容未来字段，并把 progress/completed notification 映射为 typed event。
 - `feedback/upload`。
 - hooks 管理。
 - Codex Cloud 相关 CLI 能力，若 app-server 不覆盖则走 SSH command fallback。
@@ -900,9 +904,10 @@ MVP 可以简化为底部导航：
 - 本轮结构整理将 composer file mention 的 range 跟踪、重叠清理、剪枝和 `TurnTextElement` byte-range 转换从 `ChatPage` 拆到 `features/chat/chat_composer_mention.dart`，公开 `ChatComposerMention` 与 helper；`ChatPage` 只负责选择文件、计算插入区间和更新输入框文本。
 - 本轮结构整理将 `/rollout` 只读诊断的 raw thread path 解析从 `ChatPage` 拆到 `features/chat/chat_rollout_diagnostics.dart`，公开 `rolloutPathFromThreadRaw` 并覆盖 camel/snake key、嵌套 `rollout.path`、空值跳过和稳定优先级；`ChatPage` 只负责命令参数校验和本地化提示。
 - 本轮结构整理将 Chat thread sidebar 的宽度规则和 overlay breakpoint 从 `ChatPage` 拆到 `features/chat/chat_layout_metrics.dart`，公开 `chatThreadSidebarWidthFor` / `chatThreadSidebarOverlayBreakpoint` 并覆盖窄屏、overlay 和宽屏 docked 三档布局边界；`ChatPage` 只消费布局常量和计算结果。
-- 本轮结构整理将 `/plugins` inline argument parser 从 `ChatPage` 拆到 `features/chat/chat_plugins_command.dart`，公开 list/read/install/uninstall 结构化 command 与 `parseChatPluginsCommand`，覆盖 marketplace kind filter、`read`/`show`/`detail`、`install`、`uninstall`/`remove` 和非法参数边界；`ChatPage` 只负责调用 plugin reader/mutation runner 并生成 summary。
+- 本轮结构整理将 `/plugins` inline argument parser 从 `ChatPage` 拆到 `features/chat/chat_plugins_command.dart`，公开 list/read/install/uninstall 与 marketplace add/remove/upgrade 结构化 command 和 `parseChatPluginsCommand`，覆盖 marketplace kind filter、`read`/`show`/`detail`、`install`、`uninstall`/`remove`、add 的 `--ref`/重复 `--sparse` 参数以及非法参数边界；plugin 与 marketplace mutation 都要求用户确认其选中服务器和其他 Codex 客户端影响，取消时不发送 RPC，成功后刷新 `plugin/list`。连接层通过类型化 `MarketplaceMutationRunner` 严格调用 `marketplace/add`、`marketplace/remove`、`marketplace/upgrade`，兼容 camelCase/snake_case 结果并展示 upgrade 部分失败。
 - 本轮结构整理继续将 `/mcp` inline argument parser、MCP status/OAuth/config runner 调用和本地化 summary 生成从 `ChatPage` 拆到 `features/chat/chat_mcp_command.dart`，公开 summary/reload/login 结构化 command、`parseChatMcpCommand` 与 `buildMcpSummaryFromCommand`，覆盖 `verbose`、`reload`/`refresh`、`login`/`oauth`/`auth`、runner 不可用和非法参数边界；`ChatPage` 只传入当前 thread/context controllers。
-- 本轮结构整理将 `/skills`、`/hooks`、`/apps` 的只读 catalog summary 命令加载、reader 不可用处理和加载失败摘要从 `ChatPage` 拆到 `features/chat/chat_catalog_summary_commands.dart`；`ChatPage` 只传入当前 cwd/thread context，summary 模块负责参数边界、reader 调用和本地化错误摘要。
+- 本轮结构整理将 `/skills`、`/hooks`、`/apps` 的 catalog summary 命令加载、reader 不可用处理和加载失败摘要从 `ChatPage` 拆到 `features/chat/chat_catalog_summary_commands.dart`；`ChatPage` 只传入当前 cwd/thread context，summary 模块负责参数边界、reader 调用和本地化错误摘要。
+- `/hooks` 已从只读 snackbar 摘要升级为可管理 bottom sheet：`hooks/list` 显示 cwd、event、handler、source、matcher、enabled 和 trust 状态；用户管理的 hook 可在二次确认后通过 `config/batchWrite` 的 `hooks.state` 启用/禁用或写入当前 `trusted_hash`，每次修改后重新读取列表；受管 hook 保持只读，旧连接没有 mutation runner 时回退原摘要路径。
 - 本轮结构整理将 `/debug-config`、`/experimental`、`/memories` 的只读配置 summary 命令 refresh、cwd 选择和参数边界从 `ChatPage` 拆到 `features/chat/chat_config_summary_commands.dart`；`ChatPage` 只传入 config snapshot controller、当前 workspace cwds 和 thread raw memory context。
 - 本轮结构整理将 `/raw` transcript view 的 `toggle`/`on`/`off` 参数解析从 `ChatPage` 的 `setState` 分支拆到 `features/chat/chat_raw_transcript_command.dart`；`ChatPage` 只根据纯函数返回的下一状态更新本地 raw timeline 显示。
 - 本轮结构整理将 `/ps` 背景终端列表和 `/stop`/`/clean` 后台终端清理的参数边界、thread/runner 可用性检查与 runner 调用从 `ChatPage` 拆到 `features/chat/chat_background_terminal_commands.dart`；`ChatPage` 只传入当前 thread id 和 session runner。
@@ -984,13 +989,17 @@ MVP 可以简化为底部导航：
 - 已接入 `agent/slashCommands/list` 远端 manifest 的 reconnect cache：`SlashCommandRegistryController` 按 host/profile 加载远端 manifest，成功后写入本地 cache；远端加载失败时优先回退同 profile/cache 的 manifest，再回退内置 registry。
 - 已将 `/rollout` 接成只读 UI 诊断命令：有参数时不可用；无线程 raw path 时按 Codex TUI 语义显示 `Rollout path is not available yet.`，如果 thread raw 后续暴露 rollout path，则显示当前路径。
 - 已将 `/test-approval` 接成移动端本地 debug-only 审批链路测试：注入一条 file-change `PendingApproval` 到当前 session 的 `ApprovalStateController`，不调用 app-server、不修改服务器状态。
-- 已将 `/experimental` 接成只读配置摘要：刷新当前 cwd 的 `config/read` snapshot，显示 app-server experimental API 已启用，并列出 config 中 experimental/feature 相关键；写服务器配置和 toggle 仍留待后续确认流程。
-- 已将 `/memories` 接成只读配置摘要：刷新当前 cwd 的 `config/read` snapshot，展示 `[memories]` / memory feature 相关配置和当前 thread memory mode；`thread/memoryMode/set`、`memory/reset` 等写操作仍留待后续带确认流程实现。
+- `/experimental` 保留 `config/read` 只读摘要作为不支持 `experimentalFeature/list` 的旧服务端回退路径。
+- 已将 `/experimental` 升级为按 `experimentalFeature/list` 自动读取服务端 Beta feature catalog 的可操作 bottom sheet；开关修改前展示旧值/新值与全局服务器影响并二次确认，确认后通过 `config/batchWrite` 写入 `features.<name>`、热重载用户配置，再刷新能力状态；旧服务端不支持该接口时回退到原有只读配置摘要。
+- `/memories` 保留 `config/read` 摘要作为旧服务端或没有 thread memory metadata 时的回退路径。
+- 已将 `/memories` 升级为当前线程记忆模式与全局记忆清空 bottom sheet：线程模式通过 `thread/memoryMode/set` 修改并单独确认；`memory/reset` 会明确提示其会清空服务器记忆文件和数据库记录，使用独立高风险确认；操作完成后刷新当前 thread。
 - 已将 `/app` 接成移动端 UI-only 诊断：无参数时明确提示 Codex Desktop handoff 在移动端不可用，不调用 app-server、不发送 prompt；带参数时返回 unavailable。后续只有在服务器明确暴露 Desktop handoff 能力时再改成结构化接入。
-- 已将 `/import` 接成移动端 UI-only 诊断：无参数时明确提示 Claude Code import 仍需要受保护的 agent fallback，不调用 app-server、不扫描远端文件、不发送 prompt；带参数时返回 unavailable。后续实现必须先设计确认、可预览迁移摘要和回滚/跳过策略。
-- 已将 `/init` 接成移动端 UI-only 诊断：无参数时明确提示 AGENTS.md 初始化需要先生成 diff 预览并审批，不调用 app-server、不写文件、不发送 prompt；带参数时返回 unavailable。后续实现必须复用受控编辑/审批链路，不能直接通过 SSH 命令写入工作区。
+- 已将 `/import` 接成官方 `externalAgentConfig/*` 结构化流程：同时检测用户级和当前工作区 Claude Code 数据，按迁移组展示类型、作用域、服务端描述和明细数量，允许多选/全选并在写入服务器 Codex 配置或工作区文件前二次确认；提交时原样回传 detect payload，未知未来类型/字段不会被移动端丢弃。`externalAgentConfig/import/progress` 与 `externalAgentConfig/import/completed` 已映射为 typed event，并由独立 controller 处理响应/通知相邻到达竞态、进度去重累积和 completed 权威结果替换；确认后 UI 会显示可随时关闭的进度页、逐项成功/失败与最终计数，关闭不会取消服务端导入。`externalAgentConfig/import/readHistories` 已在下一次打开 `/import` 时展示最近结果，使断线后仍可核对完成状态；回滚仍由上游能力决定，移动端不会伪造本地回滚语义。
+- 已按 Codex TUI 当前语义接入 `/init`：移动端提交与 `refs/codex/codex-rs/tui/prompt_for_init_command.md` 同步的固定 prompt 启动普通 turn，要求先检查当前 cwd 是否已有 `AGENTS.md` 且不得覆盖；实际文件变更继续经过 app-server file-change diff/approval 链路，不通过 SSH 命令直接写文件。
 - 已将 `/setup-default-sandbox` 和 `/sandbox-add-read-dir` 接成移动端高风险诊断：前者无参数时提示需要受保护的 agent fallback 和高风险确认；后者先做 Windows 绝对路径/UNC 路径校验，合法路径只显示受保护 fallback 诊断，不调用 app-server、不执行 agent 命令、不修改沙箱配置；无效路径或不支持参数返回 unavailable。后续真正执行 fallback 前仍必须接入可审计变更摘要。
 - 已为 `/setup-default-sandbox` 与合法 Windows `/sandbox-add-read-dir <absolute_path>` 接入高风险确认门：用户确认后仍只显示 guarded fallback 诊断，不执行 agent 命令、不修改服务器设置；取消时返回 command cancelled，且非法路径不会触发确认。
+- 本轮已将 `/setup-default-sandbox` 从上述诊断态升级为官方 app-server 执行路径：移动端在专用高风险确认中明确提示所选 Windows 主机会触发管理员授权并持久化沙箱配置，确认后调用 `windowsSandbox/setupStart { mode: elevated, cwd }`，解析 `windowsSandbox/setupCompleted` 异步通知并展示成功、失败或超时结果，成功后刷新服务器配置快照；连接层暴露类型化 Windows sandbox runner，manifest 映射改为 `appServer` / `windowsOnly`。`/sandbox-add-read-dir` 仍保持受保护诊断，因为当前 app-server 只提供 readiness/setup RPC，上游读取目录授权仍是 TUI 进程内 `grant_read_root_non_elevated`，没有可供远程 App 审计调用的结构化协议；在上游新增对应 RPC 或 agent 复用官方原生实现前，不以任意 shell 命令替代。
+- 已对齐当前上游 `/debug-m-drop`、`/debug-m-update` 语义：Codex TUI 对二者只显示 app-server memory maintenance stub，不执行内存变更；移动端开发命令现在返回同语义的本地化诊断，不再误报“未实现”，带参数或 active turn 场景仍按 manifest 可用性拒绝。
 - 斜杠命令面板已使用左侧竖向分组 rail，而不是横向 tab；widget 回归测试会校验 common/session/configuration 分组按钮按同一 x 坐标纵向排列，避免窄屏重新出现横向标签挤压或底部 overflow。
 
 ### 9.6 工作区文件浏览与只读查看
@@ -1005,8 +1014,8 @@ MVP 可以简化为底部导航：
 - 支持代码文件语法高亮。
 - 支持 Markdown 文件在渲染视图和 raw 源码视图之间切换。
 - 支持大文件分段读取，不强制一次性读取完整文件。
-- MVP 明确不支持编辑、删除、重命名、新建文件或新建目录；后续编辑能力必须单独设计写入确认、diff 审批和冲突检测。
-- Files 页面保持只读浏览边界，不提供 terminal、shell command、写文件或其他可修改工作区的快捷入口；这些能力属于独立 Terminal/Commands 页面或受控编辑流程。
+- MVP 原始只读约束仍适用于删除、重命名、新建文件和新建目录；现有文本文件编辑已作为独立受控能力接入，必须经过完整加载、diff 审批、二次确认和乐观冲突检测，不复用只读 reader 直接写入。
+- Files 页面保持文件内容只读浏览边界，不提供写文件、删除、重命名或编辑快捷入口；顶栏允许进入独立 Terminal 页面，但终端命令仍遵循独立的 sandbox/host-process 确认流程，不把写文件能力混入文件预览流程。
 
 结构要求：
 
@@ -1063,8 +1072,8 @@ MVP 可以简化为底部导航：
 - 本轮 Chat UI / timeline 性能里程碑没有改变 Files 只读边界；9.6 仍以 Files 页面作为完整工作区选择、默认 workspace、搜索和文件树入口。Chat 侧栏只保留当前 workspace/cwd 摘要与切换入口，避免把 cwd/session/turn override 调试信息重新塞回主对话流。
 - 已覆盖路径归一化、目录响应 path/name 校验、目录分页 `nextCursor`/`cursor`、拒绝 `..` / 绝对 child path、符号链接祖先拒绝、二进制文件拒绝、UTF-8 range 边界、后续 chunk 失败重试和大 Markdown raw 保护。
 - 已补充文件页 widget 覆盖：可手动指定工作区 root，目录读取使用该 root；可保存 App 默认工作区 root 到 cwd 覆盖，并可从临时 root 恢复默认 root。
-- 已补充文件页只读边界 widget 覆盖：打开文件预览后仍不出现 terminal、新建文件/文件夹、重命名、删除、编辑、保存或写文件入口，确保后续 UI polish 不会把受控编辑能力混入只读 Files 页面。
-- 仍待后续单独设计：受控编辑、写文件、目录监听、diff 审批和冲突检测；这些能力不得混入只读 Files 页面。
+- 已补充文件页只读边界 widget 覆盖：打开文件预览后仍不出现新建文件/文件夹、重命名、删除、编辑、保存或写文件入口；独立的“打开终端”入口单独验证，不把终端命令或受控编辑能力混入文件预览流程。
+- 已完成现有文本文件的受控编辑、`fs/writeFile`、`fs/watch`、diff 审批和乐观冲突检测，并保持独立 mutation runner；仍待后续评估新建、重命名、删除、目录级操作，以及服务器提供原子 compare-and-swap/版本条件写入后的强一致冲突控制。
 
 ### 9.7 深色模式
 
@@ -1102,6 +1111,7 @@ MVP 可以简化为底部导航：
 - Settings 菜单已明确收敛为最多二级：一级分组为 Codex、Interface、Connection、System，二级才进入 Permissions、Account、Models、Appearance、SSH、Diagnostics；Diagnostics 默认折叠在 System 下，避免低频诊断项和常用设置平铺混杂，窄屏仍保持“菜单页 -> 具体设置页”的单详情导航。
 - 本轮 Chat 可见 UI 里程碑已压低 AppShell 底部 `NavigationBar` 高度到 58px，先减少主对话页被全局导航占用的垂直空间。后续二级 Chat detail 路由方案记录为：主页 -> 对话 -> 选择已连接服务器/session 或新建 session -> 对话详情；对话详情页隐藏 bottom nav，由详情页自己的左上返回/侧栏入口承担导航。
 - 本轮 Chat UI / timeline 性能里程碑保持 9.7.1 的二级 Chat detail 路由为后续设计，不在本轮重做导航架构；当前只增强 Chat 页面内侧栏动效、气泡阅读宽度、字体一致性和 timeline 按需加载。
+- 本轮 Chat 侧栏可用性里程碑已在左上三横线打开的会话面板标题行加入“新建对话”入口；按钮复用 `/new` 的 `startNewThread` 生命周期，成功后清理旧 timeline、刷新会话列表并在窄屏 overlay 侧栏中自动收起，活动 turn 时自动禁用。
 - 已落地配置覆盖三层恢复入口：Settings 可一键清除 App 默认覆盖、会话覆盖和本次覆盖并回到服务器默认来源；本地恢复动作不伪造 `thread/settings/update` 普通字段显式清理语义。
 - 已落地 per-host pending approval 聚合与动作路由：Approvals 页面展示所有已连接 host 的待审批项，审批响应回到所属 host 的 `ApprovalStateController`。
 - 已落地 per-host thread summary/detail cache 持久化/恢复：每个 host 的最近线程列表、选中 threadId 和当前 thread detail 通过 `ThreadCacheStore` 独立保存，重建 host UI state 时优先恢复缓存，再由远端权威 thread/detail 读取刷新。
@@ -1138,6 +1148,9 @@ MVP 可以简化为底部导航：
 - 已落地多 host 后台 active-turn 监听扩展：AppShell 的 lifecycle coordinator 会监听已创建 host UI states 的 `TurnController`，managed host 切到后台后仍保持各自 event subscription；如果 App 已在后台时 inactive host 后续收到 `turn/started`，也会触发 foreground retention context 刷新。
 - 已落地 host UI state 自主观察 session status：每个 `AppHostSessionUiState` 会监听自己的 `CodexSessionStateController`，连接成功后自行恢复缓存、触发 reconnect recovery 并刷新 slash command manifest；AppShell 不再只把 active session status 转发给当前页面，避免 inactive host 切换前漏掉线程刷新和重连恢复。
 - 已落地同一 host 的并发连接请求合并：`HostSessionManager` 会按 profileId 复用在途 connect Future，避免重复点击或快速切换时对同一个 `CodexSessionStateController` 发起重入连接；显式 disconnect/close 会释放该在途记录，失败后可重试。
+- 已落地 realtime typed path：`CodexAppServerClient` / `CodexRealtimeRunner` 支持 `thread/realtime/start`、`appendText`、`appendAudio`、`appendSpeech`、`stop`、`listVoices`，并将 started/item/transcript/audio/SDP/error/closed 通知映射为类型事件；session capability 注入 `RealtimeRunner`，Chat 输入区提供可停止的 WebSocket 文本面板，覆盖版本、model、prompt、startup context 和 user/developer/assistant 文本追加。音频设备采集/播放、WebRTC 建连仍未实现，避免把协议支持误标成完整语音能力。
+- 已落地受控 Files 文本编辑：连接层暴露独立 `WorkspaceFileMutationRunner`，`fs/writeFile` 仅在 workspace path/符号链接校验、完整文本加载、版本或旧内容冲突检查通过后调用；Files 编辑 sheet 保存前展示逐行 diff 并要求二次确认，写入后刷新 preview stat/content。`fs/watch` / `fs/unwatch` 与 `fs/changed` 也已类型化，当前预览文件发生外部变化时会提示用户重新审阅。由于上游 `fs/writeFile` 没有 expected-version 参数，冲突检查仍是非原子的乐观保护。
+- 已落地结构化 Codex maintenance / Cloud runner：`sadcoder-agent codex` 只暴露固定的 `doctor`、`update`、legacy `apply`、`cloud list/status/diff/apply` 操作，task/env/cursor/attempt/cwd 均由 Rust `Command::arg` 传递，不提供任意 shell 参数。Settings Diagnostics 提供只读诊断/查询、更新确认、apply 前 diff 预览和 backend 重启入口；Cloud 明确依赖服务器已有 ChatGPT auth，手机不保存认证或 API key，API-first 主流程不变。
 - 后续仍需完整多 host 同时连接架构：`HostSessionManager` 已作为基础控制器引入，但完整后台保活策略、断线期间事件 cursor/分页增量回填和更完整的 reconnect turn/item reconciliation 还需要继续拆分完善。
 
 ### 9.8 i18n
@@ -1196,7 +1209,7 @@ MVP 可以简化为底部导航：
 - SSH 私钥和密码/passphrase 使用 Android Keystore 与 iOS Keychain 加密。
 - 支持生物识别解锁 profile。
 - 不把 OpenAI API key 存到手机，除非用户明确选择“从手机写入服务器 Codex 登录”。推荐让 Codex 凭据留在服务器 `CODEX_HOME`。
-- 登录流程优先通过 app-server `account/login/start` 的 device code/browser URL，让服务器端 Codex 自己持久化 token。
+- 主路径依赖服务器侧已配置的 API key；App 只读取/展示账号状态，不把交互式登录作为主要功能。`account/login/start` 的 API key、ChatGPT browser/device code 以及 `account/login/cancel` 仅保留为后续兼容能力，服务器侧 Codex 仍负责持久化凭据。
 - App 默认不写服务器 Codex 配置；任何 `config/value/write` 或 `config/batchWrite` 都必须由用户从高级配置入口显式触发。
 
 ### 11.2 权限与审批
@@ -1389,12 +1402,12 @@ MVP 可以简化为底部导航：
 
 交付：
 
-- realtime。
+- realtime：text-only WebSocket 端到端能力已落地；音频/WebRTC 仍未完成。
 - process/spawn。
 - remote environments。
 - hooks。
 - external agent config import。
-- doctor/update/apply/cloud 的结构化或 SSH fallback UI。
+- doctor/update/apply/cloud 的结构化 agent runner 与 Diagnostics UI；已落地固定 typed 操作、风险确认、apply 前 diff 预览和 update 后 backend 重启入口。
 - 第三阶段斜杠命令、调试命令和平台专属命令覆盖。
 - `/agent`、`/subagents` 多 agent 拓扑：只读树、agent picker、thread 切换、状态回填；主动控制能力另行评估。
 

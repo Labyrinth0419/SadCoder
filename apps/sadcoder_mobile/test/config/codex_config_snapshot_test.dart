@@ -22,6 +22,11 @@ void main() {
       },
       'layers': [
         {
+          'name': {
+            'type': 'user',
+            'file': '/home/me/.codex/config.toml',
+            'profile': null,
+          },
           'version': 'v1',
           'config': {'model': 'gpt-5-codex'},
         },
@@ -40,6 +45,7 @@ void main() {
       'project: /repo/.codex',
     );
     expect(snapshot.layers.single['version'], 'v1');
+    expect(snapshot.userConfigVersion, 'v1');
     expect(
       snapshot.toRawJson()['config'],
       containsPair('model', 'gpt-5-codex'),

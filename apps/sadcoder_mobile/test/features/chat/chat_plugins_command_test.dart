@@ -32,6 +32,49 @@ void main() {
       }
     });
 
+    test('parses marketplace add with ref and repeated sparse paths', () {
+      final command = parseChatPluginsCommand(
+        'marketplace add https://example.com/tools.git '
+        '--ref main --sparse plugins --sparse=skills',
+      );
+
+      expect(command, isA<ChatMarketplaceAddCommand>());
+      final add = command as ChatMarketplaceAddCommand;
+      expect(add.source, 'https://example.com/tools.git');
+      expect(add.refName, 'main');
+      expect(add.sparsePaths, ['plugins', 'skills']);
+    });
+
+    test('parses marketplace add equals-form ref', () {
+      final command = parseChatPluginsCommand(
+        'marketplaces add team-tools --ref=release',
+      );
+
+      expect(command, isA<ChatMarketplaceAddCommand>());
+      expect((command as ChatMarketplaceAddCommand).refName, 'release');
+      expect(command.sparsePaths, isEmpty);
+    });
+
+    test('parses marketplace remove and named or all upgrades', () {
+      final remove = parseChatPluginsCommand('marketplace remove team-tools');
+      expect(remove, isA<ChatMarketplaceRemoveCommand>());
+      expect(
+        (remove as ChatMarketplaceRemoveCommand).marketplaceName,
+        'team-tools',
+      );
+
+      final named = parseChatPluginsCommand('marketplace upgrade team-tools');
+      expect(named, isA<ChatMarketplaceUpgradeCommand>());
+      expect(
+        (named as ChatMarketplaceUpgradeCommand).marketplaceName,
+        'team-tools',
+      );
+
+      final all = parseChatPluginsCommand('marketplace upgrade');
+      expect(all, isA<ChatMarketplaceUpgradeCommand>());
+      expect((all as ChatMarketplaceUpgradeCommand).marketplaceName, isNull);
+    });
+
     test('parses marketplace kind filters', () {
       expect(
         (parseChatPluginsCommand('local') as ChatPluginsListCommand)
@@ -70,6 +113,25 @@ void main() {
       expect(parseChatPluginsCommand('local extra'), isNull);
       expect(parseChatPluginsCommand('install'), isNull);
       expect(parseChatPluginsCommand('read plugin extra'), isNull);
+    });
+
+    test('rejects malformed marketplace mutations', () {
+      for (final arguments in const [
+        'marketplace add',
+        'marketplace add --ref main',
+        'marketplace add source --ref',
+        'marketplace add source --ref --sparse plugins',
+        'marketplace add source --ref=main --ref release',
+        'marketplace add source --sparse',
+        'marketplace add source --sparse --ref main',
+        'marketplace add source --unknown value',
+        'marketplace remove',
+        'marketplace remove --all',
+        'marketplace upgrade --all',
+        'marketplace upgrade one two',
+      ]) {
+        expect(parseChatPluginsCommand(arguments), isNull, reason: arguments);
+      }
     });
   });
 }

@@ -2,6 +2,7 @@ import '../../i18n/app_localizations.dart';
 import '../../plugins/plugin_detail_reader.dart';
 import '../../plugins/plugin_list_reader.dart';
 import '../../plugins/plugin_mutation_runner.dart';
+import '../../plugins/marketplace_mutation_runner.dart';
 
 String buildPluginsSummary({
   required AppLocalizations l10n,
@@ -105,6 +106,50 @@ String buildPluginMutationSummary({
     return title;
   }
   return '$title\n$message';
+}
+
+String buildMarketplaceAddSummary({
+  required AppLocalizations l10n,
+  required MarketplaceAddResult result,
+}) {
+  return result.alreadyAdded
+      ? l10n.marketplaceAlreadyAdded(
+          result.marketplaceName,
+          result.installedRoot,
+        )
+      : l10n.marketplaceAdded(result.marketplaceName, result.installedRoot);
+}
+
+String buildMarketplaceRemoveSummary({
+  required AppLocalizations l10n,
+  required MarketplaceRemoveResult result,
+}) {
+  final installedRoot = result.installedRoot;
+  return installedRoot == null
+      ? l10n.marketplaceRemoved(result.marketplaceName)
+      : l10n.marketplaceRemovedFrom(result.marketplaceName, installedRoot);
+}
+
+String buildMarketplaceUpgradeSummary({
+  required AppLocalizations l10n,
+  required MarketplaceUpgradeResult result,
+}) {
+  final selected = result.selectedMarketplaces.isEmpty
+      ? l10n.marketplaceNone
+      : result.selectedMarketplaces.join(', ');
+  final upgradedRoots = result.upgradedRoots.isEmpty
+      ? l10n.marketplaceNone
+      : result.upgradedRoots.join(', ');
+  final lines = <String>[
+    l10n.marketplaceUpgradeCompleted(selected, upgradedRoots),
+  ];
+  if (result.errors.isNotEmpty) {
+    lines.add(l10n.pluginMarketplaceErrors);
+    for (final error in result.errors) {
+      lines.add('  ${error.marketplaceName}: ${error.message}');
+    }
+  }
+  return lines.join('\n');
 }
 
 String _pluginLine(AppLocalizations l10n, PluginSummary plugin) {

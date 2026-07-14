@@ -13,7 +13,9 @@ String buildThreadGoalSummary({
 
   lines.add('${l10n.threadGoalObjective}: ${goal.objective}');
   lines.add('${l10n.timelineStatus}: ${goal.status}');
-  lines.add('${l10n.threadGoalTokensUsed}: ${l10n.tokenCount(goal.tokensUsed)}');
+  lines.add(
+    '${l10n.threadGoalTokensUsed}: ${l10n.tokenCount(goal.tokensUsed)}',
+  );
   if (goal.tokenBudget != null) {
     lines.add(
       '${l10n.threadGoalTokenBudget}: ${l10n.tokenCount(goal.tokenBudget!)}',

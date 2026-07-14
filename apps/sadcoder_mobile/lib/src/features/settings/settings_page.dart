@@ -7,6 +7,8 @@ import '../../agent/agent_doctor.dart';
 import '../../agent/agent_doctor_controller.dart';
 import '../../agent/agent_logs.dart';
 import '../../agent/agent_logs_controller.dart';
+import '../../agent/agent_maintenance.dart';
+import '../../agent/agent_maintenance_controller.dart';
 import '../../agent/agent_schema.dart';
 import '../../agent/agent_schema_controller.dart';
 import '../../agent/agent_status.dart';
@@ -17,6 +19,7 @@ import '../../config/codex_config_overrides.dart';
 import '../../config/codex_config_snapshot.dart';
 import '../../config/codex_config_snapshot_controller.dart';
 import '../../diagnostics/diagnostic_log_export_controller.dart';
+import '../../environments/environment_runner.dart';
 import '../../i18n/app_localizations.dart';
 import '../../models/model_labels.dart';
 import '../../models/model_list_controller.dart';
@@ -39,7 +42,9 @@ class SettingsPage extends StatefulWidget {
     this.agentCodexConfigureController,
     this.agentLogsController,
     this.agentSchemaController,
+    this.agentMaintenanceController,
     this.diagnosticLogExportController,
+    this.environmentRunner,
     this.appVersion = sadcoderMobileAppVersion,
   });
 
@@ -53,7 +58,9 @@ class SettingsPage extends StatefulWidget {
   final AgentCodexConfigureController? agentCodexConfigureController;
   final AgentLogsController? agentLogsController;
   final AgentSchemaController? agentSchemaController;
+  final AgentMaintenanceController? agentMaintenanceController;
   final DiagnosticLogExportController? diagnosticLogExportController;
+  final EnvironmentRunner? environmentRunner;
   final String appVersion;
 
   @override
@@ -219,8 +226,13 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         if (widget.agentSchemaController != null)
           _AgentSchemaSettingsCard(controller: widget.agentSchemaController!),
+        if (widget.agentMaintenanceController != null)
+          _AgentMaintenanceSettingsCard(
+            controller: widget.agentMaintenanceController!,
+          ),
         if (widget.agentLogsController != null)
           _AgentLogsSettingsCard(controller: widget.agentLogsController!),
+        _RemoteEnvironmentSettingsCard(runner: widget.environmentRunner),
         if (widget.diagnosticLogExportController != null)
           _DiagnosticLogExportCard(
             controller: widget.diagnosticLogExportController!,
@@ -695,6 +707,283 @@ class _ModelSummaryTile extends StatelessWidget {
   }
 }
 
+class _RemoteEnvironmentSettingsCard extends StatefulWidget {
+  const _RemoteEnvironmentSettingsCard({required this.runner});
+
+  final EnvironmentRunner? runner;
+
+  @override
+  State<_RemoteEnvironmentSettingsCard> createState() =>
+      _RemoteEnvironmentSettingsCardState();
+}
+
+class _RemoteEnvironmentSettingsCardState
+    extends State<_RemoteEnvironmentSettingsCard> {
+  final _environmentIdController = TextEditingController();
+  final _urlController = TextEditingController();
+  final _timeoutController = TextEditingController();
+  EnvironmentInfoResult? _info;
+  EnvironmentStatusResult? _status;
+  String? _message;
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _environmentIdController.dispose();
+    _urlController.dispose();
+    _timeoutController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final runner = widget.runner;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.public_outlined),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.remoteEnvironment,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(l10n.remoteEnvironmentBody),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (runner == null)
+              Text(l10n.remoteEnvironmentUnavailable)
+            else ...[
+              TextField(
+                key: const ValueKey('settings-remote-environment-id'),
+                controller: _environmentIdController,
+                decoration: InputDecoration(
+                  labelText: l10n.remoteEnvironmentId,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                key: const ValueKey('settings-remote-environment-url'),
+                controller: _urlController,
+                decoration: InputDecoration(
+                  labelText: l10n.remoteEnvironmentExecServerUrl,
+                  border: const OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.url,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                key: const ValueKey('settings-remote-environment-timeout'),
+                controller: _timeoutController,
+                decoration: InputDecoration(
+                  labelText: l10n.remoteEnvironmentTimeout,
+                  border: const OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    key: const ValueKey('settings-remote-environment-add'),
+                    onPressed: _loading ? null : _add,
+                    icon: const Icon(Icons.add_link),
+                    label: Text(l10n.remoteEnvironmentAdd),
+                  ),
+                  OutlinedButton.icon(
+                    key: const ValueKey('settings-remote-environment-info'),
+                    onPressed: _loading ? null : _readInfo,
+                    icon: const Icon(Icons.info_outline),
+                    label: Text(l10n.remoteEnvironmentInfo),
+                  ),
+                  OutlinedButton.icon(
+                    key: const ValueKey('settings-remote-environment-status'),
+                    onPressed: _loading ? null : _readStatus,
+                    icon: const Icon(Icons.sync),
+                    label: Text(l10n.remoteEnvironmentStatus),
+                  ),
+                ],
+              ),
+              if (_loading) ...[
+                const SizedBox(height: 12),
+                const LinearProgressIndicator(),
+              ],
+              if (_message != null) ...[
+                const SizedBox(height: 12),
+                Text(_message!),
+              ],
+              if (_info != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  l10n.remoteEnvironmentShell(
+                    _info!.shell.name,
+                    _info!.shell.path,
+                  ),
+                ),
+                if (_info!.cwd != null)
+                  Text(l10n.remoteEnvironmentCwd(_info!.cwd!)),
+              ],
+              if (_status != null) ...[
+                const SizedBox(height: 4),
+                Text(_statusMessage(l10n, _status!)),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _add() async {
+    final l10n = context.l10n;
+    final id = _environmentIdController.text.trim();
+    final url = _urlController.text.trim();
+    if (id.isEmpty) {
+      _showMessage(l10n.remoteEnvironmentIdRequired);
+      return;
+    }
+    if (url.isEmpty) {
+      _showMessage(l10n.remoteEnvironmentUrlRequired);
+      return;
+    }
+    final timeout = _parseTimeout();
+    if (_timeoutController.text.trim().isNotEmpty && timeout == null) {
+      _showMessage(l10n.remoteEnvironmentTimeoutInvalid);
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.remoteEnvironmentConfirmTitle),
+        content: Text(l10n.remoteEnvironmentConfirmBody(id, url)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.remoteEnvironmentConfirmAction),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) {
+      return;
+    }
+    await _run(() async {
+      await widget.runner!.addEnvironment(
+        environmentId: id,
+        execServerUrl: url,
+        connectTimeoutMs: timeout,
+      );
+      _showMessage(l10n.remoteEnvironmentAdded);
+    });
+  }
+
+  Future<void> _readInfo() async {
+    final id = _requireId();
+    if (id == null) {
+      return;
+    }
+    await _run(() async {
+      _info = await widget.runner!.readEnvironmentInfo(environmentId: id);
+      _showMessage(null);
+    });
+  }
+
+  Future<void> _readStatus() async {
+    final id = _requireId();
+    if (id == null) {
+      return;
+    }
+    await _run(() async {
+      _status = await widget.runner!.readEnvironmentStatus(environmentId: id);
+      _showMessage(null);
+    });
+  }
+
+  Future<void> _run(Future<void> Function() action) async {
+    setState(() {
+      _loading = true;
+      _message = null;
+    });
+    try {
+      await action();
+    } on Object catch (error) {
+      if (mounted) {
+        _showMessage('${context.l10n.remoteEnvironmentLoadFailed}: $error');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
+  }
+
+  String? _requireId() {
+    final id = _environmentIdController.text.trim();
+    if (id.isEmpty) {
+      _showMessage(context.l10n.remoteEnvironmentIdRequired);
+      return null;
+    }
+    return id;
+  }
+
+  int? _parseTimeout() {
+    final text = _timeoutController.text.trim();
+    if (text.isEmpty) {
+      return null;
+    }
+    final value = int.tryParse(text);
+    return value == null || value <= 0 ? null : value;
+  }
+
+  void _showMessage(String? message) {
+    if (!mounted) {
+      return;
+    }
+    setState(() => _message = message);
+  }
+}
+
+String _statusLabel(AppLocalizations l10n, EnvironmentStatusKind status) {
+  return switch (status) {
+    EnvironmentStatusKind.ready => l10n.remoteEnvironmentStatusReady,
+    EnvironmentStatusKind.pending => l10n.remoteEnvironmentStatusPending,
+    EnvironmentStatusKind.disconnected =>
+      l10n.remoteEnvironmentStatusDisconnected,
+    EnvironmentStatusKind.unknown => l10n.remoteEnvironmentStatusUnknown,
+  };
+}
+
+String _statusMessage(AppLocalizations l10n, EnvironmentStatusResult status) {
+  final label = _statusLabel(l10n, status.status);
+  final detail = status.error?.trim();
+  if (detail == null || detail.isEmpty) {
+    return label;
+  }
+  return l10n.remoteEnvironmentStatusDetail(label, detail);
+}
+
 class _AgentDoctorSettingsCard extends StatelessWidget {
   const _AgentDoctorSettingsCard({required this.controller});
 
@@ -883,6 +1172,413 @@ class _LoadedAgentDoctor extends StatelessWidget {
           Text(
             l10n.reconnectCacheLoadError(status.reconnectCache.loadError!),
             style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+      ],
+    );
+  }
+}
+
+class _AgentMaintenanceSettingsCard extends StatefulWidget {
+  const _AgentMaintenanceSettingsCard({required this.controller});
+
+  final AgentMaintenanceController controller;
+
+  @override
+  State<_AgentMaintenanceSettingsCard> createState() =>
+      _AgentMaintenanceSettingsCardState();
+}
+
+class _AgentMaintenanceSettingsCardState
+    extends State<_AgentMaintenanceSettingsCard> {
+  late final TextEditingController _taskIdController;
+  late final TextEditingController _environmentController;
+  late final TextEditingController _cursorController;
+  late final TextEditingController _attemptController;
+  late final TextEditingController _cwdController;
+
+  @override
+  void initState() {
+    super.initState();
+    _taskIdController = TextEditingController();
+    _environmentController = TextEditingController();
+    _cursorController = TextEditingController();
+    _attemptController = TextEditingController();
+    _cwdController = TextEditingController(
+      text: widget.controller.profile?.defaultCwd ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _taskIdController.dispose();
+    _environmentController.dispose();
+    _cursorController.dispose();
+    _attemptController.dispose();
+    _cwdController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.controller,
+      builder: (context, _) => _buildCard(context),
+    );
+  }
+
+  Widget _buildCard(BuildContext context) {
+    final l10n = context.l10n;
+    final controller = widget.controller;
+    final result = controller.result;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.build_circle_outlined),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.agentMaintenance,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(l10n.agentMaintenanceBody),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  key: const ValueKey('settings-agent-maintenance-doctor'),
+                  onPressed: controller.busy
+                      ? null
+                      : () => _run(const AgentMaintenanceRequest.doctor()),
+                  icon: const Icon(Icons.health_and_safety_outlined),
+                  tooltip: l10n.agentMaintenanceDoctor,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(l10n.agentMaintenanceCloudAuth),
+            const SizedBox(height: 12),
+            TextField(
+              key: const ValueKey('settings-agent-maintenance-task-id'),
+              controller: _taskIdController,
+              decoration: InputDecoration(
+                labelText: l10n.agentMaintenanceTaskId,
+                prefixIcon: const Icon(Icons.tag_outlined),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              key: const ValueKey('settings-agent-maintenance-environment'),
+              controller: _environmentController,
+              decoration: InputDecoration(
+                labelText: l10n.agentMaintenanceEnvironment,
+                prefixIcon: const Icon(Icons.dns_outlined),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    key: const ValueKey('settings-agent-maintenance-cursor'),
+                    controller: _cursorController,
+                    decoration: InputDecoration(
+                      labelText: l10n.agentMaintenanceCursor,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 132,
+                  child: TextField(
+                    key: const ValueKey('settings-agent-maintenance-attempt'),
+                    controller: _attemptController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: l10n.agentMaintenanceAttempt,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              key: const ValueKey('settings-agent-maintenance-cwd'),
+              controller: _cwdController,
+              decoration: InputDecoration(
+                labelText: l10n.agentMaintenanceCwd,
+                prefixIcon: const Icon(Icons.folder_outlined),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  key: const ValueKey('settings-agent-maintenance-update'),
+                  onPressed: controller.busy ? null : _confirmUpdate,
+                  icon: const Icon(Icons.system_update_alt),
+                  label: Text(l10n.agentMaintenanceUpdate),
+                ),
+                OutlinedButton.icon(
+                  key: const ValueKey('settings-agent-maintenance-apply'),
+                  onPressed: controller.busy ? null : _previewLegacyApply,
+                  icon: const Icon(Icons.playlist_add_check_outlined),
+                  label: Text(l10n.agentMaintenanceApply),
+                ),
+                OutlinedButton.icon(
+                  key: const ValueKey('settings-agent-maintenance-list'),
+                  onPressed: controller.busy ? null : _listCloudTasks,
+                  icon: const Icon(Icons.list_alt_outlined),
+                  label: Text(l10n.agentMaintenanceList),
+                ),
+                OutlinedButton.icon(
+                  key: const ValueKey('settings-agent-maintenance-status'),
+                  onPressed: controller.busy ? null : _readCloudStatus,
+                  icon: const Icon(Icons.query_stats_outlined),
+                  label: Text(l10n.agentMaintenanceStatus),
+                ),
+                OutlinedButton.icon(
+                  key: const ValueKey('settings-agent-maintenance-diff'),
+                  onPressed: controller.busy ? null : _readCloudDiff,
+                  icon: const Icon(Icons.difference_outlined),
+                  label: Text(l10n.agentMaintenanceDiff),
+                ),
+                OutlinedButton.icon(
+                  key: const ValueKey('settings-agent-maintenance-cloud-apply'),
+                  onPressed: controller.busy ? null : _previewCloudApply,
+                  icon: const Icon(Icons.cloud_upload_outlined),
+                  label: Text(l10n.agentMaintenanceCloudApply),
+                ),
+              ],
+            ),
+            if (controller.busy) ...[
+              const SizedBox(height: 12),
+              const LinearProgressIndicator(),
+            ],
+            if (controller.error != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                l10n.messageWithDetail(
+                  l10n.agentMaintenanceFailed,
+                  controller.error!,
+                ),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+            if (result != null) ...[
+              const SizedBox(height: 12),
+              _AgentMaintenanceResultView(result: result),
+              if (result.restartRequired && result.success) ...[
+                const SizedBox(height: 12),
+                Text(l10n.agentMaintenanceRestartBody),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    key: const ValueKey('settings-agent-maintenance-restart'),
+                    onPressed: controller.busy ? null : _restartBackend,
+                    icon: const Icon(Icons.restart_alt),
+                    label: Text(l10n.agentMaintenanceRestartNow),
+                  ),
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _run(AgentMaintenanceRequest request) async {
+    try {
+      await widget.controller.run(request);
+    } on Object catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.messageWithDetail(
+              context.l10n.agentMaintenanceFailed,
+              error,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _confirmUpdate() async {
+    final confirmed = await _confirm(
+      title: context.l10n.agentMaintenanceConfirmUpdateTitle,
+      body: context.l10n.agentMaintenanceConfirmUpdateBody,
+    );
+    if (confirmed == true) {
+      await _run(const AgentMaintenanceRequest.update());
+    }
+  }
+
+  Future<void> _listCloudTasks() => _run(
+    AgentMaintenanceRequest.cloudList(
+      environment: _environmentController.text,
+      cursor: _cursorController.text,
+    ),
+  );
+
+  Future<void> _readCloudStatus() =>
+      _run(AgentMaintenanceRequest.cloudStatus(taskId: _taskIdController.text));
+
+  Future<void> _readCloudDiff() => _run(
+    AgentMaintenanceRequest.cloudDiff(
+      taskId: _taskIdController.text,
+      attempt: int.tryParse(_attemptController.text.trim()),
+    ),
+  );
+
+  Future<void> _previewLegacyApply() => _previewAndApply(cloud: false);
+
+  Future<void> _previewCloudApply() => _previewAndApply(cloud: true);
+
+  Future<void> _previewAndApply({required bool cloud}) async {
+    final diffResult = await widget.controller.run(
+      AgentMaintenanceRequest.cloudDiff(
+        taskId: _taskIdController.text,
+        attempt: int.tryParse(_attemptController.text.trim()),
+      ),
+    );
+    if (!mounted || diffResult == null || !diffResult.success) {
+      return;
+    }
+    final diff = diffResult.stdout.trim();
+    if (diff.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.agentMaintenanceDiffEmpty)),
+      );
+      return;
+    }
+    final confirmed = await _showDiffPreview(diff);
+    if (confirmed != true || !mounted) {
+      return;
+    }
+    final request = cloud
+        ? AgentMaintenanceRequest.cloudApply(
+            taskId: _taskIdController.text,
+            attempt: int.tryParse(_attemptController.text.trim()),
+            cwd: _cwdController.text,
+          )
+        : AgentMaintenanceRequest.apply(
+            taskId: _taskIdController.text,
+            cwd: _cwdController.text,
+          );
+    await _run(request);
+  }
+
+  Future<void> _restartBackend() async {
+    final restarted = await widget.controller.restartBackend();
+    if (!mounted || !restarted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.agentMaintenanceRestarted)),
+    );
+  }
+
+  Future<bool?> _confirm({required String title, required String body}) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.l10n.agentMaintenanceConfirm),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _showDiffPreview(String diff) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.agentMaintenanceDiffPreview),
+        content: SizedBox(
+          width: 720,
+          height: 420,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              diff,
+              style: const TextStyle(fontFamily: sadCoderMonospaceFontFamily),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.l10n.agentMaintenanceConfirm),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AgentMaintenanceResultView extends StatelessWidget {
+  const _AgentMaintenanceResultView({required this.result});
+
+  final AgentMaintenanceResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final output = [
+      if (result.stdout.trim().isNotEmpty) result.stdout.trim(),
+      if (result.stderr.trim().isNotEmpty) result.stderr.trim(),
+    ].join('\n\n');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SettingsValueLine(label: 'Operation', value: result.operation),
+        _SettingsValueLine(
+          label: 'Status',
+          value: result.success ? 'ok' : 'failed',
+        ),
+        if (output.isNotEmpty)
+          Container(
+            constraints: const BoxConstraints(maxHeight: 260),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(12),
+              child: SelectableText(
+                output,
+                style: const TextStyle(fontFamily: sadCoderMonospaceFontFamily),
+              ),
+            ),
           ),
       ],
     );

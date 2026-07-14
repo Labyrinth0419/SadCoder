@@ -18,8 +18,11 @@ import 'chat_background_terminal_commands.dart';
 import 'chat_catalog_summary_commands.dart';
 import 'chat_config_summary_commands.dart';
 import 'chat_diff_command.dart';
+import 'chat_experimental_feature_command.dart';
 import 'chat_goal_command.dart';
+import 'chat_hooks_sheet.dart';
 import 'chat_mcp_command.dart';
+import 'chat_memories_command.dart';
 import 'chat_plugins_command.dart';
 import 'chat_plugins_summary.dart' as plugins_summary;
 import 'chat_review_command.dart';
@@ -167,6 +170,9 @@ class ChatSummaryCommandHandler {
       if (runner == null) {
         return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
       }
+      if (!await _confirmPluginMutation(command)) {
+        return l10n.pluginMutationCancelled;
+      }
       try {
         final result = switch (command) {
           ChatPluginsInstallCommand() => await runner.installPlugin(
@@ -185,6 +191,67 @@ class ChatSummaryCommandHandler {
             result: result,
           ),
         ];
+        if (reader != null) {
+          final page = await reader.listPlugins(cwds: cwds);
+          lines.add(
+            plugins_summary.buildPluginsSummary(l10n: l10n, page: page),
+          );
+        }
+        return lines.join('\n');
+      } on Object catch (error) {
+        return [
+          l10n.pluginsTitle,
+          chatSummaryMessageWithOptionalDetail(
+            l10n,
+            l10n.pluginMutationFailed,
+            error,
+          ),
+        ].join('\n');
+      }
+    }
+
+    if (command is ChatMarketplaceAddCommand ||
+        command is ChatMarketplaceRemoveCommand ||
+        command is ChatMarketplaceUpgradeCommand) {
+      final runner = sessionController?.marketplaceMutationRunner;
+      if (runner == null) {
+        return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
+      }
+      if (!await _confirmPluginMutation(command)) {
+        return l10n.pluginMutationCancelled;
+      }
+      try {
+        final mutationSummary = switch (command) {
+          ChatMarketplaceAddCommand(
+            :final source,
+            :final refName,
+            :final sparsePaths,
+          ) =>
+            plugins_summary.buildMarketplaceAddSummary(
+              l10n: l10n,
+              result: await runner.addMarketplace(
+                source: source,
+                refName: refName,
+                sparsePaths: sparsePaths,
+              ),
+            ),
+          ChatMarketplaceRemoveCommand(:final marketplaceName) =>
+            plugins_summary.buildMarketplaceRemoveSummary(
+              l10n: l10n,
+              result: await runner.removeMarketplace(
+                marketplaceName: marketplaceName,
+              ),
+            ),
+          ChatMarketplaceUpgradeCommand(:final marketplaceName) =>
+            plugins_summary.buildMarketplaceUpgradeSummary(
+              l10n: l10n,
+              result: await runner.upgradeMarketplaces(
+                marketplaceName: marketplaceName,
+              ),
+            ),
+          _ => throw StateError('Unexpected marketplace mutation command.'),
+        };
+        final lines = <String>[mutationSummary];
         if (reader != null) {
           final page = await reader.listPlugins(cwds: cwds);
           lines.add(
@@ -230,10 +297,69 @@ class ChatSummaryCommandHandler {
     }
   }
 
+  Future<bool> _confirmPluginMutation(ChatPluginsCommand command) async {
+    final l10n = context.l10n;
+    final action = switch (command) {
+      ChatPluginsInstallCommand(:final pluginId) => l10n.pluginInstallAction(
+        pluginId,
+      ),
+      ChatPluginsUninstallCommand(:final pluginId) =>
+        l10n.pluginUninstallAction(pluginId),
+      ChatMarketplaceAddCommand(
+        :final source,
+        :final refName,
+        :final sparsePaths,
+      ) =>
+        [
+          l10n.marketplaceAddAction(source),
+          if (refName != null) '--ref $refName',
+          for (final path in sparsePaths) '--sparse $path',
+        ].join('\n'),
+      ChatMarketplaceRemoveCommand(:final marketplaceName) =>
+        l10n.marketplaceRemoveAction(marketplaceName),
+      ChatMarketplaceUpgradeCommand(:final marketplaceName) =>
+        l10n.marketplaceUpgradeAction(marketplaceName ?? l10n.marketplaceAll),
+      _ => throw StateError('Expected a plugin mutation command.'),
+    };
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.pluginMutationConfirmTitle),
+        content: Text(l10n.pluginMutationConfirmBody(action)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+          ),
+          FilledButton(
+            key: const ValueKey('plugin-mutation-confirm'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.pluginMutationConfirmContinue),
+          ),
+        ],
+      ),
+    );
+    return context.mounted && confirmed == true;
+  }
+
   Future<String?> buildHooksSummary(String arguments) async {
+    final mutationRunner = sessionController?.hookMutationRunner;
+    final reader = sessionController?.hookListReader;
+    if (arguments.trim().isEmpty && mutationRunner != null && reader != null) {
+      await showChatHooksSheet(
+        context: context,
+        reader: reader,
+        mutationRunner: mutationRunner,
+        cwds: currentWorkspaceCwdsProvider(),
+      );
+      if (!context.mounted) {
+        return null;
+      }
+      return context.l10n.hooksManagementClosed;
+    }
     return buildHooksSummaryFromCommand(
       l10n: context.l10n,
-      reader: sessionController?.hookListReader,
+      reader: reader,
       cwds: currentWorkspaceCwdsProvider(),
       arguments: arguments,
     );
@@ -258,21 +384,32 @@ class ChatSummaryCommandHandler {
   }
 
   Future<String?> buildExperimentalSummary(String arguments) async {
-    return buildExperimentalSummaryFromCommand(
-      l10n: context.l10n,
-      controller: configSnapshotController,
+    return showExperimentalFeaturesFromCommand(
+      context: context,
+      runner: sessionController?.experimentalFeatureRunner,
+      configController: configSnapshotController,
       cwds: currentWorkspaceCwdsProvider(),
+      threadId: currentThreadIdProvider(),
       arguments: arguments,
     );
   }
 
   Future<String?> buildMemoriesSummary(String arguments) async {
-    return buildMemoriesSummaryFromCommand(
-      l10n: context.l10n,
-      controller: configSnapshotController,
+    final threadId = currentThreadIdProvider();
+    return showMemoriesFromCommand(
+      context: context,
+      runner: sessionController?.memoryRunner,
+      configController: configSnapshotController,
       cwds: currentWorkspaceCwdsProvider(),
+      threadId: threadId,
       threadRaw: threadDetailController?.detail?.thread.raw ?? const {},
       arguments: arguments,
+      refreshThread: threadId == null || threadDetailController == null
+          ? null
+          : () => threadDetailController!.readThread(
+              threadId,
+              includeTurns: false,
+            ),
     );
   }
 

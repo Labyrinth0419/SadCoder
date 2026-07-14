@@ -6,6 +6,7 @@ import '../accounts/account_snapshot_controller.dart';
 import '../agent/agent_codex_configure_controller.dart';
 import '../agent/agent_doctor_controller.dart';
 import '../agent/agent_logs_controller.dart';
+import '../agent/agent_maintenance_controller.dart';
 import '../agent/agent_remote_service.dart';
 import '../agent/agent_schema_controller.dart';
 import '../appearance/app_appearance_controller.dart';
@@ -144,6 +145,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late AgentCodexConfigureController _agentCodexConfigureController;
   late AgentDoctorController _agentDoctorController;
   late AgentLogsController _agentLogsController;
+  late AgentMaintenanceController _agentMaintenanceController;
   late AgentSchemaController _agentSchemaController;
   late McpServerStatusController _mcpServerStatusController;
   late ModelListController _modelListController;
@@ -414,6 +416,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       readerProvider: () => _defaultAgentRemoteService,
       profileProvider: () => _sessionController.profile,
     );
+    _agentMaintenanceController = AgentMaintenanceController(
+      runnerProvider: () => _defaultAgentRemoteService,
+      profileProvider: () => _sessionController.profile,
+      startRunnerProvider: () => _defaultAgentRemoteService,
+      stopRunnerProvider: () => _defaultAgentRemoteService,
+    );
     _agentSchemaController = AgentSchemaController(
       readerProvider: () => _defaultAgentRemoteService,
       profileProvider: () => _sessionController.profile,
@@ -455,6 +463,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _agentCodexConfigureController.dispose();
     _agentDoctorController.dispose();
     _agentLogsController.dispose();
+    _agentMaintenanceController.dispose();
     _agentSchemaController.dispose();
     if (_ownsMcpServerStatusController) {
       _mcpServerStatusController.dispose();
@@ -726,8 +735,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         agentCodexConfigureController: _agentCodexConfigureController,
         agentDoctorController: _agentDoctorController,
         agentLogsController: _agentLogsController,
+        agentMaintenanceController: _agentMaintenanceController,
         agentSchemaController: _agentSchemaController,
         diagnosticLogExportController: _diagnosticLogExportController,
+        environmentRunner: _sessionController.environmentRunner,
       ),
       _ => HostsPage(
         sessionController: _sessionController,

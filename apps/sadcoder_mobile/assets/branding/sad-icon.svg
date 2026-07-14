@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="1024"
+  height="1024"
+  viewBox="0 0 1024 1024"
+  role="img"
+  aria-labelledby="title description"
+>
+  <title id="title">Sad app icon</title>
+  <desc id="description">
+    Two flat signal ribbons form an abstract S between a mobile client and a remote coding agent.
+  </desc>
+
+  <rect width="1024" height="1024" fill="#121719" />
+
+  <path
+    fill="#FF665C"
+    d="
+      M 180 202
+      H 474
+      C 610 202 692 290 692 426
+      C 692 512 656 580 570 626
+      L 486 542
+      C 551 508 580 475 580 426
+      C 580 358 541 314 474 314
+      H 180
+      A 56 56 0 1 1 180 202
+      Z
+    "
+  />
+
+  <path
+    fill="#5ED6C0"
+    d="
+      M 454 398
+      L 538 482
+      C 473 516 444 549 444 598
+      C 444 666 483 710 550 710
+      H 844
+      A 56 56 0 1 1 844 822
+      H 550
+      C 414 822 332 734 332 598
+      C 332 512 368 444 454 398
+      Z
+    "
+  />
+</svg>

@@ -42,6 +42,7 @@ import 'package:sadcoder_mobile/src/models/model_list_controller.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_controller.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
+import 'package:sadcoder_mobile/src/plugins/marketplace_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_detail_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_mutation_runner.dart';
@@ -69,6 +70,7 @@ import 'package:sadcoder_mobile/src/turns/turn_text_element.dart';
 import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/usage/thread_token_usage_controller.dart';
+import 'package:sadcoder_mobile/src/windows_sandbox/windows_sandbox_runner.dart';
 
 void main() {
   testWidgets('shows command preview for known slash command aliases', (
@@ -1283,32 +1285,38 @@ void main() {
     );
   });
 
-  testWidgets('/import reports guarded fallback diagnostic', (tester) async {
-    final harness = await _pumpConnectedChatPage(tester);
+  testWidgets(
+    '/import reports unavailable when the connection lacks import API',
+    (tester) async {
+      final harness = await _pumpConnectedChatPage(tester);
 
-    await _submitComposerText(tester, '/import');
+      await _submitComposerText(tester, '/import');
 
-    expect(harness.turnRunner.startedTurns, isEmpty);
-    expect(
-      find.text(
-        'Claude Code import is not wired in the mobile app yet. '
-        'It requires a guarded agent fallback on the selected host.',
-      ),
-      findsOneWidget,
-    );
-  });
+      expect(harness.turnRunner.startedTurns, isEmpty);
+      expect(find.text('/import is unavailable right now.'), findsOneWidget);
+    },
+  );
 
-  testWidgets('/init reports guarded diff approval diagnostic', (tester) async {
+  testWidgets('/init starts upstream AGENTS.md generation prompt', (
+    tester,
+  ) async {
     final harness = await _pumpConnectedChatPage(tester);
 
     await _submitComposerText(tester, '/init');
 
-    expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(harness.turnRunner.startedTurns, hasLength(1));
     expect(
-      find.text(
-        'AGENTS.md initialization is not wired in the mobile app yet. '
-        'It requires a generated diff preview and approval before writing files.',
+      harness.turnRunner.startedTurns.single.text,
+      startsWith(
+        'Generate a file named AGENTS.md that serves as a contributor guide',
       ),
+    );
+    expect(
+      harness.turnRunner.startedTurns.single.text,
+      contains('do not overwrite or modify it'),
+    );
+    expect(
+      find.textContaining('Started AGENTS.md generation.'),
       findsOneWidget,
     );
   });
@@ -1357,23 +1365,22 @@ void main() {
     );
   });
 
-  testWidgets(
-    'debug-only unsupported slash commands explain diagnostic state',
-    (tester) async {
-      final harness = await _pumpConnectedChatPage(tester);
+  testWidgets('memory debug commands match the upstream app-server stub', (
+    tester,
+  ) async {
+    final harness = await _pumpConnectedChatPage(tester);
 
-      await _submitComposerText(tester, '/debug-m-drop');
+    await _submitComposerText(tester, '/debug-m-drop');
 
-      expect(harness.turnRunner.startedTurns, isEmpty);
-      expect(
-        find.text(
-          '/debug-m-drop is registered but not available: debug-only command. '
-          'Planned path: memory debug drop. Risk: high.',
-        ),
-        findsOneWidget,
-      );
-    },
-  );
+    expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(
+      find.text(
+        'Memory maintenance is handled by app-server clients; this debug '
+        'command does not perform a separate action.',
+      ),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('/test-approval injects a local file-change approval', (
     tester,
@@ -1393,7 +1400,7 @@ void main() {
     expect(approval.rawParams['changes'], isA<List<Object?>>());
   });
 
-  testWidgets('/setup-default-sandbox reports guarded fallback diagnostic', (
+  testWidgets('/setup-default-sandbox starts official app-server setup', (
     tester,
   ) async {
     final harness = await _pumpConnectedChatPage(tester);
@@ -1409,12 +1416,37 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(harness.windowsSandboxRunner.setupCalls, hasLength(1));
     expect(
-      find.text(
-        'Default sandbox setup is not wired in the mobile app yet. '
-        'It requires a guarded agent fallback and high-risk confirmation '
-        'on the selected host.',
-      ),
+      harness.windowsSandboxRunner.setupCalls.single.mode,
+      WindowsSandboxSetupMode.elevated,
+    );
+    expect(
+      find.text('Default Windows sandbox setup started on the selected host.'),
+      findsOneWidget,
+    );
+
+    final seenEvents = <CodexEvent>[];
+    final eventSubscription = harness.sessionController.events!.listen(
+      seenEvents.add,
+    );
+    addTearDown(eventSubscription.cancel);
+    harness.eventsController.add(
+      CodexEvent.fromNotification({
+        'method': 'windowsSandbox/setupCompleted',
+        'params': {'mode': 'elevated', 'success': true, 'error': null},
+      }),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(
+      seenEvents.map((event) => event.kind),
+      contains(CodexEventKind.windowsSandboxSetupCompleted),
+    );
+    expect(
+      find.text('Default Windows sandbox setup completed.'),
       findsOneWidget,
     );
   });
@@ -1436,9 +1468,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(harness.turnRunner.startedTurns, isEmpty);
+    expect(harness.windowsSandboxRunner.setupCalls, isEmpty);
     expect(find.text('Canceled /setup-default-sandbox.'), findsOneWidget);
     expect(
-      find.textContaining('Default sandbox setup is not wired'),
+      find.textContaining('Default Windows sandbox setup started'),
       findsNothing,
     );
   });
@@ -1975,6 +2008,11 @@ void main() {
           ?.text,
       'gpt-5-codex',
     );
+    expect(
+      find.byKey(const ValueKey('chat-model-command-effort-list')),
+      findsOneWidget,
+    );
+    expect(find.text('Server default (low)'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('chat-model-command-apply')));
     await tester.pumpAndSettle();
@@ -5270,6 +5308,11 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
+    expect(pluginMutationRunner.installCalls, isEmpty);
+    expect(find.text('Confirm server plugin change'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('plugin-mutation-confirm')));
+    await tester.pumpAndSettle();
+
     expect(pluginMutationRunner.installCalls, hasLength(1));
     expect(pluginMutationRunner.installCalls.single.pluginId, 'linear');
     expect(pluginMutationRunner.installCalls.single.cwds, ['/repo']);
@@ -5283,6 +5326,125 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('linear (linear): installed'), findsOneWidget);
+  });
+
+  testWidgets('/plugins mutation cancellation sends no RPC', (tester) async {
+    final approvalController = ApprovalStateController();
+    final pluginMutationRunner = _RecordingPluginMutationRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      pluginMutationRunner: pluginMutationRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+
+    await _pumpChatPage(tester, sessionController: sessionController);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/plugins uninstall linear',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
+    await tester.pumpAndSettle();
+
+    expect(pluginMutationRunner.uninstallCalls, isEmpty);
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(pluginMutationRunner.installCalls, isEmpty);
+    expect(pluginMutationRunner.uninstallCalls, isEmpty);
+    expect(find.text('Plugin change canceled.'), findsOneWidget);
+  });
+
+  testWidgets('/plugins marketplace add confirms, mutates, and refreshes', (
+    tester,
+  ) async {
+    final approvalController = ApprovalStateController();
+    final pluginReader = _RecordingPluginListReader(
+      page: const PluginListPage(marketplaces: []),
+    );
+    final marketplaceRunner = _RecordingMarketplaceMutationRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      pluginListReader: pluginReader,
+      marketplaceMutationRunner: marketplaceRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    await sessionController.connect(_profile);
+
+    await _pumpChatPage(tester, sessionController: sessionController);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/plugins marketplace add https://example.com/team-tools.git '
+      '--ref main --sparse plugins --sparse=skills',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
+    await tester.pumpAndSettle();
+
+    expect(marketplaceRunner.addCalls, isEmpty);
+    final confirmationDialog = find.byType(AlertDialog);
+    expect(
+      find.descendant(
+        of: confirmationDialog,
+        matching: find.textContaining('https://example.com/team-tools.git'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: confirmationDialog,
+        matching: find.textContaining('--ref main'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: confirmationDialog,
+        matching: find.textContaining('--sparse plugins'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: confirmationDialog,
+        matching: find.textContaining('can affect other Codex clients'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('plugin-mutation-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(marketplaceRunner.addCalls, hasLength(1));
+    expect(
+      marketplaceRunner.addCalls.single.source,
+      'https://example.com/team-tools.git',
+    );
+    expect(marketplaceRunner.addCalls.single.refName, 'main');
+    expect(marketplaceRunner.addCalls.single.sparsePaths, [
+      'plugins',
+      'skills',
+    ]);
+    expect(marketplaceRunner.removeCalls, isEmpty);
+    expect(marketplaceRunner.upgradeCalls, isEmpty);
+    expect(pluginReader.cwds, [<String>[]]);
+    expect(find.textContaining('Added marketplace team-tools'), findsOneWidget);
   });
 
   testWidgets('/plugins filters by marketplace kind', (tester) async {
@@ -5757,6 +5919,63 @@ void main() {
     expect(turnController.activeThreadId, 'thr_new');
     expect(timelineController.selectedThreadId, 'thr_new');
     expect(timelineController.turns, isEmpty);
+    expect(find.text('Started a new thread.'), findsOneWidget);
+  });
+
+  testWidgets('sidebar new chat button starts a new thread', (tester) async {
+    tester.view.physicalSize = const Size(390, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final approvalController = ApprovalStateController();
+    final turnRunner = _FakeTurnRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final turnController = TurnController(
+      runnerProvider: () => sessionController.turnRunner,
+    );
+    final timelineController = ChatTimelineController();
+    timelineController.showThread(_thread('thr_old'));
+    addTearDown(timelineController.dispose);
+    addTearDown(turnController.dispose);
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+
+    await sessionController.connect(_profile);
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      turnController: turnController,
+      timelineController: timelineController,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('chat-sidebar-new-thread')),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('New chat'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('chat-sidebar-new-thread')));
+    await tester.pumpAndSettle();
+
+    expect(turnRunner.startedThreads, 1);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(turnController.activeThreadId, 'thr_new');
+    expect(timelineController.selectedThreadId, 'thr_new');
+    expect(timelineController.turns, isEmpty);
+    expect(find.byKey(const ValueKey('chat-session-sidebar')), findsNothing);
     expect(find.text('Started a new thread.'), findsOneWidget);
   });
 
@@ -8562,11 +8781,16 @@ Future<_ConnectedChatHarness> _pumpConnectedChatPage(
 }) async {
   final approvalController = ApprovalStateController();
   final turnRunner = _FakeTurnRunner();
+  final windowsSandboxRunner = _FakeWindowsSandboxRunner();
+  final eventsController = StreamController<CodexEvent>.broadcast();
+  addTearDown(eventsController.close);
   final starter = _FakeSessionStarter(
     threadListReader: const _FakeThreadListReader(
       page: ThreadListPage(threads: []),
     ),
     turnRunner: turnRunner,
+    windowsSandboxRunner: windowsSandboxRunner,
+    events: eventsController.stream,
   );
   final sessionController = CodexSessionStateController(
     connector: starter,
@@ -8589,6 +8813,9 @@ Future<_ConnectedChatHarness> _pumpConnectedChatPage(
   return _ConnectedChatHarness(
     turnRunner: turnRunner,
     approvalController: approvalController,
+    sessionController: sessionController,
+    windowsSandboxRunner: windowsSandboxRunner,
+    eventsController: eventsController,
   );
 }
 
@@ -8650,10 +8877,16 @@ class _ConnectedChatHarness {
   const _ConnectedChatHarness({
     required this.turnRunner,
     required this.approvalController,
+    required this.sessionController,
+    required this.windowsSandboxRunner,
+    required this.eventsController,
   });
 
   final _FakeTurnRunner turnRunner;
   final ApprovalStateController approvalController;
+  final CodexSessionStateController sessionController;
+  final _FakeWindowsSandboxRunner windowsSandboxRunner;
+  final StreamController<CodexEvent> eventsController;
 }
 
 Future<void> _selectDropdownOption(
@@ -8858,6 +9091,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.pluginListReader = const _FakePluginListReader(),
     this.pluginDetailReader = const _FakePluginDetailReader(),
     this.pluginMutationRunner = const _FakePluginMutationRunner(),
+    this.marketplaceMutationRunner = const _FakeMarketplaceMutationRunner(),
     this.hookListReader = const _FakeHookListReader(),
     this.appListReader = const _FakeAppListReader(),
     this.accountLogoutRunner = const _FakeAccountLogoutRunner(),
@@ -8866,6 +9100,8 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.fileSearchReader = const _FakeFileSearchReader(),
     this.mcpServerConfigRunner = const _FakeMcpServerConfigRunner(),
     this.mcpServerOAuthRunner = const _FakeMcpServerOAuthRunner(),
+    this.windowsSandboxRunner = const _NoopWindowsSandboxRunner(),
+    this.events = const Stream.empty(),
     this.rawRpcError,
   });
 
@@ -8881,6 +9117,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final PluginListReader pluginListReader;
   final PluginDetailReader pluginDetailReader;
   final PluginMutationRunner pluginMutationRunner;
+  final MarketplaceMutationRunner marketplaceMutationRunner;
   final HookListReader hookListReader;
   final AppListReader appListReader;
   final AccountLogoutRunner accountLogoutRunner;
@@ -8889,6 +9126,8 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final FileSearchReader fileSearchReader;
   final McpServerConfigRunner mcpServerConfigRunner;
   final McpServerOAuthRunner mcpServerOAuthRunner;
+  final WindowsSandboxRunner windowsSandboxRunner;
+  final Stream<CodexEvent> events;
   final Object? rawRpcError;
 
   @override
@@ -8912,6 +9151,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
         pluginListReader: pluginListReader,
         pluginDetailReader: pluginDetailReader,
         pluginMutationRunner: pluginMutationRunner,
+        marketplaceMutationRunner: marketplaceMutationRunner,
         hookListReader: hookListReader,
         appListReader: appListReader,
         accountLogoutRunner: accountLogoutRunner,
@@ -8922,6 +9162,8 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
         workspaceFileReader: const _FakeWorkspaceFileReader(),
         mcpServerConfigRunner: mcpServerConfigRunner,
         mcpServerOAuthRunner: mcpServerOAuthRunner,
+        windowsSandboxRunner: windowsSandboxRunner,
+        events: events,
         rawRpcError: rawRpcError,
       );
     }
@@ -8938,6 +9180,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       pluginListReader: pluginListReader,
       pluginDetailReader: pluginDetailReader,
       pluginMutationRunner: pluginMutationRunner,
+      marketplaceMutationRunner: marketplaceMutationRunner,
       hookListReader: hookListReader,
       appListReader: appListReader,
       accountLogoutRunner: accountLogoutRunner,
@@ -8948,12 +9191,18 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       workspaceFileReader: const _FakeWorkspaceFileReader(),
       mcpServerConfigRunner: mcpServerConfigRunner,
       mcpServerOAuthRunner: mcpServerOAuthRunner,
+      windowsSandboxRunner: windowsSandboxRunner,
+      events: events,
       rawRpcError: rawRpcError,
     );
   }
 }
 
-class _FakeSessionConnection implements CodexSessionConnectionHandle {
+class _FakeSessionConnection
+    implements
+        CodexSessionConnectionHandle,
+        WindowsSandboxConnectionHandle,
+        MarketplaceMutationConnectionHandle {
   _FakeSessionConnection({
     required this.profile,
     required this.threadListReader,
@@ -8967,6 +9216,7 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.pluginListReader,
     required this.pluginDetailReader,
     required this.pluginMutationRunner,
+    required this.marketplaceMutationRunner,
     required this.hookListReader,
     required this.appListReader,
     required this.accountLogoutRunner,
@@ -8977,6 +9227,8 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
     required this.workspaceFileReader,
     required this.mcpServerConfigRunner,
     required this.mcpServerOAuthRunner,
+    required this.windowsSandboxRunner,
+    required this.events,
     this.rawRpcError,
   }) : _doneCompleter = Completer<void>();
 
@@ -9023,6 +9275,9 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
   final PluginMutationRunner pluginMutationRunner;
 
   @override
+  final MarketplaceMutationRunner marketplaceMutationRunner;
+
+  @override
   final HookListReader hookListReader;
 
   @override
@@ -9055,6 +9310,10 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   final McpServerOAuthRunner mcpServerOAuthRunner;
+  @override
+  final WindowsSandboxRunner windowsSandboxRunner;
+  @override
+  final Stream<CodexEvent> events;
   final Object? rawRpcError;
 
   @override
@@ -9082,9 +9341,6 @@ class _FakeSessionConnection implements CodexSessionConnectionHandle {
 
   @override
   List<JsonRpcDiagnosticLogEntry> get diagnosticLogs => const [];
-
-  @override
-  Stream<CodexEvent> get events => const Stream.empty();
 
   @override
   ThreadDetailReader get threadDetailReader => _FakeThreadDetailReader(
@@ -9156,6 +9412,7 @@ class _FakeThreadShellCommandConnection extends _FakeSessionConnection
     required super.pluginListReader,
     required super.pluginDetailReader,
     required super.pluginMutationRunner,
+    required super.marketplaceMutationRunner,
     required super.hookListReader,
     required super.appListReader,
     required super.accountLogoutRunner,
@@ -9166,6 +9423,8 @@ class _FakeThreadShellCommandConnection extends _FakeSessionConnection
     required super.workspaceFileReader,
     required super.mcpServerConfigRunner,
     required super.mcpServerOAuthRunner,
+    required super.windowsSandboxRunner,
+    required super.events,
     super.rawRpcError,
   });
 
@@ -9779,6 +10038,100 @@ class _RecordingPluginMutationRunner implements PluginMutationRunner {
   }
 }
 
+class _FakeMarketplaceMutationRunner implements MarketplaceMutationRunner {
+  const _FakeMarketplaceMutationRunner();
+
+  @override
+  Future<MarketplaceAddResult> addMarketplace({
+    required String source,
+    String? refName,
+    List<String> sparsePaths = const [],
+  }) async {
+    return const MarketplaceAddResult(
+      marketplaceName: 'team-tools',
+      installedRoot: '/marketplaces/team-tools',
+      alreadyAdded: false,
+      raw: <String, Object?>{},
+    );
+  }
+
+  @override
+  Future<MarketplaceRemoveResult> removeMarketplace({
+    required String marketplaceName,
+  }) async {
+    return MarketplaceRemoveResult(
+      marketplaceName: marketplaceName,
+      raw: const <String, Object?>{},
+    );
+  }
+
+  @override
+  Future<MarketplaceUpgradeResult> upgradeMarketplaces({
+    String? marketplaceName,
+  }) async {
+    return MarketplaceUpgradeResult(
+      selectedMarketplaces: marketplaceName == null
+          ? const []
+          : [marketplaceName],
+      upgradedRoots: const [],
+      errors: const [],
+      raw: const <String, Object?>{},
+    );
+  }
+}
+
+class _RecordingMarketplaceMutationRunner implements MarketplaceMutationRunner {
+  final addCalls =
+      <({String source, String? refName, List<String> sparsePaths})>[];
+  final removeCalls = <String>[];
+  final upgradeCalls = <String?>[];
+
+  @override
+  Future<MarketplaceAddResult> addMarketplace({
+    required String source,
+    String? refName,
+    List<String> sparsePaths = const [],
+  }) async {
+    addCalls.add((
+      source: source,
+      refName: refName,
+      sparsePaths: List.unmodifiable(sparsePaths),
+    ));
+    return const MarketplaceAddResult(
+      marketplaceName: 'team-tools',
+      installedRoot: '/marketplaces/team-tools',
+      alreadyAdded: false,
+      raw: <String, Object?>{},
+    );
+  }
+
+  @override
+  Future<MarketplaceRemoveResult> removeMarketplace({
+    required String marketplaceName,
+  }) async {
+    removeCalls.add(marketplaceName);
+    return MarketplaceRemoveResult(
+      marketplaceName: marketplaceName,
+      raw: const <String, Object?>{},
+    );
+  }
+
+  @override
+  Future<MarketplaceUpgradeResult> upgradeMarketplaces({
+    String? marketplaceName,
+  }) async {
+    upgradeCalls.add(marketplaceName);
+    return MarketplaceUpgradeResult(
+      selectedMarketplaces: marketplaceName == null
+          ? const []
+          : [marketplaceName],
+      upgradedRoots: const [],
+      errors: const [],
+      raw: const <String, Object?>{},
+    );
+  }
+}
+
 class _RecordingHookListReader implements HookListReader {
   _RecordingHookListReader({required this.page});
 
@@ -9996,6 +10349,43 @@ class _RecordingPermissionProfileListReader
   }) async {
     cwdValues.add(cwd);
     return page;
+  }
+}
+
+class _NoopWindowsSandboxRunner implements WindowsSandboxRunner {
+  const _NoopWindowsSandboxRunner();
+
+  @override
+  Future<WindowsSandboxReadiness> readReadiness() async {
+    return WindowsSandboxReadiness.ready;
+  }
+
+  @override
+  Future<WindowsSandboxSetupStart> startSetup({
+    required WindowsSandboxSetupMode mode,
+    String? cwd,
+  }) async {
+    return const WindowsSandboxSetupStart(started: true);
+  }
+}
+
+class _FakeWindowsSandboxRunner implements WindowsSandboxRunner {
+  final setupCalls = <({WindowsSandboxSetupMode mode, String? cwd})>[];
+  WindowsSandboxReadiness readiness = WindowsSandboxReadiness.notConfigured;
+  WindowsSandboxSetupStart startResult = const WindowsSandboxSetupStart(
+    started: true,
+  );
+
+  @override
+  Future<WindowsSandboxReadiness> readReadiness() async => readiness;
+
+  @override
+  Future<WindowsSandboxSetupStart> startSetup({
+    required WindowsSandboxSetupMode mode,
+    String? cwd,
+  }) async {
+    setupCalls.add((mode: mode, cwd: cwd));
+    return startResult;
   }
 }
 

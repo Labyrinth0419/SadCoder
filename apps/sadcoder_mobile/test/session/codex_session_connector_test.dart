@@ -8,9 +8,13 @@ import 'package:sadcoder_mobile/src/agent/agent_status.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_request_mapper.dart';
 import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
+import 'package:sadcoder_mobile/src/command_exec/command_exec_runner.dart';
+import 'package:sadcoder_mobile/src/environments/environment_runner.dart';
+import 'package:sadcoder_mobile/src/realtime/realtime_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_proxy_connector.dart';
+import 'package:sadcoder_mobile/src/windows_sandbox/windows_sandbox_runner.dart';
 
 void main() {
   test('connect initializes app-server and exposes session client', () async {
@@ -29,7 +33,50 @@ void main() {
     await connection.pluginDetailReader.readPlugin(pluginId: 'linear');
     await connection.pluginMutationRunner.installPlugin(pluginId: 'linear');
     await connection.pluginMutationRunner.uninstallPlugin(pluginId: 'linear');
+    final marketplaceMutationRunner =
+        (connection as MarketplaceMutationConnectionHandle)
+            .marketplaceMutationRunner;
+    await marketplaceMutationRunner.addMarketplace(
+      source: 'https://example.com/team-tools.git',
+      refName: 'main',
+      sparsePaths: const ['plugins'],
+    );
+    await marketplaceMutationRunner.removeMarketplace(
+      marketplaceName: 'team-tools',
+    );
+    await marketplaceMutationRunner.upgradeMarketplaces(
+      marketplaceName: 'openai-curated',
+    );
+    final processRunner = (connection as ProcessConnectionHandle).processRunner;
+    final processSession = await processRunner.start(
+      const CommandExecRequest(
+        command: ['echo', 'hello'],
+        cwd: '/repo',
+        size: CommandExecTerminalSize(rows: 24, cols: 80),
+      ),
+    );
+    await processSession.write(utf8.encode('input\n'));
+    await processSession.resize(
+      const CommandExecTerminalSize(rows: 40, cols: 120),
+    );
+    await processSession.terminate();
+    proxyConnector.emitNotification('process/exited', {
+      'processHandle': processSession.processId,
+      'exitCode': 0,
+      'stdout': '',
+      'stdoutCapReached': false,
+      'stderr': '',
+      'stderrCapReached': false,
+    });
+    expect((await processSession.done).exitCode, 0);
     await connection.hookListReader.listHooks();
+    final hookMutationRunner =
+        (connection as HookMutationConnectionHandle).hookMutationRunner;
+    await hookMutationRunner.setHookEnabled(hookKey: 'hook-1', enabled: false);
+    await hookMutationRunner.trustHook(
+      hookKey: 'hook-1',
+      currentHash: 'hash-1',
+    );
     await connection.appListReader.listApps();
     await connection.mcpServerOAuthRunner.startOAuthLogin(serverName: 'github');
     await connection.accountSnapshotReader.readAccount();
@@ -38,6 +85,44 @@ void main() {
       classification: 'bug',
       reason: 'Authorization: Bearer upload-secret path=/repo',
     );
+    final windowsSandboxRunner =
+        (connection as WindowsSandboxConnectionHandle).windowsSandboxRunner;
+    expect(
+      await windowsSandboxRunner.readReadiness(),
+      WindowsSandboxReadiness.notConfigured,
+    );
+    expect(
+      (await windowsSandboxRunner.startSetup(
+        mode: WindowsSandboxSetupMode.elevated,
+        cwd: r'C:\repo',
+      )).started,
+      isTrue,
+    );
+    final environmentRunner =
+        (connection as EnvironmentConnectionHandle).environmentRunner;
+    await environmentRunner.addEnvironment(
+      environmentId: 'env-1',
+      execServerUrl: 'ws://exec.example/ws',
+    );
+    final environmentInfo = await environmentRunner.readEnvironmentInfo(
+      environmentId: 'env-1',
+    );
+    expect(environmentInfo.shell.name, 'bash');
+    final environmentStatus = await environmentRunner.readEnvironmentStatus(
+      environmentId: 'env-1',
+    );
+    expect(environmentStatus.status, EnvironmentStatusKind.ready);
+    final externalAgentConfigRunner =
+        (connection as ExternalAgentConfigConnectionHandle)
+            .externalAgentConfigRunner;
+    final migrationItems = await externalAgentConfigRunner.detect(
+      cwds: ['/repo'],
+    );
+    await externalAgentConfigRunner.startImport(
+      items: migrationItems.items,
+      source: 'claude',
+    );
+    await externalAgentConfigRunner.readImportHistories();
     await connection.gitDiffReader.readDiff();
     await connection.fileSearchReader.searchFiles(
       query: 'main',
@@ -53,6 +138,21 @@ void main() {
       turnId: 'turn_1',
       limit: 10,
     );
+    final realtimeRunner =
+        (connection as RealtimeConnectionHandle).realtimeRunner;
+    await realtimeRunner.listVoices();
+    await realtimeRunner.startText(threadId: 'thr_1');
+    await realtimeRunner.appendText(threadId: 'thr_1', text: 'hello');
+    await realtimeRunner.appendAudio(
+      threadId: 'thr_1',
+      audio: const RealtimeAudioFrame(
+        data: 'AA==',
+        sampleRate: 24000,
+        numChannels: 1,
+      ),
+    );
+    await realtimeRunner.appendSpeech(threadId: 'thr_1', text: 'hello');
+    await realtimeRunner.stop(threadId: 'thr_1');
     await connection.turnRunner.startThread();
     await connection.turnRunner.startTurn(threadId: 'thr_1', text: 'Fix bug');
     await connection.turnRunner.steerTurn(
@@ -77,16 +177,39 @@ void main() {
       'plugin/read',
       'plugin/install',
       'plugin/uninstall',
+      'marketplace/add',
+      'marketplace/remove',
+      'marketplace/upgrade',
+      'process/spawn',
+      'process/writeStdin',
+      'process/resizePty',
+      'process/kill',
       'hooks/list',
+      'config/batchWrite',
+      'config/batchWrite',
       'app/list',
       'mcpServer/oauth/login',
       'account/read',
       'account/logout',
       'feedback/upload',
+      'windowsSandbox/readiness',
+      'windowsSandbox/setupStart',
+      'environment/add',
+      'environment/info',
+      'environment/status',
+      'externalAgentConfig/detect',
+      'externalAgentConfig/import',
+      'externalAgentConfig/import/readHistories',
       'command/exec',
       'fuzzyFileSearch',
       'thread/turns/list',
       'thread/items/list',
+      'thread/realtime/listVoices',
+      'thread/realtime/start',
+      'thread/realtime/appendText',
+      'thread/realtime/appendAudio',
+      'thread/realtime/appendSpeech',
+      'thread/realtime/stop',
       'thread/start',
       'turn/start',
       'turn/steer',
@@ -321,11 +444,13 @@ class _LineServerProxyConnector implements AgentProxyConnector {
   final methods = <String>[];
   bool closed = false;
   int connectCount = 0;
+  StreamController<Uint8List>? _input;
 
   @override
   Future<AgentProxyConnection> connect(SshProfile profile) async {
     connectCount++;
     final input = StreamController<Uint8List>();
+    _input = input;
     final output = StreamController<Uint8List>();
 
     output.stream.listen((bytes) {
@@ -346,6 +471,20 @@ class _LineServerProxyConnector implements AgentProxyConnector {
           await output.close();
         }
       },
+    );
+  }
+
+  void emitNotification(String method, Map<String, Object?> params) {
+    final input = _input;
+    if (input == null || input.isClosed) {
+      throw StateError('proxy is not connected');
+    }
+    input.add(
+      Uint8List.fromList(
+        utf8.encode(
+          '${jsonEncode({'jsonrpc': '2.0', 'method': method, 'params': params})}\n',
+        ),
+      ),
     );
   }
 
@@ -374,6 +513,22 @@ class _LineServerProxyConnector implements AgentProxyConnector {
     'initialize' => {'serverInfo': 'test'},
     'model/list' => {'models': <Object?>[]},
     'permissionProfile/list' => {'data': <Object?>[]},
+    'windowsSandbox/readiness' => {'status': 'notConfigured'},
+    'windowsSandbox/setupStart' => {'started': true},
+    'thread/realtime/listVoices' => {
+      'voices': {
+        'v1': ['alloy'],
+        'v2': ['marin'],
+        'defaultV1': 'alloy',
+        'defaultV2': 'marin',
+      },
+    },
+    'environment/add' => {},
+    'environment/info' => {
+      'shell': {'name': 'bash', 'path': '/bin/bash'},
+      'cwd': 'file:///repo',
+    },
+    'environment/status' => {'status': 'ready'},
     'skills/list' => {'data': <Object?>[]},
     'plugin/list' => {'marketplaces': <Object?>[]},
     'plugin/read' => {
@@ -385,6 +540,20 @@ class _LineServerProxyConnector implements AgentProxyConnector {
     },
     'plugin/install' => {'pluginId': 'linear'},
     'plugin/uninstall' => {'pluginId': 'linear'},
+    'marketplace/add' => {
+      'marketplaceName': 'team-tools',
+      'installedRoot': '/marketplaces/team-tools',
+      'alreadyAdded': false,
+    },
+    'marketplace/remove' => {
+      'marketplaceName': 'team-tools',
+      'installedRoot': '/marketplaces/team-tools',
+    },
+    'marketplace/upgrade' => {
+      'selectedMarketplaces': ['openai-curated'],
+      'upgradedRoots': ['/marketplaces/openai-curated'],
+      'errors': <Object?>[],
+    },
     'hooks/list' => {'data': <Object?>[]},
     'app/list' => {'data': <Object?>[]},
     'mcpServer/oauth/login' => {'serverName': 'github'},
@@ -400,6 +569,13 @@ class _LineServerProxyConnector implements AgentProxyConnector {
       'recentEvents': <Object?>[],
     },
     'account/read' => {'account': null, 'requiresOpenaiAuth': false},
+    'externalAgentConfig/detect' => {
+      'items': [
+        {'itemType': 'CONFIG', 'description': 'Import config', 'cwd': null},
+      ],
+    },
+    'externalAgentConfig/import' => {'importId': 'import_1'},
+    'externalAgentConfig/import/readHistories' => {'data': <Object?>[]},
     'command/exec' => {'exitCode': 128, 'stdout': '', 'stderr': ''},
     'thread/turns/list' => {'data': <Object?>[]},
     'thread/items/list' => {'data': <Object?>[]},

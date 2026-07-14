@@ -251,6 +251,7 @@ class AppLocalizations {
   String get connectBeforeLoadingThreads =>
       _text('connectBeforeLoadingThreads');
   String get refreshThreads => _text('refreshThreads');
+  String get newThread => _text('newThread');
   String get activeThreads => _text('activeThreads');
   String get archivedThreads => _text('archivedThreads');
   String get noThreads => _text('noThreads');
@@ -394,14 +395,80 @@ class AppLocalizations {
       _text('slashCommandAgentThreadSelected');
   String get slashCommandAppHandoffUnavailable =>
       _text('slashCommandAppHandoffUnavailable');
-  String get slashCommandImportUnavailable =>
-      _text('slashCommandImportUnavailable');
-  String get slashCommandInitUnavailable =>
-      _text('slashCommandInitUnavailable');
-  String get slashCommandSandboxSetupUnavailable =>
-      _text('slashCommandSandboxSetupUnavailable');
+  String get slashCommandImportStarted => _text('slashCommandImportStarted');
+  String get externalAgentImportTitle => _text('externalAgentImportTitle');
+  String get externalAgentImportDetecting =>
+      _text('externalAgentImportDetecting');
+  String get externalAgentImportEmpty => _text('externalAgentImportEmpty');
+  String get externalAgentImportHomeScope =>
+      _text('externalAgentImportHomeScope');
+  String externalAgentImportRepoScope(String cwd) =>
+      _text('externalAgentImportRepoScope').replaceAll('{cwd}', cwd);
+  String externalAgentImportDetailCount(int count) => _text(
+    'externalAgentImportDetailCount',
+  ).replaceAll('{count}', formatNumber(count));
+  String externalAgentImportSelected(int count) => _text(
+    'externalAgentImportSelected',
+  ).replaceAll('{count}', formatNumber(count));
+  String get externalAgentImportConfirmTitle =>
+      _text('externalAgentImportConfirmTitle');
+  String externalAgentImportConfirmBody(int count) => _text(
+    'externalAgentImportConfirmBody',
+  ).replaceAll('{count}', formatNumber(count));
+  String get externalAgentImportConfirmAction =>
+      _text('externalAgentImportConfirmAction');
+  String get externalAgentImportProgressTitle =>
+      _text('externalAgentImportProgressTitle');
+  String get externalAgentImportStarting =>
+      _text('externalAgentImportStarting');
+  String get externalAgentImportRunning => _text('externalAgentImportRunning');
+  String get externalAgentImportCompleted =>
+      _text('externalAgentImportCompleted');
+  String get externalAgentImportFailed => _text('externalAgentImportFailed');
+  String get externalAgentImportWaitingForProgress =>
+      _text('externalAgentImportWaitingForProgress');
+  String get externalAgentImportNoResultDetails =>
+      _text('externalAgentImportNoResultDetails');
+  String get externalAgentImportSuccess => _text('externalAgentImportSuccess');
+  String get externalAgentImportRecentHistory =>
+      _text('externalAgentImportRecentHistory');
+  String externalAgentImportResultCounts(int successes, int failures) =>
+      _text('externalAgentImportResultCounts')
+          .replaceAll('{successes}', formatNumber(successes))
+          .replaceAll('{failures}', formatNumber(failures));
+  String get selectAll => _text('selectAll');
+  String get deselectAll => _text('deselectAll');
+  String externalAgentImportType(String type) {
+    final key = switch (type) {
+      'AGENTS_MD' => 'externalAgentImportTypeAgentsMd',
+      'CONFIG' => 'externalAgentImportTypeConfig',
+      'SKILLS' => 'externalAgentImportTypeSkills',
+      'PLUGINS' => 'externalAgentImportTypePlugins',
+      'MCP_SERVER_CONFIG' => 'externalAgentImportTypeMcp',
+      'SUBAGENTS' => 'externalAgentImportTypeSubagents',
+      'HOOKS' => 'externalAgentImportTypeHooks',
+      'COMMANDS' => 'externalAgentImportTypeCommands',
+      'SESSIONS' => 'externalAgentImportTypeSessions',
+      _ => 'externalAgentImportTypeUnknown',
+    };
+    return _text(key).replaceAll('{type}', type);
+  }
+
+  String get slashCommandInitStarted => _text('slashCommandInitStarted');
+  String get slashCommandSandboxSetupStarted =>
+      _text('slashCommandSandboxSetupStarted');
+  String get slashCommandSandboxSetupCompleted =>
+      _text('slashCommandSandboxSetupCompleted');
+  String slashCommandSandboxSetupFailed(String detail) =>
+      _text('slashCommandSandboxSetupFailed').replaceAll('{detail}', detail);
+  String get slashCommandSandboxSetupCompletionNotReceived =>
+      _text('slashCommandSandboxSetupCompletionNotReceived');
+  String get slashCommandSandboxSetupUnknownError =>
+      _text('slashCommandSandboxSetupUnknownError');
   String get slashCommandSandboxReadDirUnavailable =>
       _text('slashCommandSandboxReadDirUnavailable');
+  String get slashCommandMemoryMaintenanceAppServer =>
+      _text('slashCommandMemoryMaintenanceAppServer');
   String slashCommandRolloutCurrentPath(String path) =>
       _text('slashCommandRolloutCurrentPath').replaceAll('{path}', path);
   String get slashCommandRolloutPathUnavailable =>
@@ -423,6 +490,8 @@ class AppLocalizations {
       _text('slashCommandHighRiskConfirmTitle');
   String slashCommandHighRiskConfirmBody(String slash) =>
       _text('slashCommandHighRiskConfirmBody').replaceAll('{slash}', slash);
+  String get slashCommandSandboxSetupConfirmBody =>
+      _text('slashCommandSandboxSetupConfirmBody');
   String get slashCommandHighRiskConfirmContinue =>
       _text('slashCommandHighRiskConfirmContinue');
   String slashCommandExecuted(String slash) =>
@@ -515,6 +584,23 @@ class AppLocalizations {
   String get modelOverride => _text('modelOverride');
   String get modelProvider => _text('modelProvider');
   String get effortOverride => _text('effortOverride');
+  String modelEffortServerDefault(String? effort) {
+    final normalized = effort?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return _text('modelEffortServerDefault');
+    }
+    return _text(
+      'modelEffortServerDefaultValue',
+    ).replaceAll('{effort}', normalized);
+  }
+
+  String get modelEffortServerDefaultDescription =>
+      _text('modelEffortServerDefaultDescription');
+  String modelEffortDefaultOption(String effort) =>
+      _text('modelEffortDefaultOption').replaceAll('{effort}', effort);
+  String modelEffortCustom(String effort) =>
+      _text('modelEffortCustom').replaceAll('{effort}', effort);
+  String get modelEffortNotAdvertised => _text('modelEffortNotAdvertised');
   String get personalityOverride => _text('personalityOverride');
   String get serviceTierOverride => _text('serviceTierOverride');
   String get collaborationModeOverride => _text('collaborationModeOverride');
@@ -587,6 +673,43 @@ class AppLocalizations {
   String get refreshAgentDoctor => _text('refreshAgentDoctor');
   String get agentDoctorUnavailable => _text('agentDoctorUnavailable');
   String get agentDoctorLoadFailed => _text('agentDoctorLoadFailed');
+  String get agentMaintenance => _text('agentMaintenance');
+  String get agentMaintenanceBody => _text('agentMaintenanceBody');
+  String get agentMaintenanceDoctor => _text('agentMaintenanceDoctor');
+  String get agentMaintenanceUpdate => _text('agentMaintenanceUpdate');
+  String get agentMaintenanceApply => _text('agentMaintenanceApply');
+  String get agentMaintenanceCloud => _text('agentMaintenanceCloud');
+  String get agentMaintenanceTaskId => _text('agentMaintenanceTaskId');
+  String get agentMaintenanceEnvironment =>
+      _text('agentMaintenanceEnvironment');
+  String get agentMaintenanceCursor => _text('agentMaintenanceCursor');
+  String get agentMaintenanceAttempt => _text('agentMaintenanceAttempt');
+  String get agentMaintenanceCwd => _text('agentMaintenanceCwd');
+  String get agentMaintenanceList => _text('agentMaintenanceList');
+  String get agentMaintenanceStatus => _text('agentMaintenanceStatus');
+  String get agentMaintenanceDiff => _text('agentMaintenanceDiff');
+  String get agentMaintenanceCloudApply => _text('agentMaintenanceCloudApply');
+  String get agentMaintenanceConfirmUpdateTitle =>
+      _text('agentMaintenanceConfirmUpdateTitle');
+  String get agentMaintenanceConfirmUpdateBody =>
+      _text('agentMaintenanceConfirmUpdateBody');
+  String get agentMaintenanceConfirmApplyTitle =>
+      _text('agentMaintenanceConfirmApplyTitle');
+  String get agentMaintenanceConfirmApplyBody =>
+      _text('agentMaintenanceConfirmApplyBody');
+  String get agentMaintenanceConfirm => _text('agentMaintenanceConfirm');
+  String get agentMaintenanceRestart => _text('agentMaintenanceRestart');
+  String get agentMaintenanceRestartBody =>
+      _text('agentMaintenanceRestartBody');
+  String get agentMaintenanceRestartNow => _text('agentMaintenanceRestartNow');
+  String get agentMaintenanceRestarted => _text('agentMaintenanceRestarted');
+  String get agentMaintenanceCloudAuth => _text('agentMaintenanceCloudAuth');
+  String get agentMaintenanceUnavailable =>
+      _text('agentMaintenanceUnavailable');
+  String get agentMaintenanceFailed => _text('agentMaintenanceFailed');
+  String get agentMaintenanceDiffEmpty => _text('agentMaintenanceDiffEmpty');
+  String get agentMaintenanceDiffPreview =>
+      _text('agentMaintenanceDiffPreview');
   String get agentServiceLogs => _text('agentServiceLogs');
   String get agentServiceLogsBody => _text('agentServiceLogsBody');
   String get refreshAgentServiceLogs => _text('refreshAgentServiceLogs');
@@ -620,6 +743,49 @@ class AppLocalizations {
   String get agentSchemaEmpty => _text('agentSchemaEmpty');
   String agentSchemaMoreFiles(int count) =>
       _text('agentSchemaMoreFiles').replaceAll('{count}', formatNumber(count));
+  String get remoteEnvironment => _text('remoteEnvironment');
+  String get remoteEnvironmentBody => _text('remoteEnvironmentBody');
+  String get remoteEnvironmentId => _text('remoteEnvironmentId');
+  String get remoteEnvironmentExecServerUrl =>
+      _text('remoteEnvironmentExecServerUrl');
+  String get remoteEnvironmentTimeout => _text('remoteEnvironmentTimeout');
+  String get remoteEnvironmentAdd => _text('remoteEnvironmentAdd');
+  String get remoteEnvironmentInfo => _text('remoteEnvironmentInfo');
+  String get remoteEnvironmentStatus => _text('remoteEnvironmentStatus');
+  String get remoteEnvironmentIdRequired =>
+      _text('remoteEnvironmentIdRequired');
+  String get remoteEnvironmentUrlRequired =>
+      _text('remoteEnvironmentUrlRequired');
+  String get remoteEnvironmentTimeoutInvalid =>
+      _text('remoteEnvironmentTimeoutInvalid');
+  String get remoteEnvironmentConfirmTitle =>
+      _text('remoteEnvironmentConfirmTitle');
+  String remoteEnvironmentConfirmBody(String id, String url) => _text(
+    'remoteEnvironmentConfirmBody',
+  ).replaceAll('{id}', id).replaceAll('{url}', url);
+  String get remoteEnvironmentConfirmAction =>
+      _text('remoteEnvironmentConfirmAction');
+  String get remoteEnvironmentUnavailable =>
+      _text('remoteEnvironmentUnavailable');
+  String get remoteEnvironmentLoadFailed =>
+      _text('remoteEnvironmentLoadFailed');
+  String get remoteEnvironmentAdded => _text('remoteEnvironmentAdded');
+  String remoteEnvironmentShell(String name, String path) => _text(
+    'remoteEnvironmentShell',
+  ).replaceAll('{name}', name).replaceAll('{path}', path);
+  String remoteEnvironmentCwd(String cwd) =>
+      _text('remoteEnvironmentCwd').replaceAll('{cwd}', cwd);
+  String get remoteEnvironmentStatusReady =>
+      _text('remoteEnvironmentStatusReady');
+  String get remoteEnvironmentStatusPending =>
+      _text('remoteEnvironmentStatusPending');
+  String get remoteEnvironmentStatusDisconnected =>
+      _text('remoteEnvironmentStatusDisconnected');
+  String get remoteEnvironmentStatusUnknown =>
+      _text('remoteEnvironmentStatusUnknown');
+  String remoteEnvironmentStatusDetail(String status, String detail) => _text(
+    'remoteEnvironmentStatusDetail',
+  ).replaceAll('{status}', status).replaceAll('{detail}', detail);
   String get agentLogPath => _text('agentLogPath');
   String agentLogSize(String size, String tail) => _text(
     'agentLogSize',
@@ -858,11 +1024,65 @@ class AppLocalizations {
       _text('pluginInstallRequested').replaceAll('{plugin}', plugin);
   String pluginUninstallRequested(String plugin) =>
       _text('pluginUninstallRequested').replaceAll('{plugin}', plugin);
+  String get pluginMutationConfirmTitle => _text('pluginMutationConfirmTitle');
+  String pluginMutationConfirmBody(String action) =>
+      _text('pluginMutationConfirmBody').replaceAll('{action}', action);
+  String get pluginMutationConfirmContinue =>
+      _text('pluginMutationConfirmContinue');
+  String get pluginMutationCancelled => _text('pluginMutationCancelled');
+  String pluginInstallAction(String plugin) =>
+      _text('pluginInstallAction').replaceAll('{plugin}', plugin);
+  String pluginUninstallAction(String plugin) =>
+      _text('pluginUninstallAction').replaceAll('{plugin}', plugin);
+  String marketplaceAddAction(String source) =>
+      _text('marketplaceAddAction').replaceAll('{source}', source);
+  String marketplaceRemoveAction(String marketplace) =>
+      _text('marketplaceRemoveAction').replaceAll('{marketplace}', marketplace);
+  String marketplaceUpgradeAction(String marketplace) => _text(
+    'marketplaceUpgradeAction',
+  ).replaceAll('{marketplace}', marketplace);
+  String marketplaceAdded(String marketplace, String root) => _text(
+    'marketplaceAdded',
+  ).replaceAll('{marketplace}', marketplace).replaceAll('{root}', root);
+  String marketplaceAlreadyAdded(String marketplace, String root) => _text(
+    'marketplaceAlreadyAdded',
+  ).replaceAll('{marketplace}', marketplace).replaceAll('{root}', root);
+  String marketplaceRemoved(String marketplace) =>
+      _text('marketplaceRemoved').replaceAll('{marketplace}', marketplace);
+  String marketplaceRemovedFrom(String marketplace, String root) => _text(
+    'marketplaceRemovedFrom',
+  ).replaceAll('{marketplace}', marketplace).replaceAll('{root}', root);
+  String marketplaceUpgradeCompleted(String selected, String roots) => _text(
+    'marketplaceUpgradeCompleted',
+  ).replaceAll('{selected}', selected).replaceAll('{roots}', roots);
+  String get marketplaceAll => _text('marketplaceAll');
+  String get marketplaceNone => _text('marketplaceNone');
   String get hooksTitle => _text('hooksTitle');
   String get hooksUnavailable => _text('hooksUnavailable');
   String get hooksLoadFailed => _text('hooksLoadFailed');
   String get hooksEmpty => _text('hooksEmpty');
   String get hooksCwd => _text('hooksCwd');
+  String get hooksManagementTitle => _text('hooksManagementTitle');
+  String get realtimeTitle => _text('realtimeTitle');
+  String get realtimeTransportWebsocket => _text('realtimeTransportWebsocket');
+  String realtimeProtocolSummary(int v1, int v2) => _text(
+    'realtimeProtocolSummary',
+  ).replaceAll('{v1}', '$v1').replaceAll('{v2}', '$v2');
+  String get realtimeFailed => _text('realtimeFailed');
+  String get realtimeEmpty => _text('realtimeEmpty');
+  String get realtimeMessageHint => _text('realtimeMessageHint');
+  String get realtimeStart => _text('realtimeStart');
+  String get realtimeStop => _text('realtimeStop');
+  String get realtimeStopTitle => _text('realtimeStopTitle');
+  String get realtimeStopBody => _text('realtimeStopBody');
+  String get realtimeOptions => _text('realtimeOptions');
+  String get realtimeVersion => _text('realtimeVersion');
+  String get realtimePrompt => _text('realtimePrompt');
+  String get realtimeIncludeStartupContext =>
+      _text('realtimeIncludeStartupContext');
+  String get hooksManagementBody => _text('hooksManagementBody');
+  String get hooksManagementClosed => _text('hooksManagementClosed');
+  String get refreshHooks => _text('refreshHooks');
   String get hookWarnings => _text('hookWarnings');
   String get hookErrors => _text('hookErrors');
   String get hookEnabled => _text('hookEnabled');
@@ -870,6 +1090,19 @@ class AppLocalizations {
   String get hookManaged => _text('hookManaged');
   String get hookUserManaged => _text('hookUserManaged');
   String get hookTrust => _text('hookTrust');
+  String get hookTrusted => _text('hookTrusted');
+  String get hookEnable => _text('hookEnable');
+  String get hookDisable => _text('hookDisable');
+  String hookTrustConfirmBody(String event) =>
+      _text('hookTrustConfirmBody').replaceAll('{event}', event);
+  String hookMutationConfirmBody(String event, String action) => _text(
+    'hookMutationConfirmBody',
+  ).replaceAll('{event}', event).replaceAll('{action}', action);
+  String get hookMutationConfirmTitle => _text('hookMutationConfirmTitle');
+  String get hookMutationFailed => _text('hookMutationFailed');
+  String get hookEnableAction => _text('hookEnableAction');
+  String get hookDisableAction => _text('hookDisableAction');
+  String get close => _text('close');
   String get hookSource => _text('hookSource');
   String get hookMatcher => _text('hookMatcher');
   String get hookCommand => _text('hookCommand');
@@ -912,6 +1145,38 @@ class AppLocalizations {
   String get experimentalApiCapability => _text('experimentalApiCapability');
   String get experimentalConfigValues => _text('experimentalConfigValues');
   String get experimentalNoConfigValues => _text('experimentalNoConfigValues');
+  String get experimentalFeatureLoading => _text('experimentalFeatureLoading');
+  String get experimentalFeatureNoSelectable =>
+      _text('experimentalFeatureNoSelectable');
+  String get experimentalFeatureRetry => _text('experimentalFeatureRetry');
+  String get experimentalFeatureDefaultEnabled =>
+      _text('experimentalFeatureDefaultEnabled');
+  String get experimentalFeatureDefaultDisabled =>
+      _text('experimentalFeatureDefaultDisabled');
+  String get experimentalFeatureConfirmTitle =>
+      _text('experimentalFeatureConfirmTitle');
+  String experimentalFeatureConfirmBody(
+    String feature,
+    String current,
+    String next,
+  ) => _text('experimentalFeatureConfirmBody')
+      .replaceAll('{feature}', feature)
+      .replaceAll('{current}', current)
+      .replaceAll('{next}', next);
+  String get experimentalFeatureWriteImpact =>
+      _text('experimentalFeatureWriteImpact');
+  String get experimentalFeatureApply => _text('experimentalFeatureApply');
+  String get experimentalFeatureWriteFailed =>
+      _text('experimentalFeatureWriteFailed');
+  String experimentalFeatureUpdated(String feature) =>
+      _text('experimentalFeatureUpdated').replaceAll('{feature}', feature);
+  String experimentalFeatureChangesApplied(int count) => _text(
+    'experimentalFeatureChangesApplied',
+  ).replaceAll('{count}', formatNumber(count));
+  String get experimentalFeatureNoChanges =>
+      _text('experimentalFeatureNoChanges');
+  String experimentalFeatureOverridden(String message) =>
+      _text('experimentalFeatureOverridden').replaceAll('{message}', message);
   String get memoriesTitle => _text('memoriesTitle');
   String get memoriesUnavailable => _text('memoriesUnavailable');
   String get memoriesLoadFailed => _text('memoriesLoadFailed');
@@ -920,6 +1185,26 @@ class AppLocalizations {
   String get memoriesNoConfigValues => _text('memoriesNoConfigValues');
   String get memoriesThreadMode => _text('memoriesThreadMode');
   String get memoriesUnknownThreadMode => _text('memoriesUnknownThreadMode');
+  String get memoriesThreadToggle => _text('memoriesThreadToggle');
+  String get memoriesThreadToggleBody => _text('memoriesThreadToggleBody');
+  String get memoriesThreadUnavailable => _text('memoriesThreadUnavailable');
+  String get memoriesModeConfirmTitle => _text('memoriesModeConfirmTitle');
+  String memoriesModeConfirmBody(String mode) =>
+      _text('memoriesModeConfirmBody').replaceAll('{mode}', mode);
+  String get memoriesModeApply => _text('memoriesModeApply');
+  String get memoriesModeUpdated => _text('memoriesModeUpdated');
+  String get memoriesModeUpdateFailed => _text('memoriesModeUpdateFailed');
+  String get memoriesReset => _text('memoriesReset');
+  String get memoriesResetBody => _text('memoriesResetBody');
+  String get memoriesResetConfirmTitle => _text('memoriesResetConfirmTitle');
+  String get memoriesResetConfirmBody => _text('memoriesResetConfirmBody');
+  String get memoriesResetConfirmAction => _text('memoriesResetConfirmAction');
+  String get memoriesResetCompleted => _text('memoriesResetCompleted');
+  String get memoriesResetFailed => _text('memoriesResetFailed');
+  String get memoriesNoChanges => _text('memoriesNoChanges');
+  String memoriesChangesApplied(int count) => _text(
+    'memoriesChangesApplied',
+  ).replaceAll('{count}', formatNumber(count));
   String get lifetimeTokens => _text('lifetimeTokens');
   String get peakDailyTokens => _text('peakDailyTokens');
   String get currentStreakDays => _text('currentStreakDays');
@@ -1032,11 +1317,28 @@ class AppLocalizations {
       _text('workspaceFilesLoadedBytes')
           .replaceAll('{loaded}', formatFileSize(loaded))
           .replaceAll('{total}', formatFileSize(total));
+  String get workspaceFilesEdit => _text('workspaceFilesEdit');
+  String get workspaceFilesSaveEdit => _text('workspaceFilesSaveEdit');
+  String get workspaceFilesConfirmEdit => _text('workspaceFilesConfirmEdit');
+  String get workspaceFilesConflict => _text('workspaceFilesConflict');
+  String get workspaceFilesWriteFailed => _text('workspaceFilesWriteFailed');
+  String get workspaceFilesExternalChange =>
+      _text('workspaceFilesExternalChange');
   String get terminalTitle => _text('terminalTitle');
   String terminalCwd(String cwd) =>
       _text('terminalCwd').replaceAll('{cwd}', cwd);
   String get terminalCommand => _text('terminalCommand');
   String get terminalRun => _text('terminalRun');
+  String get terminalSandboxedMode => _text('terminalSandboxedMode');
+  String get terminalHostProcessMode => _text('terminalHostProcessMode');
+  String get terminalHostProcessWarning => _text('terminalHostProcessWarning');
+  String get terminalHostProcessConfirmTitle =>
+      _text('terminalHostProcessConfirmTitle');
+  String terminalHostProcessConfirmBody(String command, String cwd) => _text(
+    'terminalHostProcessConfirmBody',
+  ).replaceAll('{command}', command).replaceAll('{cwd}', cwd);
+  String get terminalHostProcessConfirmContinue =>
+      _text('terminalHostProcessConfirmContinue');
   String get terminalNotConnected => _text('terminalNotConnected');
   String get terminalNoCwd => _text('terminalNoCwd');
   String get terminalNoOutput => _text('terminalNoOutput');
@@ -1340,6 +1642,7 @@ const _values = <String, Map<String, String>>{
     'connectBeforeTurn': 'Connect to a host before sending a turn',
     'connectBeforeLoadingThreads': 'Connect to a host to load sessions.',
     'refreshThreads': 'Refresh sessions',
+    'newThread': 'New chat',
     'activeThreads': 'Active',
     'archivedThreads': 'Archived',
     'noThreads': 'No sessions found',
@@ -1454,14 +1757,59 @@ const _values = <String, Map<String, String>>{
     'slashCommandAgentThreadSelected': 'Selected agent thread.',
     'slashCommandAppHandoffUnavailable':
         'Codex Desktop handoff is not available in the mobile app.',
-    'slashCommandImportUnavailable':
-        'Claude Code import is not wired in the mobile app yet. It requires a guarded agent fallback on the selected host.',
-    'slashCommandInitUnavailable':
-        'AGENTS.md initialization is not wired in the mobile app yet. It requires a generated diff preview and approval before writing files.',
-    'slashCommandSandboxSetupUnavailable':
-        'Default sandbox setup is not wired in the mobile app yet. It requires a guarded agent fallback and high-risk confirmation on the selected host.',
+    'slashCommandImportStarted':
+        'Claude Code import started on the selected host.',
+    'externalAgentImportTitle': 'Import from Claude Code',
+    'externalAgentImportDetecting': 'Scanning the selected host...',
+    'externalAgentImportEmpty': 'No importable Claude Code data was found.',
+    'externalAgentImportHomeScope': 'User scope',
+    'externalAgentImportRepoScope': 'Workspace: {cwd}',
+    'externalAgentImportDetailCount': '{count} detected entries',
+    'externalAgentImportSelected': 'Continue with {count}',
+    'externalAgentImportConfirmTitle': 'Confirm server import',
+    'externalAgentImportConfirmBody':
+        'Import {count} selected groups into the server Codex configuration and workspace files? Existing targets may be changed.',
+    'externalAgentImportConfirmAction': 'Import',
+    'externalAgentImportProgressTitle': 'Claude Code import',
+    'externalAgentImportStarting': 'Starting import...',
+    'externalAgentImportRunning': 'Import in progress',
+    'externalAgentImportCompleted': 'Import completed',
+    'externalAgentImportFailed': 'Import failed',
+    'externalAgentImportWaitingForProgress':
+        'Waiting for results from the selected host.',
+    'externalAgentImportNoResultDetails':
+        'The import completed without item details.',
+    'externalAgentImportSuccess': 'Imported',
+    'externalAgentImportRecentHistory': 'Recent imports',
+    'externalAgentImportResultCounts':
+        '{successes} succeeded, {failures} failed',
+    'selectAll': 'Select all',
+    'deselectAll': 'Deselect all',
+    'externalAgentImportTypeAgentsMd': 'Project instructions',
+    'externalAgentImportTypeConfig': 'Configuration',
+    'externalAgentImportTypeSkills': 'Skills',
+    'externalAgentImportTypePlugins': 'Plugins',
+    'externalAgentImportTypeMcp': 'MCP servers',
+    'externalAgentImportTypeSubagents': 'Subagents',
+    'externalAgentImportTypeHooks': 'Hooks',
+    'externalAgentImportTypeCommands': 'Commands',
+    'externalAgentImportTypeSessions': 'Recent chats',
+    'externalAgentImportTypeUnknown': 'Other ({type})',
+    'slashCommandInitStarted':
+        'Started AGENTS.md generation. Review any proposed file change before approving it.',
+    'slashCommandSandboxSetupStarted':
+        'Default Windows sandbox setup started on the selected host.',
+    'slashCommandSandboxSetupCompleted':
+        'Default Windows sandbox setup completed.',
+    'slashCommandSandboxSetupFailed':
+        'Default Windows sandbox setup failed: {detail}',
+    'slashCommandSandboxSetupCompletionNotReceived':
+        'Sandbox setup is still pending or its completion was not received. Check the selected host before retrying.',
+    'slashCommandSandboxSetupUnknownError': 'unknown error',
     'slashCommandSandboxReadDirUnavailable':
         'Sandbox read-directory configuration is not wired in the mobile app yet. It requires a guarded Windows agent fallback and high-risk confirmation.',
+    'slashCommandMemoryMaintenanceAppServer':
+        'Memory maintenance is handled by app-server clients; this debug command does not perform a separate action.',
     'slashCommandRolloutCurrentPath': 'Current rollout path: {path}',
     'slashCommandRolloutPathUnavailable': 'Rollout path is not available yet.',
     'slashCommandTestApprovalReason': 'SadCoder test approval request',
@@ -1474,6 +1822,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandHighRiskConfirmTitle': 'Confirm high-risk command',
     'slashCommandHighRiskConfirmBody':
         '{slash} is a high-risk command. SadCoder will only show the guarded fallback diagnostic right now; it will not run an agent command or change server settings. Continue only if you meant to inspect this path.',
+    'slashCommandSandboxSetupConfirmBody':
+        '/setup-default-sandbox is a high-risk command. It will start the official Codex elevated sandbox setup on the selected Windows host, may request Administrator approval there, and can persist sandbox configuration. Continue only if you intend to change that host.',
     'slashCommandHighRiskConfirmContinue': 'Continue',
     'slashCommandExecuted': 'Executed {slash}.',
     'slashCommandUnsupported': '{slash} is not implemented yet.',
@@ -1548,6 +1898,13 @@ const _values = <String, Map<String, String>>{
     'modelOverride': 'Model',
     'modelProvider': 'Model provider',
     'effortOverride': 'Reasoning effort',
+    'modelEffortServerDefault': 'Server default',
+    'modelEffortServerDefaultValue': 'Server default ({effort})',
+    'modelEffortServerDefaultDescription':
+        "Use the selected model's server default.",
+    'modelEffortDefaultOption': '{effort} (default)',
+    'modelEffortCustom': '{effort} (current custom value)',
+    'modelEffortNotAdvertised': 'Not advertised by the selected model.',
     'personalityOverride': 'Personality',
     'serviceTierOverride': 'Service tier',
     'collaborationModeOverride': 'Collaboration mode',
@@ -1642,6 +1999,42 @@ const _values = <String, Map<String, String>>{
     'refreshAgentDoctor': 'Run agent doctor',
     'agentDoctorUnavailable': 'Connect to a host, then run agent doctor.',
     'agentDoctorLoadFailed': 'Failed to run agent doctor',
+    'agentMaintenance': 'Codex maintenance',
+    'agentMaintenanceBody':
+        'Run fixed, audited Codex diagnostics and maintenance operations on the selected server. Cloud tasks use the server\'s existing ChatGPT authentication.',
+    'agentMaintenanceDoctor': 'Codex doctor',
+    'agentMaintenanceUpdate': 'Update Codex',
+    'agentMaintenanceApply': 'Apply task',
+    'agentMaintenanceCloud': 'Codex Cloud',
+    'agentMaintenanceTaskId': 'Task ID',
+    'agentMaintenanceEnvironment': 'Environment ID',
+    'agentMaintenanceCursor': 'Cursor',
+    'agentMaintenanceAttempt': 'Attempt (1-4)',
+    'agentMaintenanceCwd': 'Workspace cwd',
+    'agentMaintenanceList': 'List tasks',
+    'agentMaintenanceStatus': 'Task status',
+    'agentMaintenanceDiff': 'Show diff',
+    'agentMaintenanceCloudApply': 'Apply Cloud diff',
+    'agentMaintenanceConfirmUpdateTitle': 'Update Codex?',
+    'agentMaintenanceConfirmUpdateBody':
+        'This may replace the Codex executable used by the server. The backend must be restarted and the connection will be interrupted.',
+    'agentMaintenanceConfirmApplyTitle': 'Apply this diff?',
+    'agentMaintenanceConfirmApplyBody':
+        'Review the complete diff before continuing. This writes changes to the selected server workspace.',
+    'agentMaintenanceConfirm': 'Continue',
+    'agentMaintenanceRestart': 'Restart backend',
+    'agentMaintenanceRestartBody':
+        'Codex was updated. Restart the SadCoder backend before reconnecting.',
+    'agentMaintenanceRestartNow': 'Restart now',
+    'agentMaintenanceRestarted':
+        'Backend restarted. Reconnect to refresh the session.',
+    'agentMaintenanceCloudAuth':
+        'Cloud operations require ChatGPT auth already configured on this server; no credential is stored on this device.',
+    'agentMaintenanceUnavailable':
+        'Connect to a host to run Codex maintenance.',
+    'agentMaintenanceFailed': 'Codex maintenance failed',
+    'agentMaintenanceDiffEmpty': 'No diff was returned for this task.',
+    'agentMaintenanceDiffPreview': 'Diff preview',
     'agentServiceLogs': 'Agent service logs',
     'agentServiceLogsBody':
         'Bounded stderr tail from the sadcoder-agent service and app-server.',
@@ -1673,6 +2066,33 @@ const _values = <String, Map<String, String>>{
     'agentSchemaMetadata': 'Schema metadata',
     'agentSchemaEmpty': 'No schema files returned.',
     'agentSchemaMoreFiles': '{count} more schema files.',
+    'remoteEnvironment': 'Remote environment',
+    'remoteEnvironmentBody':
+        'Register an app-server exec environment and inspect its shell and connection status.',
+    'remoteEnvironmentId': 'Environment id',
+    'remoteEnvironmentExecServerUrl': 'Exec-server WebSocket URL',
+    'remoteEnvironmentTimeout': 'Connect timeout (ms)',
+    'remoteEnvironmentAdd': 'Register environment',
+    'remoteEnvironmentInfo': 'Read environment info',
+    'remoteEnvironmentStatus': 'Refresh environment status',
+    'remoteEnvironmentIdRequired': 'Environment id is required.',
+    'remoteEnvironmentUrlRequired': 'Exec-server URL is required.',
+    'remoteEnvironmentTimeoutInvalid': 'Timeout must be a positive integer.',
+    'remoteEnvironmentConfirmTitle': 'Register remote environment?',
+    'remoteEnvironmentConfirmBody':
+        'This registers or replaces environment {id} in the selected app-server process and opens an outbound WebSocket connection to {url}.',
+    'remoteEnvironmentConfirmAction': 'Register',
+    'remoteEnvironmentUnavailable':
+        'Connect to a host to manage remote environments.',
+    'remoteEnvironmentLoadFailed': 'Remote environment request failed',
+    'remoteEnvironmentAdded': 'Remote environment registered.',
+    'remoteEnvironmentShell': 'Shell: {name} ({path})',
+    'remoteEnvironmentCwd': 'Default cwd: {cwd}',
+    'remoteEnvironmentStatusReady': 'ready',
+    'remoteEnvironmentStatusPending': 'pending',
+    'remoteEnvironmentStatusDisconnected': 'disconnected',
+    'remoteEnvironmentStatusUnknown': 'unknown',
+    'remoteEnvironmentStatusDetail': '{status}: {detail}',
     'agentLogPath': 'Log path',
     'agentLogSize': 'Log size: {size}; returned tail: {tail}',
     'agentLogTruncated': 'Showing the newest portion of this log.',
@@ -1872,7 +2292,7 @@ const _values = <String, Map<String, String>>{
     'pluginsTitle': 'Plugins',
     'pluginsUnavailable': 'Connect to a host, then run /plugins.',
     'pluginsLoadFailed': 'Failed to load plugins',
-    'pluginMutationFailed': 'Failed to update plugin',
+    'pluginMutationFailed': 'Failed to update plugin or marketplace',
     'pluginsEmpty': 'No plugins available.',
     'pluginMarketplace': 'Marketplace',
     'pluginMarketplacePath': 'Marketplace path',
@@ -1890,11 +2310,50 @@ const _values = <String, Map<String, String>>{
     'pluginAvailability': 'availability',
     'pluginInstallRequested': 'Install requested for plugin {plugin}.',
     'pluginUninstallRequested': 'Uninstall requested for plugin {plugin}.',
+    'pluginMutationConfirmTitle': 'Confirm server plugin change',
+    'pluginMutationConfirmBody':
+        '{action}\n\nThis changes plugin or marketplace state on the selected server and can affect other Codex clients using that server.',
+    'pluginMutationConfirmContinue': 'Apply change',
+    'pluginMutationCancelled': 'Plugin change canceled.',
+    'pluginInstallAction': 'Install plugin {plugin}',
+    'pluginUninstallAction': 'Uninstall plugin {plugin}',
+    'marketplaceAddAction': 'Add marketplace from {source}',
+    'marketplaceRemoveAction': 'Remove marketplace {marketplace}',
+    'marketplaceUpgradeAction': 'Upgrade marketplace {marketplace}',
+    'marketplaceAdded': 'Added marketplace {marketplace} at {root}.',
+    'marketplaceAlreadyAdded':
+        'Marketplace {marketplace} is already installed at {root}.',
+    'marketplaceRemoved': 'Removed marketplace {marketplace}.',
+    'marketplaceRemovedFrom': 'Removed marketplace {marketplace} from {root}.',
+    'marketplaceUpgradeCompleted':
+        'Marketplace upgrade completed.\nSelected: {selected}\nUpgraded roots: {roots}',
+    'marketplaceAll': 'all marketplaces',
+    'marketplaceNone': 'none',
     'hooksTitle': 'Hooks',
     'hooksUnavailable': 'Connect to a host, then run /hooks.',
     'hooksLoadFailed': 'Failed to load hooks',
     'hooksEmpty': 'No hooks configured.',
     'hooksCwd': 'cwd',
+    'hooksManagementTitle': 'Hooks',
+    'realtimeTitle': 'Realtime text',
+    'realtimeTransportWebsocket': 'WebSocket / text',
+    'realtimeProtocolSummary': 'voices: v1 {v1}, v2 {v2}',
+    'realtimeFailed': 'Realtime session failed',
+    'realtimeEmpty': 'No realtime messages yet.',
+    'realtimeMessageHint': 'Append text',
+    'realtimeStart': 'Start',
+    'realtimeStop': 'Stop',
+    'realtimeStopTitle': 'Stop realtime session?',
+    'realtimeStopBody':
+        'Stopping closes the server-side realtime conversation for this thread.',
+    'realtimeOptions': 'Start options',
+    'realtimeVersion': 'Protocol version',
+    'realtimePrompt': 'Session prompt',
+    'realtimeIncludeStartupContext': 'Include startup context',
+    'hooksManagementBody':
+        'Review discovered hooks. User-managed hooks can be enabled, disabled, or trusted; managed hooks are read-only.',
+    'hooksManagementClosed': 'Hooks panel closed.',
+    'refreshHooks': 'Refresh hooks',
     'hookWarnings': 'hook warnings',
     'hookErrors': 'hook errors',
     'hookEnabled': 'enabled',
@@ -1902,6 +2361,18 @@ const _values = <String, Map<String, String>>{
     'hookManaged': 'managed',
     'hookUserManaged': 'user-managed',
     'hookTrust': 'trust',
+    'hookTrusted': 'trusted',
+    'hookEnable': 'Enable',
+    'hookDisable': 'Disable',
+    'hookTrustConfirmBody':
+        'Trust the current content hash for the {event} hook? Future edits will be reported as modified.',
+    'hookMutationConfirmTitle': 'Confirm hook change',
+    'hookMutationConfirmBody':
+        '{action} the {event} hook and reload server configuration?',
+    'hookMutationFailed': 'Hook change failed',
+    'hookEnableAction': 'enable',
+    'hookDisableAction': 'disable',
+    'close': 'Close',
     'hookSource': 'source',
     'hookMatcher': 'matcher',
     'hookCommand': 'command',
@@ -1944,6 +2415,25 @@ const _values = <String, Map<String, String>>{
     'experimentalApiCapability': 'App-server experimental API',
     'experimentalConfigValues': 'Experimental config values',
     'experimentalNoConfigValues': 'No experimental config values found.',
+    'experimentalFeatureLoading': 'Loading experimental features...',
+    'experimentalFeatureNoSelectable':
+        'The server reported no experimental features available for testing.',
+    'experimentalFeatureRetry': 'Retry',
+    'experimentalFeatureDefaultEnabled': 'Enabled by default',
+    'experimentalFeatureDefaultDisabled': 'Disabled by default',
+    'experimentalFeatureConfirmTitle': 'Change experimental feature?',
+    'experimentalFeatureConfirmBody':
+        '{feature}\n\nCurrent: {current}\nNew: {next}',
+    'experimentalFeatureWriteImpact':
+        'This writes the server Codex user configuration and can affect every Codex client using this server.',
+    'experimentalFeatureApply': 'Apply change',
+    'experimentalFeatureWriteFailed': 'Failed to update experimental feature',
+    'experimentalFeatureUpdated': 'Updated {feature}.',
+    'experimentalFeatureChangesApplied':
+        'Updated {count} experimental feature settings.',
+    'experimentalFeatureNoChanges': 'No experimental feature settings changed.',
+    'experimentalFeatureOverridden':
+        'The saved value is overridden by another configuration layer: {message}',
     'memoriesTitle': 'Memories',
     'memoriesUnavailable': 'Connect to a host, then run /memories.',
     'memoriesLoadFailed': 'Failed to load memory config',
@@ -1952,6 +2442,26 @@ const _values = <String, Map<String, String>>{
     'memoriesNoConfigValues': 'No memory config values found.',
     'memoriesThreadMode': 'Thread memory mode',
     'memoriesUnknownThreadMode': 'unknown',
+    'memoriesThreadToggle': 'Use memories in this thread',
+    'memoriesThreadToggleBody':
+        'Controls memory retrieval and generation for the selected thread.',
+    'memoriesThreadUnavailable': 'Select a thread to change its memory mode.',
+    'memoriesModeConfirmTitle': 'Change thread memory mode?',
+    'memoriesModeConfirmBody': 'Set the selected thread memory mode to {mode}.',
+    'memoriesModeApply': 'Apply mode',
+    'memoriesModeUpdated': 'Thread memory mode updated.',
+    'memoriesModeUpdateFailed': 'Failed to update thread memory mode',
+    'memoriesReset': 'Reset server memories',
+    'memoriesResetBody':
+        'Deletes generated memory files and memory database rows on this server.',
+    'memoriesResetConfirmTitle': 'Reset all server memories?',
+    'memoriesResetConfirmBody':
+        'This permanently deletes generated memories for every project on this Codex server. Threads and their memory-mode settings are preserved.',
+    'memoriesResetConfirmAction': 'Delete memories',
+    'memoriesResetCompleted': 'Server memories reset.',
+    'memoriesResetFailed': 'Failed to reset server memories',
+    'memoriesNoChanges': 'No memory settings changed.',
+    'memoriesChangesApplied': 'Applied {count} memory changes.',
     'lifetimeTokens': 'Lifetime tokens',
     'peakDailyTokens': 'Peak daily tokens',
     'currentStreakDays': 'Current streak',
@@ -2027,10 +2537,26 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesDirectoryLoadFailed': 'Failed to load directory.',
     'workspaceFilesRetry': 'Retry',
     'workspaceFilesLoadedBytes': '{loaded} / {total} loaded',
+    'workspaceFilesEdit': 'Edit file',
+    'workspaceFilesSaveEdit': 'Save file',
+    'workspaceFilesConfirmEdit': 'Review file changes',
+    'workspaceFilesConflict':
+        'File changed on the server; reload before saving',
+    'workspaceFilesWriteFailed': 'Failed to write file',
+    'workspaceFilesExternalChange':
+        'This file changed on the server; review it before saving.',
     'terminalTitle': 'Terminal',
     'terminalCwd': 'Working directory: {cwd}',
     'terminalCommand': 'Command',
     'terminalRun': 'Run',
+    'terminalSandboxedMode': 'Sandboxed',
+    'terminalHostProcessMode': 'Host process',
+    'terminalHostProcessWarning':
+        'Host processes run directly on the selected server without the Codex sandbox.',
+    'terminalHostProcessConfirmTitle': 'Run unsandboxed host process?',
+    'terminalHostProcessConfirmBody':
+        'Command: {command}\nWorking directory: {cwd}\n\nThis process runs directly on the selected server without the Codex sandbox.',
+    'terminalHostProcessConfirmContinue': 'Run process',
     'terminalNotConnected': 'Connect to a host to run terminal commands.',
     'terminalNoCwd': 'Select a workspace before running terminal commands.',
     'terminalNoOutput': 'No output yet.',
@@ -2231,6 +2757,7 @@ const _values = <String, Map<String, String>>{
     'connectBeforeTurn': '连接主机后才能发送任务',
     'connectBeforeLoadingThreads': '连接主机后加载会话。',
     'refreshThreads': '刷新会话',
+    'newThread': '新建对话',
     'activeThreads': '活动',
     'archivedThreads': '归档',
     'noThreads': '暂无会话',
@@ -2340,14 +2867,51 @@ const _values = <String, Map<String, String>>{
     'slashCommandReturnedToMainThread': '已返回主线会话。',
     'slashCommandAgentThreadSelected': '已切换 agent 会话。',
     'slashCommandAppHandoffUnavailable': '移动端暂不支持交接到 Codex Desktop。',
-    'slashCommandImportUnavailable':
-        '移动端尚未接入 Claude Code 导入流程。该能力需要在选中主机上通过受保护的 agent fallback 执行。',
-    'slashCommandInitUnavailable':
-        '移动端尚未接入 AGENTS.md 初始化流程。写入文件前必须先生成 diff 预览并完成审批。',
-    'slashCommandSandboxSetupUnavailable':
-        '移动端尚未接入默认沙箱设置流程。该能力需要在选中主机上通过受保护的 agent fallback 执行，并完成高风险确认。',
+    'slashCommandImportStarted': '已在所选主机上开始导入 Claude Code 数据。',
+    'externalAgentImportTitle': '从 Claude Code 导入',
+    'externalAgentImportDetecting': '正在扫描所选主机……',
+    'externalAgentImportEmpty': '未检测到可导入的 Claude Code 数据。',
+    'externalAgentImportHomeScope': '用户范围',
+    'externalAgentImportRepoScope': '工作区：{cwd}',
+    'externalAgentImportDetailCount': '检测到 {count} 个条目',
+    'externalAgentImportSelected': '继续导入 {count} 项',
+    'externalAgentImportConfirmTitle': '确认服务器导入',
+    'externalAgentImportConfirmBody':
+        '要把选中的 {count} 组数据导入服务器 Codex 配置和工作区文件吗？现有目标可能会被修改。',
+    'externalAgentImportConfirmAction': '导入',
+    'externalAgentImportProgressTitle': 'Claude Code 导入',
+    'externalAgentImportStarting': '正在开始导入……',
+    'externalAgentImportRunning': '正在导入',
+    'externalAgentImportCompleted': '导入完成',
+    'externalAgentImportFailed': '导入失败',
+    'externalAgentImportWaitingForProgress': '正在等待所选主机返回结果。',
+    'externalAgentImportNoResultDetails': '导入已完成，但没有条目明细。',
+    'externalAgentImportSuccess': '已导入',
+    'externalAgentImportRecentHistory': '最近导入',
+    'externalAgentImportResultCounts': '成功 {successes} 项，失败 {failures} 项',
+    'selectAll': '全选',
+    'deselectAll': '取消全选',
+    'externalAgentImportTypeAgentsMd': '项目说明',
+    'externalAgentImportTypeConfig': '配置',
+    'externalAgentImportTypeSkills': '技能',
+    'externalAgentImportTypePlugins': '插件',
+    'externalAgentImportTypeMcp': 'MCP 服务器',
+    'externalAgentImportTypeSubagents': '子 agent',
+    'externalAgentImportTypeHooks': 'Hooks',
+    'externalAgentImportTypeCommands': '命令',
+    'externalAgentImportTypeSessions': '最近对话',
+    'externalAgentImportTypeUnknown': '其他（{type}）',
+    'slashCommandInitStarted': '已开始生成 AGENTS.md。批准前请检查建议的文件变更。',
+    'slashCommandSandboxSetupStarted': '已在所选主机上开始设置默认 Windows 沙箱。',
+    'slashCommandSandboxSetupCompleted': '默认 Windows 沙箱设置完成。',
+    'slashCommandSandboxSetupFailed': '默认 Windows 沙箱设置失败：{detail}',
+    'slashCommandSandboxSetupCompletionNotReceived':
+        '沙箱设置仍在等待，或未收到完成通知。重试前请检查所选主机。',
+    'slashCommandSandboxSetupUnknownError': '未知错误',
     'slashCommandSandboxReadDirUnavailable':
         '移动端尚未接入沙箱读取目录配置。该能力需要通过受保护的 Windows agent fallback 执行，并完成高风险确认。',
+    'slashCommandMemoryMaintenanceAppServer':
+        '内存维护由 app-server 客户端处理；此调试命令不会执行额外操作。',
     'slashCommandRolloutCurrentPath': '当前 rollout 路径：{path}',
     'slashCommandRolloutPathUnavailable': '暂时无法获取 rollout 路径。',
     'slashCommandTestApprovalReason': 'SadCoder 测试审批请求',
@@ -2360,6 +2924,8 @@ const _values = <String, Map<String, String>>{
     'slashCommandHighRiskConfirmTitle': '确认高风险命令',
     'slashCommandHighRiskConfirmBody':
         '{slash} 是高风险命令。当前 SadCoder 只会显示受保护 fallback 诊断，不会执行 agent 命令，也不会修改服务器设置。只有在你确实要检查该路径时才继续。',
+    'slashCommandSandboxSetupConfirmBody':
+        '/setup-default-sandbox 是高风险命令。它会在所选 Windows 主机上启动 Codex 官方的提升权限沙箱设置，可能在该主机请求管理员授权，并持久化沙箱配置。只有在你确实要修改该主机时才继续。',
     'slashCommandHighRiskConfirmContinue': '继续',
     'slashCommandExecuted': '已执行 {slash}。',
     'slashCommandUnsupported': '{slash} 暂未实现。',
@@ -2425,6 +2991,12 @@ const _values = <String, Map<String, String>>{
     'modelOverride': '模型',
     'modelProvider': '模型提供方',
     'effortOverride': '推理强度',
+    'modelEffortServerDefault': '服务器默认',
+    'modelEffortServerDefaultValue': '服务器默认（{effort}）',
+    'modelEffortServerDefaultDescription': '使用所选模型的服务器默认推理强度。',
+    'modelEffortDefaultOption': '{effort}（默认）',
+    'modelEffortCustom': '{effort}（当前自定义值）',
+    'modelEffortNotAdvertised': '所选模型未声明支持此推理强度。',
     'personalityOverride': '协作风格',
     'serviceTierOverride': '服务档位',
     'collaborationModeOverride': '协作模式',
@@ -2511,6 +3083,37 @@ const _values = <String, Map<String, String>>{
     'refreshAgentDoctor': '运行 agent 诊断',
     'agentDoctorUnavailable': '连接主机后运行 agent 诊断。',
     'agentDoctorLoadFailed': '运行 agent 诊断失败',
+    'agentMaintenance': 'Codex 维护',
+    'agentMaintenanceBody':
+        '在当前服务器上运行固定且可审计的 Codex 诊断与维护操作。Cloud 任务使用服务器已有的 ChatGPT 认证。',
+    'agentMaintenanceDoctor': 'Codex 诊断',
+    'agentMaintenanceUpdate': '更新 Codex',
+    'agentMaintenanceApply': '应用任务',
+    'agentMaintenanceCloud': 'Codex Cloud',
+    'agentMaintenanceTaskId': '任务 ID',
+    'agentMaintenanceEnvironment': '环境 ID',
+    'agentMaintenanceCursor': 'Cursor',
+    'agentMaintenanceAttempt': '尝试次数（1-4）',
+    'agentMaintenanceCwd': '工作区 cwd',
+    'agentMaintenanceList': '列出任务',
+    'agentMaintenanceStatus': '任务状态',
+    'agentMaintenanceDiff': '查看 diff',
+    'agentMaintenanceCloudApply': '应用 Cloud diff',
+    'agentMaintenanceConfirmUpdateTitle': '更新 Codex？',
+    'agentMaintenanceConfirmUpdateBody':
+        '这可能替换服务器正在使用的 Codex 可执行文件。更新后必须重启 backend，连接会被中断。',
+    'agentMaintenanceConfirmApplyTitle': '应用此 diff？',
+    'agentMaintenanceConfirmApplyBody': '请先完整审阅 diff。继续后会把变更写入所选服务器工作区。',
+    'agentMaintenanceConfirm': '继续',
+    'agentMaintenanceRestart': '重启 backend',
+    'agentMaintenanceRestartBody': 'Codex 已更新。重新连接前请先重启 SadCoder backend。',
+    'agentMaintenanceRestartNow': '立即重启',
+    'agentMaintenanceRestarted': 'Backend 已重启。请重新连接以刷新会话。',
+    'agentMaintenanceCloudAuth': 'Cloud 操作需要服务器已配置 ChatGPT 认证；手机不会保存凭据。',
+    'agentMaintenanceUnavailable': '连接主机后才能运行 Codex 维护。',
+    'agentMaintenanceFailed': 'Codex 维护失败',
+    'agentMaintenanceDiffEmpty': '该任务没有返回 diff。',
+    'agentMaintenanceDiffPreview': 'Diff 预览',
     'agentServiceLogs': 'Agent 服务日志',
     'agentServiceLogsBody':
         '从 sadcoder-agent service 和 app-server 读取有界 stderr 尾部。',
@@ -2541,6 +3144,31 @@ const _values = <String, Map<String, String>>{
     'agentSchemaMetadata': 'Schema 元数据',
     'agentSchemaEmpty': '未返回 schema 文件。',
     'agentSchemaMoreFiles': '还有 {count} 个 schema 文件。',
+    'remoteEnvironment': '远程环境',
+    'remoteEnvironmentBody': '注册 app-server exec 环境，并查看其 shell 与连接状态。',
+    'remoteEnvironmentId': '环境 ID',
+    'remoteEnvironmentExecServerUrl': 'Exec-server WebSocket URL',
+    'remoteEnvironmentTimeout': '连接超时（毫秒）',
+    'remoteEnvironmentAdd': '注册环境',
+    'remoteEnvironmentInfo': '读取环境信息',
+    'remoteEnvironmentStatus': '刷新环境状态',
+    'remoteEnvironmentIdRequired': '必须填写环境 ID。',
+    'remoteEnvironmentUrlRequired': '必须填写 exec-server URL。',
+    'remoteEnvironmentTimeoutInvalid': '超时必须是正整数。',
+    'remoteEnvironmentConfirmTitle': '注册远程环境？',
+    'remoteEnvironmentConfirmBody':
+        '这会在当前所选 app-server 进程中注册或替换环境 {id}，并向 {url} 发起出站 WebSocket 连接。',
+    'remoteEnvironmentConfirmAction': '注册',
+    'remoteEnvironmentUnavailable': '连接主机后才能管理远程环境。',
+    'remoteEnvironmentLoadFailed': '远程环境请求失败',
+    'remoteEnvironmentAdded': '远程环境已注册。',
+    'remoteEnvironmentShell': 'Shell：{name}（{path}）',
+    'remoteEnvironmentCwd': '默认 cwd：{cwd}',
+    'remoteEnvironmentStatusReady': '就绪',
+    'remoteEnvironmentStatusPending': '等待中',
+    'remoteEnvironmentStatusDisconnected': '已断开',
+    'remoteEnvironmentStatusUnknown': '未知',
+    'remoteEnvironmentStatusDetail': '{status}：{detail}',
     'agentLogPath': '日志路径',
     'agentLogSize': '日志大小：{size}；已返回尾部：{tail}',
     'agentLogTruncated': '当前只显示这份日志的最新部分。',
@@ -2735,7 +3363,7 @@ const _values = <String, Map<String, String>>{
     'pluginsTitle': '插件',
     'pluginsUnavailable': '连接主机后运行 /plugins。',
     'pluginsLoadFailed': '插件加载失败',
-    'pluginMutationFailed': '插件更新失败',
+    'pluginMutationFailed': '插件或市场更新失败',
     'pluginsEmpty': '暂无可用插件。',
     'pluginMarketplace': '市场',
     'pluginMarketplacePath': '市场路径',
@@ -2753,11 +3381,46 @@ const _values = <String, Map<String, String>>{
     'pluginAvailability': '可用性',
     'pluginInstallRequested': '已请求安装插件 {plugin}。',
     'pluginUninstallRequested': '已请求卸载插件 {plugin}。',
+    'pluginMutationConfirmTitle': '确认服务器插件变更',
+    'pluginMutationConfirmBody':
+        '{action}\n\n这会修改所选服务器上的插件或市场状态，并可能影响使用该服务器的其他 Codex 客户端。',
+    'pluginMutationConfirmContinue': '应用变更',
+    'pluginMutationCancelled': '已取消插件变更。',
+    'pluginInstallAction': '安装插件 {plugin}',
+    'pluginUninstallAction': '卸载插件 {plugin}',
+    'marketplaceAddAction': '从 {source} 添加市场',
+    'marketplaceRemoveAction': '移除市场 {marketplace}',
+    'marketplaceUpgradeAction': '升级市场 {marketplace}',
+    'marketplaceAdded': '已在 {root} 添加市场 {marketplace}。',
+    'marketplaceAlreadyAdded': '市场 {marketplace} 已安装在 {root}。',
+    'marketplaceRemoved': '已移除市场 {marketplace}。',
+    'marketplaceRemovedFrom': '已从 {root} 移除市场 {marketplace}。',
+    'marketplaceUpgradeCompleted': '市场升级完成。\n已选择：{selected}\n已升级目录：{roots}',
+    'marketplaceAll': '全部市场',
+    'marketplaceNone': '无',
     'hooksTitle': 'Hooks',
     'hooksUnavailable': '连接主机后运行 /hooks。',
     'hooksLoadFailed': 'Hooks 加载失败',
     'hooksEmpty': '暂无配置的 hooks。',
     'hooksCwd': '工作目录',
+    'hooksManagementTitle': 'Hooks',
+    'realtimeTitle': '实时文本',
+    'realtimeTransportWebsocket': 'WebSocket / 文本',
+    'realtimeProtocolSummary': '语音：v1 {v1}，v2 {v2}',
+    'realtimeFailed': '实时会话失败',
+    'realtimeEmpty': '还没有实时消息。',
+    'realtimeMessageHint': '追加文本',
+    'realtimeStart': '开始',
+    'realtimeStop': '停止',
+    'realtimeStopTitle': '停止实时会话？',
+    'realtimeStopBody': '停止会关闭此线程服务器侧的实时会话。',
+    'realtimeOptions': '启动选项',
+    'realtimeVersion': '协议版本',
+    'realtimePrompt': '会话提示词',
+    'realtimeIncludeStartupContext': '包含启动上下文',
+    'hooksManagementBody': '查看已发现的 hooks。用户管理的 hook 可以启用、禁用或设为信任；受管 hook 只读。',
+    'hooksManagementClosed': 'Hooks 面板已关闭。',
+    'refreshHooks': '刷新 hooks',
     'hookWarnings': 'hook 警告',
     'hookErrors': 'hook 错误',
     'hookEnabled': '已启用',
@@ -2765,6 +3428,16 @@ const _values = <String, Map<String, String>>{
     'hookManaged': '受管',
     'hookUserManaged': '用户管理',
     'hookTrust': '信任状态',
+    'hookTrusted': '已信任',
+    'hookEnable': '启用',
+    'hookDisable': '禁用',
+    'hookTrustConfirmBody': '信任 {event} hook 的当前内容 hash？以后内容变化会标记为已修改。',
+    'hookMutationConfirmTitle': '确认 hook 变更',
+    'hookMutationConfirmBody': '{action} {event} hook，并重新加载服务器配置？',
+    'hookMutationFailed': 'Hook 变更失败',
+    'hookEnableAction': '启用',
+    'hookDisableAction': '禁用',
+    'close': '关闭',
     'hookSource': '来源',
     'hookMatcher': '匹配器',
     'hookCommand': '命令',
@@ -2807,6 +3480,21 @@ const _values = <String, Map<String, String>>{
     'experimentalApiCapability': 'App-server 实验 API',
     'experimentalConfigValues': '实验配置值',
     'experimentalNoConfigValues': '未找到实验配置值。',
+    'experimentalFeatureLoading': '正在加载实验功能……',
+    'experimentalFeatureNoSelectable': '服务器没有返回可供测试的实验功能。',
+    'experimentalFeatureRetry': '重试',
+    'experimentalFeatureDefaultEnabled': '默认启用',
+    'experimentalFeatureDefaultDisabled': '默认禁用',
+    'experimentalFeatureConfirmTitle': '修改实验功能？',
+    'experimentalFeatureConfirmBody': '{feature}\n\n当前：{current}\n修改后：{next}',
+    'experimentalFeatureWriteImpact':
+        '此操作会写入服务器 Codex 用户配置，并可能影响使用该服务器的所有 Codex 客户端。',
+    'experimentalFeatureApply': '应用修改',
+    'experimentalFeatureWriteFailed': '实验功能更新失败',
+    'experimentalFeatureUpdated': '已更新 {feature}。',
+    'experimentalFeatureChangesApplied': '已更新 {count} 项实验功能设置。',
+    'experimentalFeatureNoChanges': '没有修改实验功能设置。',
+    'experimentalFeatureOverridden': '保存值被其他配置层覆盖：{message}',
     'memoriesTitle': '记忆',
     'memoriesUnavailable': '连接主机后运行 /memories。',
     'memoriesLoadFailed': '记忆配置加载失败',
@@ -2815,6 +3503,23 @@ const _values = <String, Map<String, String>>{
     'memoriesNoConfigValues': '未找到记忆配置值。',
     'memoriesThreadMode': '线程记忆模式',
     'memoriesUnknownThreadMode': '未知',
+    'memoriesThreadToggle': '在当前线程中使用记忆',
+    'memoriesThreadToggleBody': '控制所选线程是否检索和生成记忆。',
+    'memoriesThreadUnavailable': '选择线程后才能修改记忆模式。',
+    'memoriesModeConfirmTitle': '修改线程记忆模式？',
+    'memoriesModeConfirmBody': '将所选线程的记忆模式设为{mode}。',
+    'memoriesModeApply': '应用模式',
+    'memoriesModeUpdated': '线程记忆模式已更新。',
+    'memoriesModeUpdateFailed': '线程记忆模式更新失败',
+    'memoriesReset': '清空服务器记忆',
+    'memoriesResetBody': '删除此服务器上生成的记忆文件和记忆数据库记录。',
+    'memoriesResetConfirmTitle': '清空全部服务器记忆？',
+    'memoriesResetConfirmBody': '此操作会永久删除该 Codex 服务器上所有项目生成的记忆。线程及其记忆模式设置会保留。',
+    'memoriesResetConfirmAction': '删除记忆',
+    'memoriesResetCompleted': '服务器记忆已清空。',
+    'memoriesResetFailed': '服务器记忆清空失败',
+    'memoriesNoChanges': '没有修改记忆设置。',
+    'memoriesChangesApplied': '已完成 {count} 项记忆操作。',
     'lifetimeTokens': '累计 token',
     'peakDailyTokens': '单日峰值 token',
     'currentStreakDays': '当前连续天数',
@@ -2888,10 +3593,23 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesDirectoryLoadFailed': '目录加载失败。',
     'workspaceFilesRetry': '重试',
     'workspaceFilesLoadedBytes': '已加载 {loaded} / {total}',
+    'workspaceFilesEdit': '编辑文件',
+    'workspaceFilesSaveEdit': '保存文件',
+    'workspaceFilesConfirmEdit': '确认文件变更',
+    'workspaceFilesConflict': '服务器上的文件已变化，请重新加载后再保存',
+    'workspaceFilesWriteFailed': '写入文件失败',
+    'workspaceFilesExternalChange': '服务器上的文件已变化，请重新查看后再保存。',
     'terminalTitle': '终端',
     'terminalCwd': '工作目录：{cwd}',
     'terminalCommand': '命令',
     'terminalRun': '运行',
+    'terminalSandboxedMode': '沙箱命令',
+    'terminalHostProcessMode': '宿主机进程',
+    'terminalHostProcessWarning': '宿主机进程会绕过 Codex 沙箱，直接在当前所选服务器上运行。',
+    'terminalHostProcessConfirmTitle': '运行无沙箱宿主机进程？',
+    'terminalHostProcessConfirmBody':
+        '命令：{command}\n工作目录：{cwd}\n\n此进程会绕过 Codex 沙箱，直接在当前所选服务器上运行。',
+    'terminalHostProcessConfirmContinue': '运行进程',
     'terminalNotConnected': '连接主机后才能运行终端命令。',
     'terminalNoCwd': '选择工作区后才能运行终端命令。',
     'terminalNoOutput': '暂无输出。',
@@ -2955,7 +3673,7 @@ const _slashCommandDescriptions = <String, Map<String, String>>{
     'pets': '选择或隐藏终端 pet',
     'mcp': '列出 MCP 工具；可用 /mcp verbose、reload 或 login <server>',
     'apps': '管理 apps',
-    'plugins': '浏览插件；可用 install/uninstall <id> 或按 marketplace 过滤',
+    'plugins': '浏览插件；管理插件安装和 marketplace 来源',
     'logout': '退出服务器 Codex 账户',
     'quit': '关闭当前 App 会话/代理连接',
     'exit': '关闭当前 App 会话/代理连接',
@@ -2989,7 +3707,8 @@ const _slashCommandArgumentHints = <String, Map<String, String>>{
     'usage': '[refresh]',
     'pets': '<show|hide>',
     'mcp': '<verbose|reload|login server>',
-    'plugins': '<install|uninstall> <id> | [marketplace] <kind>',
+    'plugins':
+        '<install|uninstall> <id> | marketplace <add|remove|upgrade> ...',
   },
   'zh': {
     'ide': '<查询>',
@@ -3007,7 +3726,8 @@ const _slashCommandArgumentHints = <String, Map<String, String>>{
     'usage': '[refresh]',
     'pets': '<show|hide>',
     'mcp': '<verbose|reload|login server>',
-    'plugins': '<install|uninstall> <id> | [marketplace] <kind>',
+    'plugins':
+        '<install|uninstall> <id> | marketplace <add|remove|upgrade> ...',
   },
 };
 

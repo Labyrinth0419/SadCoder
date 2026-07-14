@@ -385,6 +385,7 @@ class ChatThreadListPanel extends StatelessWidget {
     required this.archived,
     required this.onArchivedChanged,
     required this.onUnarchiveThread,
+    required this.onNewThread,
   });
 
   final ThreadListController? controller;
@@ -392,6 +393,7 @@ class ChatThreadListPanel extends StatelessWidget {
   final bool archived;
   final ValueChanged<bool> onArchivedChanged;
   final Future<void> Function(ThreadSummary thread)? onUnarchiveThread;
+  final VoidCallback? onNewThread;
 
   @override
   Widget build(BuildContext context) {
@@ -399,6 +401,7 @@ class ChatThreadListPanel extends StatelessWidget {
     if (controller == null) {
       return _ThreadListCard(
         title: context.l10n.sessions,
+        action: _ThreadListActions(onNewThread: onNewThread),
         child: Text(context.l10n.connectBeforeLoadingThreads),
       );
     }
@@ -410,6 +413,7 @@ class ChatThreadListPanel extends StatelessWidget {
         archived: archived,
         onArchivedChanged: onArchivedChanged,
         onUnarchiveThread: onUnarchiveThread,
+        onNewThread: onNewThread,
       ),
     );
   }
@@ -422,6 +426,7 @@ class _ThreadListContent extends StatelessWidget {
     required this.archived,
     required this.onArchivedChanged,
     required this.onUnarchiveThread,
+    required this.onNewThread,
   });
 
   final ThreadListController controller;
@@ -429,18 +434,22 @@ class _ThreadListContent extends StatelessWidget {
   final bool archived;
   final ValueChanged<bool> onArchivedChanged;
   final Future<void> Function(ThreadSummary thread)? onUnarchiveThread;
+  final VoidCallback? onNewThread;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final title = l10n.sessions;
+    final actions = _ThreadListActions(
+      onNewThread: onNewThread,
+      onRefresh: controller.status == ThreadListStatus.loading
+          ? null
+          : () => controller.refresh(archived: archived),
+    );
     return switch (controller.status) {
       ThreadListStatus.idle => _ThreadListCard(
         title: title,
-        action: _RefreshThreadsButton(
-          controller: controller,
-          archived: archived,
-        ),
+        action: actions,
         modeControl: _ThreadListModeSelector(
           archived: archived,
           onChanged: onArchivedChanged,
@@ -449,6 +458,7 @@ class _ThreadListContent extends StatelessWidget {
       ),
       ThreadListStatus.loading => _ThreadListCard(
         title: title,
+        action: actions,
         modeControl: _ThreadListModeSelector(
           archived: archived,
           onChanged: onArchivedChanged,
@@ -457,10 +467,7 @@ class _ThreadListContent extends StatelessWidget {
       ),
       ThreadListStatus.failed => _ThreadListCard(
         title: title,
-        action: _RefreshThreadsButton(
-          controller: controller,
-          archived: archived,
-        ),
+        action: actions,
         modeControl: _ThreadListModeSelector(
           archived: archived,
           onChanged: onArchivedChanged,
@@ -473,10 +480,7 @@ class _ThreadListContent extends StatelessWidget {
       ThreadListStatus.loaded when controller.threads.isEmpty =>
         _ThreadListCard(
           title: title,
-          action: _RefreshThreadsButton(
-            controller: controller,
-            archived: archived,
-          ),
+          action: actions,
           modeControl: _ThreadListModeSelector(
             archived: archived,
             onChanged: onArchivedChanged,
@@ -485,10 +489,7 @@ class _ThreadListContent extends StatelessWidget {
         ),
       ThreadListStatus.loaded => _ThreadListCard(
         title: title,
-        action: _RefreshThreadsButton(
-          controller: controller,
-          archived: archived,
-        ),
+        action: actions,
         modeControl: _ThreadListModeSelector(
           archived: archived,
           onChanged: onArchivedChanged,
@@ -570,21 +571,29 @@ class _ThreadListCard extends StatelessWidget {
   }
 }
 
-class _RefreshThreadsButton extends StatelessWidget {
-  const _RefreshThreadsButton({
-    required this.controller,
-    required this.archived,
-  });
+class _ThreadListActions extends StatelessWidget {
+  const _ThreadListActions({this.onNewThread, this.onRefresh});
 
-  final ThreadListController controller;
-  final bool archived;
+  final VoidCallback? onNewThread;
+  final VoidCallback? onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: context.l10n.refreshThreads,
-      onPressed: () => controller.refresh(archived: archived),
-      icon: const Icon(Icons.refresh),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          key: const ValueKey('chat-sidebar-new-thread'),
+          tooltip: context.l10n.newThread,
+          onPressed: onNewThread,
+          icon: const Icon(Icons.add_comment_outlined),
+        ),
+        IconButton(
+          tooltip: context.l10n.refreshThreads,
+          onPressed: onRefresh,
+          icon: const Icon(Icons.refresh),
+        ),
+      ],
     );
   }
 }

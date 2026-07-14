@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/agent/agent_codex_configure.dart';
+import 'package:sadcoder_mobile/src/agent/agent_maintenance.dart';
 import 'package:sadcoder_mobile/src/agent/agent_remote_service.dart';
 import 'package:sadcoder_mobile/src/agent/agent_schema.dart';
 import 'package:sadcoder_mobile/src/agent/agent_status.dart';
@@ -706,6 +707,41 @@ void main() {
     expect(snapshot.deliveredCursor, 'event-2');
     expect(snapshot.retainedCursorFloor, 'event-1');
     expect(snapshot.cursorGap, true);
+  });
+
+  test('run executes structured Codex maintenance commands', () async {
+    final runner = _FakeRunner(
+      result: const RemoteCommandResult(
+        exitCode: 0,
+        stdout: '''
+{
+  "operation": "cloud-diff",
+  "success": true,
+  "exitCode": 0,
+  "stdout": "diff --git a/file b/file\\n",
+  "stderr": "",
+  "restartRequired": false,
+  "requiresChatgptAuth": true
+}
+''',
+        stderr: '',
+      ),
+    );
+    final service = AgentRemoteService(runner);
+
+    final result = await service.run(
+      _profile,
+      const AgentMaintenanceRequest.cloudDiff(taskId: 'task-1', attempt: 2),
+    );
+
+    expect(
+      runner.lastCommand,
+      "sadcoder-agent codex --json cloud-diff 'task-1' --attempt 2",
+    );
+    expect(runner.lastTimeout, const Duration(seconds: 60));
+    expect(result.success, true);
+    expect(result.stdout, contains('diff --git'));
+    expect(result.requiresChatGptAuth, true);
   });
 }
 

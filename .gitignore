@@ -2,3 +2,4 @@ refs/
 target/
 *.log
 .DS_Store
+.env

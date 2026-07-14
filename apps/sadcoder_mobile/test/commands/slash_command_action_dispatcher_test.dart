@@ -250,8 +250,14 @@ void main() {
     expect(result.command?.command, 'plugins');
   });
 
-  test('/import reports the guarded mobile fallback diagnostic', () async {
-    const dispatcher = SlashCommandActionDispatcher();
+  test('/import runs the injected structured import flow', () async {
+    var importCalls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      importExternalAgentConfig: () async {
+        importCalls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
 
     final result = await dispatcher.dispatch(
       registry.parseComposerText('/import'),
@@ -261,10 +267,14 @@ void main() {
     expect(result.outcome, SlashCommandActionOutcome.executed);
     expect(result.effect, SlashCommandActionEffect.importFlow);
     expect(result.command?.command, 'import');
+    expect(importCalls, 1);
   });
 
   test('/import rejects unsupported inline arguments', () async {
-    const dispatcher = SlashCommandActionDispatcher();
+    final dispatcher = SlashCommandActionDispatcher(
+      importExternalAgentConfig: () async =>
+          SlashCommandCallbackResult.executed,
+    );
 
     final result = await dispatcher.dispatch(
       registry.parseComposerText('/import claude'),
@@ -364,8 +374,14 @@ void main() {
     expect(result.command?.command, 'app');
   });
 
-  test('/init reports the guarded mobile fallback diagnostic', () async {
-    const dispatcher = SlashCommandActionDispatcher();
+  test('/init starts the injected AGENTS.md generation turn', () async {
+    var calls = 0;
+    final dispatcher = SlashCommandActionDispatcher(
+      startInit: () async {
+        calls++;
+        return SlashCommandCallbackResult.executed;
+      },
+    );
 
     final result = await dispatcher.dispatch(
       registry.parseComposerText('/init'),
@@ -375,6 +391,7 @@ void main() {
     expect(result.outcome, SlashCommandActionOutcome.executed);
     expect(result.effect, SlashCommandActionEffect.initFlow);
     expect(result.command?.command, 'init');
+    expect(calls, 1);
   });
 
   test('/init rejects unsupported inline arguments', () async {
@@ -390,9 +407,15 @@ void main() {
   });
 
   test(
-    '/setup-default-sandbox reports the guarded fallback diagnostic',
+    '/setup-default-sandbox invokes app-server setup after confirmation',
     () async {
-      const dispatcher = SlashCommandActionDispatcher();
+      var calls = 0;
+      final dispatcher = SlashCommandActionDispatcher(
+        setupDefaultSandbox: () async {
+          calls++;
+          return SlashCommandCallbackResult.executed;
+        },
+      );
 
       final result = await dispatcher.dispatch(
         registry.parseComposerText('/setup-default-sandbox'),
@@ -402,6 +425,21 @@ void main() {
       expect(result.outcome, SlashCommandActionOutcome.executed);
       expect(result.effect, SlashCommandActionEffect.sandboxSetup);
       expect(result.command?.command, 'setup-default-sandbox');
+      expect(calls, 1);
+    },
+  );
+
+  test(
+    '/setup-default-sandbox is unsupported without a setup runner',
+    () async {
+      const dispatcher = SlashCommandActionDispatcher();
+
+      final result = await dispatcher.dispatch(
+        registry.parseComposerText('/setup-default-sandbox'),
+        hasActiveTurn: false,
+      );
+
+      expect(result.outcome, SlashCommandActionOutcome.unsupported);
     },
   );
 
@@ -2027,7 +2065,7 @@ void main() {
         registry.parseComposerText('/does-not-exist now'),
         hasActiveTurn: false,
       );
-      final unsupported = await dispatcher.dispatch(
+      final memoryDiagnostic = await dispatcher.dispatch(
         registry.parseComposerText('/debug-m-drop'),
         hasActiveTurn: false,
       );
@@ -2042,8 +2080,11 @@ void main() {
 
       expect(unknown.outcome, SlashCommandActionOutcome.unknown);
       expect(unknown.rawCommand, 'does-not-exist');
-      expect(unsupported.outcome, SlashCommandActionOutcome.unsupported);
-      expect(unsupported.command?.command, 'debug-m-drop');
+      expect(memoryDiagnostic.outcome, SlashCommandActionOutcome.executed);
+      expect(
+        memoryDiagnostic.effect,
+        SlashCommandActionEffect.memoryMaintenanceDiagnostic,
+      );
       expect(platformOnly.outcome, SlashCommandActionOutcome.unsupported);
       expect(
         platformOnly.command?.mappingType,

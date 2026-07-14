@@ -137,6 +137,20 @@ class ChatTimelineController extends ChangeNotifier {
           CodexEventKind.accountUpdated ||
           CodexEventKind.accountRateLimitsUpdated ||
           CodexEventKind.mcpServerStartupStatusUpdated ||
+          CodexEventKind.externalAgentConfigImportProgress ||
+          CodexEventKind.externalAgentConfigImportCompleted ||
+          CodexEventKind.windowsSandboxSetupCompleted ||
+          CodexEventKind.processOutputDelta ||
+          CodexEventKind.processExited ||
+          CodexEventKind.threadRealtimeStarted ||
+          CodexEventKind.threadRealtimeItemAdded ||
+          CodexEventKind.threadRealtimeTranscriptDelta ||
+          CodexEventKind.threadRealtimeTranscriptDone ||
+          CodexEventKind.threadRealtimeOutputAudioDelta ||
+          CodexEventKind.threadRealtimeSdp ||
+          CodexEventKind.threadRealtimeError ||
+          CodexEventKind.threadRealtimeClosed ||
+          CodexEventKind.fsChanged ||
           CodexEventKind.unknown:
         return;
     }

@@ -36,6 +36,7 @@ mod agent_rpc;
 mod agent_schema;
 mod app_server_socket;
 mod codex_command;
+mod codex_maintenance;
 mod service;
 mod service_bridge;
 mod state_cache;
@@ -56,6 +57,7 @@ use codex_command::agent_config_path;
 use codex_command::persist_codex_command;
 use codex_command::probe_codex_version;
 use codex_command::resolve_codex_command;
+use codex_maintenance::CodexMaintenanceCommand;
 use service::AgentServicePaths;
 use service::load_service_info;
 use service::resolve_service_paths;
@@ -181,6 +183,8 @@ enum AgentCommand {
         #[arg(long)]
         json: bool,
     },
+    /// Run a fixed, auditable Codex maintenance or Cloud operation.
+    Codex(CodexMaintenanceCommand),
     /// Run the long-lived SadCoder service that owns the app-server process.
     #[command(hide = true)]
     Service {
@@ -250,6 +254,12 @@ fn main() -> anyhow::Result<()> {
             path_prepend,
             json,
         } => configure_codex(codex, codex_args, path_prepend, json),
+        AgentCommand::Codex(command) => {
+            let codex = resolve_codex_command(cli_codex_program)?;
+            let result = codex_maintenance::run(&codex, &command.operation);
+            codex_maintenance::print_result(&result, command.json);
+            Ok(())
+        }
         AgentCommand::Service {
             resolved_codex_program,
             resolved_codex_args,

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../command_exec/command_exec_runner.dart';
 import '../../i18n/app_localizations.dart';
+import '../../processes/process_runner.dart';
 import '../../theme/sadcoder_theme.dart';
 import 'terminal_session_controller.dart';
 
@@ -11,11 +12,13 @@ class TerminalPage extends StatefulWidget {
   const TerminalPage({
     super.key,
     this.runner,
+    this.hostProcessRunner,
     this.root,
     TerminalSessionController? controller,
   }) : _controller = controller;
 
   final CommandExecRunner? runner;
+  final ProcessRunner? hostProcessRunner;
   final String? root;
   final TerminalSessionController? _controller;
 
@@ -23,11 +26,14 @@ class TerminalPage extends StatefulWidget {
   State<TerminalPage> createState() => _TerminalPageState();
 }
 
+enum TerminalExecutionMode { sandboxed, hostProcess }
+
 class _TerminalPageState extends State<TerminalPage> {
   final TextEditingController _commandController = TextEditingController();
   final TextEditingController _stdinController = TextEditingController();
   late TerminalSessionController _sessionController;
   bool _ownsSessionController = false;
+  TerminalExecutionMode _executionMode = TerminalExecutionMode.sandboxed;
 
   @override
   void initState() {
@@ -35,7 +41,7 @@ class _TerminalPageState extends State<TerminalPage> {
     _commandController.addListener(_handleTextChanged);
     _sessionController =
         widget._controller ??
-        TerminalSessionController(runnerProvider: () => widget.runner);
+        TerminalSessionController(runnerProvider: _selectedRunner);
     _ownsSessionController = widget._controller == null;
     _sessionController.addListener(_handleSessionChanged);
   }
@@ -50,7 +56,7 @@ class _TerminalPageState extends State<TerminalPage> {
       }
       _sessionController =
           widget._controller ??
-          TerminalSessionController(runnerProvider: () => widget.runner);
+          TerminalSessionController(runnerProvider: _selectedRunner);
       _ownsSessionController = widget._controller == null;
       _sessionController.addListener(_handleSessionChanged);
     }
@@ -73,7 +79,7 @@ class _TerminalPageState extends State<TerminalPage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final root = _normalizedText(widget.root);
-    final runner = widget.runner;
+    final runner = _selectedRunner();
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.terminalTitle)),
@@ -94,6 +100,18 @@ class _TerminalPageState extends State<TerminalPage> {
               title: l10n.terminalNoCwd,
             )
           else ...[
+            if (widget.hostProcessRunner != null) ...[
+              _TerminalExecutionModeSelector(
+                mode: _executionMode,
+                enabled: !_sessionController.isRunning,
+                onChanged: (mode) => setState(() => _executionMode = mode),
+              ),
+              if (_executionMode == TerminalExecutionMode.hostProcess) ...[
+                const SizedBox(height: 8),
+                _HostProcessWarning(message: l10n.terminalHostProcessWarning),
+              ],
+              const SizedBox(height: 12),
+            ],
             _CommandForm(
               controller: _commandController,
               canRun: _canRun,
@@ -118,12 +136,16 @@ class _TerminalPageState extends State<TerminalPage> {
   bool get _canRun {
     return !_sessionController.isRunning &&
         parseCommandExecArgv(_commandController.text).isNotEmpty &&
-        widget.runner != null &&
+        _selectedRunner() != null &&
         _normalizedText(widget.root) != null;
   }
 
   Future<void> _run(String root) async {
     if (!_canRun) {
+      return;
+    }
+    if (_executionMode == TerminalExecutionMode.hostProcess &&
+        !await _confirmHostProcess(root)) {
       return;
     }
     await _sessionController.start(
@@ -147,6 +169,112 @@ class _TerminalPageState extends State<TerminalPage> {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  CommandExecRunner? _selectedRunner() {
+    return switch (_executionMode) {
+      TerminalExecutionMode.sandboxed => widget.runner,
+      TerminalExecutionMode.hostProcess => widget.hostProcessRunner,
+    };
+  }
+
+  Future<bool> _confirmHostProcess(String root) async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.terminalHostProcessConfirmTitle),
+        content: Text(
+          l10n.terminalHostProcessConfirmBody(
+            _commandController.text.trim(),
+            root,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+          ),
+          FilledButton(
+            key: const ValueKey('terminal-host-process-confirm'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.terminalHostProcessConfirmContinue),
+          ),
+        ],
+      ),
+    );
+    return mounted && confirmed == true;
+  }
+}
+
+class _TerminalExecutionModeSelector extends StatelessWidget {
+  const _TerminalExecutionModeSelector({
+    required this.mode,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final TerminalExecutionMode mode;
+  final bool enabled;
+  final ValueChanged<TerminalExecutionMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return SegmentedButton<TerminalExecutionMode>(
+      key: const ValueKey('terminal-execution-mode'),
+      segments: [
+        ButtonSegment(
+          value: TerminalExecutionMode.sandboxed,
+          icon: const Icon(Icons.shield_outlined),
+          label: Text(l10n.terminalSandboxedMode),
+        ),
+        ButtonSegment(
+          value: TerminalExecutionMode.hostProcess,
+          icon: const Icon(Icons.computer_outlined),
+          label: Text(l10n.terminalHostProcessMode),
+        ),
+      ],
+      selected: {mode},
+      onSelectionChanged: enabled
+          ? (selection) => onChanged(selection.single)
+          : null,
+      showSelectedIcon: false,
+    );
+  }
+}
+
+class _HostProcessWarning extends StatelessWidget {
+  const _HostProcessWarning({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.errorContainer,
+        border: Border.all(color: colorScheme.error),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.warning_amber_rounded, color: colorScheme.error),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(color: colorScheme.onErrorContainer),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

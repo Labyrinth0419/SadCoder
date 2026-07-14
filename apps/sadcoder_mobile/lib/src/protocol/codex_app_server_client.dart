@@ -1,5 +1,6 @@
 import '../config/codex_config_overrides.dart';
 import '../events/guardian_assessment_event.dart';
+import '../realtime/realtime_runner.dart';
 import '../turns/turn_text_element.dart';
 import 'codex_client_info.dart';
 import 'json_rpc.dart';
@@ -70,6 +71,62 @@ class CodexAppServerClient {
       params['cwd'] = cwd.trim();
     }
     return _request('permissionProfile/list', params);
+  }
+
+  Future<Map<String, Object?>> addEnvironment({
+    required String environmentId,
+    required String execServerUrl,
+    int? connectTimeoutMs,
+  }) {
+    final normalizedId = environmentId.trim();
+    final normalizedUrl = execServerUrl.trim();
+    if (normalizedId.isEmpty) {
+      throw ArgumentError.value(
+        environmentId,
+        'environmentId',
+        'environmentId must not be blank',
+      );
+    }
+    if (normalizedUrl.isEmpty) {
+      throw ArgumentError.value(
+        execServerUrl,
+        'execServerUrl',
+        'execServerUrl must not be blank',
+      );
+    }
+    return _request('environment/add', {
+      'environmentId': normalizedId,
+      'execServerUrl': normalizedUrl,
+      'connectTimeoutMs': ?connectTimeoutMs,
+    });
+  }
+
+  Future<Map<String, Object?>> readEnvironmentInfo({
+    required String environmentId,
+  }) {
+    final normalizedId = environmentId.trim();
+    if (normalizedId.isEmpty) {
+      throw ArgumentError.value(
+        environmentId,
+        'environmentId',
+        'environmentId must not be blank',
+      );
+    }
+    return _request('environment/info', {'environmentId': normalizedId});
+  }
+
+  Future<Map<String, Object?>> readEnvironmentStatus({
+    required String environmentId,
+  }) {
+    final normalizedId = environmentId.trim();
+    if (normalizedId.isEmpty) {
+      throw ArgumentError.value(
+        environmentId,
+        'environmentId',
+        'environmentId must not be blank',
+      );
+    }
+    return _request('environment/status', {'environmentId': normalizedId});
   }
 
   Future<Map<String, Object?>> listMcpServerStatus({
@@ -232,6 +289,89 @@ class CodexAppServerClient {
     return _request('command/exec/terminate', {'processId': processId});
   }
 
+  Future<Map<String, Object?>> spawnProcess({
+    required List<String> command,
+    required String processHandle,
+    required String cwd,
+    bool tty = false,
+    bool streamStdin = false,
+    bool streamStdoutStderr = false,
+    Map<String, String?> env = const {},
+    Map<String, Object?>? size,
+    int? timeoutMs,
+    bool disableTimeout = false,
+    int? outputBytesCap,
+    bool disableOutputCap = false,
+  }) {
+    final normalizedHandle = processHandle.trim();
+    final normalizedCwd = cwd.trim();
+    if (command.isEmpty || command.first.trim().isEmpty) {
+      throw ArgumentError.value(
+        command,
+        'command',
+        'must include an executable',
+      );
+    }
+    if (normalizedHandle.isEmpty) {
+      throw ArgumentError.value(
+        processHandle,
+        'processHandle',
+        'must not be blank',
+      );
+    }
+    if (normalizedCwd.isEmpty) {
+      throw ArgumentError.value(cwd, 'cwd', 'must not be blank');
+    }
+    final params = <String, Object?>{
+      'command': command,
+      'processHandle': normalizedHandle,
+      'cwd': normalizedCwd,
+      if (tty) 'tty': true,
+      if (streamStdin) 'streamStdin': true,
+      if (streamStdoutStderr) 'streamStdoutStderr': true,
+      'env': ?(env.isEmpty ? null : env),
+      'size': ?size,
+    };
+    if (disableOutputCap) {
+      params['outputBytesCap'] = null;
+    } else if (outputBytesCap != null) {
+      params['outputBytesCap'] = outputBytesCap;
+    }
+    if (disableTimeout) {
+      params['timeoutMs'] = null;
+    } else if (timeoutMs != null) {
+      params['timeoutMs'] = timeoutMs;
+    }
+    return _request('process/spawn', params);
+  }
+
+  Future<Map<String, Object?>> writeProcessStdin({
+    required String processHandle,
+    String? deltaBase64,
+    bool closeStdin = false,
+  }) {
+    return _request('process/writeStdin', {
+      'processHandle': processHandle.trim(),
+      'deltaBase64': ?deltaBase64,
+      if (closeStdin) 'closeStdin': true,
+    });
+  }
+
+  Future<Map<String, Object?>> killProcess({required String processHandle}) {
+    return _request('process/kill', {'processHandle': processHandle.trim()});
+  }
+
+  Future<Map<String, Object?>> resizeProcessPty({
+    required String processHandle,
+    required int rows,
+    required int cols,
+  }) {
+    return _request('process/resizePty', {
+      'processHandle': processHandle.trim(),
+      'size': {'rows': rows, 'cols': cols},
+    });
+  }
+
   Future<Map<String, Object?>> searchFiles({
     required String query,
     List<String> roots = const [],
@@ -276,6 +416,55 @@ class CodexAppServerClient {
 
   Future<Map<String, Object?>> fsReadDirectory({required String path}) {
     return _request('fs/readDirectory', {'path': path.trim()});
+  }
+
+  Future<Map<String, Object?>> fsWriteFile({
+    required String path,
+    required String dataBase64,
+  }) {
+    final normalizedPath = path.trim();
+    final normalizedData = dataBase64.trim();
+    if (normalizedPath.isEmpty) {
+      throw ArgumentError.value(path, 'path', 'path must not be blank');
+    }
+    return _request('fs/writeFile', {
+      'path': normalizedPath,
+      'dataBase64': normalizedData,
+    });
+  }
+
+  Future<Map<String, Object?>> fsWatch({
+    required String watchId,
+    required String path,
+  }) {
+    final normalizedWatchId = watchId.trim();
+    final normalizedPath = path.trim();
+    if (normalizedWatchId.isEmpty) {
+      throw ArgumentError.value(
+        watchId,
+        'watchId',
+        'watchId must not be blank',
+      );
+    }
+    if (normalizedPath.isEmpty) {
+      throw ArgumentError.value(path, 'path', 'path must not be blank');
+    }
+    return _request('fs/watch', {
+      'watchId': normalizedWatchId,
+      'path': normalizedPath,
+    });
+  }
+
+  Future<Map<String, Object?>> fsUnwatch({required String watchId}) {
+    final normalizedWatchId = watchId.trim();
+    if (normalizedWatchId.isEmpty) {
+      throw ArgumentError.value(
+        watchId,
+        'watchId',
+        'watchId must not be blank',
+      );
+    }
+    return _request('fs/unwatch', {'watchId': normalizedWatchId});
   }
 
   Future<Map<String, Object?>> workspaceDirectoryList({
@@ -413,6 +602,66 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> listExperimentalFeatures({
+    String? cursor,
+    int? limit,
+    String? threadId,
+  }) {
+    final normalizedCursor = _nonBlank(cursor);
+    final normalizedThreadId = _nonBlank(threadId);
+    return _request('experimentalFeature/list', {
+      'cursor': ?normalizedCursor,
+      'limit': ?limit,
+      'threadId': ?normalizedThreadId,
+    });
+  }
+
+  Future<Map<String, Object?>> batchWriteConfig({
+    required List<Map<String, Object?>> edits,
+    String? filePath,
+    String? expectedVersion,
+    bool reloadUserConfig = false,
+  }) {
+    return _request('config/batchWrite', {
+      'edits': edits,
+      if (filePath != null && filePath.trim().isNotEmpty)
+        'filePath': filePath.trim(),
+      if (expectedVersion != null && expectedVersion.trim().isNotEmpty)
+        'expectedVersion': expectedVersion.trim(),
+      if (reloadUserConfig) 'reloadUserConfig': true,
+    });
+  }
+
+  Future<Map<String, Object?>> detectExternalAgentConfig({
+    bool includeHome = true,
+    List<String> cwds = const [],
+  }) {
+    final normalizedCwds = [
+      for (final cwd in cwds)
+        if (cwd.trim().isNotEmpty) cwd.trim(),
+    ];
+    return _request('externalAgentConfig/detect', {
+      if (includeHome) 'includeHome': true,
+      if (normalizedCwds.isNotEmpty) 'cwds': normalizedCwds,
+    });
+  }
+
+  Future<Map<String, Object?>> importExternalAgentConfig({
+    required List<Map<String, Object?>> migrationItems,
+    String? source,
+  }) {
+    final normalizedSource = source?.trim();
+    return _request('externalAgentConfig/import', {
+      'migrationItems': migrationItems,
+      if (normalizedSource != null && normalizedSource.isNotEmpty)
+        'source': normalizedSource,
+    });
+  }
+
+  Future<Map<String, Object?>> readExternalAgentConfigImportHistories() {
+    return _request('externalAgentConfig/import/readHistories');
+  }
+
   Future<Map<String, Object?>> readThread({
     required String threadId,
     bool includeTurns = true,
@@ -421,6 +670,141 @@ class CodexAppServerClient {
       'threadId': threadId,
       'includeTurns': includeTurns,
     });
+  }
+
+  Future<Map<String, Object?>> startThreadRealtime({
+    required String threadId,
+    required String outputModality,
+    required Map<String, Object?> transport,
+    bool? clientManagedHandoffs,
+    bool? flushTranscriptTailOnSessionEnd,
+    bool? codexResponsesAsItems,
+    String? codexResponseItemPrefix,
+    String? codexResponseHandoffPrefix,
+    String? model,
+    bool? includeStartupContext,
+    String? prompt,
+    String? realtimeSessionId,
+    String? version,
+    String? voice,
+  }) {
+    final normalizedThreadId = threadId.trim();
+    if (normalizedThreadId.isEmpty) {
+      throw ArgumentError.value(
+        threadId,
+        'threadId',
+        'threadId must not be blank',
+      );
+    }
+    final normalizedModality = outputModality.trim();
+    if (normalizedModality.isEmpty) {
+      throw ArgumentError.value(
+        outputModality,
+        'outputModality',
+        'outputModality must not be blank',
+      );
+    }
+    return _request('thread/realtime/start', {
+      'threadId': normalizedThreadId,
+      'clientManagedHandoffs': ?clientManagedHandoffs,
+      'flushTranscriptTailOnSessionEnd': ?flushTranscriptTailOnSessionEnd,
+      'codexResponsesAsItems': ?codexResponsesAsItems,
+      'codexResponseItemPrefix': ?codexResponseItemPrefix,
+      'codexResponseHandoffPrefix': ?codexResponseHandoffPrefix,
+      'model': ?model,
+      'outputModality': normalizedModality,
+      'includeStartupContext': ?includeStartupContext,
+      'prompt': ?prompt,
+      'realtimeSessionId': ?realtimeSessionId,
+      'transport': transport,
+      'version': ?version,
+      'voice': ?voice,
+    });
+  }
+
+  Future<Map<String, Object?>> appendThreadRealtimeText({
+    required String threadId,
+    required String text,
+    String role = 'user',
+  }) {
+    final normalizedThreadId = threadId.trim();
+    final normalizedText = text.trim();
+    if (normalizedThreadId.isEmpty) {
+      throw ArgumentError.value(
+        threadId,
+        'threadId',
+        'threadId must not be blank',
+      );
+    }
+    if (normalizedText.isEmpty) {
+      throw ArgumentError.value(text, 'text', 'text must not be blank');
+    }
+    final normalizedRole = role.trim();
+    if (normalizedRole.isEmpty) {
+      throw ArgumentError.value(role, 'role', 'role must not be blank');
+    }
+    return _request('thread/realtime/appendText', {
+      'threadId': normalizedThreadId,
+      'text': normalizedText,
+      'role': normalizedRole,
+    });
+  }
+
+  Future<Map<String, Object?>> appendThreadRealtimeAudio({
+    required String threadId,
+    required RealtimeAudioFrame audio,
+  }) {
+    final normalizedThreadId = threadId.trim();
+    if (normalizedThreadId.isEmpty) {
+      throw ArgumentError.value(
+        threadId,
+        'threadId',
+        'threadId must not be blank',
+      );
+    }
+    _validateAudioFrame(audio);
+    return _request('thread/realtime/appendAudio', {
+      'threadId': normalizedThreadId,
+      'audio': audio.toJson(),
+    });
+  }
+
+  Future<Map<String, Object?>> appendThreadRealtimeSpeech({
+    required String threadId,
+    required String text,
+  }) {
+    final normalizedThreadId = threadId.trim();
+    final normalizedText = text.trim();
+    if (normalizedThreadId.isEmpty) {
+      throw ArgumentError.value(
+        threadId,
+        'threadId',
+        'threadId must not be blank',
+      );
+    }
+    if (normalizedText.isEmpty) {
+      throw ArgumentError.value(text, 'text', 'text must not be blank');
+    }
+    return _request('thread/realtime/appendSpeech', {
+      'threadId': normalizedThreadId,
+      'text': normalizedText,
+    });
+  }
+
+  Future<Map<String, Object?>> stopThreadRealtime({required String threadId}) {
+    final normalizedThreadId = threadId.trim();
+    if (normalizedThreadId.isEmpty) {
+      throw ArgumentError.value(
+        threadId,
+        'threadId',
+        'threadId must not be blank',
+      );
+    }
+    return _request('thread/realtime/stop', {'threadId': normalizedThreadId});
+  }
+
+  Future<Map<String, Object?>> listThreadRealtimeVoices() {
+    return _request('thread/realtime/listVoices', const {});
   }
 
   Future<Map<String, Object?>> listThreadTurns({
@@ -518,6 +902,36 @@ class CodexAppServerClient {
     return _request('thread/settings/update', {
       'threadId': threadId,
       ...overrides.toThreadSettingsUpdateParams(includeClears: true),
+    });
+  }
+
+  Future<Map<String, Object?>> setThreadMemoryMode({
+    required String threadId,
+    required String mode,
+  }) {
+    return _request('thread/memoryMode/set', {
+      'threadId': threadId,
+      'mode': mode,
+    });
+  }
+
+  Future<Map<String, Object?>> resetMemory() {
+    return _request('memory/reset');
+  }
+
+  Future<Map<String, Object?>> readWindowsSandboxReadiness() {
+    return _request('windowsSandbox/readiness');
+  }
+
+  Future<Map<String, Object?>> startWindowsSandboxSetup({
+    required String mode,
+    String? cwd,
+  }) {
+    final normalizedCwd = cwd?.trim();
+    return _request('windowsSandbox/setupStart', {
+      'mode': mode.trim(),
+      if (normalizedCwd != null && normalizedCwd.isNotEmpty)
+        'cwd': normalizedCwd,
     });
   }
 
@@ -623,6 +1037,54 @@ class CodexAppServerClient {
     return _request('plugin/uninstall', {
       'pluginId': pluginId.trim(),
       if (normalizedCwds.isNotEmpty) 'cwds': normalizedCwds,
+    });
+  }
+
+  Future<Map<String, Object?>> addMarketplace({
+    required String source,
+    String? refName,
+    List<String> sparsePaths = const [],
+  }) {
+    final normalizedSource = source.trim();
+    if (normalizedSource.isEmpty) {
+      throw ArgumentError.value(source, 'source', 'source must not be blank');
+    }
+    final normalizedRefName = refName?.trim();
+    final normalizedSparsePaths = [
+      for (final path in sparsePaths)
+        if (path.trim().isNotEmpty) path.trim(),
+    ];
+    return _request('marketplace/add', {
+      'source': normalizedSource,
+      'refName': normalizedRefName == null || normalizedRefName.isEmpty
+          ? null
+          : normalizedRefName,
+      'sparsePaths': normalizedSparsePaths.isEmpty
+          ? null
+          : normalizedSparsePaths,
+    });
+  }
+
+  Future<Map<String, Object?>> removeMarketplace({
+    required String marketplaceName,
+  }) {
+    final normalizedName = marketplaceName.trim();
+    if (normalizedName.isEmpty) {
+      throw ArgumentError.value(
+        marketplaceName,
+        'marketplaceName',
+        'marketplaceName must not be blank',
+      );
+    }
+    return _request('marketplace/remove', {'marketplaceName': normalizedName});
+  }
+
+  Future<Map<String, Object?>> upgradeMarketplaces({String? marketplaceName}) {
+    final normalizedName = marketplaceName?.trim();
+    return _request('marketplace/upgrade', {
+      'marketplaceName': normalizedName == null || normalizedName.isEmpty
+          ? null
+          : normalizedName,
     });
   }
 
@@ -768,4 +1230,40 @@ Map<String, Object?> _textUserInput({
     'text': text,
     'text_elements': [for (final element in textElements) element.toJson()],
   };
+}
+
+String? _nonBlank(String? value) {
+  final normalized = value?.trim();
+  return normalized == null || normalized.isEmpty ? null : normalized;
+}
+
+void _validateAudioFrame(RealtimeAudioFrame audio) {
+  if (audio.data.trim().isEmpty) {
+    throw ArgumentError.value(
+      audio.data,
+      'audio.data',
+      'audio data must not be blank',
+    );
+  }
+  if (audio.sampleRate <= 0) {
+    throw ArgumentError.value(
+      audio.sampleRate,
+      'audio.sampleRate',
+      'sample rate must be positive',
+    );
+  }
+  if (audio.numChannels <= 0) {
+    throw ArgumentError.value(
+      audio.numChannels,
+      'audio.numChannels',
+      'channel count must be positive',
+    );
+  }
+  if (audio.samplesPerChannel != null && audio.samplesPerChannel! <= 0) {
+    throw ArgumentError.value(
+      audio.samplesPerChannel,
+      'audio.samplesPerChannel',
+      'samples per channel must be positive',
+    );
+  }
 }

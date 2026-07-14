@@ -26,6 +26,20 @@ enum CodexEventKind {
   accountUpdated,
   accountRateLimitsUpdated,
   mcpServerStartupStatusUpdated,
+  externalAgentConfigImportProgress,
+  externalAgentConfigImportCompleted,
+  windowsSandboxSetupCompleted,
+  processOutputDelta,
+  processExited,
+  threadRealtimeStarted,
+  threadRealtimeItemAdded,
+  threadRealtimeTranscriptDelta,
+  threadRealtimeTranscriptDone,
+  threadRealtimeOutputAudioDelta,
+  threadRealtimeSdp,
+  threadRealtimeError,
+  threadRealtimeClosed,
+  fsChanged,
   unknown,
 }
 
@@ -193,6 +207,96 @@ class CodexEvent {
         params,
         threadId: _stringValue(params['threadId']),
       ),
+      'externalAgentConfig/import/progress' => _payloadEvent(
+        CodexEventKind.externalAgentConfigImportProgress,
+        method,
+        notification,
+        params,
+      ),
+      'externalAgentConfig/import/completed' => _payloadEvent(
+        CodexEventKind.externalAgentConfigImportCompleted,
+        method,
+        notification,
+        params,
+      ),
+      'windowsSandbox/setupCompleted' => _payloadEvent(
+        CodexEventKind.windowsSandboxSetupCompleted,
+        method,
+        notification,
+        params,
+      ),
+      'process/outputDelta' => _payloadEvent(
+        CodexEventKind.processOutputDelta,
+        method,
+        notification,
+        params,
+      ),
+      'process/exited' => _payloadEvent(
+        CodexEventKind.processExited,
+        method,
+        notification,
+        params,
+      ),
+      'thread/realtime/started' => _payloadEvent(
+        CodexEventKind.threadRealtimeStarted,
+        method,
+        notification,
+        params,
+        threadId: _stringValue(params['threadId']),
+      ),
+      'thread/realtime/itemAdded' => _payloadEvent(
+        CodexEventKind.threadRealtimeItemAdded,
+        method,
+        notification,
+        params,
+        threadId: _stringValue(params['threadId']),
+      ),
+      'thread/realtime/transcript/delta' => _realtimeTranscriptDeltaEvent(
+        method,
+        notification,
+        params,
+      ),
+      'thread/realtime/transcript/done' => _payloadEvent(
+        CodexEventKind.threadRealtimeTranscriptDone,
+        method,
+        notification,
+        params,
+        threadId: _stringValue(params['threadId']),
+      ),
+      'thread/realtime/outputAudio/delta' => _payloadEvent(
+        CodexEventKind.threadRealtimeOutputAudioDelta,
+        method,
+        notification,
+        params,
+        threadId: _stringValue(params['threadId']),
+      ),
+      'thread/realtime/sdp' => _payloadEvent(
+        CodexEventKind.threadRealtimeSdp,
+        method,
+        notification,
+        params,
+        threadId: _stringValue(params['threadId']),
+      ),
+      'thread/realtime/error' => _payloadEvent(
+        CodexEventKind.threadRealtimeError,
+        method,
+        notification,
+        params,
+        threadId: _stringValue(params['threadId']),
+      ),
+      'thread/realtime/closed' => _payloadEvent(
+        CodexEventKind.threadRealtimeClosed,
+        method,
+        notification,
+        params,
+        threadId: _stringValue(params['threadId']),
+      ),
+      'fs/changed' => _payloadEvent(
+        CodexEventKind.fsChanged,
+        method,
+        notification,
+        params,
+      ),
       _ => CodexEvent(
         kind: CodexEventKind.unknown,
         method: method,
@@ -328,6 +432,21 @@ class CodexEvent {
       threadId: _stringValue(params['threadId']),
       turnId: _stringValue(params['turnId']),
       itemId: _stringValue(params['itemId']),
+    );
+  }
+
+  static CodexEvent _realtimeTranscriptDeltaEvent(
+    String method,
+    Map<String, Object?> raw,
+    Map<String, Object?> params,
+  ) {
+    return CodexEvent(
+      kind: CodexEventKind.threadRealtimeTranscriptDelta,
+      method: method,
+      raw: Map.unmodifiable(raw),
+      threadId: _stringValue(params['threadId']),
+      delta: _stringValue(params['delta']),
+      payload: Map.unmodifiable(params),
     );
   }
 

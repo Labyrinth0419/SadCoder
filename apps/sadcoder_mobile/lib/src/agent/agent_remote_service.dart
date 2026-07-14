@@ -10,6 +10,8 @@ import 'agent_doctor.dart';
 import 'agent_doctor_reader.dart';
 import 'agent_logs.dart';
 import 'agent_logs_reader.dart';
+import 'agent_maintenance.dart';
+import 'agent_maintenance_runner.dart';
 import 'agent_schema.dart';
 import 'agent_schema_reader.dart';
 import 'agent_snapshot.dart';
@@ -36,6 +38,7 @@ class AgentRemoteService
         AgentCodexConfigureRunner,
         AgentDoctorReader,
         AgentLogsReader,
+        AgentMaintenanceRunner,
         AgentSchemaReader,
         AgentSnapshotReader,
         SlashCommandManifestReader {
@@ -101,6 +104,24 @@ class AgentRemoteService
       timeout: const Duration(seconds: 20),
     );
     return AgentDoctorResult.fromJson(json);
+  }
+
+  @override
+  Future<AgentMaintenanceResult> run(
+    SshProfile profile,
+    AgentMaintenanceRequest request,
+  ) async {
+    final json = await _readJsonObjectCommand(
+      profile,
+      request.buildCommand(profile),
+      failurePrefix: 'Codex ${request.label}',
+      invalidJsonMessage:
+          'Codex ${request.label} did not return a JSON object.',
+      timeout: request.isMutating
+          ? const Duration(minutes: 5)
+          : const Duration(seconds: 60),
+    );
+    return AgentMaintenanceResult.fromJson(json);
   }
 
   @override

@@ -12,6 +12,9 @@ import 'package:sadcoder_mobile/src/agent/agent_doctor_reader.dart';
 import 'package:sadcoder_mobile/src/agent/agent_logs.dart';
 import 'package:sadcoder_mobile/src/agent/agent_logs_controller.dart';
 import 'package:sadcoder_mobile/src/agent/agent_logs_reader.dart';
+import 'package:sadcoder_mobile/src/agent/agent_maintenance.dart';
+import 'package:sadcoder_mobile/src/agent/agent_maintenance_controller.dart';
+import 'package:sadcoder_mobile/src/agent/agent_maintenance_runner.dart';
 import 'package:sadcoder_mobile/src/agent/agent_schema.dart';
 import 'package:sadcoder_mobile/src/agent/agent_schema_controller.dart';
 import 'package:sadcoder_mobile/src/agent/agent_schema_reader.dart';
@@ -24,6 +27,7 @@ import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/diagnostics/diagnostic_log_export_controller.dart';
+import 'package:sadcoder_mobile/src/environments/environment_runner.dart';
 import 'package:sadcoder_mobile/src/features/settings/settings_page.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/models/model_list_controller.dart';
@@ -165,6 +169,66 @@ void main() {
     expect(find.text('Diagnostics'), findsWidgets);
     expect(find.text('Version: 1.2.3-test'), findsOneWidget);
     expect(find.text('This section is unavailable.'), findsNothing);
+  });
+
+  testWidgets('registers and inspects a remote environment with confirmation', (
+    tester,
+  ) async {
+    final controller = CodexConfigOverrideController();
+    final environmentRunner = _RecordingEnvironmentRunner();
+    addTearDown(controller.dispose);
+
+    await _pumpSettings(
+      tester,
+      controller,
+      environmentRunner: environmentRunner,
+    );
+    await _openSettingsSection(tester, 'diagnostics');
+
+    await tester.enterText(
+      find.byKey(const ValueKey('settings-remote-environment-id')),
+      'build-env',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('settings-remote-environment-url')),
+      'ws://build.example/ws',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('settings-remote-environment-timeout')),
+      '7000',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('settings-remote-environment-add')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Register remote environment?'), findsOneWidget);
+    expect(environmentRunner.addCalls, isEmpty);
+
+    await tester.tap(find.text('Register'));
+    await tester.pumpAndSettle();
+
+    expect(environmentRunner.addCalls.single, (
+      environmentId: 'build-env',
+      execServerUrl: 'ws://build.example/ws',
+      connectTimeoutMs: 7000,
+    ));
+    expect(find.text('Remote environment registered.'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('settings-remote-environment-info')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-remote-environment-status')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(environmentRunner.infoCalls, ['build-env']);
+    expect(environmentRunner.statusCalls, ['build-env']);
+    expect(find.text('Shell: bash (/bin/bash)'), findsOneWidget);
+    expect(find.text('Default cwd: file:///workspace'), findsOneWidget);
+    expect(find.text('ready'), findsOneWidget);
   });
 
   testWidgets('applies and clears app default config overrides', (
@@ -1390,6 +1454,56 @@ void main() {
     expect(find.text('No diagnostic logs captured yet.'), findsOneWidget);
     expect(find.byType(AlertDialog), findsNothing);
   });
+
+  testWidgets('Codex maintenance update is explicit and confirmed', (
+    tester,
+  ) async {
+    final overrideController = CodexConfigOverrideController();
+    final runner = _RecordingMaintenanceRunner();
+    final maintenanceController = AgentMaintenanceController(
+      runnerProvider: () => runner,
+      profileProvider: () => _profile,
+    );
+    addTearDown(overrideController.dispose);
+    addTearDown(maintenanceController.dispose);
+
+    await _pumpSettings(
+      tester,
+      overrideController,
+      agentMaintenanceController: maintenanceController,
+    );
+    await _openSettingsSection(tester, 'diagnostics');
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-agent-maintenance-update')),
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Codex maintenance'), findsOneWidget);
+    expect(
+      find.textContaining('no credential is stored on this device'),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('settings-agent-maintenance-update')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Update Codex?'), findsOneWidget);
+    expect(runner.requests, isEmpty);
+
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    expect(runner.requests.single.operation, AgentMaintenanceOperation.update);
+    expect(find.textContaining('update complete'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('settings-agent-maintenance-restart')),
+      findsOneWidget,
+    );
+  });
 }
 
 Future<void> _pumpSettings(
@@ -1404,7 +1518,9 @@ Future<void> _pumpSettings(
   AgentCodexConfigureController? agentCodexConfigureController,
   AgentLogsController? agentLogsController,
   AgentSchemaController? agentSchemaController,
+  AgentMaintenanceController? agentMaintenanceController,
   DiagnosticLogExportController? diagnosticLogExportController,
+  EnvironmentRunner? environmentRunner,
   Locale? locale,
   String appVersion = '1.0.0+1',
 }) {
@@ -1430,7 +1546,9 @@ Future<void> _pumpSettings(
           agentCodexConfigureController: agentCodexConfigureController,
           agentLogsController: agentLogsController,
           agentSchemaController: agentSchemaController,
+          agentMaintenanceController: agentMaintenanceController,
           diagnosticLogExportController: diagnosticLogExportController,
+          environmentRunner: environmentRunner,
           appVersion: appVersion,
         ),
       ),
@@ -1444,6 +1562,29 @@ const _profile = SshProfile(
   host: 'localhost',
   username: 'tester',
 );
+
+class _RecordingMaintenanceRunner implements AgentMaintenanceRunner {
+  final List<AgentMaintenanceRequest> requests = [];
+
+  @override
+  Future<AgentMaintenanceResult> run(
+    SshProfile profile,
+    AgentMaintenanceRequest request,
+  ) async {
+    requests.add(request);
+    return AgentMaintenanceResult(
+      operation: request.label,
+      success: true,
+      exitCode: 0,
+      stdout: request.operation == AgentMaintenanceOperation.update
+          ? 'update complete'
+          : '',
+      stderr: '',
+      restartRequired: request.operation == AgentMaintenanceOperation.update,
+      requiresChatGptAuth: request.requiresChatGptAuth,
+    );
+  }
+}
 
 Future<void> _openSettingsSection(WidgetTester tester, String section) async {
   final sectionFinder = find.byKey(ValueKey('settings-section-$section'));
@@ -1695,5 +1836,50 @@ class _FailingAgentCodexConfigureRunner implements AgentCodexConfigureRunner {
     AgentCodexConfigureRequest request,
   ) async {
     throw error;
+  }
+}
+
+class _RecordingEnvironmentRunner implements EnvironmentRunner {
+  final addCalls =
+      <({String environmentId, String execServerUrl, int? connectTimeoutMs})>[];
+  final infoCalls = <String>[];
+  final statusCalls = <String>[];
+
+  @override
+  Future<EnvironmentAddResult> addEnvironment({
+    required String environmentId,
+    required String execServerUrl,
+    int? connectTimeoutMs,
+  }) async {
+    addCalls.add((
+      environmentId: environmentId,
+      execServerUrl: execServerUrl,
+      connectTimeoutMs: connectTimeoutMs,
+    ));
+    return const EnvironmentAddResult(raw: {});
+  }
+
+  @override
+  Future<EnvironmentInfoResult> readEnvironmentInfo({
+    required String environmentId,
+  }) async {
+    infoCalls.add(environmentId);
+    return const EnvironmentInfoResult(
+      shell: EnvironmentShellInfo(name: 'bash', path: '/bin/bash'),
+      cwd: 'file:///workspace',
+      raw: {},
+    );
+  }
+
+  @override
+  Future<EnvironmentStatusResult> readEnvironmentStatus({
+    required String environmentId,
+  }) async {
+    statusCalls.add(environmentId);
+    return const EnvironmentStatusResult(
+      status: EnvironmentStatusKind.ready,
+      error: null,
+      raw: {},
+    );
   }
 }

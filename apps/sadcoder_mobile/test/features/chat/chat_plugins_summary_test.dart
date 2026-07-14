@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_plugins_summary.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/plugins/marketplace_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_detail_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_mutation_runner.dart';
@@ -138,5 +139,78 @@ void main() {
       summary,
       'Uninstall requested for plugin linear.\nremoved from workspace',
     );
+  });
+
+  test('buildMarketplaceAddSummary distinguishes new and existing sources', () {
+    expect(
+      buildMarketplaceAddSummary(
+        l10n: l10n,
+        result: const MarketplaceAddResult(
+          marketplaceName: 'team-tools',
+          installedRoot: '/marketplaces/team-tools',
+          alreadyAdded: false,
+          raw: <String, Object?>{},
+        ),
+      ),
+      'Added marketplace team-tools at /marketplaces/team-tools.',
+    );
+    expect(
+      buildMarketplaceAddSummary(
+        l10n: l10n,
+        result: const MarketplaceAddResult(
+          marketplaceName: 'team-tools',
+          installedRoot: '/marketplaces/team-tools',
+          alreadyAdded: true,
+          raw: <String, Object?>{},
+        ),
+      ),
+      'Marketplace team-tools is already installed at '
+      '/marketplaces/team-tools.',
+    );
+  });
+
+  test('buildMarketplaceRemoveSummary handles known and unknown roots', () {
+    expect(
+      buildMarketplaceRemoveSummary(
+        l10n: l10n,
+        result: const MarketplaceRemoveResult(
+          marketplaceName: 'team-tools',
+          installedRoot: '/marketplaces/team-tools',
+          raw: <String, Object?>{},
+        ),
+      ),
+      'Removed marketplace team-tools from /marketplaces/team-tools.',
+    );
+    expect(
+      buildMarketplaceRemoveSummary(
+        l10n: l10n,
+        result: const MarketplaceRemoveResult(
+          marketplaceName: 'team-tools',
+          raw: <String, Object?>{},
+        ),
+      ),
+      'Removed marketplace team-tools.',
+    );
+  });
+
+  test('buildMarketplaceUpgradeSummary includes roots and partial errors', () {
+    final summary = buildMarketplaceUpgradeSummary(
+      l10n: l10n,
+      result: const MarketplaceUpgradeResult(
+        selectedMarketplaces: ['team-tools', 'shared-tools'],
+        upgradedRoots: ['/marketplaces/team-tools'],
+        errors: [
+          MarketplaceUpgradeError(
+            marketplaceName: 'shared-tools',
+            message: 'authentication required',
+          ),
+        ],
+        raw: <String, Object?>{},
+      ),
+    );
+
+    expect(summary, contains('Selected: team-tools, shared-tools'));
+    expect(summary, contains('Upgraded roots: /marketplaces/team-tools'));
+    expect(summary, contains('shared-tools: authentication required'));
   });
 }

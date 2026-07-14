@@ -19,40 +19,57 @@ import '../config/codex_config_snapshot_reader.dart';
 import '../config/codex_config_snapshot_remote_reader.dart';
 import '../diffs/codex_git_diff_reader.dart';
 import '../diffs/git_diff_reader.dart';
+import '../environments/codex_environment_runner.dart';
+import '../environments/environment_runner.dart';
 import '../events/codex_event.dart';
+import '../experimental_features/codex_experimental_feature_runner.dart';
+import '../experimental_features/experimental_feature_runner.dart';
+import '../external_agents/codex_external_agent_config_runner.dart';
+import '../external_agents/external_agent_config_runner.dart';
 import '../feedback/codex_feedback_upload_runner.dart';
 import '../feedback/feedback_upload_runner.dart';
 import '../files/codex_file_search_reader.dart';
 import '../files/codex_workspace_directory_reader.dart';
 import '../files/codex_workspace_file_reader.dart';
+import '../files/workspace_file_mutation_runner.dart';
 import '../files/file_search_reader.dart';
 import '../files/workspace_directory_reader.dart';
 import '../files/workspace_file_reader.dart';
 import '../goals/codex_thread_goal_runner.dart';
 import '../goals/thread_goal_runner.dart';
 import '../hooks/codex_hook_list_reader.dart';
+import '../hooks/codex_hook_mutation_runner.dart';
 import '../hooks/hook_list_reader.dart';
+import '../hooks/hook_mutation_runner.dart';
 import '../mcp/codex_mcp_server_config_runner.dart';
 import '../mcp/codex_mcp_server_oauth_runner.dart';
 import '../mcp/codex_mcp_server_status_reader.dart';
 import '../mcp/mcp_server_config_runner.dart';
 import '../mcp/mcp_server_oauth_runner.dart';
 import '../mcp/mcp_server_status_reader.dart';
+import '../memories/codex_memory_runner.dart';
+import '../memories/memory_runner.dart';
 import '../models/codex_model_list_reader.dart';
 import '../models/model_list_reader.dart';
 import '../permissions/codex_permission_profile_list_reader.dart';
 import '../permissions/permission_profile_list_reader.dart';
+import '../plugins/codex_marketplace_mutation_runner.dart';
 import '../plugins/codex_plugin_list_reader.dart';
 import '../plugins/codex_plugin_detail_reader.dart';
 import '../plugins/codex_plugin_mutation_runner.dart';
 import '../plugins/plugin_detail_reader.dart';
 import '../plugins/plugin_list_reader.dart';
+import '../plugins/marketplace_mutation_runner.dart';
 import '../plugins/plugin_mutation_runner.dart';
+import '../processes/codex_process_runner.dart';
+import '../processes/process_runner.dart';
 import '../protocol/codex_app_session.dart';
 import '../protocol/codex_client_info.dart';
 import '../protocol/json_rpc_diagnostic_log.dart';
 import '../reviews/codex_thread_review_runner.dart';
 import '../reviews/thread_review_runner.dart';
+import '../realtime/codex_realtime_runner.dart';
+import '../realtime/realtime_runner.dart';
 import '../skills/codex_skill_list_reader.dart';
 import '../skills/skill_list_reader.dart';
 import '../ssh/ssh_profile.dart';
@@ -74,6 +91,8 @@ import '../turns/turn_runner.dart';
 import '../usage/account_usage_snapshot_reader.dart';
 import '../usage/codex_account_usage_snapshot_reader.dart';
 import '../workspace/codex_workspace_command_runner.dart';
+import '../windows_sandbox/codex_windows_sandbox_runner.dart';
+import '../windows_sandbox/windows_sandbox_runner.dart';
 
 abstract interface class CodexSessionConnectionHandle {
   SshProfile get profile;
@@ -170,6 +189,46 @@ abstract interface class CommandExecConnectionHandle {
   CommandExecRunner get commandExecRunner;
 }
 
+abstract interface class ProcessConnectionHandle {
+  ProcessRunner get processRunner;
+}
+
+abstract interface class ExternalAgentConfigConnectionHandle {
+  ExternalAgentConfigRunner get externalAgentConfigRunner;
+}
+
+abstract interface class ExperimentalFeatureConnectionHandle {
+  ExperimentalFeatureRunner get experimentalFeatureRunner;
+}
+
+abstract interface class MemoryConnectionHandle {
+  MemoryRunner get memoryRunner;
+}
+
+abstract interface class WindowsSandboxConnectionHandle {
+  WindowsSandboxRunner get windowsSandboxRunner;
+}
+
+abstract interface class MarketplaceMutationConnectionHandle {
+  MarketplaceMutationRunner get marketplaceMutationRunner;
+}
+
+abstract interface class EnvironmentConnectionHandle {
+  EnvironmentRunner get environmentRunner;
+}
+
+abstract interface class HookMutationConnectionHandle {
+  HookMutationRunner get hookMutationRunner;
+}
+
+abstract interface class RealtimeConnectionHandle {
+  RealtimeRunner get realtimeRunner;
+}
+
+abstract interface class WorkspaceFileMutationConnectionHandle {
+  WorkspaceFileMutationRunner get workspaceFileMutationRunner;
+}
+
 abstract interface class CodexSessionConnectionStarter {
   Future<CodexSessionConnectionHandle> connect(
     SshProfile profile, {
@@ -218,6 +277,12 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         clientVersion: clientVersion,
         experimentalApi: experimentalApi,
       );
+      final workspaceFileReader = CodexWorkspaceFileReader(session.client);
+      final workspaceFileMutationRunner = CodexWorkspaceFileMutationRunner(
+        client: session.client,
+        fileReader: workspaceFileReader,
+        events: session.events,
+      );
       return CodexSessionConnection(
         profile: profile,
         session: session,
@@ -233,9 +298,19 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
           session.client,
         ),
         feedbackUploadRunner: CodexFeedbackUploadRunner(session.client),
+        experimentalFeatureRunner: CodexExperimentalFeatureRunner(
+          session.client,
+        ),
+        memoryRunner: CodexMemoryRunner(session.client),
+        windowsSandboxRunner: CodexWindowsSandboxRunner(session.client),
+        environmentRunner: CodexEnvironmentRunner(session.client),
+        externalAgentConfigRunner: CodexExternalAgentConfigRunner(
+          session.client,
+        ),
         fileSearchReader: CodexFileSearchReader(session.client),
         workspaceDirectoryReader: CodexWorkspaceDirectoryReader(session.client),
-        workspaceFileReader: CodexWorkspaceFileReader(session.client),
+        workspaceFileReader: workspaceFileReader,
+        workspaceFileMutationRunner: workspaceFileMutationRunner,
         gitDiffReader: CodexGitDiffReader(
           CodexWorkspaceCommandRunner(session.client),
         ),
@@ -250,7 +325,15 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         pluginListReader: CodexPluginListReader(session.client),
         pluginDetailReader: CodexPluginDetailReader(session.client),
         pluginMutationRunner: CodexPluginMutationRunner(session.client),
+        marketplaceMutationRunner: CodexMarketplaceMutationRunner(
+          session.client,
+        ),
         hookListReader: CodexHookListReader(session.client),
+        hookMutationRunner: CodexHookMutationRunner(session.client),
+        realtimeRunner: CodexRealtimeRunner(
+          client: session.client,
+          events: session.events,
+        ),
         appListReader: CodexAppListReader(session.client),
         slashCommandManifestReader: CodexSlashCommandManifestReader(
           session.client,
@@ -258,6 +341,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         threadMutationRunner: CodexThreadMutationRunner(session.client),
         threadShellCommandRunner: CodexThreadShellCommandRunner(session.client),
         commandExecRunner: CodexCommandExecRunner(session.client),
+        processRunner: CodexProcessRunner(session.client),
         threadBackgroundTerminalRunner: CodexThreadBackgroundTerminalRunner(
           session.client,
         ),
@@ -324,7 +408,17 @@ class CodexSessionConnection
         CodexSessionConnectionHandle,
         AgentSnapshotConnectionHandle,
         ThreadShellCommandConnectionHandle,
-        CommandExecConnectionHandle {
+        CommandExecConnectionHandle,
+        ProcessConnectionHandle,
+        ExternalAgentConfigConnectionHandle,
+        ExperimentalFeatureConnectionHandle,
+        MemoryConnectionHandle,
+        WindowsSandboxConnectionHandle,
+        MarketplaceMutationConnectionHandle,
+        EnvironmentConnectionHandle,
+        HookMutationConnectionHandle,
+        RealtimeConnectionHandle,
+        WorkspaceFileMutationConnectionHandle {
   CodexSessionConnection({
     required this.profile,
     required this.session,
@@ -337,6 +431,14 @@ class CodexSessionConnection
     required this.accountLogoutRunner,
     required this.accountUsageSnapshotReader,
     required this.feedbackUploadRunner,
+    required this.experimentalFeatureRunner,
+    required this.memoryRunner,
+    required this.windowsSandboxRunner,
+    required this.environmentRunner,
+    required this.hookMutationRunner,
+    required this.realtimeRunner,
+    required this.workspaceFileMutationRunner,
+    required this.externalAgentConfigRunner,
     required this.fileSearchReader,
     required this.workspaceDirectoryReader,
     required this.workspaceFileReader,
@@ -350,12 +452,14 @@ class CodexSessionConnection
     required this.pluginListReader,
     required this.pluginDetailReader,
     required this.pluginMutationRunner,
+    required this.marketplaceMutationRunner,
     required this.hookListReader,
     required this.appListReader,
     required this.slashCommandManifestReader,
     required this.threadMutationRunner,
     required this.threadShellCommandRunner,
     required this.commandExecRunner,
+    required this.processRunner,
     required this.threadBackgroundTerminalRunner,
     required this.threadGoalRunner,
     required this.threadReviewRunner,
@@ -392,6 +496,16 @@ class CodexSessionConnection
   @override
   final FeedbackUploadRunner feedbackUploadRunner;
   @override
+  final ExperimentalFeatureRunner experimentalFeatureRunner;
+  @override
+  final MemoryRunner memoryRunner;
+  @override
+  final WindowsSandboxRunner windowsSandboxRunner;
+  @override
+  final EnvironmentRunner environmentRunner;
+  @override
+  final ExternalAgentConfigRunner externalAgentConfigRunner;
+  @override
   final FileSearchReader fileSearchReader;
   @override
   final WorkspaceDirectoryReader workspaceDirectoryReader;
@@ -418,7 +532,15 @@ class CodexSessionConnection
   @override
   final PluginMutationRunner pluginMutationRunner;
   @override
+  final MarketplaceMutationRunner marketplaceMutationRunner;
+  @override
   final HookListReader hookListReader;
+  @override
+  final HookMutationRunner hookMutationRunner;
+  @override
+  final RealtimeRunner realtimeRunner;
+  @override
+  final WorkspaceFileMutationRunner workspaceFileMutationRunner;
   @override
   final AppListReader appListReader;
   @override
@@ -429,6 +551,8 @@ class CodexSessionConnection
   final ThreadShellCommandRunner threadShellCommandRunner;
   @override
   final CommandExecRunner commandExecRunner;
+  @override
+  final ProcessRunner processRunner;
   @override
   final ThreadBackgroundTerminalRunner threadBackgroundTerminalRunner;
   @override
@@ -480,6 +604,7 @@ class CodexSessionConnection
       return;
     }
     _closed = true;
+    await workspaceFileMutationRunner.close();
     await session.close(notifyApprovalController: notifyApprovalController);
     await _proxyConnection.close();
   }

@@ -19,26 +19,35 @@ import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/diffs/git_diff_reader.dart';
+import 'package:sadcoder_mobile/src/environments/codex_environment_runner.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/events/guardian_assessment_event.dart';
+import 'package:sadcoder_mobile/src/experimental_features/codex_experimental_feature_runner.dart';
+import 'package:sadcoder_mobile/src/external_agents/codex_external_agent_config_runner.dart';
 import 'package:sadcoder_mobile/src/feedback/feedback_upload_runner.dart';
 import 'package:sadcoder_mobile/src/files/file_search_reader.dart';
 import 'package:sadcoder_mobile/src/files/workspace_directory_reader.dart';
 import 'package:sadcoder_mobile/src/files/workspace_file_kind.dart';
 import 'package:sadcoder_mobile/src/files/workspace_file_reader.dart';
+import 'package:sadcoder_mobile/src/files/workspace_file_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal.dart';
 import 'package:sadcoder_mobile/src/goals/thread_goal_runner.dart';
 import 'package:sadcoder_mobile/src/hooks/hook_list_reader.dart';
+import 'package:sadcoder_mobile/src/hooks/codex_hook_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_config_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_oauth_runner.dart';
 import 'package:sadcoder_mobile/src/mcp/mcp_server_status_reader.dart';
+import 'package:sadcoder_mobile/src/memories/codex_memory_runner.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
+import 'package:sadcoder_mobile/src/plugins/codex_marketplace_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_detail_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_mutation_runner.dart';
+import 'package:sadcoder_mobile/src/processes/codex_process_runner.dart';
 import 'package:sadcoder_mobile/src/protocol/codex_app_session.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc.dart';
+import 'package:sadcoder_mobile/src/realtime/codex_realtime_runner.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
@@ -59,6 +68,7 @@ import 'package:sadcoder_mobile/src/threads/thread_turn_list_reader.dart';
 import 'package:sadcoder_mobile/src/turns/turn_runner.dart';
 import 'package:sadcoder_mobile/src/turns/turn_text_element.dart';
 import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_reader.dart';
+import 'package:sadcoder_mobile/src/windows_sandbox/codex_windows_sandbox_runner.dart';
 
 void main() {
   test('connect opens a session and records state transitions', () async {
@@ -93,6 +103,7 @@ void main() {
     expect(controller.fileSearchReader, isNotNull);
     expect(controller.workspaceDirectoryReader, isNotNull);
     expect(controller.workspaceFileReader, isNotNull);
+    expect(controller.environmentRunner, isNotNull);
     expect(controller.mcpServerConfigRunner, isNotNull);
     expect(controller.mcpServerOAuthRunner, isNotNull);
     expect(controller.modelListReader, isNotNull);
@@ -102,6 +113,7 @@ void main() {
     expect(controller.pluginDetailReader, isNotNull);
     expect(controller.pluginMutationRunner, isNotNull);
     expect(controller.hookListReader, isNotNull);
+    expect(controller.hookMutationRunner, isNotNull);
     expect(controller.appListReader, isNotNull);
     expect(controller.slashCommandManifestReader, isNotNull);
     expect(controller.turnRunner, isNotNull);
@@ -1301,6 +1313,11 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       accountLogoutRunner: const _FakeAccountLogoutRunner(),
       accountUsageSnapshotReader: const _FakeAccountUsageSnapshotReader(),
       feedbackUploadRunner: const _FakeFeedbackUploadRunner(),
+      experimentalFeatureRunner: CodexExperimentalFeatureRunner(session.client),
+      memoryRunner: CodexMemoryRunner(session.client),
+      windowsSandboxRunner: CodexWindowsSandboxRunner(session.client),
+      environmentRunner: CodexEnvironmentRunner(session.client),
+      externalAgentConfigRunner: CodexExternalAgentConfigRunner(session.client),
       fileSearchReader: const _FakeFileSearchReader(),
       workspaceDirectoryReader: const _FakeWorkspaceDirectoryReader(),
       workspaceFileReader: const _FakeWorkspaceFileReader(),
@@ -1314,12 +1331,24 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       pluginListReader: const _FakePluginListReader(),
       pluginDetailReader: const _FakePluginDetailReader(),
       pluginMutationRunner: const _FakePluginMutationRunner(),
+      marketplaceMutationRunner: CodexMarketplaceMutationRunner(session.client),
       hookListReader: const _FakeHookListReader(),
+      hookMutationRunner: CodexHookMutationRunner(session.client),
+      realtimeRunner: CodexRealtimeRunner(
+        client: session.client,
+        events: session.events,
+      ),
+      workspaceFileMutationRunner: CodexWorkspaceFileMutationRunner(
+        client: session.client,
+        fileReader: const _FakeWorkspaceFileReader(),
+        events: session.events,
+      ),
       appListReader: const _FakeAppListReader(),
       slashCommandManifestReader: const _FakeSlashCommandManifestReader(),
       threadMutationRunner: const _FakeThreadMutationRunner(),
       threadShellCommandRunner: CodexThreadShellCommandRunner(session.client),
       commandExecRunner: CodexCommandExecRunner(session.client),
+      processRunner: CodexProcessRunner(session.client),
       threadBackgroundTerminalRunner:
           const _FakeThreadBackgroundTerminalRunner(),
       threadGoalRunner: const _FakeThreadGoalRunner(),

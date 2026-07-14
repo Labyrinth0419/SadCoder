@@ -15,22 +15,30 @@ import '../command_exec/command_exec_runner.dart';
 import '../config/codex_config_snapshot_reader.dart';
 import '../diffs/git_diff_reader.dart';
 import '../events/codex_event.dart';
+import '../environments/environment_runner.dart';
+import '../experimental_features/experimental_feature_runner.dart';
+import '../external_agents/external_agent_config_runner.dart';
 import '../feedback/feedback_upload_runner.dart';
 import '../files/file_search_reader.dart';
 import '../files/workspace_directory_reader.dart';
 import '../files/workspace_file_reader.dart';
 import '../goals/thread_goal_runner.dart';
 import '../hooks/hook_list_reader.dart';
+import '../hooks/hook_mutation_runner.dart';
 import '../mcp/mcp_server_config_runner.dart';
 import '../mcp/mcp_server_oauth_runner.dart';
 import '../mcp/mcp_server_status_reader.dart';
+import '../memories/memory_runner.dart';
 import '../models/model_list_reader.dart';
 import '../permissions/permission_profile_list_reader.dart';
+import '../plugins/marketplace_mutation_runner.dart';
 import '../plugins/plugin_detail_reader.dart';
 import '../plugins/plugin_list_reader.dart';
 import '../plugins/plugin_mutation_runner.dart';
+import '../processes/process_runner.dart';
 import '../protocol/json_rpc_diagnostic_log.dart';
 import '../reviews/thread_review_runner.dart';
+import '../realtime/realtime_runner.dart';
 import '../skills/skill_list_reader.dart';
 import '../ssh/ssh_profile.dart';
 import '../threads/cached_thread_item_list_reader.dart';
@@ -42,7 +50,9 @@ import '../threads/thread_mutation_runner.dart';
 import '../threads/thread_shell_command_runner.dart';
 import '../threads/thread_turn_list_reader.dart';
 import '../turns/turn_runner.dart';
+import '../files/workspace_file_mutation_runner.dart';
 import '../usage/account_usage_snapshot_reader.dart';
+import '../windows_sandbox/windows_sandbox_runner.dart';
 import 'codex_session_connector.dart';
 import 'reconnect_policy.dart';
 import 'session_heartbeat.dart';
@@ -157,6 +167,42 @@ class CodexSessionStateController extends ChangeNotifier {
   FeedbackUploadRunner? get feedbackUploadRunner =>
       _connection?.feedbackUploadRunner;
 
+  ExternalAgentConfigRunner? get externalAgentConfigRunner {
+    final connection = _connection;
+    if (connection == null ||
+        connection is! ExternalAgentConfigConnectionHandle) {
+      return null;
+    }
+    return (connection as ExternalAgentConfigConnectionHandle)
+        .externalAgentConfigRunner;
+  }
+
+  ExperimentalFeatureRunner? get experimentalFeatureRunner {
+    final connection = _connection;
+    if (connection == null ||
+        connection is! ExperimentalFeatureConnectionHandle) {
+      return null;
+    }
+    return (connection as ExperimentalFeatureConnectionHandle)
+        .experimentalFeatureRunner;
+  }
+
+  MemoryRunner? get memoryRunner {
+    final connection = _connection;
+    if (connection == null || connection is! MemoryConnectionHandle) {
+      return null;
+    }
+    return (connection as MemoryConnectionHandle).memoryRunner;
+  }
+
+  WindowsSandboxRunner? get windowsSandboxRunner {
+    final connection = _connection;
+    if (connection == null || connection is! WindowsSandboxConnectionHandle) {
+      return null;
+    }
+    return (connection as WindowsSandboxConnectionHandle).windowsSandboxRunner;
+  }
+
   GitDiffReader? get gitDiffReader => _connection?.gitDiffReader;
 
   FileSearchReader? get fileSearchReader => _connection?.fileSearchReader;
@@ -166,6 +212,14 @@ class CodexSessionStateController extends ChangeNotifier {
 
   WorkspaceFileReader? get workspaceFileReader =>
       _connection?.workspaceFileReader;
+
+  EnvironmentRunner? get environmentRunner {
+    final connection = _connection;
+    if (connection == null || connection is! EnvironmentConnectionHandle) {
+      return null;
+    }
+    return (connection as EnvironmentConnectionHandle).environmentRunner;
+  }
 
   McpServerConfigRunner? get mcpServerConfigRunner =>
       _connection?.mcpServerConfigRunner;
@@ -190,7 +244,43 @@ class CodexSessionStateController extends ChangeNotifier {
   PluginMutationRunner? get pluginMutationRunner =>
       _connection?.pluginMutationRunner;
 
+  MarketplaceMutationRunner? get marketplaceMutationRunner {
+    final connection = _connection;
+    if (connection == null ||
+        connection is! MarketplaceMutationConnectionHandle) {
+      return null;
+    }
+    return (connection as MarketplaceMutationConnectionHandle)
+        .marketplaceMutationRunner;
+  }
+
   HookListReader? get hookListReader => _connection?.hookListReader;
+
+  HookMutationRunner? get hookMutationRunner {
+    final connection = _connection;
+    if (connection == null || connection is! HookMutationConnectionHandle) {
+      return null;
+    }
+    return (connection as HookMutationConnectionHandle).hookMutationRunner;
+  }
+
+  RealtimeRunner? get realtimeRunner {
+    final connection = _connection;
+    if (connection == null || connection is! RealtimeConnectionHandle) {
+      return null;
+    }
+    return (connection as RealtimeConnectionHandle).realtimeRunner;
+  }
+
+  WorkspaceFileMutationRunner? get workspaceFileMutationRunner {
+    final connection = _connection;
+    if (connection == null ||
+        connection is! WorkspaceFileMutationConnectionHandle) {
+      return null;
+    }
+    return (connection as WorkspaceFileMutationConnectionHandle)
+        .workspaceFileMutationRunner;
+  }
 
   AppListReader? get appListReader => _connection?.appListReader;
 
@@ -216,6 +306,14 @@ class CodexSessionStateController extends ChangeNotifier {
       return null;
     }
     return (connection as CommandExecConnectionHandle).commandExecRunner;
+  }
+
+  ProcessRunner? get processRunner {
+    final connection = _connection;
+    if (connection == null || connection is! ProcessConnectionHandle) {
+      return null;
+    }
+    return (connection as ProcessConnectionHandle).processRunner;
   }
 
   ThreadBackgroundTerminalRunner? get threadBackgroundTerminalRunner =>

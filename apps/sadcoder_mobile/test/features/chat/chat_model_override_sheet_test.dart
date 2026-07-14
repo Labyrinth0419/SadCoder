@@ -22,6 +22,12 @@ void main() {
             name: 'GPT-5 Codex',
             provider: 'openai',
             isDefault: true,
+            supportedReasoningEfforts: [
+              CodexModelReasoningEffort(id: 'low', description: 'Fast'),
+              CodexModelReasoningEffort(id: 'medium', description: 'Balanced'),
+              CodexModelReasoningEffort(id: 'high', description: 'Deep'),
+            ],
+            defaultReasoningEffort: 'medium',
           ),
         ],
       ),
@@ -54,14 +60,125 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('GPT-5 Codex (openai) (default)').last);
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const ValueKey('chat-model-command-effort')),
-      'high',
+
+    expect(
+      find.byKey(const ValueKey('chat-model-command-effort-list')),
+      findsOneWidget,
     );
+    expect(find.text('Server default (medium)'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('chat-model-command-effort-list')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Balanced'), findsOneWidget);
+    await tester.tap(find.text('high').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('chat-model-command-apply')));
     await tester.pumpAndSettle();
 
     expect(find.text('turn / gpt-5-codex / high'), findsOneWidget);
+  });
+
+  testWidgets('switching models clears an unsupported reasoning effort', (
+    tester,
+  ) async {
+    final overrideController = CodexConfigOverrideController();
+    final modelReader = _RecordingModelListReader(
+      page: const ModelListPage(
+        models: [
+          CodexModelSummary(
+            id: 'model-a',
+            name: 'Model A',
+            supportedReasoningEfforts: [
+              CodexModelReasoningEffort(id: 'low', description: 'Fast'),
+              CodexModelReasoningEffort(id: 'high', description: 'Deep'),
+            ],
+            defaultReasoningEffort: 'low',
+          ),
+          CodexModelSummary(
+            id: 'model-b',
+            name: 'Model B',
+            supportedReasoningEfforts: [
+              CodexModelReasoningEffort(id: 'medium', description: 'Balanced'),
+              CodexModelReasoningEffort(id: 'xhigh', description: 'Maximum'),
+            ],
+            defaultReasoningEffort: 'medium',
+          ),
+        ],
+      ),
+    );
+    final modelListController = ModelListController(
+      readerProvider: () => modelReader,
+    );
+    addTearDown(modelListController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await tester.pumpWidget(
+      _ModelSheetHarness(
+        overrideController: overrideController,
+        modelListController: modelListController,
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('open-chat-model-sheet')));
+    await tester.pumpAndSettle();
+
+    await _selectModel(tester, 'Model A');
+    await tester.tap(
+      find.byKey(const ValueKey('chat-model-command-effort-list')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('high').last);
+    await tester.pumpAndSettle();
+
+    await _selectModel(tester, 'Model B');
+    expect(find.text('Server default (medium)'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('chat-model-command-effort-list')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('xhigh').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('chat-model-command-apply')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('turn / model-b / xhigh'), findsOneWidget);
+  });
+
+  testWidgets('keeps free text effort for models without capability metadata', (
+    tester,
+  ) async {
+    final overrideController = CodexConfigOverrideController();
+    final modelReader = _RecordingModelListReader(
+      page: const ModelListPage(
+        models: [CodexModelSummary(id: 'custom-model', name: 'Custom Model')],
+      ),
+    );
+    final modelListController = ModelListController(
+      readerProvider: () => modelReader,
+    );
+    addTearDown(modelListController.dispose);
+    addTearDown(overrideController.dispose);
+
+    await tester.pumpWidget(
+      _ModelSheetHarness(
+        overrideController: overrideController,
+        modelListController: modelListController,
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('open-chat-model-sheet')));
+    await tester.pumpAndSettle();
+    await _selectModel(tester, 'Custom Model');
+
+    expect(
+      find.byKey(const ValueKey('chat-model-command-effort')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('chat-model-command-effort-list')),
+      findsNothing,
+    );
   });
 
   testWidgets('session scope uses existing session override values', (
@@ -104,6 +221,13 @@ void main() {
 
     expect(find.text('session / gpt-5.6-codex / medium'), findsOneWidget);
   });
+}
+
+Future<void> _selectModel(WidgetTester tester, String label) async {
+  await tester.tap(find.byKey(const ValueKey('chat-model-command-model-list')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(label).last);
+  await tester.pumpAndSettle();
 }
 
 class _ModelSheetHarness extends StatefulWidget {

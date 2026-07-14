@@ -5,12 +5,14 @@ class _PreviewPanel extends StatelessWidget {
     required this.preview,
     required this.onModeChanged,
     required this.onLoadMore,
+    this.onEdit,
     this.errorText,
   });
 
   final _FilePreviewState preview;
   final ValueChanged<_PreviewMode> onModeChanged;
   final VoidCallback onLoadMore;
+  final VoidCallback? onEdit;
   final String? errorText;
 
   @override
@@ -50,6 +52,7 @@ class _PreviewPanel extends StatelessWidget {
               preview: preview,
               onModeChanged: onModeChanged,
               onLoadMore: onLoadMore,
+              onEdit: onEdit,
               loadMoreErrorText: preview.loadMoreError == null
                   ? null
                   : _workspaceFailureMessage(l10n, preview.loadMoreError!),
@@ -147,12 +150,14 @@ class _PreviewContent extends StatelessWidget {
     required this.preview,
     required this.onModeChanged,
     required this.onLoadMore,
+    this.onEdit,
     this.loadMoreErrorText,
   });
 
   final _FilePreviewState preview;
   final ValueChanged<_PreviewMode> onModeChanged;
   final VoidCallback onLoadMore;
+  final VoidCallback? onEdit;
   final String? loadMoreErrorText;
 
   @override
@@ -187,6 +192,13 @@ class _PreviewContent extends StatelessWidget {
                 ],
               ),
             ),
+            if (onEdit != null)
+              IconButton(
+                key: const ValueKey('workspace-files-preview-edit'),
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: l10n.workspaceFilesEdit,
+              ),
           ],
         ),
         if (isMarkdown) ...[

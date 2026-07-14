@@ -143,6 +143,7 @@ void main() {
         archived: false,
         onArchivedChanged: (_) {},
         onUnarchiveThread: null,
+        onNewThread: null,
       ),
     );
 

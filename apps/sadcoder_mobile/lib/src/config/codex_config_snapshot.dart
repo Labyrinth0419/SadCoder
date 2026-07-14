@@ -25,6 +25,17 @@ class CodexConfigSnapshot {
 
   String? originLabelFor(String key) => origins[key]?.displayLabel;
 
+  String? get userConfigVersion {
+    for (final layer in layers) {
+      final source = _objectMap(layer['name']);
+      if (_stringValue(source['type']) == 'user' &&
+          !_hasText(_stringValue(source['profile']))) {
+        return _stringValue(layer['version']);
+      }
+    }
+    return null;
+  }
+
   Map<String, Object?> toRawJson() => {
     'config': config,
     'origins': origins.map((key, value) => MapEntry(key, value.raw)),

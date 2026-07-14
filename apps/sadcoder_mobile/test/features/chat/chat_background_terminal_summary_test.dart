@@ -22,14 +22,8 @@ void main() {
       ],
     });
 
-    final english = buildThreadBackgroundTerminalsSummary(
-      l10n: en,
-      page: page,
-    );
-    final chinese = buildThreadBackgroundTerminalsSummary(
-      l10n: zh,
-      page: page,
-    );
+    final english = buildThreadBackgroundTerminalsSummary(l10n: en, page: page);
+    final chinese = buildThreadBackgroundTerminalsSummary(l10n: zh, page: page);
 
     expect(english, contains('OS pid: 1,234'));
     expect(english, contains('CPU: 12.5%'));

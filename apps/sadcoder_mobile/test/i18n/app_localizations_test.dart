@@ -114,6 +114,11 @@ void main() {
     expect(zh.colorPaletteLabel('sugar-rush'), '糖果冲击');
     expect(zh.modelDefaultValueSummary('low'), '默认：low');
     expect(zh.modelReasoningSummary('low, high'), '推理：low, high');
+    expect(en.modelEffortServerDefault('medium'), 'Server default (medium)');
+    expect(en.modelEffortServerDefault(null), 'Server default');
+    expect(zh.modelEffortServerDefault('medium'), '服务器默认（medium）');
+    expect(zh.modelEffortDefaultOption('high'), 'high（默认）');
+    expect(zh.modelEffortCustom('custom'), 'custom（当前自定义值）');
     expect(zh.modelServiceTierSummary('default'), '服务档位：default');
     expect(zh.modelAnnouncementSummary('new'), '公告：new');
     expect(zh.approvalMethod, '方法');
@@ -137,6 +142,9 @@ void main() {
     expect(zh.slashCommandRolloutPathUnavailable, '暂时无法获取 rollout 路径。');
     expect(zh.slashCommandTestApprovalReason, 'SadCoder 测试审批请求');
     expect(zh.slashCommandTestApprovalQueued, '已加入测试审批请求。');
+    expect(zh.externalAgentImportDetecting, '正在扫描所选主机……');
+    expect(zh.externalAgentImportType('MCP_SERVER_CONFIG'), 'MCP 服务器');
+    expect(en.externalAgentImportSelected(3), 'Continue with 3');
     expect(zh.pluginLocalVersion('1.2.0'), '本地 1.2.0');
     expect(zh.debugConfigOriginUnknown, '未知来源');
     expect(zh.slashCommandArgumentHint('rename'), '<名称>');

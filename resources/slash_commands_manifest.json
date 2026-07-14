@@ -74,9 +74,9 @@
       "supportsInlineArgs": false,
       "availableDuringTask": false,
       "availableInSideConversation": false,
-      "platformVisibility": "all",
-      "mappingType": "agentFallback",
-      "mappingTarget": "codex sandbox setup fallback",
+      "platformVisibility": "windowsOnly",
+      "mappingType": "appServer",
+      "mappingTarget": "windowsSandbox/setupStart elevated",
       "phase": "thirdStage",
       "riskLevel": "high"
     },
@@ -101,8 +101,8 @@
       "availableDuringTask": false,
       "availableInSideConversation": false,
       "platformVisibility": "all",
-      "mappingType": "agentFallback",
-      "mappingTarget": "server Codex config experimental toggles",
+      "mappingType": "appServer",
+      "mappingTarget": "experimentalFeature/list + config/batchWrite",
       "phase": "thirdStage",
       "riskLevel": "medium"
     },
@@ -127,8 +127,8 @@
       "availableDuringTask": false,
       "availableInSideConversation": false,
       "platformVisibility": "all",
-      "mappingType": "agentFallback",
-      "mappingTarget": "server memory configuration",
+      "mappingType": "appServer",
+      "mappingTarget": "thread/memoryMode/set + memory/reset",
       "phase": "thirdStage",
       "riskLevel": "medium"
     },
@@ -309,8 +309,8 @@
       "availableDuringTask": false,
       "availableInSideConversation": false,
       "platformVisibility": "all",
-      "mappingType": "agentFallback",
-      "mappingTarget": "AGENTS.md generation with diff approval",
+      "mappingType": "appServer",
+      "mappingTarget": "turn/start with AGENTS.md file-change approval",
       "phase": "thirdStage",
       "riskLevel": "medium"
     },
@@ -564,15 +564,15 @@
     {
       "command": "plugins",
       "aliases": [],
-      "description": "browse plugins; use install/uninstall <id> or filter by marketplace",
+      "description": "browse plugins; manage plugin installs and marketplace sources",
       "supportsInlineArgs": true,
       "availableDuringTask": true,
       "availableInSideConversation": false,
       "platformVisibility": "all",
       "mappingType": "appServer",
-      "mappingTarget": "plugin/list + plugin/install + plugin/uninstall",
+      "mappingTarget": "plugin/list/install/uninstall + marketplace/add/remove/upgrade",
       "phase": "secondStage",
-      "riskLevel": "low"
+      "riskLevel": "medium"
     },
     {
       "command": "logout",

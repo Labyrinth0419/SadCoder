@@ -5,10 +5,12 @@ import 'package:flutter/services.dart';
 
 import '../../accounts/account_snapshot_controller.dart';
 import '../../appearance/app_appearance_controller.dart';
+import '../../commands/init_command_prompt.dart';
 import '../../commands/slash_command_action_dispatcher.dart';
 import '../../commands/slash_command_registry.dart';
 import '../../config/codex_config_override_controller.dart';
 import '../../config/codex_config_snapshot_controller.dart';
+import '../../events/codex_event.dart';
 import '../../files/file_search_reader.dart';
 import '../../i18n/app_localizations.dart';
 import '../../mcp/mcp_server_status_controller.dart';
@@ -24,6 +26,7 @@ import '../../turns/turn_controller.dart';
 import '../../turns/turn_text_element.dart';
 import '../../usage/account_usage_snapshot_controller.dart';
 import '../../usage/thread_token_usage_controller.dart';
+import '../../windows_sandbox/windows_sandbox_runner.dart';
 import 'chat_account_command_handler.dart';
 import 'chat_advanced_controls_handler.dart';
 import 'chat_activity_strip.dart';
@@ -32,11 +35,13 @@ import 'chat_connection_controls.dart';
 import 'chat_composer_mention.dart';
 import 'chat_composer_submit_handler.dart';
 import 'chat_conversation_command_handler.dart';
+import 'chat_external_agent_import_handler.dart';
 import 'chat_file_context_command_handler.dart';
 import 'chat_layout_metrics.dart';
 import 'chat_override_command_handler.dart';
 import 'chat_profile_selection_handler.dart';
 import 'chat_raw_transcript_command.dart';
+import 'chat_realtime_sheet.dart';
 import 'chat_status_summary.dart';
 import 'chat_summary_command_handler.dart';
 import 'chat_timeline_controller.dart';
@@ -115,6 +120,7 @@ class _ChatPageState extends State<ChatPage> {
   String? _selectedProfileId;
   Object? _profileLoadError;
   late final ChatTimelineWindowCoordinator _timelineWindowCoordinator;
+  StreamSubscription<CodexEvent>? _windowsSandboxSetupSubscription;
 
   @override
   void initState() {
@@ -140,6 +146,7 @@ class _ChatPageState extends State<ChatPage> {
   void didUpdateWidget(ChatPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.sessionController != widget.sessionController) {
+      unawaited(_cancelWindowsSandboxSetupSubscription());
       oldWidget.sessionController?.removeListener(_handleSessionChanged);
       widget.sessionController?.addListener(_handleSessionChanged);
       _lastSessionStatus = widget.sessionController?.status;
@@ -168,6 +175,7 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   void dispose() {
+    unawaited(_cancelWindowsSandboxSetupSubscription());
     widget.sessionController?.removeListener(_handleSessionChanged);
     widget.threadDetailController?.removeListener(_handleThreadDetailChanged);
     widget.turnController?.removeListener(_handleTurnChanged);
@@ -342,6 +350,14 @@ class _ChatPageState extends State<ChatPage> {
                                         onUnarchiveThread: (thread) =>
                                             _threadCommandHandler()
                                                 .unarchiveThread(thread),
+                                        onNewThread:
+                                            turnController?.canSubmit == true
+                                            ? () => unawaited(
+                                                _startNewThreadFromSidebar(
+                                                  closeSidebar: overlaySidebar,
+                                                ),
+                                              )
+                                            : null,
                                       ),
                                     ],
                                   ),
@@ -450,6 +466,19 @@ class _ChatPageState extends State<ChatPage> {
                               children: [
                                 IconButton(
                                   key: const ValueKey(
+                                    'chat-composer-realtime-button',
+                                  ),
+                                  onPressed:
+                                      sessionController?.realtimeRunner !=
+                                              null &&
+                                          _currentThreadId() != null
+                                      ? _openRealtime
+                                      : null,
+                                  icon: const Icon(Icons.graphic_eq),
+                                  tooltip: l10n.realtimeTitle,
+                                ),
+                                IconButton(
+                                  key: const ValueKey(
                                     'chat-composer-stop-button',
                                   ),
                                   onPressed:
@@ -486,6 +515,17 @@ class _ChatPageState extends State<ChatPage> {
 
   void _toggleThreadSidebar() {
     setState(() => _showThreadSidebar = !_showThreadSidebar);
+  }
+
+  Future<void> _startNewThreadFromSidebar({required bool closeSidebar}) async {
+    final started = await _threadCommandHandler().startNewThread();
+    if (!mounted || !started) {
+      return;
+    }
+    _showChatSnackBar(context.l10n.slashCommandNewThread);
+    if (closeSidebar) {
+      setState(() => _showThreadSidebar = false);
+    }
   }
 
   void _handleComposerChanged(String value) {
@@ -567,6 +607,14 @@ class _ChatPageState extends State<ChatPage> {
     await widget.turnController?.interruptActiveTurn();
   }
 
+  Future<void> _openRealtime() {
+    return showChatRealtimeSheet(
+      context: context,
+      runner: widget.sessionController?.realtimeRunner,
+      threadId: _currentThreadId(),
+    );
+  }
+
   List<SshProfile> _headerProfiles() {
     return chatHeaderProfiles(
       savedProfiles: _savedProfiles,
@@ -645,6 +693,10 @@ class _ChatPageState extends State<ChatPage> {
       renameThread: (name) => _threadCommandHandler().renameThread(name),
       logout: () => _accountCommandHandler().logoutAccount(),
       submitFeedback: () => _accountCommandHandler().submitFeedback(),
+      importExternalAgentConfig: () =>
+          _externalAgentImportHandler().importFromClaudeCode(),
+      startInit: _startInitCommand,
+      setupDefaultSandbox: _setupDefaultWindowsSandbox,
       configureTheme: () => _appearanceCommandHandler().configureTheme(),
       configureTitleDisplay: () =>
           _appearanceCommandHandler().configureTitleDisplay(),
@@ -720,6 +772,141 @@ class _ChatPageState extends State<ChatPage> {
       refreshVisibleThreads: _refreshVisibleThreads,
       showSnackBar: _showChatSnackBar,
     );
+  }
+
+  ChatExternalAgentImportHandler _externalAgentImportHandler() {
+    return ChatExternalAgentImportHandler(
+      context: context,
+      mounted: () => mounted,
+      runner: widget.sessionController?.externalAgentConfigRunner,
+      currentWorkspaceCwdsProvider: _currentWorkspaceCwds,
+      events: widget.sessionController?.events,
+    );
+  }
+
+  Future<SlashCommandCallbackResult> _startInitCommand() async {
+    final controller = widget.turnController;
+    if (controller == null || controller.activeTurnId != null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+    await controller.submitText(codexInitCommandPrompt);
+    if (!mounted) {
+      return SlashCommandCallbackResult.cancelled;
+    }
+    if (controller.status == TurnControllerStatus.failed) {
+      throw controller.error ?? StateError('Failed to start /init turn.');
+    }
+    return controller.activeTurnId == null
+        ? SlashCommandCallbackResult.unavailable
+        : SlashCommandCallbackResult.executed;
+  }
+
+  Future<SlashCommandCallbackResult> _setupDefaultWindowsSandbox() async {
+    final sessionController = widget.sessionController;
+    final runner = sessionController?.windowsSandboxRunner;
+    final events = sessionController?.events;
+    if (runner == null || events == null) {
+      return SlashCommandCallbackResult.unavailable;
+    }
+
+    await _cancelWindowsSandboxSetupSubscription();
+    final completion = Completer<CodexEvent>();
+    late final StreamSubscription<CodexEvent> subscription;
+    subscription = events.listen(
+      (event) {
+        if (event.kind != CodexEventKind.windowsSandboxSetupCompleted ||
+            WindowsSandboxSetupMode.fromWire(event.payload?['mode']) !=
+                WindowsSandboxSetupMode.elevated ||
+            completion.isCompleted) {
+          return;
+        }
+        completion.complete(event);
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (!completion.isCompleted) {
+          completion.completeError(error, stackTrace);
+        }
+      },
+    );
+    _windowsSandboxSetupSubscription = subscription;
+
+    try {
+      final cwds = _currentWorkspaceCwds();
+      final started = await runner.startSetup(
+        mode: WindowsSandboxSetupMode.elevated,
+        cwd: cwds.isEmpty ? null : cwds.first,
+      );
+      if (!started.started) {
+        await _cancelWindowsSandboxSetupSubscription();
+        return SlashCommandCallbackResult.unavailable;
+      }
+    } on Object {
+      await _cancelWindowsSandboxSetupSubscription();
+      rethrow;
+    }
+
+    unawaited(
+      _finishDefaultWindowsSandboxSetup(
+        completion.future.timeout(const Duration(minutes: 10)),
+        subscription,
+      ),
+    );
+    return SlashCommandCallbackResult.executed;
+  }
+
+  Future<void> _finishDefaultWindowsSandboxSetup(
+    Future<CodexEvent> completion,
+    StreamSubscription<CodexEvent> subscription,
+  ) async {
+    try {
+      final event = await completion;
+      if (!mounted) {
+        return;
+      }
+      final success = event.payload?['success'] == true;
+      if (success) {
+        final configController = widget.configSnapshotController;
+        if (configController != null) {
+          final cwds = _currentWorkspaceCwds();
+          unawaited(
+            configController.refresh(cwd: cwds.isEmpty ? null : cwds.first),
+          );
+        }
+        _showChatSnackBar(context.l10n.slashCommandSandboxSetupCompleted);
+        return;
+      }
+      final detail = event.payload?['error']?.toString().trim();
+      _showChatSnackBar(
+        context.l10n.slashCommandSandboxSetupFailed(
+          detail == null || detail.isEmpty
+              ? context.l10n.slashCommandSandboxSetupUnknownError
+              : detail,
+        ),
+      );
+    } on TimeoutException {
+      if (mounted) {
+        _showChatSnackBar(
+          context.l10n.slashCommandSandboxSetupCompletionNotReceived,
+        );
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        _showChatSnackBar(
+          context.l10n.slashCommandSandboxSetupFailed(error.toString()),
+        );
+      }
+    } finally {
+      await subscription.cancel();
+      if (identical(_windowsSandboxSetupSubscription, subscription)) {
+        _windowsSandboxSetupSubscription = null;
+      }
+    }
+  }
+
+  Future<void> _cancelWindowsSandboxSetupSubscription() async {
+    final subscription = _windowsSandboxSetupSubscription;
+    _windowsSandboxSetupSubscription = null;
+    await subscription?.cancel();
   }
 
   ChatAppearanceCommandHandler _appearanceCommandHandler() {
@@ -920,7 +1107,11 @@ class _ChatPageState extends State<ChatPage> {
           color: Theme.of(dialogContext).colorScheme.error,
         ),
         title: Text(l10n.slashCommandHighRiskConfirmTitle),
-        content: Text(l10n.slashCommandHighRiskConfirmBody(command.slash)),
+        content: Text(
+          command.command == 'setup-default-sandbox'
+              ? l10n.slashCommandSandboxSetupConfirmBody
+              : l10n.slashCommandHighRiskConfirmBody(command.slash),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -1126,13 +1317,14 @@ class _ChatPageState extends State<ChatPage> {
           l10n.slashCommandAgentThreadSelected,
         SlashCommandActionEffect.appHandoff =>
           l10n.slashCommandAppHandoffUnavailable,
-        SlashCommandActionEffect.importFlow =>
-          l10n.slashCommandImportUnavailable,
-        SlashCommandActionEffect.initFlow => l10n.slashCommandInitUnavailable,
+        SlashCommandActionEffect.importFlow => l10n.slashCommandImportStarted,
+        SlashCommandActionEffect.initFlow => l10n.slashCommandInitStarted,
         SlashCommandActionEffect.sandboxSetup =>
-          l10n.slashCommandSandboxSetupUnavailable,
+          l10n.slashCommandSandboxSetupStarted,
         SlashCommandActionEffect.sandboxReadDir =>
           l10n.slashCommandSandboxReadDirUnavailable,
+        SlashCommandActionEffect.memoryMaintenanceDiagnostic =>
+          l10n.slashCommandMemoryMaintenanceAppServer,
         SlashCommandActionEffect.modelOverride => l10n.slashCommandModelUpdated,
         SlashCommandActionEffect.personalityOverride =>
           l10n.slashCommandPersonalityUpdated,

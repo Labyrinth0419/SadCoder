@@ -9,6 +9,7 @@ import 'package:sadcoder_mobile/src/command_exec/command_exec_runner.dart';
 import 'package:sadcoder_mobile/src/features/terminal/terminal_page.dart';
 import 'package:sadcoder_mobile/src/features/terminal/terminal_session_controller.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
+import 'package:sadcoder_mobile/src/processes/process_runner.dart';
 import 'package:sadcoder_mobile/src/workspace/workspace_command_runner.dart';
 
 void main() {
@@ -124,11 +125,83 @@ void main() {
     expect(find.textContaining('No active command exec session'), findsNothing);
     expect(find.textContaining('Bad state'), findsNothing);
   });
+
+  testWidgets('host process mode requires confirmation before starting', (
+    tester,
+  ) async {
+    final sandboxedRunner = _FakeCommandExecRunner();
+    final hostRunner = _FakeProcessRunner();
+    await _pumpTerminalPage(
+      tester,
+      runner: sandboxedRunner,
+      hostProcessRunner: hostRunner,
+      root: '/repo',
+    );
+
+    await tester.tap(find.text('Host process'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('without the Codex sandbox'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('terminal-command-field')),
+      'bash -lc "echo hi"',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('terminal-run-button')));
+    await tester.pumpAndSettle();
+
+    expect(hostRunner.requests, isEmpty);
+    expect(find.text('Run unsandboxed host process?'), findsOneWidget);
+    expect(find.textContaining('Command: bash -lc "echo hi"'), findsOneWidget);
+    expect(find.textContaining('Working directory: /repo'), findsWidgets);
+    await tester.tap(
+      find.byKey(const ValueKey('terminal-host-process-confirm')),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(sandboxedRunner.requests, isEmpty);
+    expect(hostRunner.requests, hasLength(1));
+    expect(hostRunner.requests.single.command, ['bash', '-lc', 'echo hi']);
+    expect(hostRunner.requests.single.cwd, '/repo');
+
+    hostRunner.session.complete();
+    await tester.pump();
+    await tester.pump();
+  });
+
+  testWidgets('canceling host process confirmation sends no RPC', (
+    tester,
+  ) async {
+    final hostRunner = _FakeProcessRunner();
+    await _pumpTerminalPage(
+      tester,
+      runner: _FakeCommandExecRunner(),
+      hostProcessRunner: hostRunner,
+      root: '/repo',
+    );
+
+    await tester.tap(find.text('Host process'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('terminal-command-field')),
+      'pwd',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('terminal-run-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(hostRunner.requests, isEmpty);
+    expect(find.text('Idle'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpTerminalPage(
   WidgetTester tester, {
   CommandExecRunner? runner,
+  ProcessRunner? hostProcessRunner,
   String? root,
   TerminalSessionController? controller,
   Locale? locale,
@@ -146,7 +219,12 @@ Future<void> _pumpTerminalPage(
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
-        body: TerminalPage(runner: runner, root: root, controller: controller),
+        body: TerminalPage(
+          runner: runner,
+          hostProcessRunner: hostProcessRunner,
+          root: root,
+          controller: controller,
+        ),
       ),
     ),
   );
@@ -163,6 +241,9 @@ class _FakeCommandExecRunner implements CommandExecRunner {
     return session;
   }
 }
+
+class _FakeProcessRunner extends _FakeCommandExecRunner
+    implements ProcessRunner {}
 
 class _FakeCommandExecSession implements CommandExecSession {
   final _outputController = StreamController<CommandExecOutputChunk>();

@@ -28,6 +28,30 @@ class ChatPluginsUninstallCommand extends ChatPluginsCommand {
   final String pluginId;
 }
 
+class ChatMarketplaceAddCommand extends ChatPluginsCommand {
+  const ChatMarketplaceAddCommand({
+    required this.source,
+    this.refName,
+    this.sparsePaths = const [],
+  });
+
+  final String source;
+  final String? refName;
+  final List<String> sparsePaths;
+}
+
+class ChatMarketplaceRemoveCommand extends ChatPluginsCommand {
+  const ChatMarketplaceRemoveCommand({required this.marketplaceName});
+
+  final String marketplaceName;
+}
+
+class ChatMarketplaceUpgradeCommand extends ChatPluginsCommand {
+  const ChatMarketplaceUpgradeCommand({this.marketplaceName});
+
+  final String? marketplaceName;
+}
+
 ChatPluginsCommand? parseChatPluginsCommand(String arguments) {
   final parts = arguments
       .trim()
@@ -39,6 +63,12 @@ ChatPluginsCommand? parseChatPluginsCommand(String arguments) {
   }
 
   final head = parts.first.toLowerCase();
+  if (head == 'marketplace' || head == 'marketplaces') {
+    final marketplaceMutation = _parseMarketplaceMutation(parts);
+    if (marketplaceMutation != null) {
+      return marketplaceMutation;
+    }
+  }
   if (parts.length == 2) {
     final pluginId = parts[1];
     if (head == 'read' || head == 'show' || head == 'detail') {
@@ -57,6 +87,75 @@ ChatPluginsCommand? parseChatPluginsCommand(String arguments) {
     return null;
   }
   return ChatPluginsListCommand(marketplaceKinds: marketplaceKinds);
+}
+
+ChatPluginsCommand? _parseMarketplaceMutation(List<String> parts) {
+  if (parts.length < 2) {
+    return null;
+  }
+  return switch (parts[1].toLowerCase()) {
+    'add' => _parseMarketplaceAdd(parts),
+    'remove' when parts.length == 3 && !parts[2].startsWith('--') =>
+      ChatMarketplaceRemoveCommand(marketplaceName: parts[2]),
+    'upgrade' when parts.length == 2 => const ChatMarketplaceUpgradeCommand(),
+    'upgrade' when parts.length == 3 && !parts[2].startsWith('--') =>
+      ChatMarketplaceUpgradeCommand(marketplaceName: parts[2]),
+    _ => null,
+  };
+}
+
+ChatMarketplaceAddCommand? _parseMarketplaceAdd(List<String> parts) {
+  if (parts.length < 3 || parts[2].startsWith('--')) {
+    return null;
+  }
+  String? refName;
+  final sparsePaths = <String>[];
+  var index = 3;
+  while (index < parts.length) {
+    final token = parts[index];
+    if (token == '--ref') {
+      if (refName != null ||
+          index + 1 >= parts.length ||
+          parts[index + 1].startsWith('--')) {
+        return null;
+      }
+      refName = parts[index + 1];
+      index += 2;
+      continue;
+    }
+    if (token.startsWith('--ref=')) {
+      final value = token.substring('--ref='.length);
+      if (refName != null || value.isEmpty) {
+        return null;
+      }
+      refName = value;
+      index++;
+      continue;
+    }
+    if (token == '--sparse') {
+      if (index + 1 >= parts.length || parts[index + 1].startsWith('--')) {
+        return null;
+      }
+      sparsePaths.add(parts[index + 1]);
+      index += 2;
+      continue;
+    }
+    if (token.startsWith('--sparse=')) {
+      final value = token.substring('--sparse='.length);
+      if (value.isEmpty) {
+        return null;
+      }
+      sparsePaths.add(value);
+      index++;
+      continue;
+    }
+    return null;
+  }
+  return ChatMarketplaceAddCommand(
+    source: parts[2],
+    refName: refName,
+    sparsePaths: List.unmodifiable(sparsePaths),
+  );
 }
 
 List<PluginMarketplaceKind>? _pluginMarketplaceKindsFromParts(

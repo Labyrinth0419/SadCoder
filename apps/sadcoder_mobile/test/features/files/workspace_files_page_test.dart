@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sadcoder_mobile/src/command_exec/command_exec_runner.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/features/files/workspace_files_page.dart';
+import 'package:sadcoder_mobile/src/features/terminal/terminal_page.dart';
 import 'package:sadcoder_mobile/src/files/file_search_reader.dart';
 import 'package:sadcoder_mobile/src/files/workspace_directory_reader.dart';
 import 'package:sadcoder_mobile/src/files/workspace_file_failure.dart';
 import 'package:sadcoder_mobile/src/files/workspace_file_kind.dart';
 import 'package:sadcoder_mobile/src/files/workspace_file_reader.dart';
+import 'package:sadcoder_mobile/src/files/workspace_file_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
 import 'package:sadcoder_mobile/src/theme/sadcoder_theme.dart';
 import 'package:sadcoder_mobile/src/threads/thread_detail_controller.dart';
@@ -17,6 +20,68 @@ import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 
 void main() {
+  testWidgets('edits a fully loaded text file after diff confirmation', (
+    tester,
+  ) async {
+    final directoryReader = _FakeWorkspaceDirectoryReader({
+      '': [_entry(path: 'main.dart', name: 'main.dart')],
+    });
+    const before = 'void main() {}';
+    final fileReader = _FakeWorkspaceFileReader(
+      stats: {
+        'main.dart': _stat(
+          path: 'main.dart',
+          language: 'dart',
+          contentVersion: 'v1',
+        ),
+      },
+      chunks: {
+        'main.dart': [_chunk(path: 'main.dart', content: before)],
+      },
+    );
+    final mutationRunner = _FakeWorkspaceFileMutationRunner(
+      stat: _stat(path: 'main.dart', language: 'dart', contentVersion: 'v2'),
+    );
+
+    await _pumpFilesPage(
+      tester,
+      directoryReader: directoryReader,
+      fileReader: fileReader,
+      fileMutationRunner: mutationRunner,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-entry-main.dart')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-preview-edit')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('workspace-file-edit-field')),
+      'void main() { print(1); }',
+    );
+    await tester.tap(find.byKey(const ValueKey('workspace-file-edit-save')));
+    await tester.pumpAndSettle();
+    expect(find.text('Review file changes'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('workspace-file-edit-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(mutationRunner.calls.single.path, 'main.dart');
+    expect(mutationRunner.calls.single.expectedContent, before);
+    expect(mutationRunner.calls.single.content, 'void main() { print(1); }');
+    expect(
+      tester.widgetList<SelectableText>(find.byType(SelectableText)).any((
+        text,
+      ) {
+        return (text.data ?? text.textSpan?.toPlainText() ?? '').contains(
+          'print(1)',
+        );
+      }),
+      isTrue,
+    );
+  });
+
   testWidgets('browses directories and toggles Markdown render/raw modes', (
     tester,
   ) async {
@@ -241,6 +306,29 @@ void main() {
 
     expect(find.textContaining('# Big'), findsOneWidget);
     expect(find.text('Big'), findsNothing);
+  });
+
+  testWidgets('opens the terminal for the active workspace root', (
+    tester,
+  ) async {
+    await _pumpFilesPage(
+      tester,
+      directoryReader: const _FakeWorkspaceDirectoryReader({'': []}),
+      fileReader: const _FakeWorkspaceFileReader(),
+      commandExecRunner: const _UnavailableCommandExecRunner(),
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-open-terminal')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TerminalPage), findsOneWidget);
+    expect(find.text('Working directory: /repo'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('terminal-command-field')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('uses semantic code colors in dark file previews', (
@@ -632,8 +720,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(
+      find.byKey(const ValueKey('workspace-files-open-terminal')),
+      findsOneWidget,
+    );
     for (final key in const [
-      'workspace-files-terminal',
       'workspace-files-new-file',
       'workspace-files-new-folder',
       'workspace-files-rename',
@@ -645,7 +736,6 @@ void main() {
       expect(find.byKey(ValueKey(key)), findsNothing);
     }
     for (final icon in const [
-      Icons.terminal,
       Icons.note_add_outlined,
       Icons.create_new_folder_outlined,
       Icons.drive_file_rename_outline,
@@ -656,7 +746,6 @@ void main() {
       expect(find.byIcon(icon), findsNothing);
     }
     for (final label in const [
-      'Terminal',
       'New file',
       'New folder',
       'Rename',
@@ -1128,7 +1217,9 @@ Future<void> _pumpFilesPage(
   WidgetTester tester, {
   WorkspaceDirectoryReader? directoryReader,
   WorkspaceFileReader? fileReader,
+  WorkspaceFileMutationRunner? fileMutationRunner,
   FileSearchReader? fileSearchReader,
+  CommandExecRunner? commandExecRunner,
   String? root = '/repo',
   ThemeMode themeMode = ThemeMode.light,
   Locale? locale,
@@ -1156,7 +1247,9 @@ Future<void> _pumpFilesPage(
           root: root,
           directoryReader: directoryReader,
           fileReader: fileReader,
+          fileMutationRunner: fileMutationRunner,
           fileSearchReader: fileSearchReader,
+          commandExecRunner: commandExecRunner,
           configOverrideController: configOverrideController,
           threadDetailController: threadDetailController,
         ),
@@ -1164,6 +1257,15 @@ Future<void> _pumpFilesPage(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+class _UnavailableCommandExecRunner implements CommandExecRunner {
+  const _UnavailableCommandExecRunner();
+
+  @override
+  Future<CommandExecSession> start(CommandExecRequest request) {
+    throw UnimplementedError();
+  }
 }
 
 WorkspaceDirectoryEntry _entry({
@@ -1193,6 +1295,7 @@ WorkspaceFileStat _stat({
   String? mimeType,
   int? sizeBytes,
   bool isSymlink = false,
+  String? contentVersion,
 }) {
   return WorkspaceFileStat(
     root: '/repo',
@@ -1203,6 +1306,7 @@ WorkspaceFileStat _stat({
     isBinary: isBinary,
     mimeType: mimeType,
     language: language,
+    contentVersion: contentVersion,
   );
 }
 
@@ -1356,6 +1460,56 @@ class _FakeWorkspaceFileReader implements WorkspaceFileReader {
     }
     return chunk;
   }
+}
+
+class _FakeWorkspaceFileMutationRunner implements WorkspaceFileMutationRunner {
+  _FakeWorkspaceFileMutationRunner({required this.stat});
+
+  final WorkspaceFileStat stat;
+  final calls =
+      <
+        ({
+          String root,
+          String path,
+          String content,
+          String expectedContent,
+          String? expectedContentVersion,
+        })
+      >[];
+
+  @override
+  Future<WorkspaceFileWriteResult> writeText({
+    required String root,
+    required String path,
+    required String content,
+    required String expectedContent,
+    String? expectedContentVersion,
+  }) async {
+    calls.add((
+      root: root,
+      path: path,
+      content: content,
+      expectedContent: expectedContent,
+      expectedContentVersion: expectedContentVersion,
+    ));
+    return WorkspaceFileWriteResult(
+      root: root,
+      path: path,
+      contentVersion: stat.contentVersion,
+      stat: stat,
+    );
+  }
+
+  @override
+  Future<WorkspaceFileWatch> watch({
+    required String root,
+    required String path,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> close() async {}
 }
 
 class _FlakyLoadMoreWorkspaceFileReader implements WorkspaceFileReader {

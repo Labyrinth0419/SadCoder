@@ -35,6 +35,9 @@ typedef SlashCommandRenameThread = Future<bool> Function(String name);
 typedef SlashCommandLogout = Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandSubmitFeedback =
     Future<SlashCommandCallbackResult> Function();
+typedef SlashCommandImportExternalAgentConfig =
+    Future<SlashCommandCallbackResult> Function();
+typedef SlashCommandStartInit = Future<SlashCommandCallbackResult> Function();
 typedef SlashCommandArgumentAction =
     Future<SlashCommandCallbackResult> Function(String arguments);
 typedef SlashCommandConfigureTheme =
@@ -130,6 +133,7 @@ enum SlashCommandActionEffect {
   initFlow,
   sandboxSetup,
   sandboxReadDir,
+  memoryMaintenanceDiagnostic,
   modelOverride,
   personalityOverride,
   permissionsOverride,
@@ -264,6 +268,9 @@ class SlashCommandActionDispatcher {
     this.renameThread,
     this.logout,
     this.submitFeedback,
+    this.importExternalAgentConfig,
+    this.startInit,
+    this.setupDefaultSandbox,
     this.configureTheme,
     this.configureTitleDisplay,
     this.configureStatusLineDisplay,
@@ -315,6 +322,9 @@ class SlashCommandActionDispatcher {
   final SlashCommandRenameThread? renameThread;
   final SlashCommandLogout? logout;
   final SlashCommandSubmitFeedback? submitFeedback;
+  final SlashCommandImportExternalAgentConfig? importExternalAgentConfig;
+  final SlashCommandStartInit? startInit;
+  final SlashCommandConfiguredAction? setupDefaultSandbox;
   final SlashCommandConfigureTheme? configureTheme;
   final SlashCommandConfigureTitleDisplay? configureTitleDisplay;
   final SlashCommandConfigureStatusLineDisplay? configureStatusLineDisplay;
@@ -400,9 +410,11 @@ class SlashCommandActionDispatcher {
           effect: SlashCommandActionEffect.permissionsOverride,
         );
       case 'setup-default-sandbox':
-        return _setupDefaultSandboxDiagnostic(parsed);
+        return _setupDefaultSandbox(parsed);
       case 'sandbox-add-read-dir':
         return _sandboxReadDirDiagnostic(parsed);
+      case 'debug-m-drop' || 'debug-m-update':
+        return _memoryMaintenanceDiagnostic(parsed);
       case 'ide':
         return _attachIdeContext(parsed);
       case 'plan':
@@ -424,7 +436,7 @@ class SlashCommandActionDispatcher {
       case 'plugins':
         return _showPlugins(parsed);
       case 'import':
-        return _importDiagnostic(parsed);
+        return _importExternalAgentConfig(parsed);
       case 'hooks':
         return _showHooks(parsed);
       case 'apps':
@@ -484,7 +496,7 @@ class SlashCommandActionDispatcher {
       case 'app':
         return _appHandoffDiagnostic(parsed);
       case 'init':
-        return _initDiagnostic(parsed);
+        return _startInit(parsed);
       case 'compact':
         return _configuredAction(
           parsed,
@@ -881,7 +893,9 @@ class SlashCommandActionDispatcher {
     );
   }
 
-  SlashCommandActionResult _importDiagnostic(SlashCommandParseResult parsed) {
+  Future<SlashCommandActionResult> _importExternalAgentConfig(
+    SlashCommandParseResult parsed,
+  ) async {
     if (parsed.arguments.trim().isNotEmpty) {
       return SlashCommandActionResult.unavailable(
         command: parsed.command!,
@@ -889,15 +903,16 @@ class SlashCommandActionDispatcher {
         arguments: parsed.arguments,
       );
     }
-    return SlashCommandActionResult.executed(
-      command: parsed.command!,
-      rawCommand: parsed.rawCommand,
-      arguments: parsed.arguments,
+    return _callbackAction(
+      parsed,
+      action: importExternalAgentConfig,
       effect: SlashCommandActionEffect.importFlow,
     );
   }
 
-  SlashCommandActionResult _initDiagnostic(SlashCommandParseResult parsed) {
+  Future<SlashCommandActionResult> _startInit(
+    SlashCommandParseResult parsed,
+  ) async {
     if (parsed.arguments.trim().isNotEmpty) {
       return SlashCommandActionResult.unavailable(
         command: parsed.command!,
@@ -905,15 +920,14 @@ class SlashCommandActionDispatcher {
         arguments: parsed.arguments,
       );
     }
-    return SlashCommandActionResult.executed(
-      command: parsed.command!,
-      rawCommand: parsed.rawCommand,
-      arguments: parsed.arguments,
+    return _callbackAction(
+      parsed,
+      action: startInit,
       effect: SlashCommandActionEffect.initFlow,
     );
   }
 
-  Future<SlashCommandActionResult> _setupDefaultSandboxDiagnostic(
+  Future<SlashCommandActionResult> _setupDefaultSandbox(
     SlashCommandParseResult parsed,
   ) async {
     if (parsed.arguments.trim().isNotEmpty) {
@@ -938,10 +952,9 @@ class SlashCommandActionDispatcher {
               error: StateError('High-risk command confirmation failed.'),
             );
     }
-    return SlashCommandActionResult.executed(
-      command: parsed.command!,
-      rawCommand: parsed.rawCommand,
-      arguments: parsed.arguments,
+    return _callbackAction(
+      parsed,
+      action: setupDefaultSandbox,
       effect: SlashCommandActionEffect.sandboxSetup,
     );
   }
@@ -976,6 +989,24 @@ class SlashCommandActionDispatcher {
       rawCommand: parsed.rawCommand,
       arguments: parsed.arguments,
       effect: SlashCommandActionEffect.sandboxReadDir,
+    );
+  }
+
+  SlashCommandActionResult _memoryMaintenanceDiagnostic(
+    SlashCommandParseResult parsed,
+  ) {
+    if (parsed.arguments.trim().isNotEmpty) {
+      return SlashCommandActionResult.unavailable(
+        command: parsed.command!,
+        rawCommand: parsed.rawCommand,
+        arguments: parsed.arguments,
+      );
+    }
+    return SlashCommandActionResult.executed(
+      command: parsed.command!,
+      rawCommand: parsed.rawCommand,
+      arguments: parsed.arguments,
+      effect: SlashCommandActionEffect.memoryMaintenanceDiagnostic,
     );
   }
 

@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../command_exec/command_exec_runner.dart';
 import '../../config/codex_config_override_controller.dart';
 import '../../config/codex_config_overrides.dart';
 import '../../files/file_search_reader.dart';
@@ -10,13 +12,18 @@ import '../../files/workspace_directory_reader.dart';
 import '../../files/workspace_file_failure.dart';
 import '../../files/workspace_file_kind.dart';
 import '../../files/workspace_file_reader.dart';
+import '../../files/workspace_file_mutation_runner.dart';
 import '../../files/workspace_path.dart';
 import '../../i18n/app_localizations.dart';
+import '../../processes/process_runner.dart';
 import '../../session/codex_session_state_controller.dart';
 import '../../theme/sadcoder_theme.dart';
 import '../../threads/thread_detail_controller.dart';
+import '../terminal/terminal_page.dart';
 import 'file_search_sheet.dart';
+import '../diffs/diff_text_block.dart';
 import 'workspace_markdown_preview.dart';
+import 'workspace_file_edit_sheet.dart';
 import 'workspace_syntax_highlighter.dart';
 
 part 'workspace_file_preview.dart';
@@ -34,7 +41,10 @@ class WorkspaceFilesPage extends StatefulWidget {
     this.configOverrideController,
     this.directoryReader,
     this.fileReader,
+    this.fileMutationRunner,
     this.fileSearchReader,
+    this.commandExecRunner,
+    this.processRunner,
     this.root,
   });
 
@@ -43,7 +53,10 @@ class WorkspaceFilesPage extends StatefulWidget {
   final CodexConfigOverrideController? configOverrideController;
   final WorkspaceDirectoryReader? directoryReader;
   final WorkspaceFileReader? fileReader;
+  final WorkspaceFileMutationRunner? fileMutationRunner;
   final FileSearchReader? fileSearchReader;
+  final CommandExecRunner? commandExecRunner;
+  final ProcessRunner? processRunner;
   final String? root;
 
   @override
@@ -64,6 +77,8 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
   bool _includeHidden = false;
   bool? _fileSidebarOverride;
   _FilePreviewState _preview = const _FilePreviewState.idle();
+  WorkspaceFileWatch? _fileWatch;
+  StreamSubscription<WorkspaceFileChangedEvent>? _fileWatchSubscription;
 
   @override
   void initState() {
@@ -88,6 +103,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     }
     if (oldWidget.directoryReader != widget.directoryReader ||
         oldWidget.fileReader != widget.fileReader ||
+        oldWidget.fileMutationRunner != widget.fileMutationRunner ||
         oldWidget.root != widget.root) {
       forceReload = true;
     }
@@ -99,6 +115,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
   @override
   void dispose() {
     _detachListeners(widget);
+    unawaited(_cancelFileWatch());
     _filterController
       ..removeListener(_handleFilterChanged)
       ..dispose();
@@ -134,6 +151,11 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
               root: root,
               sidebarVisible: sidebarVisible,
               onToggleSidebar: () => _toggleFileSidebar(sidebarVisible),
+              onOpenTerminal:
+                  root == null ||
+                      (_commandExecRunner == null && _processRunner == null)
+                  ? null
+                  : () => _openTerminal(root),
             ),
             const Divider(height: 1),
             Expanded(
@@ -160,6 +182,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
                             preview: _preview,
                             onModeChanged: _setPreviewMode,
                             onLoadMore: _loadMorePreview,
+                            onEdit: _canEditPreview ? _editPreview : null,
                             errorText: _preview.error == null
                                 ? null
                                 : _workspaceFailureMessage(
@@ -240,8 +263,32 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
   WorkspaceFileReader? get _fileReader =>
       widget.fileReader ?? widget.sessionController?.workspaceFileReader;
 
+  WorkspaceFileMutationRunner? get _fileMutationRunner =>
+      widget.fileMutationRunner ??
+      widget.sessionController?.workspaceFileMutationRunner;
+
+  bool get _canEditPreview {
+    final preview = _preview;
+    final stat = preview.stat;
+    return _fileMutationRunner != null &&
+        preview.status == _PreviewStatus.loaded &&
+        preview.root != null &&
+        preview.path != null &&
+        !preview.hasMore &&
+        stat != null &&
+        stat.kind == WorkspaceFileKind.file &&
+        !stat.isSymlink &&
+        stat.isBinary != true;
+  }
+
   FileSearchReader? get _fileSearchReader =>
       widget.fileSearchReader ?? widget.sessionController?.fileSearchReader;
+
+  CommandExecRunner? get _commandExecRunner =>
+      widget.commandExecRunner ?? widget.sessionController?.commandExecRunner;
+
+  ProcessRunner? get _processRunner =>
+      widget.processRunner ?? widget.sessionController?.processRunner;
 
   String? _resolvedRoot() {
     final explicitRoot = _normalizedText(widget.root);
@@ -279,6 +326,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     final nextRoot = _resolvedRoot();
     final rootChanged = nextRoot != _activeRoot;
     if (rootChanged || forceReload) {
+      unawaited(_cancelFileWatch());
       _activeRoot = nextRoot;
       _directories.clear();
       _directoryRequestIds.clear();
@@ -325,6 +373,18 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     }
     _manualRoot = nextRoot;
     _handleSourcesChanged(forceReload: true);
+  }
+
+  void _openTerminal(String root) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TerminalPage(
+          runner: _commandExecRunner,
+          hostProcessRunner: _processRunner,
+          root: root,
+        ),
+      ),
+    );
   }
 
   void _useDefaultWorkspaceRoot() {
@@ -549,6 +609,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
           mode: _initialPreviewMode(path, stat, chunk),
         );
       });
+      unawaited(_startFileWatch(root, relativePath));
     } on Object catch (error) {
       if (!mounted || requestId != _nextFileRequestId || _activeRoot != root) {
         return;
@@ -654,6 +715,165 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
       return;
     }
     setState(() => _preview = _preview.copyWith(mode: mode));
+  }
+
+  Future<void> _startFileWatch(String root, String path) async {
+    final runner = _fileMutationRunner;
+    if (runner == null) {
+      return;
+    }
+    await _cancelFileWatch();
+    try {
+      final watch = await runner.watch(root: root, path: path);
+      if (!mounted ||
+          _preview.root != root ||
+          _preview.path != path ||
+          _preview.status != _PreviewStatus.loaded) {
+        await watch.close();
+        return;
+      }
+      _fileWatch = watch;
+      _fileWatchSubscription = watch.events.listen(_handleFileChanged);
+    } on Object {
+      // Older app-server versions may not expose fs/watch.
+    }
+  }
+
+  Future<void> _cancelFileWatch() async {
+    final subscription = _fileWatchSubscription;
+    _fileWatchSubscription = null;
+    await subscription?.cancel();
+    final watch = _fileWatch;
+    _fileWatch = null;
+    await watch?.close();
+  }
+
+  void _handleFileChanged(WorkspaceFileChangedEvent event) {
+    final preview = _preview;
+    final root = preview.root;
+    final path = preview.path;
+    if (preview.status != _PreviewStatus.loaded ||
+        root == null ||
+        path == null) {
+      return;
+    }
+    final absolutePath = WorkspacePath.fromRoot(root, path).absolutePath;
+    if (event.changedPaths.isNotEmpty &&
+        !event.changedPaths.any(
+          (changedPath) => _sameWorkspacePath(changedPath, absolutePath),
+        )) {
+      return;
+    }
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(context.l10n.workspaceFilesExternalChange)),
+      );
+  }
+
+  Future<void> _editPreview() async {
+    if (!_canEditPreview) {
+      return;
+    }
+    final preview = _preview;
+    final root = preview.root!;
+    final path = preview.path!;
+    final before = preview.content;
+    final next = await showWorkspaceFileEditSheet(
+      context: context,
+      path: path,
+      content: before,
+    );
+    if (!mounted || next == null || next == before) {
+      return;
+    }
+    final diff = _buildWorkspaceFileDiff(path, before, next);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.workspaceFilesConfirmEdit),
+        content: SizedBox(
+          width: 720,
+          height: 420,
+          child: SingleChildScrollView(
+            child: DiffTextBlock(
+              text: diff,
+              label: path,
+              initialLineLimit: 240,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.l10n.approvalCancel),
+          ),
+          FilledButton(
+            key: const ValueKey('workspace-file-edit-confirm'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.l10n.workspaceFilesSaveEdit),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) {
+      return;
+    }
+    final runner = _fileMutationRunner;
+    final stat = preview.stat;
+    if (runner == null || stat == null) {
+      return;
+    }
+    try {
+      final result = await runner.writeText(
+        root: root,
+        path: path,
+        content: next,
+        expectedContent: before,
+        expectedContentVersion: stat.contentVersion,
+      );
+      if (!mounted) {
+        return;
+      }
+      final byteLength = utf8.encode(next).length;
+      final mode = preview.isMarkdown && byteLength <= _markdownRenderLimitBytes
+          ? preview.mode
+          : _PreviewMode.raw;
+      setState(() {
+        _preview = _FilePreviewState.loaded(
+          root: root,
+          path: path,
+          stat: result.stat,
+          content: next,
+          sizeBytes: byteLength,
+          bytesLoaded: byteLength,
+          nextOffset: null,
+          hasMore: false,
+          mode: mode,
+        );
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.workspaceFilesSaveEdit)),
+      );
+    } on WorkspaceFileConflictException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${context.l10n.workspaceFilesConflict}: ${error.path}',
+            ),
+          ),
+        );
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${context.l10n.workspaceFilesWriteFailed}: $error'),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _copyPath(String path) async {
@@ -801,11 +1021,13 @@ class _FilesTopBar extends StatelessWidget {
     required this.root,
     required this.sidebarVisible,
     required this.onToggleSidebar,
+    required this.onOpenTerminal,
   });
 
   final String? root;
   final bool sidebarVisible;
   final VoidCallback onToggleSidebar;
+  final VoidCallback? onOpenTerminal;
 
   @override
   Widget build(BuildContext context) {
@@ -861,6 +1083,12 @@ class _FilesTopBar extends StatelessWidget {
                     ),
                 ],
               ),
+            ),
+            IconButton(
+              key: const ValueKey('workspace-files-open-terminal'),
+              onPressed: onOpenTerminal,
+              tooltip: l10n.terminalTitle,
+              icon: const Icon(Icons.terminal),
             ),
           ],
         ),
@@ -1655,6 +1883,35 @@ String _workspaceFailureMessage(AppLocalizations l10n, Object? error) {
     WorkspaceFileFailureCode.tooLarge => l10n.workspaceFilesTooLarge,
     WorkspaceFileFailureCode.readFailed => l10n.workspaceFilesReadFailed,
   };
+}
+
+String _buildWorkspaceFileDiff(String path, String before, String after) {
+  final beforeLines = before.split('\n');
+  final afterLines = after.split('\n');
+  final lines = <String>['--- $path', '+++ $path'];
+  final count = beforeLines.length > afterLines.length
+      ? beforeLines.length
+      : afterLines.length;
+  for (var index = 0; index < count; index++) {
+    final oldLine = index < beforeLines.length ? beforeLines[index] : null;
+    final newLine = index < afterLines.length ? afterLines[index] : null;
+    if (oldLine == newLine && oldLine != null) {
+      lines.add(' $oldLine');
+    } else {
+      if (oldLine != null) {
+        lines.add('-$oldLine');
+      }
+      if (newLine != null) {
+        lines.add('+$newLine');
+      }
+    }
+  }
+  return lines.join('\n');
+}
+
+bool _sameWorkspacePath(String left, String right) {
+  return left.replaceAll(r'\', '/').toLowerCase() ==
+      right.replaceAll(r'\', '/').toLowerCase();
 }
 
 enum _DirectoryStatus { idle, loading, loaded, failed }

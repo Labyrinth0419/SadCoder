@@ -950,4 +950,107 @@ void main() {
       },
     });
   });
+
+  test(
+    'experimental feature and config mutation methods use wire shapes',
+    () async {
+      final requests = <JsonRpcRequest>[];
+      final transport = MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        return {};
+      });
+      final client = CodexAppServerClient(transport);
+
+      await client.listExperimentalFeatures(
+        cursor: ' cursor-1 ',
+        limit: 20,
+        threadId: ' thread-1 ',
+      );
+      await client.batchWriteConfig(
+        edits: const [
+          {
+            'keyPath': 'features.network_proxy',
+            'value': true,
+            'mergeStrategy': 'upsert',
+          },
+        ],
+        expectedVersion: ' v1 ',
+        reloadUserConfig: true,
+      );
+
+      expect(requests.map((request) => request.method), [
+        'experimentalFeature/list',
+        'config/batchWrite',
+      ]);
+      expect(requests.first.params, {
+        'cursor': 'cursor-1',
+        'limit': 20,
+        'threadId': 'thread-1',
+      });
+      expect(requests.last.params, {
+        'edits': const [
+          {
+            'keyPath': 'features.network_proxy',
+            'value': true,
+            'mergeStrategy': 'upsert',
+          },
+        ],
+        'expectedVersion': 'v1',
+        'reloadUserConfig': true,
+      });
+    },
+  );
+
+  test(
+    'remote environment methods normalize parameters and wire names',
+    () async {
+      final requests = <JsonRpcRequest>[];
+      final transport = MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        return {};
+      });
+      final client = CodexAppServerClient(transport);
+
+      await client.addEnvironment(
+        environmentId: ' env-1 ',
+        execServerUrl: ' ws://exec.example/ws ',
+        connectTimeoutMs: 5000,
+      );
+      await client.readEnvironmentInfo(environmentId: ' env-1 ');
+      await client.readEnvironmentStatus(environmentId: ' env-1 ');
+
+      expect(requests.map((request) => request.method), [
+        'environment/add',
+        'environment/info',
+        'environment/status',
+      ]);
+      expect(requests[0].params, {
+        'environmentId': 'env-1',
+        'execServerUrl': 'ws://exec.example/ws',
+        'connectTimeoutMs': 5000,
+      });
+      expect(requests[1].params, {'environmentId': 'env-1'});
+      expect(requests[2].params, {'environmentId': 'env-1'});
+    },
+  );
+
+  test('remote environment methods reject blank identifiers', () async {
+    final client = CodexAppServerClient(MemoryJsonRpcTransport((_) => {}));
+
+    expect(
+      () => client.addEnvironment(
+        environmentId: ' ',
+        execServerUrl: 'ws://exec.example/ws',
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
+    expect(
+      () => client.readEnvironmentInfo(environmentId: ' '),
+      throwsA(isA<ArgumentError>()),
+    );
+    expect(
+      () => client.readEnvironmentStatus(environmentId: ' '),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
 }
