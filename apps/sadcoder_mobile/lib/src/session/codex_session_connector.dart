@@ -13,6 +13,8 @@ import '../apps/codex_app_list_reader.dart';
 import '../approvals/approval_state_controller.dart';
 import '../commands/codex_slash_command_manifest_reader.dart';
 import '../commands/slash_command_manifest_reader.dart';
+import '../collaboration_modes/codex_collaboration_mode_list_reader.dart';
+import '../collaboration_modes/collaboration_mode_list_reader.dart';
 import '../command_exec/codex_command_exec_runner.dart';
 import '../command_exec/command_exec_runner.dart';
 import '../config/codex_config_snapshot_reader.dart';
@@ -201,6 +203,10 @@ abstract interface class ExperimentalFeatureConnectionHandle {
   ExperimentalFeatureRunner get experimentalFeatureRunner;
 }
 
+abstract interface class CollaborationModeConnectionHandle {
+  CollaborationModeListReader? get collaborationModeListReader;
+}
+
 abstract interface class MemoryConnectionHandle {
   MemoryRunner get memoryRunner;
 }
@@ -299,6 +305,9 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         ),
         feedbackUploadRunner: CodexFeedbackUploadRunner(session.client),
         experimentalFeatureRunner: CodexExperimentalFeatureRunner(
+          session.client,
+        ),
+        collaborationModeListReader: CodexCollaborationModeListReader(
           session.client,
         ),
         memoryRunner: CodexMemoryRunner(session.client),
@@ -412,6 +421,7 @@ class CodexSessionConnection
         ProcessConnectionHandle,
         ExternalAgentConfigConnectionHandle,
         ExperimentalFeatureConnectionHandle,
+        CollaborationModeConnectionHandle,
         MemoryConnectionHandle,
         WindowsSandboxConnectionHandle,
         MarketplaceMutationConnectionHandle,
@@ -432,6 +442,7 @@ class CodexSessionConnection
     required this.accountUsageSnapshotReader,
     required this.feedbackUploadRunner,
     required this.experimentalFeatureRunner,
+    this.collaborationModeListReader,
     required this.memoryRunner,
     required this.windowsSandboxRunner,
     required this.environmentRunner,
@@ -497,6 +508,8 @@ class CodexSessionConnection
   final FeedbackUploadRunner feedbackUploadRunner;
   @override
   final ExperimentalFeatureRunner experimentalFeatureRunner;
+  @override
+  final CollaborationModeListReader? collaborationModeListReader;
   @override
   final MemoryRunner memoryRunner;
   @override

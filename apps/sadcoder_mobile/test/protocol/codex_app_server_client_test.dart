@@ -1016,6 +1016,24 @@ void main() {
   );
 
   test(
+    'collaboration mode catalog uses the official empty params shape',
+    () async {
+      final requests = <JsonRpcRequest>[];
+      final transport = MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        return {'data': const <Object?>[]};
+      });
+      addTearDown(transport.close);
+      final client = CodexAppServerClient(transport);
+
+      await client.listCollaborationModes();
+
+      expect(requests.single.method, 'collaborationMode/list');
+      expect(requests.single.params, isEmpty);
+    },
+  );
+
+  test(
     'remote environment methods normalize parameters and wire names',
     () async {
       final requests = <JsonRpcRequest>[];

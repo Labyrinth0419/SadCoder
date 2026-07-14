@@ -12,7 +12,8 @@ import 'chat_permissions_override_sheet.dart';
 import 'chat_personality_override_sheet.dart';
 import 'chat_override_scope.dart';
 
-typedef ChatPlanModeModelResolver = Future<String?> Function();
+typedef ChatPlanModeResolver =
+    Future<CodexCollaborationModeOverride?> Function();
 typedef ChatTimelineSync = void Function({String? submittedText});
 
 class ChatOverrideCommandHandler {
@@ -23,7 +24,7 @@ class ChatOverrideCommandHandler {
     required this.modelListController,
     required this.permissionProfileListController,
     required this.turnController,
-    required this.resolvePlanModeModel,
+    required this.resolvePlanMode,
     required this.syncActiveTurnToTimeline,
   });
 
@@ -33,7 +34,7 @@ class ChatOverrideCommandHandler {
   final ModelListController? modelListController;
   final PermissionProfileListController? permissionProfileListController;
   final TurnController? turnController;
-  final ChatPlanModeModelResolver resolvePlanModeModel;
+  final ChatPlanModeResolver resolvePlanMode;
   final ChatTimelineSync syncActiveTurnToTimeline;
 
   Future<SlashCommandCallbackResult> configureModel() async {
@@ -141,14 +142,12 @@ class ChatOverrideCommandHandler {
       return SlashCommandCallbackResult.unavailable;
     }
 
-    final model = await resolvePlanModeModel();
-    if (!mounted() || model == null) {
+    final collaborationMode = await resolvePlanMode();
+    if (!mounted() || collaborationMode == null) {
       return SlashCommandCallbackResult.unavailable;
     }
 
-    controller.setTurnCollaborationMode(
-      CodexCollaborationModeOverride.plan(model: model),
-    );
+    controller.setTurnCollaborationMode(collaborationMode);
     if (prompt.isEmpty) {
       return SlashCommandCallbackResult.executed;
     }

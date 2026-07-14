@@ -678,6 +678,10 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> listCollaborationModes() {
+    return _request('collaborationMode/list', const {});
+  }
+
   Future<Map<String, Object?>> batchWriteConfig({
     required List<Map<String, Object?>> edits,
     String? filePath,

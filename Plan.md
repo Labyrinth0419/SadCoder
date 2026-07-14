@@ -993,6 +993,7 @@ MVP 可以简化为底部导航：
 - 已将 `/rollout` 接成只读 UI 诊断命令：有参数时不可用；无线程 raw path 时按 Codex TUI 语义显示 `Rollout path is not available yet.`，如果 thread raw 后续暴露 rollout path，则显示当前路径。
 - 已将稳定的 `configRequirements/read` 合并进服务器配置快照和 `/debug-config`：新 app-server 会展示受管 approval/sandbox/model/feature 等约束，明确区别于普通 `config/read` 生效值和 layers；旧版本 method-not-found 时仍保留普通配置摘要并显示 requirements 不可用，其他读取错误不会被静默吞掉。
 - 已将 `/test-approval` 接成移动端本地 debug-only 审批链路测试：注入一条 file-change `PendingApproval` 到当前 session 的 `ApprovalStateController`，不调用 app-server、不修改服务器状态。
+- 已将 `/plan` 从本地硬编码 Plan preset 升级为优先读取官方 `collaborationMode/list`：服务端返回的 mode、model 和 `reasoning_effort` 作为权威 mask，preset 未指定 model 时才继承当前有效 model，并继续发送 `developer_instructions: null` 让 app-server 使用内置模式指令；仅旧服务端返回 method-not-found 或连接未暴露该 reader 时回退原有 Plan/medium 兼容值，其他 catalog 错误不会被静默隐藏。
 - `/experimental` 保留 `config/read` 只读摘要作为不支持 `experimentalFeature/list` 的旧服务端回退路径。
 - 已将 `/experimental` 升级为按 `experimentalFeature/list` 自动读取服务端 Beta feature catalog 的可操作 bottom sheet；开关修改前展示旧值/新值与全局服务器影响并二次确认，确认后通过 `config/batchWrite` 写入 `features.<name>`、热重载用户配置，再刷新能力状态；旧服务端不支持该接口时回退到原有只读配置摘要。当前稳定 app-server 另有 `experimentalFeature/enablement/set`，但它只提供低于 `config.toml` 的进程内运行时覆盖、不会持久化，并会静默忽略不在服务端白名单中的 feature key，因此不等价于 Codex TUI `/experimental`，不能替换这里的持久化配置路径。
 - `/memories` 保留 `config/read` 摘要作为旧服务端或没有 thread memory metadata 时的回退路径。

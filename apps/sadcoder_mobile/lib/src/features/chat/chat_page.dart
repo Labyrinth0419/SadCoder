@@ -8,7 +8,9 @@ import '../../appearance/app_appearance_controller.dart';
 import '../../commands/init_command_prompt.dart';
 import '../../commands/slash_command_action_dispatcher.dart';
 import '../../commands/slash_command_registry.dart';
+import '../../collaboration_modes/collaboration_mode_list_reader.dart';
 import '../../config/codex_config_override_controller.dart';
+import '../../config/codex_config_overrides.dart';
 import '../../config/codex_config_snapshot_controller.dart';
 import '../../events/codex_event.dart';
 import '../../files/file_search_reader.dart';
@@ -76,6 +78,7 @@ class ChatPage extends StatefulWidget {
     this.threadTokenUsageController,
     this.modelListController,
     this.permissionProfileListController,
+    this.collaborationModeListReader,
     this.profileStore,
     this.hostSessions = const [],
     this.profileConnector,
@@ -98,6 +101,7 @@ class ChatPage extends StatefulWidget {
   final ThreadTokenUsageController? threadTokenUsageController;
   final ModelListController? modelListController;
   final PermissionProfileListController? permissionProfileListController;
+  final CollaborationModeListReader? collaborationModeListReader;
   final SshProfileStore? profileStore;
   final List<HostSessionSummary> hostSessions;
   final ChatProfileConnector? profileConnector;
@@ -931,7 +935,7 @@ class _ChatPageState extends State<ChatPage> {
       modelListController: widget.modelListController,
       permissionProfileListController: widget.permissionProfileListController,
       turnController: widget.turnController,
-      resolvePlanModeModel: _resolvePlanModeModel,
+      resolvePlanMode: _resolvePlanMode,
       syncActiveTurnToTimeline: _timelineWindowCoordinator.syncActiveTurn,
     );
   }
@@ -1187,6 +1191,41 @@ class _ChatPageState extends State<ChatPage> {
       return null;
     }
     return _currentPlanModeModel();
+  }
+
+  Future<CodexCollaborationModeOverride?> _resolvePlanMode() async {
+    final reader =
+        widget.collaborationModeListReader ??
+        widget.sessionController?.collaborationModeListReader;
+    if (reader != null) {
+      final catalog = await reader.listCollaborationModes();
+      if (!mounted) {
+        return null;
+      }
+      if (catalog.supported) {
+        final preset = catalog.presetForMode('plan');
+        final mode = _normalizedText(preset?.mode);
+        if (preset == null || mode == null) {
+          return null;
+        }
+        final model =
+            _normalizedText(preset.model) ?? await _resolvePlanModeModel();
+        if (!mounted || model == null) {
+          return null;
+        }
+        return CodexCollaborationModeOverride(
+          mode: mode,
+          model: model,
+          reasoningEffort: _normalizedText(preset.reasoningEffort),
+        );
+      }
+    }
+
+    final model = await _resolvePlanModeModel();
+    if (!mounted || model == null) {
+      return null;
+    }
+    return CodexCollaborationModeOverride.plan(model: model);
   }
 
   String? _currentPlanModeModel() {

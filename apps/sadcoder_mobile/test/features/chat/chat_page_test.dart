@@ -15,6 +15,7 @@ import 'package:sadcoder_mobile/src/background_terminals/thread_background_termi
 import 'package:sadcoder_mobile/src/background_terminals/thread_background_terminal_runner.dart';
 import 'package:sadcoder_mobile/src/commands/slash_command_manifest_reader.dart';
 import 'package:sadcoder_mobile/src/commands/slash_command_registry.dart';
+import 'package:sadcoder_mobile/src/collaboration_modes/collaboration_mode_list_reader.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_override_controller.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_overrides.dart';
 import 'package:sadcoder_mobile/src/config/codex_config_snapshot.dart';
@@ -2274,6 +2275,20 @@ void main() {
     addTearDown(sessionController.dispose);
     addTearDown(approvalController.dispose);
     addTearDown(configOverrideController.dispose);
+    final collaborationModeListReader = _FakeCollaborationModeListReader(
+      const CollaborationModeCatalog(
+        supported: true,
+        presets: [
+          CodexCollaborationModePreset(
+            name: 'Server plan',
+            mode: 'plan',
+            model: 'server-plan-model',
+            reasoningEffort: 'high',
+            raw: {},
+          ),
+        ],
+      ),
+    );
 
     await sessionController.connect(_profile);
     await _pumpChatPage(
@@ -2281,6 +2296,7 @@ void main() {
       sessionController: sessionController,
       turnController: turnController,
       configOverrideController: configOverrideController,
+      collaborationModeListReader: collaborationModeListReader,
     );
 
     await _submitComposerText(tester, '/plan');
@@ -2290,13 +2306,14 @@ void main() {
       'collaborationMode': {
         'mode': 'plan',
         'settings': {
-          'model': 'gpt-5-codex',
-          'reasoning_effort': 'medium',
+          'model': 'server-plan-model',
+          'reasoning_effort': 'high',
           'developer_instructions': null,
         },
       },
     });
     expect(find.text('Plan mode applied.'), findsOneWidget);
+    expect(collaborationModeListReader.calls, 1);
 
     await _submitComposerText(tester, 'outline the fix');
 
@@ -2307,8 +2324,8 @@ void main() {
       'collaborationMode': {
         'mode': 'plan',
         'settings': {
-          'model': 'gpt-5-codex',
-          'reasoning_effort': 'medium',
+          'model': 'server-plan-model',
+          'reasoning_effort': 'high',
           'developer_instructions': null,
         },
       },
@@ -2344,6 +2361,9 @@ void main() {
     addTearDown(sessionController.dispose);
     addTearDown(approvalController.dispose);
     addTearDown(configOverrideController.dispose);
+    final collaborationModeListReader = _FakeCollaborationModeListReader(
+      CollaborationModeCatalog.unsupported,
+    );
 
     await sessionController.connect(_profile);
     await _pumpChatPage(
@@ -2351,6 +2371,7 @@ void main() {
       sessionController: sessionController,
       turnController: turnController,
       configOverrideController: configOverrideController,
+      collaborationModeListReader: collaborationModeListReader,
     );
 
     await _submitComposerText(tester, '/plan build a patch plan');
@@ -2370,6 +2391,7 @@ void main() {
     });
     expect(configOverrideController.layers.turn.toTurnStartParams(), isEmpty);
     expect(find.text('Plan mode applied.'), findsOneWidget);
+    expect(collaborationModeListReader.calls, 1);
   });
 
   for (final slash in ['/quit', '/exit']) {
@@ -8732,6 +8754,7 @@ Future<void> _pumpChatPage(
   ThreadTokenUsageController? threadTokenUsageController,
   ModelListController? modelListController,
   PermissionProfileListController? permissionProfileListController,
+  CollaborationModeListReader? collaborationModeListReader,
   SshProfileStore? profileStore,
   Locale? locale,
   ThemeMode themeMode = ThemeMode.light,
@@ -8768,11 +8791,25 @@ Future<void> _pumpChatPage(
           threadTokenUsageController: threadTokenUsageController,
           modelListController: modelListController,
           permissionProfileListController: permissionProfileListController,
+          collaborationModeListReader: collaborationModeListReader,
           profileStore: profileStore,
         ),
       ),
     ),
   );
+}
+
+class _FakeCollaborationModeListReader implements CollaborationModeListReader {
+  _FakeCollaborationModeListReader(this.catalog);
+
+  final CollaborationModeCatalog catalog;
+  int calls = 0;
+
+  @override
+  Future<CollaborationModeCatalog> listCollaborationModes() async {
+    calls++;
+    return catalog;
+  }
 }
 
 Future<_ConnectedChatHarness> _pumpConnectedChatPage(

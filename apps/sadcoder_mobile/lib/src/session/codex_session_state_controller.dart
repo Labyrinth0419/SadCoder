@@ -12,6 +12,7 @@ import '../approvals/approval_state_controller.dart';
 import '../background_terminals/thread_background_terminal_runner.dart';
 import '../commands/slash_command_manifest_reader.dart';
 import '../command_exec/command_exec_runner.dart';
+import '../collaboration_modes/collaboration_mode_list_reader.dart';
 import '../config/codex_config_snapshot_reader.dart';
 import '../diffs/git_diff_reader.dart';
 import '../events/codex_event.dart';
@@ -185,6 +186,16 @@ class CodexSessionStateController extends ChangeNotifier {
     }
     return (connection as ExperimentalFeatureConnectionHandle)
         .experimentalFeatureRunner;
+  }
+
+  CollaborationModeListReader? get collaborationModeListReader {
+    final connection = _connection;
+    if (connection == null ||
+        connection is! CollaborationModeConnectionHandle) {
+      return null;
+    }
+    return (connection as CollaborationModeConnectionHandle)
+        .collaborationModeListReader;
   }
 
   MemoryRunner? get memoryRunner {
