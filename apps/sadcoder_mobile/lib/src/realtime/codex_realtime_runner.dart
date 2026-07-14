@@ -47,12 +47,42 @@ class CodexRealtimeRunner implements RealtimeRunner {
     String? codexResponseHandoffPrefix,
     String? realtimeSessionId,
   }) async {
-    final normalizedThreadId = _required(threadId, 'threadId');
-    await _client.startThreadRealtime(
-      threadId: normalizedThreadId,
+    await _start(
+      threadId: threadId,
       outputModality: 'text',
-      transport: const {'type': 'websocket'},
       version: version?.wireName,
+      model: _optional(model),
+      prompt: _optional(prompt),
+      includeStartupContext: includeStartupContext,
+      clientManagedHandoffs: clientManagedHandoffs,
+      flushTranscriptTailOnSessionEnd: flushTranscriptTailOnSessionEnd,
+      codexResponsesAsItems: codexResponsesAsItems,
+      codexResponseItemPrefix: _optional(codexResponseItemPrefix),
+      codexResponseHandoffPrefix: _optional(codexResponseHandoffPrefix),
+      realtimeSessionId: _optional(realtimeSessionId),
+    );
+  }
+
+  @override
+  Future<void> startAudio({
+    required String threadId,
+    RealtimeConversationVersion? version,
+    String? voice,
+    String? model,
+    String? prompt,
+    bool? includeStartupContext,
+    bool? clientManagedHandoffs,
+    bool? flushTranscriptTailOnSessionEnd,
+    bool? codexResponsesAsItems,
+    String? codexResponseItemPrefix,
+    String? codexResponseHandoffPrefix,
+    String? realtimeSessionId,
+  }) async {
+    await _start(
+      threadId: threadId,
+      outputModality: 'audio',
+      version: version?.wireName,
+      voice: _optional(voice),
       model: _optional(model),
       prompt: _optional(prompt),
       includeStartupContext: includeStartupContext,
@@ -103,6 +133,39 @@ class CodexRealtimeRunner implements RealtimeRunner {
   @override
   Future<void> stop({required String threadId}) async {
     await _client.stopThreadRealtime(threadId: _required(threadId, 'threadId'));
+  }
+
+  Future<void> _start({
+    required String threadId,
+    required String outputModality,
+    String? version,
+    String? voice,
+    String? model,
+    String? prompt,
+    bool? includeStartupContext,
+    bool? clientManagedHandoffs,
+    bool? flushTranscriptTailOnSessionEnd,
+    bool? codexResponsesAsItems,
+    String? codexResponseItemPrefix,
+    String? codexResponseHandoffPrefix,
+    String? realtimeSessionId,
+  }) async {
+    await _client.startThreadRealtime(
+      threadId: _required(threadId, 'threadId'),
+      outputModality: outputModality,
+      transport: const {'type': 'websocket'},
+      version: version,
+      voice: voice,
+      model: model,
+      prompt: prompt,
+      includeStartupContext: includeStartupContext,
+      clientManagedHandoffs: clientManagedHandoffs,
+      flushTranscriptTailOnSessionEnd: flushTranscriptTailOnSessionEnd,
+      codexResponsesAsItems: codexResponsesAsItems,
+      codexResponseItemPrefix: codexResponseItemPrefix,
+      codexResponseHandoffPrefix: codexResponseHandoffPrefix,
+      realtimeSessionId: realtimeSessionId,
+    );
   }
 }
 

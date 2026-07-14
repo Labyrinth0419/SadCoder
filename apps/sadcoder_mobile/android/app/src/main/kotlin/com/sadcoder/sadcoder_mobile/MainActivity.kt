@@ -6,14 +6,18 @@ import android.content.pm.PackageManager
 import android.os.Build
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private var backgroundConnectionChannel: MethodChannel? = null
+    private var realtimeAudioBridge: RealtimeAudioBridge? = null
     private var notificationRoutingReady = false
     private var pendingNotificationRoute: Map<String, String?>? = null
     private var pendingNotificationPermissionResult: MethodChannel.Result? = null
     private var pendingNotificationPermissionRetainRequest: RetainRequest? = null
+    private var pendingAudioPermissionResult: MethodChannel.Result? = null
+    private var pendingAudioCaptureArguments: Any? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -64,6 +68,31 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        val audioBridge = RealtimeAudioBridge()
+        realtimeAudioBridge = audioBridge
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "com.sadcoder.sadcoder_mobile/realtime_audio_input",
+        ).setStreamHandler(audioBridge)
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "com.sadcoder.sadcoder_mobile/realtime_audio",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "startCapture" -> startAudioCaptureWithPermission(call.arguments, result)
+                "stopCapture" -> {
+                    audioBridge.stopCapture()
+                    result.success(null)
+                }
+                "play" -> audioBridge.play(call.arguments, result)
+                "stopPlayback" -> {
+                    audioBridge.stopPlayback()
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -76,6 +105,8 @@ class MainActivity : FlutterActivity() {
     override fun onDestroy() {
         notificationRoutingReady = false
         backgroundConnectionChannel = null
+        realtimeAudioBridge?.dispose()
+        realtimeAudioBridge = null
         super.onDestroy()
     }
 
@@ -85,6 +116,32 @@ class MainActivity : FlutterActivity() {
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == AUDIO_PERMISSION_REQUEST_CODE) {
+            val result = pendingAudioPermissionResult ?: return
+            val arguments = pendingAudioCaptureArguments
+            pendingAudioPermissionResult = null
+            pendingAudioCaptureArguments = null
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+                val bridge = realtimeAudioBridge
+                if (bridge == null) {
+                    result.error(
+                        "realtime_audio_unavailable",
+                        "Realtime audio is no longer available.",
+                        null,
+                    )
+                    return
+                }
+                bridge.startCapture(arguments, result)
+                return
+            }
+            result.error(
+                "microphone_permission_denied",
+                "Microphone permission is required for realtime audio.",
+                null,
+            )
+            return
+        }
+
         if (requestCode != NOTIFICATION_PERMISSION_REQUEST_CODE) {
             return
         }
@@ -140,6 +197,51 @@ class MainActivity : FlutterActivity() {
             pendingNotificationPermissionRetainRequest = null
             result.error(
                 "notification_permission_unavailable",
+                exception.message,
+                null,
+            )
+        }
+    }
+
+    private fun startAudioCaptureWithPermission(
+        arguments: Any?,
+        result: MethodChannel.Result,
+    ) {
+        val bridge = realtimeAudioBridge
+        if (bridge == null) {
+            result.error(
+                "realtime_audio_unavailable",
+                "Realtime audio is not available.",
+                null,
+            )
+            return
+        }
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            bridge.startCapture(arguments, result)
+            return
+        }
+        if (pendingAudioPermissionResult != null) {
+            result.error(
+                "microphone_permission_request_pending",
+                "A microphone permission request is already in progress.",
+                null,
+            )
+            return
+        }
+        pendingAudioPermissionResult = result
+        pendingAudioCaptureArguments = arguments
+        try {
+            requestPermissions(
+                arrayOf(Manifest.permission.RECORD_AUDIO),
+                AUDIO_PERMISSION_REQUEST_CODE,
+            )
+        } catch (exception: RuntimeException) {
+            pendingAudioPermissionResult = null
+            pendingAudioCaptureArguments = null
+            result.error(
+                "microphone_permission_unavailable",
                 exception.message,
                 null,
             )
@@ -216,5 +318,6 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 1002
+        private const val AUDIO_PERMISSION_REQUEST_CODE = 1003
     }
 }

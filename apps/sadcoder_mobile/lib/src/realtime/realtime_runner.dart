@@ -152,6 +152,21 @@ abstract interface class RealtimeRunner {
     String? realtimeSessionId,
   });
 
+  Future<void> startAudio({
+    required String threadId,
+    RealtimeConversationVersion? version,
+    String? voice,
+    String? model,
+    String? prompt,
+    bool? includeStartupContext,
+    bool? clientManagedHandoffs,
+    bool? flushTranscriptTailOnSessionEnd,
+    bool? codexResponsesAsItems,
+    String? codexResponseItemPrefix,
+    String? codexResponseHandoffPrefix,
+    String? realtimeSessionId,
+  });
+
   Future<void> appendText({
     required String threadId,
     required String text,

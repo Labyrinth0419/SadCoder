@@ -1065,6 +1065,9 @@ class AppLocalizations {
   String get hooksManagementTitle => _text('hooksManagementTitle');
   String get realtimeTitle => _text('realtimeTitle');
   String get realtimeTransportWebsocket => _text('realtimeTransportWebsocket');
+  String get realtimeModeText => _text('realtimeModeText');
+  String get realtimeModeAudio => _text('realtimeModeAudio');
+  String get realtimeVoice => _text('realtimeVoice');
   String realtimeProtocolSummary(int v1, int v2) => _text(
     'realtimeProtocolSummary',
   ).replaceAll('{v1}', '$v1').replaceAll('{v2}', '$v2');
@@ -2357,8 +2360,11 @@ const _values = <String, Map<String, String>>{
     'hooksEmpty': 'No hooks configured.',
     'hooksCwd': 'cwd',
     'hooksManagementTitle': 'Hooks',
-    'realtimeTitle': 'Realtime text',
-    'realtimeTransportWebsocket': 'WebSocket / text',
+    'realtimeTitle': 'Realtime',
+    'realtimeTransportWebsocket': 'WebSocket',
+    'realtimeModeText': 'Text',
+    'realtimeModeAudio': 'Audio',
+    'realtimeVoice': 'Voice',
     'realtimeProtocolSummary': 'voices: v1 {v1}, v2 {v2}',
     'realtimeFailed': 'Realtime session failed',
     'realtimeEmpty': 'No realtime messages yet.',
@@ -3448,8 +3454,11 @@ const _values = <String, Map<String, String>>{
     'hooksEmpty': '暂无配置的 hooks。',
     'hooksCwd': '工作目录',
     'hooksManagementTitle': 'Hooks',
-    'realtimeTitle': '实时文本',
-    'realtimeTransportWebsocket': 'WebSocket / 文本',
+    'realtimeTitle': '实时会话',
+    'realtimeTransportWebsocket': 'WebSocket',
+    'realtimeModeText': '文本',
+    'realtimeModeAudio': '语音',
+    'realtimeVoice': '音色',
     'realtimeProtocolSummary': '语音：v1 {v1}，v2 {v2}',
     'realtimeFailed': '实时会话失败',
     'realtimeEmpty': '还没有实时消息。',

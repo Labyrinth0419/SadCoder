@@ -66,6 +66,11 @@ void main() {
         includeStartupContext: false,
         codexResponsesAsItems: true,
       );
+      await runner.startAudio(
+        threadId: 'thr_1',
+        version: RealtimeConversationVersion.v2,
+        voice: 'marin',
+      );
       await runner.appendText(
         threadId: 'thr_1',
         text: ' hi ',
@@ -86,6 +91,7 @@ void main() {
       expect(requests.map((request) => request.method), [
         'thread/realtime/listVoices',
         'thread/realtime/start',
+        'thread/realtime/start',
         'thread/realtime/appendText',
         'thread/realtime/appendAudio',
         'thread/realtime/appendSpeech',
@@ -103,10 +109,17 @@ void main() {
       });
       expect(requests[2].params, {
         'threadId': 'thr_1',
+        'outputModality': 'audio',
+        'transport': {'type': 'websocket'},
+        'version': 'v2',
+        'voice': 'marin',
+      });
+      expect(requests[3].params, {
+        'threadId': 'thr_1',
         'text': 'hi',
         'role': 'user',
       });
-      expect(requests[3].params, {
+      expect(requests[4].params, {
         'threadId': 'thr_1',
         'audio': {
           'data': 'AA==',
@@ -115,7 +128,7 @@ void main() {
           'samplesPerChannel': 10,
         },
       });
-      expect(requests[4].params, {'threadId': 'thr_1', 'text': 'speak this'});
+      expect(requests[5].params, {'threadId': 'thr_1', 'text': 'speak this'});
     },
   );
 

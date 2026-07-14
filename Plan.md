@@ -643,7 +643,7 @@ MCP/插件/技能：
 - Review：`review/start`。
 - Remote environment：`environment/add/info`。
 - 已接入 `environment/add`、`environment/info`、`environment/status`：Settings Diagnostics 提供环境 ID、exec-server WebSocket URL、可选连接超时的注册表单；注册或替换环境前要求二次确认，info/status 作为只读状态检查并兼容未知状态值。环境注册遵循 app-server 当前进程内存语义，不伪装成持久化 `CODEX_HOME` 配置。
-- Realtime：已接入 text-only 的 `thread/realtime/start`、`appendText`、`stop`、`listVoices`，以及可供后续设备 transport 使用的 typed `appendAudio` / `appendSpeech` runner，强制 WebSocket transport，并在对话输入区提供实验性实时文本面板；音频设备采集/播放、WebRTC SDP 建连和端到端语音 UX 仍待后续实现，不能视为 realtime audio 完成。
+- Realtime：已接入 `thread/realtime/start`、`appendText`、`appendAudio`、`appendSpeech`、`stop`、`listVoices`，强制 WebSocket transport；对话输入区支持文本/语音模式、音色选择、Android/iOS 麦克风采集、PCM 输出播放、权限失败和设备生命周期清理。当前完成的是 WebSocket 音频设备链路；WebRTC SDP 建连仍待后续实现，不能视为完整的双传输 realtime 能力。
 - `process/spawn` 高级进程管理。
   - 已接入 `process/spawn`、`process/writeStdin`、`process/resizePty`、`process/kill` 以及 `process/outputDelta` / `process/exited` 通知；连接层提供类型化 `ProcessRunner`，Files 顶栏可进入实际 Terminal 页面。终端默认使用受 Codex sandbox 约束的 `command/exec`，只有用户显式切换到宿主机进程模式并逐次确认命令、cwd 与无沙箱风险后才调用 `process/spawn`，取消确认不发送 RPC。
 - `externalAgentConfig/*`。
@@ -1149,7 +1149,7 @@ MVP 可以简化为底部导航：
 - 已落地多 host 后台 active-turn 监听扩展：AppShell 的 lifecycle coordinator 会监听已创建 host UI states 的 `TurnController`，managed host 切到后台后仍保持各自 event subscription；如果 App 已在后台时 inactive host 后续收到 `turn/started`，也会触发 foreground retention context 刷新。
 - 已落地 host UI state 自主观察 session status：每个 `AppHostSessionUiState` 会监听自己的 `CodexSessionStateController`，连接成功后自行恢复缓存、触发 reconnect recovery 并刷新 slash command manifest；AppShell 不再只把 active session status 转发给当前页面，避免 inactive host 切换前漏掉线程刷新和重连恢复。
 - 已落地同一 host 的并发连接请求合并：`HostSessionManager` 会按 profileId 复用在途 connect Future，避免重复点击或快速切换时对同一个 `CodexSessionStateController` 发起重入连接；显式 disconnect/close 会释放该在途记录，失败后可重试。
-- 已落地 realtime typed path：`CodexAppServerClient` / `CodexRealtimeRunner` 支持 `thread/realtime/start`、`appendText`、`appendAudio`、`appendSpeech`、`stop`、`listVoices`，并将 started/item/transcript/audio/SDP/error/closed 通知映射为类型事件；session capability 注入 `RealtimeRunner`，Chat 输入区提供可停止的 WebSocket 文本面板，覆盖版本、model、prompt、startup context 和 user/developer/assistant 文本追加。音频设备采集/播放、WebRTC 建连仍未实现，避免把协议支持误标成完整语音能力。
+- 已落地 realtime typed path：`CodexAppServerClient` / `CodexRealtimeRunner` 支持 `thread/realtime/start`、`appendText`、`appendAudio`、`appendSpeech`、`stop`、`listVoices`，并将 started/item/transcript/audio/SDP/error/closed 通知映射为类型事件；session capability 注入 `RealtimeRunner`。Chat 输入区提供可停止的 WebSocket 文本/语音面板，覆盖版本、model、prompt、startup context、音色、user/developer/assistant 文本追加、原生 PCM16 麦克风采集和输出播放；设备层通过结构化 MethodChannel/EventChannel 实现，测试覆盖输入转发、输出播放、权限失败和释放。WebRTC SDP 建连仍未实现。
 - 已落地受控 Files 文本编辑：连接层暴露独立 `WorkspaceFileMutationRunner`，`fs/writeFile` 仅在 workspace path/符号链接校验、完整文本加载、版本或旧内容冲突检查通过后调用；Files 编辑 sheet 保存前展示逐行 diff 并要求二次确认，写入后刷新 preview stat/content。`fs/watch` / `fs/unwatch` 与 `fs/changed` 也已类型化，当前预览文件发生外部变化时会提示用户重新审阅。由于上游 `fs/writeFile` 没有 expected-version 参数，冲突检查仍是非原子的乐观保护。
 - 已落地结构化 Codex maintenance / Cloud runner：`sadcoder-agent codex` 只暴露固定的 `doctor`、`update`、legacy `apply`、`cloud list/status/diff/apply` 操作，task/env/cursor/attempt/cwd 均由 Rust `Command::arg` 传递，不提供任意 shell 参数。Settings Diagnostics 提供只读诊断/查询、更新确认、apply 前 diff 预览和 backend 重启入口；Cloud 明确依赖服务器已有 ChatGPT auth，手机不保存认证或 API key，API-first 主流程不变。
 - 后续仍需完整多 host 同时连接架构：`HostSessionManager` 已作为基础控制器引入，但完整后台保活策略、断线期间事件 cursor/分页增量回填和更完整的 reconnect turn/item reconciliation 还需要继续拆分完善。
@@ -1403,7 +1403,7 @@ MVP 可以简化为底部导航：
 
 交付：
 
-- realtime：text-only WebSocket 端到端能力已落地；音频/WebRTC 仍未完成。
+- realtime：WebSocket 文本和音频设备端到端能力已落地；WebRTC SDP 建连仍未完成。
 - process/spawn。
 - remote environments。
 - hooks。
