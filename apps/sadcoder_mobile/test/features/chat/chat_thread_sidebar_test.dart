@@ -54,6 +54,37 @@ void main() {
     expect(opened, isTrue);
   });
 
+  testWidgets('new thread action is visible and routes taps', (tester) async {
+    var started = false;
+    await _pumpSidebar(
+      tester,
+      ChatSidebarNewThreadButton(onPressed: () => started = true),
+    );
+
+    expect(
+      find.byKey(const ValueKey('chat-sidebar-new-thread')),
+      findsOneWidget,
+    );
+    expect(find.text('New chat'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('chat-sidebar-new-thread')));
+    await tester.pump();
+
+    expect(started, isTrue);
+  });
+
+  testWidgets('new thread action exposes its disabled state', (tester) async {
+    await _pumpSidebar(
+      tester,
+      const ChatSidebarNewThreadButton(onPressed: null),
+    );
+
+    final button = tester.widget<FilledButton>(
+      find.byKey(const ValueKey('chat-sidebar-new-thread')),
+    );
+    expect(button.onPressed, isNull);
+  });
+
   testWidgets('host sessions panel shows per-host thread context', (
     tester,
   ) async {
@@ -190,7 +221,6 @@ void main() {
         archived: false,
         onArchivedChanged: (_) {},
         onUnarchiveThread: null,
-        onNewThread: null,
       ),
     );
 

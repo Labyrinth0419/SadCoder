@@ -5987,7 +5987,7 @@ void main() {
       find.byKey(const ValueKey('chat-sidebar-new-thread')),
       findsOneWidget,
     );
-    expect(find.byTooltip('New chat'), findsOneWidget);
+    expect(find.text('New chat'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('chat-sidebar-new-thread')));
     await tester.pumpAndSettle();

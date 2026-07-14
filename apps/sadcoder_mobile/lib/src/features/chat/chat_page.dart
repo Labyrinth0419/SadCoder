@@ -332,6 +332,17 @@ class _ChatPageState extends State<ChatPage> {
                                                   .showSheet
                                             : null,
                                       ),
+                                      const SizedBox(height: 8),
+                                      ChatSidebarNewThreadButton(
+                                        onPressed:
+                                            turnController?.canSubmit == true
+                                            ? () => unawaited(
+                                                _startNewThreadFromSidebar(
+                                                  closeSidebar: overlaySidebar,
+                                                ),
+                                              )
+                                            : null,
+                                      ),
                                       if (widget.hostSessions.isNotEmpty) ...[
                                         const SizedBox(height: 10),
                                         ChatHostSessionsPanel(
@@ -360,14 +371,6 @@ class _ChatPageState extends State<ChatPage> {
                                         onUnarchiveThread: (thread) =>
                                             _threadCommandHandler()
                                                 .unarchiveThread(thread),
-                                        onNewThread:
-                                            turnController?.canSubmit == true
-                                            ? () => unawaited(
-                                                _startNewThreadFromSidebar(
-                                                  closeSidebar: overlaySidebar,
-                                                ),
-                                              )
-                                            : null,
                                       ),
                                     ],
                                   ),

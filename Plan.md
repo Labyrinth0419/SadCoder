@@ -1119,7 +1119,7 @@ MVP 可以简化为底部导航：
 - Settings 菜单已明确收敛为最多二级：一级分组为 Codex、Interface、Connection、System，二级才进入 Permissions、Account、Models、Appearance、SSH、Diagnostics；Diagnostics 默认折叠在 System 下，避免低频诊断项和常用设置平铺混杂，窄屏仍保持“菜单页 -> 具体设置页”的单详情导航。
 - 本轮 Chat 可见 UI 里程碑已压低 AppShell 底部 `NavigationBar` 高度到 58px，先减少主对话页被全局导航占用的垂直空间。后续二级 Chat detail 路由方案记录为：主页 -> 对话 -> 选择已连接服务器/session 或新建 session -> 对话详情；对话详情页隐藏 bottom nav，由详情页自己的左上返回/侧栏入口承担导航。
 - 本轮 Chat UI / timeline 性能里程碑保持 9.7.1 的二级 Chat detail 路由为后续设计，不在本轮重做导航架构；当前只增强 Chat 页面内侧栏动效、气泡阅读宽度、字体一致性和 timeline 按需加载。
-- 本轮 Chat 侧栏可用性里程碑已在左上三横线打开的会话面板标题行加入“新建对话”入口；按钮复用 `/new` 的 `startNewThread` 生命周期，成功后清理旧 timeline、刷新会话列表并在窄屏 overlay 侧栏中自动收起，活动 turn 时自动禁用。
+- 本轮 Chat 侧栏可用性里程碑已在左上三横线打开的会话面板顶部加入带图标和明确文字的全宽“新建对话”入口，避免入口藏在会话列表标题行或多主机列表下方；按钮复用 `/new` 的 `startNewThread` 生命周期，成功后清理旧 timeline、刷新会话列表并在窄屏 overlay 侧栏中自动收起，活动 turn 时自动禁用。
 - 已落地配置覆盖三层恢复入口：Settings 可一键清除 App 默认覆盖、会话覆盖和本次覆盖并回到服务器默认来源；本地恢复动作不伪造 `thread/settings/update` 普通字段显式清理语义。
 - 已落地 per-host pending approval 聚合与动作路由：Approvals 页面展示所有已连接 host 的待审批项，审批响应回到所属 host 的 `ApprovalStateController`。
 - 已落地 per-host thread summary/detail cache 持久化/恢复：每个 host 的最近线程列表、选中 threadId 和当前 thread detail 通过 `ThreadCacheStore` 独立保存，重建 host UI state 时优先恢复缓存，再由远端权威 thread/detail 读取刷新。

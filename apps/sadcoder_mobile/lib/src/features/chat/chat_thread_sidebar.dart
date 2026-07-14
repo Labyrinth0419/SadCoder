@@ -132,6 +132,35 @@ class ChatSidebarWorkspaceHeader extends StatelessWidget {
   }
 }
 
+class ChatSidebarNewThreadButton extends StatelessWidget {
+  const ChatSidebarNewThreadButton({super.key, required this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.tonalIcon(
+        key: const ValueKey('chat-sidebar-new-thread'),
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          alignment: Alignment.centerLeft,
+          minimumSize: const Size.fromHeight(42),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        icon: const Icon(Icons.add_comment_outlined, size: 19),
+        label: Text(
+          context.l10n.newThread,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+}
+
 class ChatHostSessionsPanel extends StatelessWidget {
   const ChatHostSessionsPanel({
     super.key,
@@ -428,7 +457,6 @@ class ChatThreadListPanel extends StatelessWidget {
     required this.archived,
     required this.onArchivedChanged,
     required this.onUnarchiveThread,
-    required this.onNewThread,
   });
 
   final ThreadListController? controller;
@@ -436,7 +464,6 @@ class ChatThreadListPanel extends StatelessWidget {
   final bool archived;
   final ValueChanged<bool> onArchivedChanged;
   final Future<void> Function(ThreadSummary thread)? onUnarchiveThread;
-  final VoidCallback? onNewThread;
 
   @override
   Widget build(BuildContext context) {
@@ -444,7 +471,6 @@ class ChatThreadListPanel extends StatelessWidget {
     if (controller == null) {
       return _ThreadListCard(
         title: context.l10n.sessions,
-        action: _ThreadListActions(onNewThread: onNewThread),
         child: Text(context.l10n.connectBeforeLoadingThreads),
       );
     }
@@ -456,7 +482,6 @@ class ChatThreadListPanel extends StatelessWidget {
         archived: archived,
         onArchivedChanged: onArchivedChanged,
         onUnarchiveThread: onUnarchiveThread,
-        onNewThread: onNewThread,
       ),
     );
   }
@@ -469,7 +494,6 @@ class _ThreadListContent extends StatelessWidget {
     required this.archived,
     required this.onArchivedChanged,
     required this.onUnarchiveThread,
-    required this.onNewThread,
   });
 
   final ThreadListController controller;
@@ -477,14 +501,12 @@ class _ThreadListContent extends StatelessWidget {
   final bool archived;
   final ValueChanged<bool> onArchivedChanged;
   final Future<void> Function(ThreadSummary thread)? onUnarchiveThread;
-  final VoidCallback? onNewThread;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final title = l10n.sessions;
     final actions = _ThreadListActions(
-      onNewThread: onNewThread,
       onRefresh: controller.status == ThreadListStatus.loading
           ? null
           : () => controller.refresh(archived: archived),
@@ -615,9 +637,8 @@ class _ThreadListCard extends StatelessWidget {
 }
 
 class _ThreadListActions extends StatelessWidget {
-  const _ThreadListActions({this.onNewThread, this.onRefresh});
+  const _ThreadListActions({this.onRefresh});
 
-  final VoidCallback? onNewThread;
   final VoidCallback? onRefresh;
 
   @override
@@ -625,12 +646,6 @@ class _ThreadListActions extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconButton(
-          key: const ValueKey('chat-sidebar-new-thread'),
-          tooltip: context.l10n.newThread,
-          onPressed: onNewThread,
-          icon: const Icon(Icons.add_comment_outlined),
-        ),
         IconButton(
           tooltip: context.l10n.refreshThreads,
           onPressed: onRefresh,
