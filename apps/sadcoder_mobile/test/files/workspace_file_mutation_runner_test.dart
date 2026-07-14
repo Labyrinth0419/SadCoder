@@ -167,6 +167,168 @@ void main() {
       throwsA(isA<WorkspaceFileException>()),
     );
   });
+
+  test('creates files and directories only at missing guarded paths', () async {
+    final requests = <JsonRpcRequest>[];
+    late final _MapWorkspaceFileReader reader;
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      if (request.method == 'fs/writeFile') {
+        reader.stats['new.txt'] = _fileStat('new.txt');
+      }
+      return {};
+    });
+    reader = _MapWorkspaceFileReader();
+    final runner = CodexWorkspaceFileMutationRunner(
+      client: CodexAppServerClient(transport),
+      fileReader: reader,
+      events: const Stream<CodexEvent>.empty(),
+    );
+    addTearDown(() async {
+      await runner.close();
+      await transport.close();
+    });
+
+    final created = await runner.createFile(
+      root: '/repo',
+      path: 'new.txt',
+      content: 'hello',
+    );
+    await runner.createDirectory(root: '/repo', path: 'new-dir');
+
+    expect(created.path, 'new.txt');
+    expect(requests.map((request) => request.method), [
+      'fs/writeFile',
+      'fs/createDirectory',
+    ]);
+    expect(requests[0].params, {
+      'path': '/repo/new.txt',
+      'dataBase64': 'aGVsbG8=',
+    });
+    expect(requests[1].params, {'path': '/repo/new-dir', 'recursive': false});
+  });
+
+  test('copies removes and moves through fixed filesystem RPCs', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {};
+    });
+    final reader = _MapWorkspaceFileReader(
+      stats: {
+        'source.txt': _fileStat('source.txt'),
+        'delete.txt': _fileStat('delete.txt'),
+      },
+    );
+    final runner = CodexWorkspaceFileMutationRunner(
+      client: CodexAppServerClient(transport),
+      fileReader: reader,
+      events: const Stream<CodexEvent>.empty(),
+    );
+    addTearDown(() async {
+      await runner.close();
+      await transport.close();
+    });
+
+    await runner.copy(
+      root: '/repo',
+      sourcePath: 'source.txt',
+      destinationPath: 'copy.txt',
+    );
+    await runner.remove(root: '/repo', path: 'delete.txt');
+    await runner.move(
+      root: '/repo',
+      sourcePath: 'source.txt',
+      destinationPath: 'moved.txt',
+    );
+
+    expect(requests.map((request) => request.method), [
+      'fs/copy',
+      'fs/remove',
+      'fs/copy',
+      'fs/remove',
+    ]);
+    expect(requests.first.params, {
+      'sourcePath': '/repo/source.txt',
+      'destinationPath': '/repo/copy.txt',
+      'recursive': false,
+    });
+    expect(requests.last.params, {
+      'path': '/repo/source.txt',
+      'recursive': false,
+      'force': false,
+    });
+  });
+
+  test('reports a partial move when source removal fails', () async {
+    final transport = MemoryJsonRpcTransport((request) {
+      if (request.method == 'fs/remove') {
+        throw StateError('remove failed');
+      }
+      return {};
+    });
+    final runner = CodexWorkspaceFileMutationRunner(
+      client: CodexAppServerClient(transport),
+      fileReader: _MapWorkspaceFileReader(
+        stats: {'source.txt': _fileStat('source.txt')},
+      ),
+      events: const Stream<CodexEvent>.empty(),
+    );
+    addTearDown(() async {
+      await runner.close();
+      await transport.close();
+    });
+
+    await expectLater(
+      runner.move(
+        root: '/repo',
+        sourcePath: 'source.txt',
+        destinationPath: 'moved.txt',
+      ),
+      throwsA(isA<WorkspaceFileMovePartialFailureException>()),
+    );
+  });
+}
+
+WorkspaceFileStat _fileStat(String path) => WorkspaceFileStat(
+  root: '/repo',
+  path: path,
+  kind: WorkspaceFileKind.file,
+  sizeBytes: 1,
+  isBinary: false,
+);
+
+class _MapWorkspaceFileReader implements WorkspaceFileReader {
+  _MapWorkspaceFileReader({Map<String, WorkspaceFileStat>? stats})
+    : stats = stats ?? {};
+
+  final Map<String, WorkspaceFileStat> stats;
+
+  @override
+  Future<WorkspaceFileStat> statFile({
+    required String root,
+    required String path,
+  }) async {
+    final stat = stats[path];
+    if (stat == null) {
+      throw const WorkspaceFileException(
+        WorkspaceFileFailureCode.notFound,
+        'Workspace path was not found.',
+      );
+    }
+    return stat;
+  }
+
+  @override
+  Future<WorkspaceFileReadChunk> readFile({
+    required String root,
+    required String path,
+    int offset = 0,
+    int limitBytes = 64 * 1024,
+    String encoding = 'utf-8',
+  }) {
+    throw UnimplementedError();
+  }
 }
 
 class _MutableWorkspaceFileReader implements WorkspaceFileReader {

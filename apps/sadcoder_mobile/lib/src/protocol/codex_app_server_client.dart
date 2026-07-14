@@ -433,6 +433,64 @@ class CodexAppServerClient {
     });
   }
 
+  Future<Map<String, Object?>> fsCreateDirectory({
+    required String path,
+    bool recursive = true,
+  }) {
+    final normalizedPath = path.trim();
+    if (normalizedPath.isEmpty) {
+      throw ArgumentError.value(path, 'path', 'path must not be blank');
+    }
+    return _request('fs/createDirectory', {
+      'path': normalizedPath,
+      'recursive': recursive,
+    });
+  }
+
+  Future<Map<String, Object?>> fsRemove({
+    required String path,
+    bool recursive = false,
+    bool force = false,
+  }) {
+    final normalizedPath = path.trim();
+    if (normalizedPath.isEmpty) {
+      throw ArgumentError.value(path, 'path', 'path must not be blank');
+    }
+    return _request('fs/remove', {
+      'path': normalizedPath,
+      'recursive': recursive,
+      'force': force,
+    });
+  }
+
+  Future<Map<String, Object?>> fsCopy({
+    required String sourcePath,
+    required String destinationPath,
+    bool recursive = false,
+  }) {
+    final normalizedSource = sourcePath.trim();
+    final normalizedDestination = destinationPath.trim();
+    if (normalizedSource.isEmpty) {
+      throw ArgumentError.value(
+        sourcePath,
+        'sourcePath',
+        'source path must not be blank',
+      );
+    }
+    if (normalizedDestination.isEmpty) {
+      throw ArgumentError.value(
+        destinationPath,
+        'destinationPath',
+        'destination path must not be blank',
+      );
+    }
+    return _request('fs/copy', {
+      'sourcePath': normalizedSource,
+      'destinationPath': normalizedDestination,
+      'recursive': recursive,
+    });
+  }
+
   Future<Map<String, Object?>> fsWatch({
     required String watchId,
     required String path,

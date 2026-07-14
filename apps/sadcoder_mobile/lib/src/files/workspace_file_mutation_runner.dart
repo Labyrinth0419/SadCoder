@@ -40,6 +40,24 @@ class WorkspaceFileConflictException implements Exception {
   }
 }
 
+class WorkspaceFileMovePartialFailureException implements Exception {
+  const WorkspaceFileMovePartialFailureException({
+    required this.sourcePath,
+    required this.destinationPath,
+    required this.cause,
+  });
+
+  final String sourcePath;
+  final String destinationPath;
+  final Object cause;
+
+  @override
+  String toString() {
+    return 'Workspace copy completed but removing the source failed: '
+        '$sourcePath -> $destinationPath ($cause)';
+  }
+}
+
 class WorkspaceFileChangedEvent {
   const WorkspaceFileChangedEvent({
     required this.watchId,
@@ -63,6 +81,28 @@ abstract interface class WorkspaceFileWatch {
 }
 
 abstract interface class WorkspaceFileMutationRunner {
+  Future<WorkspaceFileWriteResult> createFile({
+    required String root,
+    required String path,
+    String content = '',
+  });
+
+  Future<void> createDirectory({required String root, required String path});
+
+  Future<void> remove({required String root, required String path});
+
+  Future<void> copy({
+    required String root,
+    required String sourcePath,
+    required String destinationPath,
+  });
+
+  Future<void> move({
+    required String root,
+    required String sourcePath,
+    required String destinationPath,
+  });
+
   Future<WorkspaceFileWriteResult> writeText({
     required String root,
     required String path,
@@ -102,6 +142,172 @@ class CodexWorkspaceFileMutationRunner implements WorkspaceFileMutationRunner {
   final Map<String, _CodexWorkspaceFileWatch> _watches = {};
   int _nextWatchId = 0;
   bool _closed = false;
+
+  @override
+  Future<WorkspaceFileWriteResult> createFile({
+    required String root,
+    required String path,
+    String content = '',
+  }) async {
+    if (_closed) {
+      throw const WorkspaceFileException(
+        WorkspaceFileFailureCode.notConnected,
+        'Workspace is not connected.',
+      );
+    }
+    try {
+      final workspacePath = await _prepareNewTarget(root, path);
+      await _client.fsWriteFile(
+        path: workspacePath.absolutePath,
+        dataBase64: base64Encode(utf8.encode(content)),
+      );
+      final stat = await _fileReader.statFile(
+        root: workspacePath.root,
+        path: workspacePath.relativePath,
+      );
+      if (stat.kind != WorkspaceFileKind.file || stat.isSymlink) {
+        throw const WorkspaceFileException(
+          WorkspaceFileFailureCode.readFailed,
+          'Created path is not a regular file.',
+        );
+      }
+      return WorkspaceFileWriteResult(
+        root: workspacePath.root,
+        path: workspacePath.relativePath,
+        contentVersion: stat.contentVersion,
+        stat: stat,
+      );
+    } on WorkspaceFileException {
+      rethrow;
+    } on Object catch (error) {
+      throw normalizeWorkspaceFileException(error);
+    }
+  }
+
+  @override
+  Future<void> createDirectory({
+    required String root,
+    required String path,
+  }) async {
+    if (_closed) {
+      throw const WorkspaceFileException(
+        WorkspaceFileFailureCode.notConnected,
+        'Workspace is not connected.',
+      );
+    }
+    try {
+      final workspacePath = await _prepareNewTarget(root, path);
+      await _client.fsCreateDirectory(
+        path: workspacePath.absolutePath,
+        recursive: false,
+      );
+    } on WorkspaceFileException {
+      rethrow;
+    } on Object catch (error) {
+      throw normalizeWorkspaceFileException(error);
+    }
+  }
+
+  @override
+  Future<void> remove({required String root, required String path}) async {
+    if (_closed) {
+      throw const WorkspaceFileException(
+        WorkspaceFileFailureCode.notConnected,
+        'Workspace is not connected.',
+      );
+    }
+    try {
+      final workspacePath = await _prepareExistingTarget(root, path);
+      final stat = await _fileReader.statFile(
+        root: workspacePath.root,
+        path: workspacePath.relativePath,
+      );
+      if (stat.isSymlink) {
+        throw const WorkspaceFileException(
+          WorkspaceFileFailureCode.pathOutsideRoot,
+          'Workspace path is outside the workspace root.',
+          detail: 'Symbolic links are not removed.',
+        );
+      }
+      await _client.fsRemove(
+        path: workspacePath.absolutePath,
+        recursive: stat.kind == WorkspaceFileKind.directory,
+        force: false,
+      );
+    } on WorkspaceFileException {
+      rethrow;
+    } on Object catch (error) {
+      throw normalizeWorkspaceFileException(error);
+    }
+  }
+
+  @override
+  Future<void> copy({
+    required String root,
+    required String sourcePath,
+    required String destinationPath,
+  }) async {
+    if (_closed) {
+      throw const WorkspaceFileException(
+        WorkspaceFileFailureCode.notConnected,
+        'Workspace is not connected.',
+      );
+    }
+    try {
+      final source = await _prepareExistingTarget(root, sourcePath);
+      final destination = await _prepareNewTarget(root, destinationPath);
+      final sourceStat = await _fileReader.statFile(
+        root: source.root,
+        path: source.relativePath,
+      );
+      if (sourceStat.isSymlink) {
+        throw const WorkspaceFileException(
+          WorkspaceFileFailureCode.pathOutsideRoot,
+          'Workspace path is outside the workspace root.',
+          detail: 'Symbolic links are not copied.',
+        );
+      }
+      await _client.fsCopy(
+        sourcePath: source.absolutePath,
+        destinationPath: destination.absolutePath,
+        recursive: sourceStat.kind == WorkspaceFileKind.directory,
+      );
+    } on WorkspaceFileException {
+      rethrow;
+    } on Object catch (error) {
+      throw normalizeWorkspaceFileException(error);
+    }
+  }
+
+  @override
+  Future<void> move({
+    required String root,
+    required String sourcePath,
+    required String destinationPath,
+  }) async {
+    final source = WorkspacePath.fromRoot(root, sourcePath);
+    final destination = WorkspacePath.fromRoot(root, destinationPath);
+    if (source.relativePath == destination.relativePath) {
+      throw const WorkspaceFileException(
+        WorkspaceFileFailureCode.readFailed,
+        'Source and destination must be different.',
+      );
+    }
+    await copy(
+      root: root,
+      sourcePath: source.relativePath,
+      destinationPath: destination.relativePath,
+    );
+    try {
+      await remove(root: root, path: source.relativePath);
+    } on Object catch (error) {
+      throw WorkspaceFileMovePartialFailureException(
+        sourcePath: source.relativePath,
+        destinationPath: destination.relativePath,
+        cause: error,
+      );
+    }
+  }
 
   @override
   Future<WorkspaceFileWriteResult> writeText({
@@ -271,6 +477,42 @@ class CodexWorkspaceFileMutationRunner implements WorkspaceFileMutationRunner {
       }
       offset = nextOffset;
     }
+  }
+
+  Future<WorkspacePath> _prepareExistingTarget(String root, String path) async {
+    final workspacePath = WorkspacePath.fromRoot(root, path);
+    if (workspacePath.relativePath.isEmpty) {
+      throw const WorkspaceFileException(
+        WorkspaceFileFailureCode.readFailed,
+        'The workspace root cannot be mutated by this operation.',
+      );
+    }
+    await rejectSymlinkAncestors(
+      _client,
+      workspacePath,
+      detail: 'Symbolic link ancestors are not mutated.',
+    );
+    return workspacePath;
+  }
+
+  Future<WorkspacePath> _prepareNewTarget(String root, String path) async {
+    final workspacePath = await _prepareExistingTarget(root, path);
+    try {
+      await _fileReader.statFile(
+        root: workspacePath.root,
+        path: workspacePath.relativePath,
+      );
+    } on WorkspaceFileException catch (error) {
+      if (error.code == WorkspaceFileFailureCode.notFound) {
+        return workspacePath;
+      }
+      rethrow;
+    }
+    throw WorkspaceFileException(
+      WorkspaceFileFailureCode.readFailed,
+      'Workspace path already exists.',
+      detail: workspacePath.relativePath,
+    );
   }
 
   void _handleFileChanged(CodexEvent event) {

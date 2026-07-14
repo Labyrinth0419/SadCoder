@@ -1283,6 +1283,28 @@ class AppLocalizations {
   String get workspaceFilesLoading => _text('workspaceFilesLoading');
   String get workspaceFilesOpenFailed => _text('workspaceFilesOpenFailed');
   String get workspaceFilesCopyPath => _text('workspaceFilesCopyPath');
+  String get workspaceFilesActions => _text('workspaceFilesActions');
+  String get workspaceFilesNewFile => _text('workspaceFilesNewFile');
+  String get workspaceFilesNewFolder => _text('workspaceFilesNewFolder');
+  String get workspaceFilesFileName => _text('workspaceFilesFileName');
+  String get workspaceFilesFolderName => _text('workspaceFilesFolderName');
+  String get workspaceFilesNewName => _text('workspaceFilesNewName');
+  String get workspaceFilesRename => _text('workspaceFilesRename');
+  String get workspaceFilesCopy => _text('workspaceFilesCopy');
+  String get workspaceFilesMove => _text('workspaceFilesMove');
+  String get workspaceFilesDestination => _text('workspaceFilesDestination');
+  String get workspaceFilesDelete => _text('workspaceFilesDelete');
+  String get workspaceFilesDeleteFileBody =>
+      _text('workspaceFilesDeleteFileBody');
+  String get workspaceFilesDeleteFolderBody =>
+      _text('workspaceFilesDeleteFolderBody');
+  String get workspaceFilesCopyBody => _text('workspaceFilesCopyBody');
+  String get workspaceFilesMoveBody => _text('workspaceFilesMoveBody');
+  String get workspaceFilesConfirm => _text('workspaceFilesConfirm');
+  String get workspaceFilesMutationComplete =>
+      _text('workspaceFilesMutationComplete');
+  String get workspaceFilesMutationFailed =>
+      _text('workspaceFilesMutationFailed');
   String get workspaceFilesPathCopied => _text('workspaceFilesPathCopied');
   String get workspaceFilesPreviewEmpty => _text('workspaceFilesPreviewEmpty');
   String get workspaceFilesRaw => _text('workspaceFilesRaw');
@@ -2514,6 +2536,28 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesLoading': 'Loading files',
     'workspaceFilesOpenFailed': 'File preview failed',
     'workspaceFilesCopyPath': 'Copy path',
+    'workspaceFilesActions': 'File actions',
+    'workspaceFilesNewFile': 'New file',
+    'workspaceFilesNewFolder': 'New folder',
+    'workspaceFilesFileName': 'File name',
+    'workspaceFilesFolderName': 'Folder name',
+    'workspaceFilesNewName': 'New name',
+    'workspaceFilesRename': 'Rename',
+    'workspaceFilesCopy': 'Copy',
+    'workspaceFilesMove': 'Move',
+    'workspaceFilesDestination': 'Destination path',
+    'workspaceFilesDelete': 'Delete',
+    'workspaceFilesDeleteFileBody':
+        'This permanently deletes the selected file from the server workspace.',
+    'workspaceFilesDeleteFolderBody':
+        'This recursively deletes the selected directory and its contents from the server workspace.',
+    'workspaceFilesCopyBody':
+        'Copy the selected path into the server workspace?',
+    'workspaceFilesMoveBody':
+        'Move the selected path into the server workspace? Move uses copy then remove and is not atomic.',
+    'workspaceFilesConfirm': 'Continue',
+    'workspaceFilesMutationComplete': 'Workspace change completed.',
+    'workspaceFilesMutationFailed': 'Workspace change failed',
     'workspaceFilesPathCopied': 'Path copied.',
     'workspaceFilesPreviewEmpty': 'Select a text file to preview it.',
     'workspaceFilesRaw': 'Raw',
@@ -3572,6 +3616,24 @@ const _values = <String, Map<String, String>>{
     'workspaceFilesLoading': '正在加载文件',
     'workspaceFilesOpenFailed': '文件预览失败',
     'workspaceFilesCopyPath': '复制路径',
+    'workspaceFilesActions': '文件操作',
+    'workspaceFilesNewFile': '新建文件',
+    'workspaceFilesNewFolder': '新建文件夹',
+    'workspaceFilesFileName': '文件名',
+    'workspaceFilesFolderName': '文件夹名',
+    'workspaceFilesNewName': '新名称',
+    'workspaceFilesRename': '重命名',
+    'workspaceFilesCopy': '复制',
+    'workspaceFilesMove': '移动',
+    'workspaceFilesDestination': '目标路径',
+    'workspaceFilesDelete': '删除',
+    'workspaceFilesDeleteFileBody': '这会从服务器工作区永久删除所选文件。',
+    'workspaceFilesDeleteFolderBody': '这会递归删除服务器工作区中的所选文件夹及其内容。',
+    'workspaceFilesCopyBody': '将所选路径复制到服务器工作区？',
+    'workspaceFilesMoveBody': '将所选路径移动到服务器工作区？移动使用“复制后删除”，不是原子操作。',
+    'workspaceFilesConfirm': '继续',
+    'workspaceFilesMutationComplete': '工作区变更已完成。',
+    'workspaceFilesMutationFailed': '工作区变更失败',
     'workspaceFilesPathCopied': '已复制路径。',
     'workspaceFilesPreviewEmpty': '选择文本文件进行预览。',
     'workspaceFilesRaw': '源码',

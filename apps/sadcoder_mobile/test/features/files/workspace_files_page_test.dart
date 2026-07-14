@@ -758,6 +758,87 @@ void main() {
     }
   });
 
+  testWidgets('runs guarded workspace lifecycle actions', (tester) async {
+    final mutationRunner = _FakeWorkspaceFileMutationRunner(
+      stat: _stat(path: 'README.md', language: 'markdown'),
+    );
+    await _pumpFilesPage(
+      tester,
+      directoryReader: _FakeWorkspaceDirectoryReader({
+        '': [
+          _entry(path: 'README.md', name: 'README.md'),
+          _entry(path: 'lib', name: 'lib', kind: WorkspaceFileKind.directory),
+        ],
+      }),
+      fileReader: _FakeWorkspaceFileReader(
+        stats: {'README.md': _stat(path: 'README.md', language: 'markdown')},
+        chunks: {
+          'README.md': [_chunk(path: 'README.md', content: '# Read me')],
+        },
+      ),
+      fileMutationRunner: mutationRunner,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('workspace-files-new-file')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('workspace-files-mutation-input')),
+      'created.txt',
+    );
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-entry-actions-README.md')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rename'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('workspace-files-mutation-input')),
+      'renamed.md',
+    );
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-entry-actions-README.md')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Copy'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('workspace-files-mutation-input')),
+      'copy.md',
+    );
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey('workspace-files-entry-actions-README.md')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    expect(mutationRunner.mutationCalls.map((call) => call.operation), [
+      'createFile',
+      'move',
+      'copy',
+      'remove',
+    ]);
+    expect(mutationRunner.mutationCalls[0].path, 'created.txt');
+    expect(mutationRunner.mutationCalls[1].destinationPath, 'renamed.md');
+    expect(mutationRunner.mutationCalls[2].destinationPath, 'copy.md');
+    expect(mutationRunner.mutationCalls[3].path, 'README.md');
+  });
+
   testWidgets('rejects unsafe remote file search result paths before reading', (
     tester,
   ) async {
@@ -1476,6 +1557,86 @@ class _FakeWorkspaceFileMutationRunner implements WorkspaceFileMutationRunner {
           String? expectedContentVersion,
         })
       >[];
+  final mutationCalls =
+      <
+        ({
+          String operation,
+          String? path,
+          String? sourcePath,
+          String? destinationPath,
+        })
+      >[];
+
+  @override
+  Future<WorkspaceFileWriteResult> createFile({
+    required String root,
+    required String path,
+    String content = '',
+  }) async {
+    mutationCalls.add((
+      operation: 'createFile',
+      path: path,
+      sourcePath: null,
+      destinationPath: null,
+    ));
+    return WorkspaceFileWriteResult(
+      root: root,
+      path: path,
+      contentVersion: stat.contentVersion,
+      stat: stat,
+    );
+  }
+
+  @override
+  Future<void> createDirectory({
+    required String root,
+    required String path,
+  }) async {
+    mutationCalls.add((
+      operation: 'createDirectory',
+      path: path,
+      sourcePath: null,
+      destinationPath: null,
+    ));
+  }
+
+  @override
+  Future<void> remove({required String root, required String path}) async {
+    mutationCalls.add((
+      operation: 'remove',
+      path: path,
+      sourcePath: null,
+      destinationPath: null,
+    ));
+  }
+
+  @override
+  Future<void> copy({
+    required String root,
+    required String sourcePath,
+    required String destinationPath,
+  }) async {
+    mutationCalls.add((
+      operation: 'copy',
+      path: null,
+      sourcePath: sourcePath,
+      destinationPath: destinationPath,
+    ));
+  }
+
+  @override
+  Future<void> move({
+    required String root,
+    required String sourcePath,
+    required String destinationPath,
+  }) async {
+    mutationCalls.add((
+      operation: 'move',
+      path: null,
+      sourcePath: sourcePath,
+      destinationPath: destinationPath,
+    ));
+  }
 
   @override
   Future<WorkspaceFileWriteResult> writeText({

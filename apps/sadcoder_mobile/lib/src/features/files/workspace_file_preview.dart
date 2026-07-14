@@ -6,6 +6,9 @@ class _PreviewPanel extends StatelessWidget {
     required this.onModeChanged,
     required this.onLoadMore,
     this.onEdit,
+    this.onCopy,
+    this.onMove,
+    this.onDelete,
     this.errorText,
   });
 
@@ -13,6 +16,9 @@ class _PreviewPanel extends StatelessWidget {
   final ValueChanged<_PreviewMode> onModeChanged;
   final VoidCallback onLoadMore;
   final VoidCallback? onEdit;
+  final VoidCallback? onCopy;
+  final VoidCallback? onMove;
+  final VoidCallback? onDelete;
   final String? errorText;
 
   @override
@@ -53,6 +59,9 @@ class _PreviewPanel extends StatelessWidget {
               onModeChanged: onModeChanged,
               onLoadMore: onLoadMore,
               onEdit: onEdit,
+              onCopy: onCopy,
+              onMove: onMove,
+              onDelete: onDelete,
               loadMoreErrorText: preview.loadMoreError == null
                   ? null
                   : _workspaceFailureMessage(l10n, preview.loadMoreError!),
@@ -151,6 +160,9 @@ class _PreviewContent extends StatelessWidget {
     required this.onModeChanged,
     required this.onLoadMore,
     this.onEdit,
+    this.onCopy,
+    this.onMove,
+    this.onDelete,
     this.loadMoreErrorText,
   });
 
@@ -158,6 +170,9 @@ class _PreviewContent extends StatelessWidget {
   final ValueChanged<_PreviewMode> onModeChanged;
   final VoidCallback onLoadMore;
   final VoidCallback? onEdit;
+  final VoidCallback? onCopy;
+  final VoidCallback? onMove;
+  final VoidCallback? onDelete;
   final String? loadMoreErrorText;
 
   @override
@@ -198,6 +213,27 @@ class _PreviewContent extends StatelessWidget {
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined),
                 tooltip: l10n.workspaceFilesEdit,
+              ),
+            if (onCopy != null)
+              IconButton(
+                key: const ValueKey('workspace-files-preview-copy'),
+                onPressed: onCopy,
+                icon: const Icon(Icons.file_copy_outlined),
+                tooltip: l10n.workspaceFilesCopy,
+              ),
+            if (onMove != null)
+              IconButton(
+                key: const ValueKey('workspace-files-preview-move'),
+                onPressed: onMove,
+                icon: const Icon(Icons.drive_file_move_outlined),
+                tooltip: l10n.workspaceFilesMove,
+              ),
+            if (onDelete != null)
+              IconButton(
+                key: const ValueKey('workspace-files-preview-delete'),
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline),
+                tooltip: l10n.workspaceFilesDelete,
               ),
           ],
         ),

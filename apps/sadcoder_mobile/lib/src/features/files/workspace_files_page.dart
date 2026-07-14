@@ -76,6 +76,8 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
   String? _activeRoot;
   bool _includeHidden = false;
   bool? _fileSidebarOverride;
+  String _selectedDirectoryPath = '';
+  bool _mutationBusy = false;
   _FilePreviewState _preview = const _FilePreviewState.idle();
   WorkspaceFileWatch? _fileWatch;
   StreamSubscription<WorkspaceFileChangedEvent>? _fileWatchSubscription;
@@ -183,6 +185,9 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
                             onModeChanged: _setPreviewMode,
                             onLoadMore: _loadMorePreview,
                             onEdit: _canEditPreview ? _editPreview : null,
+                            onCopy: _canMutatePreview ? _copyPreview : null,
+                            onMove: _canMutatePreview ? _movePreview : null,
+                            onDelete: _canMutatePreview ? _deletePreview : null,
                             errorText: _preview.error == null
                                 ? null
                                 : _workspaceFailureMessage(
@@ -218,6 +223,12 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
                                     ? null
                                     : _searchWorkspace,
                                 onRefresh: _refreshWorkspace,
+                                onNewFile: _canMutateWorkspace
+                                    ? () => _createEntry(directory: false)
+                                    : null,
+                                onNewFolder: _canMutateWorkspace
+                                    ? () => _createEntry(directory: true)
+                                    : null,
                               ),
                         directory:
                             root == null ||
@@ -281,6 +292,19 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
         stat.isBinary != true;
   }
 
+  bool get _canMutateWorkspace =>
+      _fileMutationRunner != null && _activeRoot != null && !_mutationBusy;
+
+  bool get _canMutatePreview {
+    final preview = _preview;
+    return _canMutateWorkspace &&
+        preview.root != null &&
+        preview.path != null &&
+        preview.path!.trim().isNotEmpty &&
+        preview.stat != null &&
+        preview.stat!.kind != WorkspaceFileKind.unknown;
+  }
+
   FileSearchReader? get _fileSearchReader =>
       widget.fileSearchReader ?? widget.sessionController?.fileSearchReader;
 
@@ -333,6 +357,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
       _expandedDirectories
         ..clear()
         ..add('');
+      _selectedDirectoryPath = '';
       _preview = const _FilePreviewState.idle();
       _setRootControllerText(nextRoot ?? '');
     }
@@ -481,6 +506,7 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
   void _toggleDirectory(String path) {
     final expanded = _expandedDirectories.contains(path);
     setState(() {
+      _selectedDirectoryPath = path;
       if (expanded) {
         _expandedDirectories.remove(path);
       } else {
@@ -886,6 +912,337 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
     );
   }
 
+  Future<void> _createEntry({
+    required bool directory,
+    String? parentPath,
+  }) async {
+    final root = _activeRoot;
+    final runner = _fileMutationRunner;
+    if (root == null || runner == null || _mutationBusy) {
+      return;
+    }
+    final parent = parentPath ?? _selectedDirectoryPath;
+    final name = await _promptMutationText(
+      title: directory
+          ? context.l10n.workspaceFilesNewFolder
+          : context.l10n.workspaceFilesNewFile,
+      label: directory
+          ? context.l10n.workspaceFilesFolderName
+          : context.l10n.workspaceFilesFileName,
+    );
+    if (!mounted || name == null) {
+      return;
+    }
+    try {
+      final target = WorkspacePath.fromRoot(root, parent).child(name);
+      await _runMutation(() async {
+        if (directory) {
+          await runner.createDirectory(root: root, path: target.relativePath);
+        } else {
+          await runner.createFile(root: root, path: target.relativePath);
+        }
+      });
+    } on Object catch (error) {
+      _showMutationError(error);
+    }
+  }
+
+  Future<void> _renameEntry(WorkspaceDirectoryEntry entry) async {
+    final name = await _promptMutationText(
+      title: context.l10n.workspaceFilesRename,
+      label: context.l10n.workspaceFilesNewName,
+      initial: entry.name,
+    );
+    if (!mounted || name == null) {
+      return;
+    }
+    final parent = entry.path.contains('/')
+        ? entry.path.substring(0, entry.path.lastIndexOf('/'))
+        : '';
+    try {
+      final destination = WorkspacePath.fromRoot(
+        _activeRoot!,
+        parent,
+      ).child(name).relativePath;
+      await _movePath(sourcePath: entry.path, destinationPath: destination);
+    } on Object catch (error) {
+      _showMutationError(error);
+    }
+  }
+
+  Future<void> _copyEntry(WorkspaceDirectoryEntry entry) async {
+    final destination = await _promptMutationText(
+      title: context.l10n.workspaceFilesCopy,
+      label: context.l10n.workspaceFilesDestination,
+      initial: '${entry.path}.copy',
+    );
+    if (!mounted || destination == null) {
+      return;
+    }
+    try {
+      await _copyPathWithinWorkspace(
+        sourcePath: entry.path,
+        destinationPath: destination,
+      );
+    } on Object catch (error) {
+      _showMutationError(error);
+    }
+  }
+
+  Future<void> _moveEntry(WorkspaceDirectoryEntry entry) async {
+    final destination = await _promptMutationText(
+      title: context.l10n.workspaceFilesMove,
+      label: context.l10n.workspaceFilesDestination,
+      initial: entry.path,
+    );
+    if (!mounted || destination == null) {
+      return;
+    }
+    try {
+      await _movePath(sourcePath: entry.path, destinationPath: destination);
+    } on Object catch (error) {
+      _showMutationError(error);
+    }
+  }
+
+  Future<void> _deleteEntry(WorkspaceDirectoryEntry entry) async {
+    final confirmed = await _confirmMutation(
+      title: context.l10n.workspaceFilesDelete,
+      body: entry.kind == WorkspaceFileKind.directory
+          ? context.l10n.workspaceFilesDeleteFolderBody
+          : context.l10n.workspaceFilesDeleteFileBody,
+    );
+    if (!mounted || confirmed != true) {
+      return;
+    }
+    try {
+      await _removePath(entry.path);
+    } on Object catch (error) {
+      _showMutationError(error);
+    }
+  }
+
+  Future<void> _copyPreview() async {
+    final preview = _preview;
+    final path = preview.path;
+    if (path == null) {
+      return;
+    }
+    final destination = await _promptMutationText(
+      title: context.l10n.workspaceFilesCopy,
+      label: context.l10n.workspaceFilesDestination,
+      initial: '$path.copy',
+    );
+    if (!mounted || destination == null) {
+      return;
+    }
+    try {
+      await _copyPathWithinWorkspace(
+        sourcePath: path,
+        destinationPath: destination,
+      );
+    } on Object catch (error) {
+      _showMutationError(error);
+    }
+  }
+
+  Future<void> _movePreview() async {
+    final path = _preview.path;
+    if (path == null) {
+      return;
+    }
+    final destination = await _promptMutationText(
+      title: context.l10n.workspaceFilesMove,
+      label: context.l10n.workspaceFilesDestination,
+      initial: path,
+    );
+    if (!mounted || destination == null) {
+      return;
+    }
+    try {
+      await _movePath(sourcePath: path, destinationPath: destination);
+    } on Object catch (error) {
+      _showMutationError(error);
+    }
+  }
+
+  Future<void> _deletePreview() async {
+    final path = _preview.path;
+    if (path == null) {
+      return;
+    }
+    final confirmed = await _confirmMutation(
+      title: context.l10n.workspaceFilesDelete,
+      body: context.l10n.workspaceFilesDeleteFileBody,
+    );
+    if (!mounted || confirmed != true) {
+      return;
+    }
+    try {
+      await _removePath(path);
+    } on Object catch (error) {
+      _showMutationError(error);
+    }
+  }
+
+  Future<void> _copyPathWithinWorkspace({
+    required String sourcePath,
+    required String destinationPath,
+  }) async {
+    final root = _activeRoot;
+    final runner = _fileMutationRunner;
+    if (root == null || runner == null) {
+      return;
+    }
+    await _confirmAndRunMutation(
+      title: context.l10n.workspaceFilesCopy,
+      body: context.l10n.workspaceFilesCopyBody,
+      action: () => runner.copy(
+        root: root,
+        sourcePath: sourcePath,
+        destinationPath: destinationPath,
+      ),
+    );
+  }
+
+  Future<void> _movePath({
+    required String sourcePath,
+    required String destinationPath,
+  }) async {
+    final root = _activeRoot;
+    final runner = _fileMutationRunner;
+    if (root == null || runner == null) {
+      return;
+    }
+    await _confirmAndRunMutation(
+      title: context.l10n.workspaceFilesMove,
+      body: context.l10n.workspaceFilesMoveBody,
+      action: () => runner.move(
+        root: root,
+        sourcePath: sourcePath,
+        destinationPath: destinationPath,
+      ),
+    );
+  }
+
+  Future<void> _removePath(String path) async {
+    final root = _activeRoot;
+    final runner = _fileMutationRunner;
+    if (root == null || runner == null) {
+      return;
+    }
+    await _runMutation(() => runner.remove(root: root, path: path));
+  }
+
+  Future<void> _confirmAndRunMutation({
+    required String title,
+    required String body,
+    required Future<void> Function() action,
+  }) async {
+    final confirmed = await _confirmMutation(title: title, body: body);
+    if (!mounted || confirmed != true) {
+      return;
+    }
+    await _runMutation(action);
+  }
+
+  Future<void> _runMutation(Future<void> Function() action) async {
+    if (_mutationBusy || !mounted) {
+      return;
+    }
+    setState(() => _mutationBusy = true);
+    try {
+      await action();
+      if (!mounted) {
+        return;
+      }
+      _preview = const _FilePreviewState.idle();
+      _refreshWorkspace();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.workspaceFilesMutationComplete)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _mutationBusy = false);
+      }
+    }
+  }
+
+  Future<String?> _promptMutationText({
+    required String title,
+    required String label,
+    String initial = '',
+  }) async {
+    final controller = TextEditingController(text: initial);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          key: const ValueKey('workspace-files-mutation-input'),
+          autofocus: true,
+          controller: controller,
+          decoration: InputDecoration(labelText: label),
+          onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(context.l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: Text(context.l10n.workspaceFilesConfirm),
+          ),
+        ],
+      ),
+    );
+    // showDialog completes when pop is requested, while the route can still
+    // be running its reverse transition. Keep the controller alive until the
+    // overlay has detached the TextField.
+    unawaited(
+      Future<void>.delayed(
+        const Duration(milliseconds: 300),
+        controller.dispose,
+      ),
+    );
+    return result;
+  }
+
+  Future<bool?> _confirmMutation({
+    required String title,
+    required String body,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.l10n.approvalCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.l10n.workspaceFilesConfirm),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMutationError(Object error) {
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${context.l10n.workspaceFilesMutationFailed}: $error'),
+      ),
+    );
+  }
+
   List<Widget> _directoryRows(
     AppLocalizations l10n, {
     required String root,
@@ -942,6 +1299,16 @@ class _WorkspaceFilesPageState extends State<WorkspaceFilesPage> {
               ? () => _toggleDirectory(entry.path)
               : () => _openFile(entry),
           onCopy: () => _copyPath(displayPath),
+          onCopyEntry: _canMutateWorkspace ? () => _copyEntry(entry) : null,
+          onNewFile: isDirectory && _canMutateWorkspace
+              ? () => _createEntry(directory: false, parentPath: entry.path)
+              : null,
+          onNewFolder: isDirectory && _canMutateWorkspace
+              ? () => _createEntry(directory: true, parentPath: entry.path)
+              : null,
+          onRename: _canMutateWorkspace ? () => _renameEntry(entry) : null,
+          onMove: _canMutateWorkspace ? () => _moveEntry(entry) : null,
+          onDelete: _canMutateWorkspace ? () => _deleteEntry(entry) : null,
         ),
       );
       if (isDirectory && expanded) {
@@ -1269,6 +1636,8 @@ class _FilesToolbar extends StatelessWidget {
     required this.onIncludeHiddenChanged,
     required this.onSearch,
     required this.onRefresh,
+    required this.onNewFile,
+    required this.onNewFolder,
   });
 
   final TextEditingController filterController;
@@ -1276,6 +1645,8 @@ class _FilesToolbar extends StatelessWidget {
   final ValueChanged<bool> onIncludeHiddenChanged;
   final VoidCallback? onSearch;
   final VoidCallback onRefresh;
+  final VoidCallback? onNewFile;
+  final VoidCallback? onNewFolder;
 
   @override
   Widget build(BuildContext context) {
@@ -1345,6 +1716,20 @@ class _FilesToolbar extends StatelessWidget {
               tooltip: l10n.workspaceFilesRefresh,
               icon: Icons.refresh,
             ),
+            if (onNewFile != null)
+              _CompactFilesToolButton(
+                key: const ValueKey('workspace-files-new-file'),
+                onPressed: onNewFile,
+                tooltip: l10n.workspaceFilesNewFile,
+                icon: Icons.note_add_outlined,
+              ),
+            if (onNewFolder != null)
+              _CompactFilesToolButton(
+                key: const ValueKey('workspace-files-new-folder'),
+                onPressed: onNewFolder,
+                tooltip: l10n.workspaceFilesNewFolder,
+                icon: Icons.create_new_folder_outlined,
+              ),
           ],
         );
       },
@@ -1451,6 +1836,29 @@ class _DirectoryPanel extends StatelessWidget {
   }
 }
 
+enum _WorkspaceEntryAction {
+  copyPath,
+  newFile,
+  newFolder,
+  copy,
+  move,
+  rename,
+  delete,
+}
+
+PopupMenuItem<_WorkspaceEntryAction> _entryActionItem(
+  _WorkspaceEntryAction value,
+  IconData icon,
+  String label,
+) {
+  return PopupMenuItem(
+    value: value,
+    child: Row(
+      children: [Icon(icon, size: 18), const SizedBox(width: 10), Text(label)],
+    ),
+  );
+}
+
 class _WorkspaceEntryRow extends StatelessWidget {
   const _WorkspaceEntryRow({
     required this.entryKey,
@@ -1461,6 +1869,12 @@ class _WorkspaceEntryRow extends StatelessWidget {
     required this.selected,
     required this.onTap,
     required this.onCopy,
+    required this.onCopyEntry,
+    required this.onNewFile,
+    required this.onNewFolder,
+    required this.onRename,
+    required this.onMove,
+    required this.onDelete,
   });
 
   final Key entryKey;
@@ -1471,6 +1885,12 @@ class _WorkspaceEntryRow extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onCopy;
+  final VoidCallback? onCopyEntry;
+  final VoidCallback? onNewFile;
+  final VoidCallback? onNewFolder;
+  final VoidCallback? onRename;
+  final VoidCallback? onMove;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1584,15 +2004,87 @@ class _WorkspaceEntryRow extends StatelessWidget {
                         ),
                       ),
                     ),
-                    SizedBox.square(
-                      dimension: 30,
-                      child: IconButton(
-                        onPressed: onCopy,
-                        tooltip: l10n.workspaceFilesCopyPath,
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.copy, size: 16),
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox.square(
+                          dimension: 30,
+                          child: IconButton(
+                            onPressed: onCopy,
+                            tooltip: l10n.workspaceFilesCopyPath,
+                            padding: EdgeInsets.zero,
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(Icons.copy, size: 16),
+                          ),
+                        ),
+                        SizedBox.square(
+                          dimension: 30,
+                          child: PopupMenuButton<_WorkspaceEntryAction>(
+                            key: ValueKey(
+                              'workspace-files-entry-actions-${entry.path}',
+                            ),
+                            tooltip: l10n.workspaceFilesActions,
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(Icons.more_vert, size: 16),
+                            onSelected: (action) {
+                              switch (action) {
+                                case _WorkspaceEntryAction.copyPath:
+                                  onCopy();
+                                case _WorkspaceEntryAction.newFile:
+                                  onNewFile?.call();
+                                case _WorkspaceEntryAction.newFolder:
+                                  onNewFolder?.call();
+                                case _WorkspaceEntryAction.copy:
+                                  onCopyEntry?.call();
+                                case _WorkspaceEntryAction.move:
+                                  onMove?.call();
+                                case _WorkspaceEntryAction.rename:
+                                  onRename?.call();
+                                case _WorkspaceEntryAction.delete:
+                                  onDelete?.call();
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              if (onNewFile != null)
+                                _entryActionItem(
+                                  _WorkspaceEntryAction.newFile,
+                                  Icons.note_add_outlined,
+                                  l10n.workspaceFilesNewFile,
+                                ),
+                              if (onNewFolder != null)
+                                _entryActionItem(
+                                  _WorkspaceEntryAction.newFolder,
+                                  Icons.create_new_folder_outlined,
+                                  l10n.workspaceFilesNewFolder,
+                                ),
+                              if (onCopyEntry != null)
+                                _entryActionItem(
+                                  _WorkspaceEntryAction.copy,
+                                  Icons.file_copy_outlined,
+                                  l10n.workspaceFilesCopy,
+                                ),
+                              if (onMove != null)
+                                _entryActionItem(
+                                  _WorkspaceEntryAction.move,
+                                  Icons.drive_file_move_outlined,
+                                  l10n.workspaceFilesMove,
+                                ),
+                              if (onRename != null)
+                                _entryActionItem(
+                                  _WorkspaceEntryAction.rename,
+                                  Icons.drive_file_rename_outline,
+                                  l10n.workspaceFilesRename,
+                                ),
+                              if (onDelete != null)
+                                _entryActionItem(
+                                  _WorkspaceEntryAction.delete,
+                                  Icons.delete_outline,
+                                  l10n.workspaceFilesDelete,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

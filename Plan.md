@@ -1014,8 +1014,8 @@ MVP 可以简化为底部导航：
 - 支持代码文件语法高亮。
 - 支持 Markdown 文件在渲染视图和 raw 源码视图之间切换。
 - 支持大文件分段读取，不强制一次性读取完整文件。
-- MVP 原始只读约束仍适用于删除、重命名、新建文件和新建目录；现有文本文件编辑已作为独立受控能力接入，必须经过完整加载、diff 审批、二次确认和乐观冲突检测，不复用只读 reader 直接写入。
-- Files 页面保持文件内容只读浏览边界，不提供写文件、删除、重命名或编辑快捷入口；顶栏允许进入独立 Terminal 页面，但终端命令仍遵循独立的 sandbox/host-process 确认流程，不把写文件能力混入文件预览流程。
+- Files 页面默认保持内容浏览边界；需要 mutation runner 时才显示受控的新建、复制、移动/重命名、删除和文本编辑入口。所有变更都经过 workspace path guard、符号链接防护和二次确认，不复用只读 reader 直接写入。
+- 顶栏允许进入独立 Terminal 页面，终端命令仍遵循独立的 sandbox/host-process 确认流程；文件生命周期操作使用结构化 filesystem RPC，不把任意 shell 写文件能力混入文件预览流程。
 
 结构要求：
 
@@ -1055,7 +1055,7 @@ MVP 可以简化为底部导航：
 - Markdown 文件默认可渲染，并可切换 raw；大 Markdown 受大小阈值保护。
 - 代码文件有语法高亮；大文件模式不会阻塞 UI。
 - 文件读取支持分段加载，测试覆盖 `nextOffset`、`hasMore`、编码边界和错误状态。
-- 不出现任何写文件入口；只读查看不会触发 server turn、不会修改工作区。
+- 没有 mutation runner 时不出现写文件入口；只读查看不会触发 server turn、不会修改工作区。启用 mutation runner 后，受控变更入口必须经过明确确认并在完成后刷新工作区。
 - Files toolbar 不暴露 terminal/shell command 入口，避免把只读浏览和命令执行混在同一模块里。
 
 当前实现状态：
@@ -1072,8 +1072,9 @@ MVP 可以简化为底部导航：
 - 本轮 Chat UI / timeline 性能里程碑没有改变 Files 只读边界；9.6 仍以 Files 页面作为完整工作区选择、默认 workspace、搜索和文件树入口。Chat 侧栏只保留当前 workspace/cwd 摘要与切换入口，避免把 cwd/session/turn override 调试信息重新塞回主对话流。
 - 已覆盖路径归一化、目录响应 path/name 校验、目录分页 `nextCursor`/`cursor`、拒绝 `..` / 绝对 child path、符号链接祖先拒绝、二进制文件拒绝、UTF-8 range 边界、后续 chunk 失败重试和大 Markdown raw 保护。
 - 已补充文件页 widget 覆盖：可手动指定工作区 root，目录读取使用该 root；可保存 App 默认工作区 root 到 cwd 覆盖，并可从临时 root 恢复默认 root。
-- 已补充文件页只读边界 widget 覆盖：打开文件预览后仍不出现新建文件/文件夹、重命名、删除、编辑、保存或写文件入口；独立的“打开终端”入口单独验证，不把终端命令或受控编辑能力混入文件预览流程。
-- 已完成现有文本文件的受控编辑、`fs/writeFile`、`fs/watch`、diff 审批和乐观冲突检测，并保持独立 mutation runner；仍待后续评估新建、重命名、删除、目录级操作，以及服务器提供原子 compare-and-swap/版本条件写入后的强一致冲突控制。
+- 已补充文件页 widget 覆盖：无 mutation runner 的只读预览不出现新建文件/文件夹、重命名、删除、编辑、保存或写文件入口；启用 mutation runner 时覆盖新建、复制、移动/重命名、删除、二次确认和失败提示；独立的“打开终端”入口不把终端命令混入文件预览流程。
+- 已完成现有文本文件的受控编辑、`fs/writeFile`、`fs/watch`、diff 审批和乐观冲突检测，并保持独立 mutation runner；服务器端 CAS、原子 rename 和更强一致冲突控制仍待上游协议支持。
+- 本轮已完成新建文件/目录、复制、删除和移动/重命名：客户端使用上游结构化 `fs/createDirectory`、`fs/copy`、`fs/remove` 与既有 `fs/writeFile`，所有目标路径继续限制在 workspace root 内并拒绝符号链接逃逸。上游没有 rename RPC，因此移动明确实现为 copy 后 remove；copy 成功但 remove 失败时向 UI 报告 partial failure，不伪装成原子成功。服务器端 CAS、原子 rename 和更强一致冲突控制仍未实现。
 
 ### 9.7 深色模式
 

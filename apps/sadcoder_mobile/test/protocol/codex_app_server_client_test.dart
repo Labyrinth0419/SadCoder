@@ -1053,4 +1053,42 @@ void main() {
       throwsA(isA<ArgumentError>()),
     );
   });
+
+  test(
+    'filesystem mutation methods use structured v2 names and params',
+    () async {
+      final requests = <JsonRpcRequest>[];
+      final client = CodexAppServerClient(
+        MemoryJsonRpcTransport((request) {
+          requests.add(request);
+          return {};
+        }),
+      );
+
+      await client.fsCreateDirectory(path: ' /repo/new ', recursive: false);
+      await client.fsRemove(path: ' /repo/old ', recursive: true, force: false);
+      await client.fsCopy(
+        sourcePath: ' /repo/a ',
+        destinationPath: ' /repo/b ',
+        recursive: true,
+      );
+
+      expect(requests.map((request) => request.method), [
+        'fs/createDirectory',
+        'fs/remove',
+        'fs/copy',
+      ]);
+      expect(requests[0].params, {'path': '/repo/new', 'recursive': false});
+      expect(requests[1].params, {
+        'path': '/repo/old',
+        'recursive': true,
+        'force': false,
+      });
+      expect(requests[2].params, {
+        'sourcePath': '/repo/a',
+        'destinationPath': '/repo/b',
+        'recursive': true,
+      });
+    },
+  );
 }
