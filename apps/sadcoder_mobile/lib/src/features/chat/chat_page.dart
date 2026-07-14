@@ -348,6 +348,8 @@ class _ChatPageState extends State<ChatPage> {
                                           hostSessions: widget.hostSessions,
                                           selectedProfile:
                                               sessionController?.profile,
+                                          showThreads:
+                                              threadListController == null,
                                           onProfileSelected:
                                               sessionController == null &&
                                                   widget.profileConnector ==
@@ -361,6 +363,9 @@ class _ChatPageState extends State<ChatPage> {
                                       ],
                                       const SizedBox(height: 10),
                                       ChatThreadListPanel(
+                                        key: const ValueKey(
+                                          'chat-sidebar-thread-list',
+                                        ),
                                         controller: threadListController,
                                         detailController:
                                             threadDetailController,

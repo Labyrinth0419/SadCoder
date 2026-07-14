@@ -167,12 +167,14 @@ class ChatHostSessionsPanel extends StatelessWidget {
     required this.hostSessions,
     required this.selectedProfile,
     required this.onProfileSelected,
+    this.showThreads = true,
     this.onThreadSelected,
   });
 
   final List<HostSessionSummary> hostSessions;
   final SshProfile? selectedProfile;
   final ValueChanged<SshProfile>? onProfileSelected;
+  final bool showThreads;
   final ChatHostThreadConnector? onThreadSelected;
 
   @override
@@ -223,6 +225,7 @@ class ChatHostSessionsPanel extends StatelessWidget {
           _HostSessionTile(
             summary: hostSessions[index],
             selected: selectedProfile?.id == hostSessions[index].profile.id,
+            showThreads: showThreads,
             onSelected: onProfileSelected,
             onThreadSelected: onThreadSelected,
           ),
@@ -237,12 +240,14 @@ class _HostSessionTile extends StatelessWidget {
   const _HostSessionTile({
     required this.summary,
     required this.selected,
+    required this.showThreads,
     required this.onSelected,
     required this.onThreadSelected,
   });
 
   final HostSessionSummary summary;
   final bool selected;
+  final bool showThreads;
   final ValueChanged<SshProfile>? onSelected;
   final ChatHostThreadConnector? onThreadSelected;
 
@@ -367,7 +372,7 @@ class _HostSessionTile extends StatelessWidget {
               ),
             ),
           ),
-          if (summary.threads.isNotEmpty)
+          if (showThreads && summary.threads.isNotEmpty)
             ExpansionTile(
               key: ValueKey('chat-sidebar-host-thread-list-${profile.id}'),
               initiallyExpanded: selected,

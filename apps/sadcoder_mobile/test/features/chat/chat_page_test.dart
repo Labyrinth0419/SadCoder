@@ -54,6 +54,7 @@ import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
+import 'package:sadcoder_mobile/src/session/host_session_summary.dart';
 import 'package:sadcoder_mobile/src/skills/skill_list_reader.dart';
 import 'package:sadcoder_mobile/src/skills/skill_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
@@ -258,6 +259,57 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('chat-session-sidebar')), findsNothing);
+  });
+
+  testWidgets('sidebar renders one authoritative session panel', (
+    tester,
+  ) async {
+    final thread = ThreadSummary.fromJson({
+      'id': 'thr_shared',
+      'sessionId': 'sess_1',
+      'preview': 'Shared session',
+      'ephemeral': false,
+      'status': 'idle',
+      'cwd': '/repo',
+      'updatedAt': 1,
+    });
+    final threadListController = ThreadListController(
+      readerProvider: () =>
+          _FakeThreadListReader(page: ThreadListPage(threads: [thread])),
+    );
+    addTearDown(threadListController.dispose);
+    await threadListController.refresh();
+
+    await _pumpChatPage(
+      tester,
+      threadListController: threadListController,
+      hostSessions: [
+        HostSessionSummary(
+          profile: _profile,
+          status: CodexSessionStatus.connected,
+          threads: [thread],
+          selectedThreadId: thread.id,
+          selectedThreadTitle: thread.title,
+        ),
+      ],
+    );
+
+    await tester.tap(find.byKey(const ValueKey('chat-session-sidebar-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('chat-sidebar-host-sessions')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('chat-sidebar-thread-list')),
+      findsOneWidget,
+    );
+    expect(find.text('Sessions'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('chat-sidebar-host-thread-list-local')),
+      findsNothing,
+    );
   });
 
   testWidgets('advanced chat controls tolerate raw RPC without overrides', (
@@ -8970,6 +9022,7 @@ Future<void> _pumpChatPage(
   PermissionProfileListController? permissionProfileListController,
   CollaborationModeListReader? collaborationModeListReader,
   SshProfileStore? profileStore,
+  List<HostSessionSummary> hostSessions = const [],
   Locale? locale,
   ThemeMode themeMode = ThemeMode.light,
 }) {
@@ -9007,6 +9060,7 @@ Future<void> _pumpChatPage(
           permissionProfileListController: permissionProfileListController,
           collaborationModeListReader: collaborationModeListReader,
           profileStore: profileStore,
+          hostSessions: hostSessions,
         ),
       ),
     ),
