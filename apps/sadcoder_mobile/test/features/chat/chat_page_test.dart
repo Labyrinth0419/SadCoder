@@ -1404,7 +1404,7 @@ void main() {
     expect(approval.kind, PendingApprovalKind.fileChange);
     expect(approval.method, 'item/fileChange/requestApproval');
     expect(approval.grantRoot, '/tmp');
-    expect(approval.reason, 'SadCoder test approval request');
+    expect(approval.reason, 'Sad test approval request');
     expect(approval.rawParams['changes'], isA<List<Object?>>());
   });
 

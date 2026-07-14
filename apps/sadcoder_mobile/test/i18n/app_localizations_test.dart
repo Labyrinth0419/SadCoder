@@ -140,7 +140,7 @@ void main() {
       '当前 rollout 路径：/tmp/rollout.jsonl',
     );
     expect(zh.slashCommandRolloutPathUnavailable, '暂时无法获取 rollout 路径。');
-    expect(zh.slashCommandTestApprovalReason, 'SadCoder 测试审批请求');
+    expect(zh.slashCommandTestApprovalReason, 'Sad 测试审批请求');
     expect(zh.slashCommandTestApprovalQueued, '已加入测试审批请求。');
     expect(zh.externalAgentImportDetecting, '正在扫描所选主机……');
     expect(zh.externalAgentImportType('MCP_SERVER_CONFIG'), 'MCP 服务器');

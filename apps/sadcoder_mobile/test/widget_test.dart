@@ -65,8 +65,12 @@ import 'package:sadcoder_mobile/src/usage/account_usage_snapshot_reader.dart';
 import 'package:sadcoder_mobile/src/usage/thread_token_usage_controller.dart';
 
 void main() {
-  testWidgets('renders the SadCoder shell', (tester) async {
+  testWidgets('renders the Sad shell', (tester) async {
     await tester.pumpWidget(const SadCoderApp());
+
+    final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    final appContext = tester.element(find.text('Hosts').first);
+    expect(app.onGenerateTitle?.call(appContext), 'Sad');
 
     expect(find.text('Hosts'), findsWidgets);
     expect(find.text('Chat'), findsWidgets);

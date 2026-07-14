@@ -1,4 +1,4 @@
-# SadCoder Mobile
+# Sad
 
 Flutter Android/iOS app for controlling Codex through a remote
 `sadcoder-agent` over SSH.

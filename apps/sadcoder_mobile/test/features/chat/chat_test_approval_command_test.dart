@@ -35,14 +35,14 @@ void main() {
     expect(approval.threadId, 'thr_1');
     expect(approval.turnId, 'turn_1');
     expect(approval.startedAtMs, now.millisecondsSinceEpoch);
-    expect(approval.reason, 'SadCoder test approval request');
+    expect(approval.reason, 'Sad test approval request');
     expect(approval.grantRoot, '/tmp');
     expect(approval.title, 'File change approval: /tmp');
     expect(approval.rawParams['threadId'], 'thr_1');
     expect(approval.rawParams['turnId'], 'turn_1');
     expect(approval.rawParams['startedAtMs'], now.millisecondsSinceEpoch);
     expect(approval.rawParams['grantRoot'], '/tmp');
-    expect(approval.rawParams['reason'], 'SadCoder test approval request');
+    expect(approval.rawParams['reason'], 'Sad test approval request');
     expect(approval.rawParams['changes'], isA<List<Object?>>());
   });
 

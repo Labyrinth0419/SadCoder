@@ -1503,7 +1503,7 @@ String _intlLocaleForLanguage(String languageCode) {
 
 const _values = <String, Map<String, String>>{
   'en': {
-    'appTitle': 'SadCoder',
+    'appTitle': 'Sad',
     'messageWithDetail': '{message}: {detail}',
     'hosts': 'Hosts',
     'chat': 'Chat',
@@ -1674,18 +1674,18 @@ const _values = <String, Map<String, String>>{
     'disconnected': 'Disconnected',
     'hostKeyConfirmTitle': 'Trust this SSH host key?',
     'hostKeyConfirmBody':
-        'This is the first time SadCoder has seen {endpoint}.\n\nKey type: {keyType}\nFingerprint: {fingerprint}\n\nOnly continue if this fingerprint matches the server you expect.',
+        'This is the first time Sad has seen {endpoint}.\n\nKey type: {keyType}\nFingerprint: {fingerprint}\n\nOnly continue if this fingerprint matches the server you expect.',
     'hostKeyTrust': 'Trust and continue',
     'hostKeyChangedTitle': 'SSH host key changed',
     'hostKeyChangedBody':
-        'SadCoder has blocked the connection to {endpoint} because the SSH host key no longer matches the saved fingerprint.\n\nSaved key: {expectedKeyType}\nSaved fingerprint: {expectedFingerprint}\n\nReceived key: {receivedKeyType}\nReceived fingerprint: {receivedFingerprint}\n\nDo not continue until you verify this change out of band.',
+        'Sad has blocked the connection to {endpoint} because the SSH host key no longer matches the saved fingerprint.\n\nSaved key: {expectedKeyType}\nSaved fingerprint: {expectedFingerprint}\n\nReceived key: {receivedKeyType}\nReceived fingerprint: {receivedFingerprint}\n\nDo not continue until you verify this change out of band.',
     'hostKeyChangedClose': 'Close',
     'm0ProtocolClient': 'M0 protocol client',
     'm0ProtocolClientBody':
         'The app has a JSON-RPC client for initialize, model/list, and thread/list. SSH transport uses the same interface.',
     'slashCommandSurface': 'Slash command surface',
     'slashCommandSurfaceBody':
-        'Typing / will later open the SadCoder command palette instead of sending slash text as a normal prompt.',
+        'Typing / will later open the Sad command palette instead of sending slash text as a normal prompt.',
     'showChatAdvancedControls': 'Advanced controls',
     'hideChatAdvancedControls': 'Hide advanced controls',
     'rawRpcTitle': 'Raw RPC',
@@ -1874,7 +1874,7 @@ const _values = <String, Map<String, String>>{
         'Memory maintenance is handled by app-server clients; this debug command does not perform a separate action.',
     'slashCommandRolloutCurrentPath': 'Current rollout path: {path}',
     'slashCommandRolloutPathUnavailable': 'Rollout path is not available yet.',
-    'slashCommandTestApprovalReason': 'SadCoder test approval request',
+    'slashCommandTestApprovalReason': 'Sad test approval request',
     'slashCommandTestApprovalQueued': 'Test approval request queued.',
     'slashCommandModelUpdated': 'Model override updated.',
     'slashCommandPersonalityUpdated': 'Personality override updated.',
@@ -1883,7 +1883,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandCancelled': 'Canceled {slash}.',
     'slashCommandHighRiskConfirmTitle': 'Confirm high-risk command',
     'slashCommandHighRiskConfirmBody':
-        '{slash} is a high-risk command. SadCoder will only show the guarded fallback diagnostic right now; it will not run an agent command or change server settings. Continue only if you meant to inspect this path.',
+        '{slash} is a high-risk command. Sad will only show the guarded fallback diagnostic right now; it will not run an agent command or change server settings. Continue only if you meant to inspect this path.',
     'slashCommandSandboxSetupConfirmBody':
         '/setup-default-sandbox is a high-risk command. It will start the official Codex elevated sandbox setup on the selected Windows host, may request Administrator approval there, and can persist sandbox configuration. Continue only if you intend to change that host.',
     'slashCommandHighRiskConfirmContinue': 'Continue',
@@ -2027,7 +2027,7 @@ const _values = <String, Map<String, String>>{
         'Logs may include prompts, paths, commands, and diagnostic details from this server.',
     'feedbackLogsConfirmTitle': 'Send logs with feedback?',
     'feedbackLogsConfirmBody':
-        'SadCoder redacts diagnostic logs it captures, but server logs may still include paths, commands, project names, and prompts. Review your note before sending.',
+        'Sad redacts diagnostic logs it captures, but server logs may still include paths, commands, project names, and prompts. Review your note before sending.',
     'feedbackLogsConfirmSubmit': 'Send with logs',
     'feedbackSubmit': 'Send feedback',
     'themeCommandTitle': 'Theme',
@@ -2037,7 +2037,7 @@ const _values = <String, Map<String, String>>{
     'colorPalette': 'Color palette',
     'colorPaletteBody':
         'Choose an app accent palette while code, diff, and terminal colors stay semantic.',
-    'colorPalette.sadcoder': 'SadCoder',
+    'colorPalette.sadcoder': 'Sad',
     'colorPalette.candy': 'Candy',
     'colorPalette.pastel-candy': 'Pastel Candy',
     'colorPalette.candy-tones': 'Candy Tones',
@@ -2056,7 +2056,7 @@ const _values = <String, Map<String, String>>{
     'backgroundConnectionKeepActiveTurn':
         'Keep active turns connected in background',
     'backgroundConnectionKeepActiveTurnBody':
-        'When enabled, SadCoder keeps observing an active turn while the app is backgrounded. When disabled, it disconnects and backfills on the next connection.',
+        'When enabled, Sad keeps observing an active turn while the app is backgrounded. When disabled, it disconnects and backfills on the next connection.',
     'diagnosticLogs': 'Diagnostic logs',
     'diagnosticLogsBody':
         'Redacted JSON-RPC messages from the current connection.',
@@ -2190,7 +2190,7 @@ const _values = <String, Map<String, String>>{
     'diagnosticLogsConfirmTitle': 'Copy diagnostic logs?',
     'diagnosticLogsExportConfirmTitle': 'Export diagnostic logs?',
     'diagnosticLogsConfirmBody':
-        'SadCoder redacts captured JSON-RPC logs, but exported logs may still include paths, commands, project names, and prompt text.',
+        'Sad redacts captured JSON-RPC logs, but exported logs may still include paths, commands, project names, and prompt text.',
     'diagnosticLogsCopied': 'Copied {count} diagnostic log entries.',
     'diagnosticLogsExported': 'Exported {count} diagnostic log entries.',
     'diagnosticLogsExportFailed': 'Diagnostic log export failed',
@@ -2691,7 +2691,7 @@ const _values = <String, Map<String, String>>{
     'terminalFailed': 'Failed: {error}',
   },
   'zh': {
-    'appTitle': 'SadCoder',
+    'appTitle': 'Sad',
     'messageWithDetail': '{message}：{detail}',
     'hosts': '主机',
     'chat': '对话',
@@ -2845,17 +2845,17 @@ const _values = <String, Map<String, String>>{
     'disconnected': '未连接',
     'hostKeyConfirmTitle': '信任此 SSH 主机密钥？',
     'hostKeyConfirmBody':
-        '这是 SadCoder 首次看到 {endpoint}。\n\n密钥类型：{keyType}\n指纹：{fingerprint}\n\n只有在该指纹与预期服务器一致时才继续。',
+        '这是 Sad 首次看到 {endpoint}。\n\n密钥类型：{keyType}\n指纹：{fingerprint}\n\n只有在该指纹与预期服务器一致时才继续。',
     'hostKeyTrust': '信任并继续',
     'hostKeyChangedTitle': 'SSH 主机密钥已变化',
     'hostKeyChangedBody':
-        'SadCoder 已阻断到 {endpoint} 的连接，因为当前 SSH 主机密钥与已保存指纹不匹配。\n\n已保存密钥：{expectedKeyType}\n已保存指纹：{expectedFingerprint}\n\n当前收到密钥：{receivedKeyType}\n当前收到指纹：{receivedFingerprint}\n\n请先通过其他可信渠道确认该变化，再继续处理。',
+        'Sad 已阻断到 {endpoint} 的连接，因为当前 SSH 主机密钥与已保存指纹不匹配。\n\n已保存密钥：{expectedKeyType}\n已保存指纹：{expectedFingerprint}\n\n当前收到密钥：{receivedKeyType}\n当前收到指纹：{receivedFingerprint}\n\n请先通过其他可信渠道确认该变化，再继续处理。',
     'hostKeyChangedClose': '关闭',
     'm0ProtocolClient': 'M0 协议客户端',
     'm0ProtocolClientBody':
         '应用已经具备 initialize、model/list 和 thread/list 的 JSON-RPC 客户端，SSH 传输复用同一接口。',
     'slashCommandSurface': '斜杠命令入口',
-    'slashCommandSurfaceBody': '输入 / 后会打开 SadCoder 命令面板，而不是把斜杠文本当作普通提示词发送。',
+    'slashCommandSurfaceBody': '输入 / 后会打开 Sad 命令面板，而不是把斜杠文本当作普通提示词发送。',
     'showChatAdvancedControls': '高级控制',
     'hideChatAdvancedControls': '收起高级控制',
     'rawRpcTitle': '原始 RPC',
@@ -3030,7 +3030,7 @@ const _values = <String, Map<String, String>>{
         '内存维护由 app-server 客户端处理；此调试命令不会执行额外操作。',
     'slashCommandRolloutCurrentPath': '当前 rollout 路径：{path}',
     'slashCommandRolloutPathUnavailable': '暂时无法获取 rollout 路径。',
-    'slashCommandTestApprovalReason': 'SadCoder 测试审批请求',
+    'slashCommandTestApprovalReason': 'Sad 测试审批请求',
     'slashCommandTestApprovalQueued': '已加入测试审批请求。',
     'slashCommandModelUpdated': '已更新模型覆盖。',
     'slashCommandPersonalityUpdated': '已更新协作风格覆盖。',
@@ -3039,7 +3039,7 @@ const _values = <String, Map<String, String>>{
     'slashCommandCancelled': '已取消 {slash}。',
     'slashCommandHighRiskConfirmTitle': '确认高风险命令',
     'slashCommandHighRiskConfirmBody':
-        '{slash} 是高风险命令。当前 SadCoder 只会显示受保护 fallback 诊断，不会执行 agent 命令，也不会修改服务器设置。只有在你确实要检查该路径时才继续。',
+        '{slash} 是高风险命令。当前 Sad 只会显示受保护 fallback 诊断，不会执行 agent 命令，也不会修改服务器设置。只有在你确实要检查该路径时才继续。',
     'slashCommandSandboxSetupConfirmBody':
         '/setup-default-sandbox 是高风险命令。它会在所选 Windows 主机上启动 Codex 官方的提升权限沙箱设置，可能在该主机请求管理员授权，并持久化沙箱配置。只有在你确实要修改该主机时才继续。',
     'slashCommandHighRiskConfirmContinue': '继续',
@@ -3169,7 +3169,7 @@ const _values = <String, Map<String, String>>{
     'feedbackLogsDisclosure': '日志可能包含提示词、路径、命令和此服务器上的诊断信息。',
     'feedbackLogsConfirmTitle': '随反馈发送日志？',
     'feedbackLogsConfirmBody':
-        'SadCoder 会脱敏它采集的诊断日志，但服务器日志仍可能包含路径、命令、项目名和提示词。发送前请检查说明。',
+        'Sad 会脱敏它采集的诊断日志，但服务器日志仍可能包含路径、命令、项目名和提示词。发送前请检查说明。',
     'feedbackLogsConfirmSubmit': '随日志发送',
     'feedbackSubmit': '发送反馈',
     'themeCommandTitle': '主题',
@@ -3178,7 +3178,7 @@ const _values = <String, Map<String, String>>{
     'themeDark': '深色',
     'colorPalette': '配色方案',
     'colorPaletteBody': '选择 App 强调色方案；代码、diff 和终端颜色仍保持语义配色。',
-    'colorPalette.sadcoder': 'SadCoder',
+    'colorPalette.sadcoder': 'Sad',
     'colorPalette.candy': '糖果',
     'colorPalette.pastel-candy': '粉彩糖果',
     'colorPalette.candy-tones': '糖果色调',
@@ -3319,7 +3319,7 @@ const _values = <String, Map<String, String>>{
     'diagnosticLogsConfirmTitle': '复制诊断日志？',
     'diagnosticLogsExportConfirmTitle': '导出诊断日志？',
     'diagnosticLogsConfirmBody':
-        'SadCoder 会脱敏已捕获的 JSON-RPC 日志，但导出的日志仍可能包含路径、命令、项目名和提示词文本。',
+        'Sad 会脱敏已捕获的 JSON-RPC 日志，但导出的日志仍可能包含路径、命令、项目名和提示词文本。',
     'diagnosticLogsCopied': '已复制 {count} 条诊断日志。',
     'diagnosticLogsExported': '已导出 {count} 条诊断日志。',
     'diagnosticLogsExportFailed': '诊断日志导出失败',

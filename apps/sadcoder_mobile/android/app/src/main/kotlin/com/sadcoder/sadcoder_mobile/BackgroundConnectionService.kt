@@ -50,10 +50,10 @@ class BackgroundConnectionService : Service() {
         }
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "SadCoder active task",
+            "Sad active task",
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "Keeps the active SadCoder connection alive while the app is in the background."
+            description = "Keeps the active Sad connection alive while the app is in the background."
             setShowBadge(false)
         }
         val manager = getSystemService(NotificationManager::class.java)
@@ -105,7 +105,7 @@ class BackgroundConnectionService : Service() {
 
         return builder
             .setSmallIcon(applicationInfo.icon)
-            .setContentTitle("SadCoder active task")
+            .setContentTitle("Sad active task")
             .setContentText(content)
             .setContentIntent(pendingIntent)
             .setOngoing(true)

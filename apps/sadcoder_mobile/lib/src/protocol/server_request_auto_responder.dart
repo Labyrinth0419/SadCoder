@@ -85,13 +85,13 @@ int _defaultCurrentUnixTimeProvider() {
 
 const _unsupportedServerRequestMessages = {
   dynamicToolCallMethod:
-      'Dynamic tool calls are not available in SadCoder mobile yet.',
+      'Dynamic tool calls are not available in Sad mobile yet.',
   chatgptAuthTokensRefreshMethod:
-      'ChatGPT token refresh is not available in SadCoder mobile.',
+      'ChatGPT token refresh is not available in Sad mobile.',
   attestationGenerateMethod:
-      'Attestation generation is not available in SadCoder mobile.',
+      'Attestation generation is not available in Sad mobile.',
   legacyApplyPatchApprovalMethod:
-      'Legacy patch approval requests are not available in SadCoder mobile.',
+      'Legacy patch approval requests are not available in Sad mobile.',
   legacyExecCommandApprovalMethod:
-      'Legacy command approval requests are not available in SadCoder mobile.',
+      'Legacy command approval requests are not available in Sad mobile.',
 };
