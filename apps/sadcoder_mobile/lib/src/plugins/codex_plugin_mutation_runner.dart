@@ -1,4 +1,5 @@
 import '../protocol/codex_app_server_client.dart';
+import 'plugin_list_reader.dart';
 import 'plugin_mutation_runner.dart';
 
 class CodexPluginMutationRunner implements PluginMutationRunner {
@@ -8,17 +9,16 @@ class CodexPluginMutationRunner implements PluginMutationRunner {
 
   @override
   Future<PluginMutationResult> installPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
+    required PluginCatalogTarget target,
   }) async {
-    final normalized = pluginId.trim();
     final result = await _client.installPlugin(
-      pluginId: normalized,
-      cwds: cwds,
+      pluginName: target.requestPluginName,
+      marketplacePath: target.marketplacePath,
+      remoteMarketplaceName: target.remoteMarketplaceName,
     );
     return PluginMutationResult.fromJson(
       operation: PluginMutationOperation.install,
-      pluginId: normalized,
+      pluginId: target.plugin.id,
       json: result,
     );
   }
@@ -26,13 +26,9 @@ class CodexPluginMutationRunner implements PluginMutationRunner {
   @override
   Future<PluginMutationResult> uninstallPlugin({
     required String pluginId,
-    List<String> cwds = const [],
   }) async {
     final normalized = pluginId.trim();
-    final result = await _client.uninstallPlugin(
-      pluginId: normalized,
-      cwds: cwds,
-    );
+    final result = await _client.uninstallPlugin(pluginId: normalized);
     return PluginMutationResult.fromJson(
       operation: PluginMutationOperation.uninstall,
       pluginId: normalized,

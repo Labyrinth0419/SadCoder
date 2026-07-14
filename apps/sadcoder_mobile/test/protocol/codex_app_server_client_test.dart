@@ -150,7 +150,10 @@ void main() {
       cwds: [' /repo ', '  '],
       marketplaceKinds: ['local', 'workspace-directory'],
     );
-    await client.readPlugin(pluginId: ' linear ', cwds: [' /repo ', '  ']);
+    await client.readPlugin(
+      pluginName: ' plugins~linear ',
+      remoteMarketplaceName: ' openai-curated-remote ',
+    );
     await client.listHooks(cwds: [' /repo ', '  ']);
     await client.listApps(
       cursor: ' apps_cursor ',
@@ -301,8 +304,8 @@ void main() {
       'marketplaceKinds': ['local', 'workspace-directory'],
     });
     expect(requests[18].params, {
-      'pluginId': 'linear',
-      'cwds': ['/repo'],
+      'remoteMarketplaceName': 'openai-curated-remote',
+      'pluginName': 'plugins~linear',
     });
     expect(requests[19].params, {
       'cwds': ['/repo'],
@@ -598,8 +601,11 @@ void main() {
     });
 
     final client = CodexAppServerClient(transport);
-    await client.installPlugin(pluginId: ' linear ', cwds: [' /repo ', ' ']);
-    await client.uninstallPlugin(pluginId: ' linear ', cwds: [' /repo ', ' ']);
+    await client.installPlugin(
+      pluginName: ' linear ',
+      marketplacePath: ' /repo/.agents/plugins/marketplace.json ',
+    );
+    await client.uninstallPlugin(pluginId: ' linear@team-tools ');
 
     expect(requests.map((request) => request.method), [
       'plugin/install',
@@ -607,14 +613,41 @@ void main() {
     ]);
     expect(requests.map((request) => request.params), [
       {
-        'pluginId': 'linear',
-        'cwds': ['/repo'],
+        'marketplacePath': '/repo/.agents/plugins/marketplace.json',
+        'pluginName': 'linear',
       },
-      {
-        'pluginId': 'linear',
-        'cwds': ['/repo'],
-      },
+      {'pluginId': 'linear@team-tools'},
     ]);
+  });
+
+  test('plugin read and install require exactly one catalog source', () {
+    final client = CodexAppServerClient(
+      MemoryJsonRpcTransport((request) => const <String, Object?>{}),
+    );
+
+    expect(() => client.readPlugin(pluginName: 'linear'), throwsArgumentError);
+    expect(
+      () => client.readPlugin(
+        pluginName: 'linear',
+        marketplacePath: '/local/marketplace.json',
+        remoteMarketplaceName: 'remote',
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => client.installPlugin(
+        pluginName: ' ',
+        marketplacePath: '/local/marketplace.json',
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => client.installPlugin(
+        pluginName: 'linear',
+        remoteMarketplaceName: ' ',
+      ),
+      throwsArgumentError,
+    );
   });
 
   test('thread and turn start omit unset overrides', () async {

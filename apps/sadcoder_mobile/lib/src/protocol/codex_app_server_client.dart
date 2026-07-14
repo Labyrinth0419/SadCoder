@@ -1090,45 +1090,71 @@ class CodexAppServerClient {
   }
 
   Future<Map<String, Object?>> readPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
+    required String pluginName,
+    String? marketplacePath,
+    String? remoteMarketplaceName,
   }) {
-    final normalizedCwds = [
-      for (final cwd in cwds)
-        if (cwd.trim().isNotEmpty) cwd.trim(),
-    ];
-    return _request('plugin/read', {
-      'pluginId': pluginId.trim(),
-      if (normalizedCwds.isNotEmpty) 'cwds': normalizedCwds,
-    });
+    final params = _pluginSourceParams(
+      method: 'plugin/read',
+      pluginName: pluginName,
+      marketplacePath: marketplacePath,
+      remoteMarketplaceName: remoteMarketplaceName,
+    );
+    return _request('plugin/read', params);
   }
 
   Future<Map<String, Object?>> installPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
+    required String pluginName,
+    String? marketplacePath,
+    String? remoteMarketplaceName,
   }) {
-    final normalizedCwds = [
-      for (final cwd in cwds)
-        if (cwd.trim().isNotEmpty) cwd.trim(),
-    ];
-    return _request('plugin/install', {
-      'pluginId': pluginId.trim(),
-      if (normalizedCwds.isNotEmpty) 'cwds': normalizedCwds,
-    });
+    final params = _pluginSourceParams(
+      method: 'plugin/install',
+      pluginName: pluginName,
+      marketplacePath: marketplacePath,
+      remoteMarketplaceName: remoteMarketplaceName,
+    );
+    return _request('plugin/install', params);
   }
 
-  Future<Map<String, Object?>> uninstallPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
+  Map<String, Object?> _pluginSourceParams({
+    required String method,
+    required String pluginName,
+    String? marketplacePath,
+    String? remoteMarketplaceName,
   }) {
-    final normalizedCwds = [
-      for (final cwd in cwds)
-        if (cwd.trim().isNotEmpty) cwd.trim(),
-    ];
-    return _request('plugin/uninstall', {
-      'pluginId': pluginId.trim(),
-      if (normalizedCwds.isNotEmpty) 'cwds': normalizedCwds,
-    });
+    final normalizedPluginName = pluginName.trim();
+    if (normalizedPluginName.isEmpty) {
+      throw ArgumentError.value(pluginName, 'pluginName', 'must not be blank');
+    }
+    final normalizedMarketplacePath = marketplacePath?.trim();
+    final normalizedRemoteMarketplaceName = remoteMarketplaceName?.trim();
+    final hasMarketplacePath =
+        normalizedMarketplacePath != null &&
+        normalizedMarketplacePath.isNotEmpty;
+    final hasRemoteMarketplaceName =
+        normalizedRemoteMarketplaceName != null &&
+        normalizedRemoteMarketplaceName.isNotEmpty;
+    if (hasMarketplacePath == hasRemoteMarketplaceName) {
+      throw ArgumentError(
+        '$method requires exactly one non-blank marketplacePath or '
+        'remoteMarketplaceName',
+      );
+    }
+    return {
+      if (hasMarketplacePath) 'marketplacePath': normalizedMarketplacePath,
+      if (hasRemoteMarketplaceName)
+        'remoteMarketplaceName': normalizedRemoteMarketplaceName,
+      'pluginName': normalizedPluginName,
+    };
+  }
+
+  Future<Map<String, Object?>> uninstallPlugin({required String pluginId}) {
+    final normalizedPluginId = pluginId.trim();
+    if (normalizedPluginId.isEmpty) {
+      throw ArgumentError.value(pluginId, 'pluginId', 'must not be blank');
+    }
+    return _request('plugin/uninstall', {'pluginId': normalizedPluginId});
   }
 
   Future<Map<String, Object?>> addMarketplace({

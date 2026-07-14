@@ -64,6 +64,10 @@ String buildPluginDetailSummary({
   if (description.isNotEmpty) {
     lines.add('${l10n.pluginDescription}: $description');
   }
+  final detailDescription = detail.description;
+  if (detailDescription != null && detailDescription != description) {
+    lines.add('${l10n.pluginDescription}: $detailDescription');
+  }
   if (detail.marketplaceName != null) {
     lines.add('${l10n.pluginMarketplace}: ${detail.marketplaceName}');
   }
@@ -157,7 +161,7 @@ String _pluginLine(AppLocalizations l10n, PluginSummary plugin) {
       ? l10n.pluginInstalled
       : l10n.pluginNotInstalled;
   final enabled = plugin.enabled ? l10n.pluginEnabled : l10n.pluginDisabled;
-  return '${plugin.displayName} (${plugin.name}): $installed, $enabled, ${l10n.pluginAvailability}: ${plugin.availability}';
+  return '${plugin.displayName} (${plugin.id}): $installed, $enabled, ${l10n.pluginAvailability}: ${plugin.availability}';
 }
 
 String _versionLabel(AppLocalizations l10n, PluginSummary plugin) {

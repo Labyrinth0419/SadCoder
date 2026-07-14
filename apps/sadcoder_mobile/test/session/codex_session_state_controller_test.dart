@@ -1593,17 +1593,13 @@ class _FakePluginDetailReader implements PluginDetailReader {
   const _FakePluginDetailReader();
 
   @override
-  Future<PluginDetail> readPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
-  }) async {
+  Future<PluginDetail> readPlugin({required PluginCatalogTarget target}) async {
     return PluginDetail.fromJson(
-      pluginId: pluginId,
+      pluginId: target.plugin.id,
       json: {
         'plugin': {
-          'id': pluginId,
-          'name': pluginId,
-          'source': {'type': 'remote'},
+          'summary': target.plugin.raw,
+          'marketplaceName': target.marketplace.name,
         },
       },
     );
@@ -1615,12 +1611,11 @@ class _FakePluginMutationRunner implements PluginMutationRunner {
 
   @override
   Future<PluginMutationResult> installPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
+    required PluginCatalogTarget target,
   }) async {
     return PluginMutationResult(
       operation: PluginMutationOperation.install,
-      pluginId: pluginId,
+      pluginId: target.plugin.id,
       raw: const <String, Object?>{},
     );
   }
@@ -1628,7 +1623,6 @@ class _FakePluginMutationRunner implements PluginMutationRunner {
   @override
   Future<PluginMutationResult> uninstallPlugin({
     required String pluginId,
-    List<String> cwds = const [],
   }) async {
     return PluginMutationResult(
       operation: PluginMutationOperation.uninstall,

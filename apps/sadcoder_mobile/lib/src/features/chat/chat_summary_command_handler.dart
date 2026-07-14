@@ -152,14 +152,13 @@ class ChatSummaryCommandHandler {
     final cwds = currentWorkspaceCwdsProvider();
     if (command case ChatPluginsReadCommand(:final pluginId)) {
       final detailReader = sessionController?.pluginDetailReader;
-      if (detailReader == null) {
+      if (detailReader == null || reader == null) {
         return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
       }
       try {
-        final detail = await detailReader.readPlugin(
-          pluginId: pluginId,
-          cwds: cwds,
-        );
+        final page = await reader.listPlugins(cwds: cwds);
+        final target = page.resolveTarget(pluginId);
+        final detail = await detailReader.readPlugin(target: target);
         return plugins_summary.buildPluginDetailSummary(
           l10n: l10n,
           detail: detail,
@@ -185,18 +184,35 @@ class ChatSummaryCommandHandler {
       if (runner == null) {
         return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
       }
+      PluginCatalogTarget? installTarget;
+      if (command is ChatPluginsInstallCommand) {
+        if (reader == null) {
+          return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
+        }
+        try {
+          final page = await reader.listPlugins(cwds: cwds);
+          installTarget = page.resolveTarget(mutationPluginId);
+        } on Object catch (error) {
+          return [
+            l10n.pluginsTitle,
+            chatSummaryMessageWithOptionalDetail(
+              l10n,
+              l10n.pluginMutationFailed,
+              error,
+            ),
+          ].join('\n');
+        }
+      }
       if (!await _confirmPluginMutation(command)) {
         return l10n.pluginMutationCancelled;
       }
       try {
         final result = switch (command) {
           ChatPluginsInstallCommand() => await runner.installPlugin(
-            pluginId: mutationPluginId,
-            cwds: cwds,
+            target: installTarget!,
           ),
           ChatPluginsUninstallCommand() => await runner.uninstallPlugin(
             pluginId: mutationPluginId,
-            cwds: cwds,
           ),
           _ => throw StateError('Unexpected plugin mutation command.'),
         };

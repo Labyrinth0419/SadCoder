@@ -1,13 +1,11 @@
+import 'plugin_list_reader.dart';
+
 abstract interface class PluginMutationRunner {
   Future<PluginMutationResult> installPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
+    required PluginCatalogTarget target,
   });
 
-  Future<PluginMutationResult> uninstallPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
-  });
+  Future<PluginMutationResult> uninstallPlugin({required String pluginId});
 }
 
 enum PluginMutationOperation { install, uninstall }
@@ -27,7 +25,7 @@ class PluginMutationResult {
   }) {
     return PluginMutationResult(
       operation: operation,
-      pluginId: _stringValue(json['pluginId']) ?? pluginId,
+      pluginId: pluginId,
       message: _stringValue(json['message']),
       raw: Map.unmodifiable(json),
     );

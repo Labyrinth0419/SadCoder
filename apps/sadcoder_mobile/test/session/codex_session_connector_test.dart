@@ -10,6 +10,7 @@ import 'package:sadcoder_mobile/src/approvals/approval_state_controller.dart';
 import 'package:sadcoder_mobile/src/approvals/pending_approval.dart';
 import 'package:sadcoder_mobile/src/command_exec/command_exec_runner.dart';
 import 'package:sadcoder_mobile/src/environments/environment_runner.dart';
+import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
 import 'package:sadcoder_mobile/src/realtime/realtime_runner.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_connector.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
@@ -36,8 +37,23 @@ void main() {
       enabled: false,
     );
     await connection.pluginListReader.listPlugins();
-    await connection.pluginDetailReader.readPlugin(pluginId: 'linear');
-    await connection.pluginMutationRunner.installPlugin(pluginId: 'linear');
+    final pluginTarget = PluginListPage.fromJson({
+      'marketplaces': [
+        {
+          'name': 'openai-curated-remote',
+          'plugins': [
+            {
+              'id': 'linear@openai-curated-remote',
+              'remotePluginId': 'plugins~linear',
+              'name': 'linear',
+              'source': {'type': 'remote'},
+            },
+          ],
+        },
+      ],
+    }).resolveTarget('linear');
+    await connection.pluginDetailReader.readPlugin(target: pluginTarget);
+    await connection.pluginMutationRunner.installPlugin(target: pluginTarget);
     await connection.pluginMutationRunner.uninstallPlugin(pluginId: 'linear');
     final marketplaceMutationRunner =
         (connection as MarketplaceMutationConnectionHandle)
@@ -541,9 +557,13 @@ class _LineServerProxyConnector implements AgentProxyConnector {
     'plugin/list' => {'marketplaces': <Object?>[]},
     'plugin/read' => {
       'plugin': {
-        'id': 'linear',
-        'name': 'linear',
-        'source': {'type': 'remote'},
+        'marketplaceName': 'openai-curated-remote',
+        'summary': {
+          'id': 'linear@openai-curated-remote',
+          'remotePluginId': 'plugins~linear',
+          'name': 'linear',
+          'source': {'type': 'remote'},
+        },
       },
     },
     'plugin/install' => {'pluginId': 'linear'},

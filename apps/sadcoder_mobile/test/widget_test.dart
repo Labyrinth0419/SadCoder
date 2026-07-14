@@ -2179,16 +2179,13 @@ class _StaticPluginDetailReader implements PluginDetailReader {
   const _StaticPluginDetailReader();
 
   @override
-  Future<PluginDetail> readPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
-  }) async {
+  Future<PluginDetail> readPlugin({required PluginCatalogTarget target}) async {
     return PluginDetail.fromJson(
-      pluginId: pluginId,
+      pluginId: target.plugin.id,
       json: {
         'plugin': {
-          'id': pluginId,
-          'name': pluginId,
+          'summary': target.plugin.raw,
+          'marketplaceName': target.marketplace.name,
           'source': {'type': 'remote'},
         },
       },
@@ -2201,12 +2198,11 @@ class _NoopPluginMutationRunner implements PluginMutationRunner {
 
   @override
   Future<PluginMutationResult> installPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
+    required PluginCatalogTarget target,
   }) async {
     return PluginMutationResult(
       operation: PluginMutationOperation.install,
-      pluginId: pluginId,
+      pluginId: target.plugin.id,
       raw: const <String, Object?>{},
     );
   }
@@ -2214,7 +2210,6 @@ class _NoopPluginMutationRunner implements PluginMutationRunner {
   @override
   Future<PluginMutationResult> uninstallPlugin({
     required String pluginId,
-    List<String> cwds = const [],
   }) async {
     return PluginMutationResult(
       operation: PluginMutationOperation.uninstall,

@@ -5184,26 +5184,46 @@ void main() {
     final approvalController = ApprovalStateController();
     final pluginDetailReader = _RecordingPluginDetailReader(
       detail: PluginDetail.fromJson(
-        pluginId: 'linear',
+        pluginId: 'linear@openai-curated',
         json: {
-          'marketplaceName': 'openai-curated',
-          'readme': '# Linear\nPlan work',
           'plugin': {
-            'id': 'linear',
-            'name': 'linear',
-            'version': '1.2.3',
-            'source': {'type': 'remote'},
-            'installed': true,
-            'enabled': true,
-            'availability': 'AVAILABLE',
-            'interface': {
-              'displayName': 'Linear',
-              'shortDescription': 'Plan work',
-              'capabilities': ['mcp'],
+            'marketplaceName': 'openai-curated',
+            'description': 'Plan work in Linear',
+            'summary': {
+              'id': 'linear@openai-curated',
+              'remotePluginId': 'plugins~linear',
+              'name': 'linear',
+              'version': '1.2.3',
+              'source': {'type': 'remote'},
+              'installed': true,
+              'enabled': true,
+              'availability': 'AVAILABLE',
+              'interface': {
+                'displayName': 'Linear',
+                'shortDescription': 'Plan work',
+                'capabilities': ['mcp'],
+              },
             },
           },
         },
       ),
+    );
+    final pluginReader = _RecordingPluginListReader(
+      page: PluginListPage.fromJson({
+        'marketplaces': [
+          {
+            'name': 'openai-curated',
+            'plugins': [
+              {
+                'id': 'linear@openai-curated',
+                'remotePluginId': 'plugins~linear',
+                'name': 'linear',
+                'source': {'type': 'remote'},
+              },
+            ],
+          },
+        ],
+      }),
     );
     final turnRunner = _FakeTurnRunner();
     final starter = _FakeSessionStarter(
@@ -5211,6 +5231,7 @@ void main() {
         page: ThreadListPage(threads: []),
       ),
       turnRunner: turnRunner,
+      pluginListReader: pluginReader,
       pluginDetailReader: pluginDetailReader,
     );
     final sessionController = CodexSessionStateController(
@@ -5253,12 +5274,20 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
     await tester.pumpAndSettle();
 
-    expect(pluginDetailReader.calls.single.pluginId, 'linear');
-    expect(pluginDetailReader.calls.single.cwds, ['/repo']);
+    expect(pluginDetailReader.calls.single.plugin.id, 'linear@openai-curated');
+    expect(pluginDetailReader.calls.single.requestPluginName, 'plugins~linear');
+    expect(
+      pluginDetailReader.calls.single.remoteMarketplaceName,
+      'openai-curated',
+    );
+    expect(pluginReader.cwds.single, ['/repo']);
     expect(turnRunner.startedTurns, isEmpty);
-    expect(find.textContaining('Linear (linear): installed'), findsOneWidget);
+    expect(
+      find.textContaining('Linear (linear@openai-curated): installed'),
+      findsOneWidget,
+    );
     expect(find.textContaining('Marketplace: openai-curated'), findsOneWidget);
-    expect(find.textContaining('README:'), findsOneWidget);
+    expect(find.textContaining('Plan work in Linear'), findsOneWidget);
   });
 
   testWidgets('/plugins install mutates and refreshes plugin list', (
@@ -5272,7 +5301,8 @@ void main() {
             'name': 'openai-curated',
             'plugins': [
               {
-                'id': 'linear',
+                'id': 'linear@openai-curated',
+                'remotePluginId': 'plugins~linear',
                 'name': 'linear',
                 'source': {'type': 'remote'},
                 'installed': true,
@@ -5341,18 +5371,34 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(pluginMutationRunner.installCalls, hasLength(1));
-    expect(pluginMutationRunner.installCalls.single.pluginId, 'linear');
-    expect(pluginMutationRunner.installCalls.single.cwds, ['/repo']);
+    expect(
+      pluginMutationRunner.installCalls.single.plugin.id,
+      'linear@openai-curated',
+    );
+    expect(
+      pluginMutationRunner.installCalls.single.requestPluginName,
+      'plugins~linear',
+    );
+    expect(
+      pluginMutationRunner.installCalls.single.remoteMarketplaceName,
+      'openai-curated',
+    );
     expect(pluginMutationRunner.uninstallCalls, isEmpty);
     expect(pluginReader.cwds, [
+      ['/repo'],
       ['/repo'],
     ]);
     expect(turnRunner.startedTurns, isEmpty);
     expect(
-      find.textContaining('Install requested for plugin linear.'),
+      find.textContaining(
+        'Install requested for plugin linear@openai-curated.',
+      ),
       findsOneWidget,
     );
-    expect(find.textContaining('linear (linear): installed'), findsOneWidget);
+    expect(
+      find.textContaining('linear (linear@openai-curated): installed'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('/plugins mutation cancellation sends no RPC', (tester) async {
@@ -9672,17 +9718,13 @@ class _FakePluginDetailReader implements PluginDetailReader {
   const _FakePluginDetailReader();
 
   @override
-  Future<PluginDetail> readPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
-  }) async {
+  Future<PluginDetail> readPlugin({required PluginCatalogTarget target}) async {
     return PluginDetail.fromJson(
-      pluginId: pluginId,
+      pluginId: target.plugin.id,
       json: {
         'plugin': {
-          'id': pluginId,
-          'name': pluginId,
-          'source': {'type': 'remote'},
+          'summary': target.plugin.raw,
+          'marketplaceName': target.marketplace.name,
         },
       },
     );
@@ -9693,14 +9735,11 @@ class _RecordingPluginDetailReader implements PluginDetailReader {
   _RecordingPluginDetailReader({required this.detail});
 
   final PluginDetail detail;
-  final calls = <({String pluginId, List<String> cwds})>[];
+  final calls = <PluginCatalogTarget>[];
 
   @override
-  Future<PluginDetail> readPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
-  }) async {
-    calls.add((pluginId: pluginId, cwds: List.unmodifiable(cwds)));
+  Future<PluginDetail> readPlugin({required PluginCatalogTarget target}) async {
+    calls.add(target);
     return detail;
   }
 }
@@ -10052,12 +10091,11 @@ class _FakePluginMutationRunner implements PluginMutationRunner {
 
   @override
   Future<PluginMutationResult> installPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
+    required PluginCatalogTarget target,
   }) async {
     return PluginMutationResult(
       operation: PluginMutationOperation.install,
-      pluginId: pluginId,
+      pluginId: target.plugin.id,
       raw: const <String, Object?>{},
     );
   }
@@ -10065,7 +10103,6 @@ class _FakePluginMutationRunner implements PluginMutationRunner {
   @override
   Future<PluginMutationResult> uninstallPlugin({
     required String pluginId,
-    List<String> cwds = const [],
   }) async {
     return PluginMutationResult(
       operation: PluginMutationOperation.uninstall,
@@ -10076,18 +10113,17 @@ class _FakePluginMutationRunner implements PluginMutationRunner {
 }
 
 class _RecordingPluginMutationRunner implements PluginMutationRunner {
-  final installCalls = <({String pluginId, List<String> cwds})>[];
-  final uninstallCalls = <({String pluginId, List<String> cwds})>[];
+  final installCalls = <PluginCatalogTarget>[];
+  final uninstallCalls = <String>[];
 
   @override
   Future<PluginMutationResult> installPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
+    required PluginCatalogTarget target,
   }) async {
-    installCalls.add((pluginId: pluginId, cwds: List.unmodifiable(cwds)));
+    installCalls.add(target);
     return PluginMutationResult(
       operation: PluginMutationOperation.install,
-      pluginId: pluginId,
+      pluginId: target.plugin.id,
       raw: const <String, Object?>{},
     );
   }
@@ -10095,9 +10131,8 @@ class _RecordingPluginMutationRunner implements PluginMutationRunner {
   @override
   Future<PluginMutationResult> uninstallPlugin({
     required String pluginId,
-    List<String> cwds = const [],
   }) async {
-    uninstallCalls.add((pluginId: pluginId, cwds: List.unmodifiable(cwds)));
+    uninstallCalls.add(pluginId);
     return PluginMutationResult(
       operation: PluginMutationOperation.uninstall,
       pluginId: pluginId,

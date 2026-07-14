@@ -118,6 +118,76 @@ void main() {
     expect(plugin.interface?.websiteUrl, 'https://github.com');
   });
 
+  test('resolveTarget derives stable local and remote request locators', () {
+    final page = PluginListPage.fromJson({
+      'marketplaces': [
+        {
+          'name': 'repo-tools',
+          'path': '/repo/.agents/plugins/marketplace.json',
+          'plugins': [
+            {
+              'id': 'docs@repo-tools',
+              'name': 'docs',
+              'source': {'type': 'local', 'path': '/repo/plugins/docs'},
+            },
+          ],
+        },
+        {
+          'name': 'openai-curated-remote',
+          'plugins': [
+            {
+              'id': 'linear@openai-curated-remote',
+              'remotePluginId': 'plugins~linear',
+              'name': 'linear',
+              'source': {'type': 'remote'},
+            },
+          ],
+        },
+      ],
+    });
+
+    final local = page.resolveTarget('docs');
+    expect(local.requestPluginName, 'docs');
+    expect(local.marketplacePath, '/repo/.agents/plugins/marketplace.json');
+    expect(local.remoteMarketplaceName, isNull);
+
+    final remote = page.resolveTarget('linear@openai-curated-remote');
+    expect(remote.requestPluginName, 'plugins~linear');
+    expect(remote.marketplacePath, isNull);
+    expect(remote.remoteMarketplaceName, 'openai-curated-remote');
+  });
+
+  test('resolveTarget rejects ambiguous names and identifies unique ids', () {
+    final page = PluginListPage.fromJson({
+      'marketplaces': [
+        for (final marketplace in ['team-a', 'team-b'])
+          {
+            'name': marketplace,
+            'path': '/marketplaces/$marketplace.json',
+            'plugins': [
+              {
+                'id': 'review@$marketplace',
+                'name': 'review',
+                'source': {'type': 'local', 'path': '/plugins/$marketplace'},
+              },
+            ],
+          },
+      ],
+    });
+
+    expect(
+      () => page.resolveTarget('review'),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('review@team-a, review@team-b'),
+        ),
+      ),
+    );
+    expect(page.resolveTarget('review@team-b').marketplace.name, 'team-b');
+  });
+
   test('CodexPluginListReader calls app-server plugin/list', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {

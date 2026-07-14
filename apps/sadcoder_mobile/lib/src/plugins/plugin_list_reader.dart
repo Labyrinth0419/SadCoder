@@ -43,6 +43,100 @@ class PluginListPage {
   final List<PluginMarketplaceEntry> marketplaces;
   final List<MarketplaceLoadError> marketplaceLoadErrors;
   final List<String> featuredPluginIds;
+
+  PluginCatalogTarget resolveTarget(String selector) {
+    final normalized = selector.trim();
+    if (normalized.isEmpty) {
+      throw ArgumentError.value(selector, 'selector', 'must not be blank');
+    }
+
+    final entries =
+        <({PluginMarketplaceEntry marketplace, PluginSummary plugin})>[
+          for (final marketplace in marketplaces)
+            for (final plugin in marketplace.plugins)
+              (marketplace: marketplace, plugin: plugin),
+        ];
+    final exactMatches = entries
+        .where(
+          (entry) =>
+              entry.plugin.id == normalized ||
+              entry.plugin.remotePluginId == normalized,
+        )
+        .toList(growable: false);
+    if (exactMatches.length == 1) {
+      final match = exactMatches.single;
+      return PluginCatalogTarget.fromCatalog(
+        marketplace: match.marketplace,
+        plugin: match.plugin,
+      );
+    }
+    if (exactMatches.length > 1) {
+      throw StateError(
+        'Plugin selector "$normalized" matches multiple plugin ids.',
+      );
+    }
+
+    final nameMatches = entries
+        .where((entry) => entry.plugin.name == normalized)
+        .toList(growable: false);
+    if (nameMatches.length == 1) {
+      final match = nameMatches.single;
+      return PluginCatalogTarget.fromCatalog(
+        marketplace: match.marketplace,
+        plugin: match.plugin,
+      );
+    }
+    if (nameMatches.isEmpty) {
+      throw StateError('Plugin "$normalized" was not found in plugin/list.');
+    }
+    final ids = nameMatches.map((entry) => entry.plugin.id).join(', ');
+    throw StateError(
+      'Plugin name "$normalized" is ambiguous; use one of these ids: $ids.',
+    );
+  }
+}
+
+class PluginCatalogTarget {
+  const PluginCatalogTarget({
+    required this.marketplace,
+    required this.plugin,
+    required this.requestPluginName,
+    this.marketplacePath,
+    this.remoteMarketplaceName,
+  });
+
+  factory PluginCatalogTarget.fromCatalog({
+    required PluginMarketplaceEntry marketplace,
+    required PluginSummary plugin,
+  }) {
+    final marketplacePath = marketplace.path;
+    if (marketplacePath != null) {
+      return PluginCatalogTarget(
+        marketplace: marketplace,
+        plugin: plugin,
+        requestPluginName: plugin.name,
+        marketplacePath: marketplacePath,
+      );
+    }
+    final remotePluginId = plugin.remotePluginId;
+    if (remotePluginId == null) {
+      throw StateError(
+        'Remote plugin ${plugin.id} is missing remotePluginId in plugin/list.',
+      );
+    }
+    return PluginCatalogTarget(
+      marketplace: marketplace,
+      plugin: plugin,
+      requestPluginName: remotePluginId,
+      remoteMarketplaceName: marketplace.name,
+    );
+  }
+
+  final PluginMarketplaceEntry marketplace;
+  final PluginSummary plugin;
+  final String requestPluginName;
+  final String? marketplacePath;
+  final String? remoteMarketplaceName;
 }
 
 class PluginMarketplaceEntry {

@@ -1,10 +1,7 @@
 import 'plugin_list_reader.dart';
 
 abstract interface class PluginDetailReader {
-  Future<PluginDetail> readPlugin({
-    required String pluginId,
-    List<String> cwds = const [],
-  });
+  Future<PluginDetail> readPlugin({required PluginCatalogTarget target});
 }
 
 class PluginDetail {
@@ -13,6 +10,7 @@ class PluginDetail {
     required this.raw,
     this.marketplaceName,
     this.marketplacePath,
+    this.description,
     this.readme,
   });
 
@@ -20,24 +18,39 @@ class PluginDetail {
     required String pluginId,
     required Map<String, Object?> json,
   }) {
-    final pluginJson = _objectMap(json['plugin']);
+    final envelope = _objectMap(json['plugin']);
+    final detailJson = envelope.isEmpty ? json : envelope;
+    final summaryJson = _objectMap(detailJson['summary']);
     final plugin = PluginSummary.fromJson(
-      pluginJson.isEmpty ? json : pluginJson,
+      summaryJson.isEmpty ? detailJson : summaryJson,
     );
     if (plugin == null) {
       throw FormatException('Plugin detail response missing plugin $pluginId.');
     }
-    final marketplace = _objectMap(json['marketplace']);
+    final marketplace = _objectMap(detailJson['marketplace']);
     return PluginDetail(
       plugin: plugin,
       marketplaceName:
+          _stringValue(
+            detailJson['marketplaceName'] ?? detailJson['marketplace_name'],
+          ) ??
           _stringValue(json['marketplaceName'] ?? json['marketplace_name']) ??
           _stringValue(marketplace['name']),
       marketplacePath:
+          _stringValue(
+            detailJson['marketplacePath'] ?? detailJson['marketplace_path'],
+          ) ??
           _stringValue(json['marketplacePath'] ?? json['marketplace_path']) ??
           _stringValue(marketplace['path']),
+      description: _stringValue(
+        detailJson['description'] ?? json['description'],
+      ),
       readme: _stringValue(
-        json['readme'] ??
+        detailJson['readme'] ??
+            detailJson['readmeMarkdown'] ??
+            detailJson['readme_markdown'] ??
+            detailJson['markdown'] ??
+            json['readme'] ??
             json['readmeMarkdown'] ??
             json['readme_markdown'] ??
             json['markdown'],
@@ -49,6 +62,7 @@ class PluginDetail {
   final PluginSummary plugin;
   final String? marketplaceName;
   final String? marketplacePath;
+  final String? description;
   final String? readme;
   final Map<String, Object?> raw;
 }
