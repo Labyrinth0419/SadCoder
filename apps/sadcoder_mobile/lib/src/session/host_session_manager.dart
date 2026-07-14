@@ -140,6 +140,7 @@ class HostSessionManager extends ChangeNotifier {
     }
     _connectsByProfileId.remove(normalized);
     await entry.sessionController.disconnect();
+    _reconcileActiveSelection();
     return true;
   }
 
@@ -164,10 +165,9 @@ class HostSessionManager extends ChangeNotifier {
     entry.approvalController.removeListener(_handleManagedSessionChanged);
     entry.sessionController.dispose();
     entry.approvalController.dispose();
-    if (_activeProfileId == normalized) {
-      _activeProfileId = _sessions.keys.firstOrNull;
+    if (!_reconcileActiveSelection()) {
+      notifyListeners();
     }
-    notifyListeners();
     return true;
   }
 
@@ -215,8 +215,45 @@ class HostSessionManager extends ChangeNotifier {
 
   void _handleManagedSessionChanged() {
     if (!_disposed) {
-      notifyListeners();
+      if (!_reconcileActiveSelection()) {
+        notifyListeners();
+      }
     }
+  }
+
+  bool _reconcileActiveSelection() {
+    final active = _activeProfileId == null
+        ? null
+        : _sessions[_activeProfileId];
+    if (active != null && _isActiveCandidate(active)) {
+      return false;
+    }
+
+    HostSessionEntry? next;
+    for (final entry in _sessions.values) {
+      if (_isActiveCandidate(entry)) {
+        next = entry;
+        break;
+      }
+    }
+    final nextProfileId = next?.profileId;
+    if (_activeProfileId == nextProfileId) {
+      return false;
+    }
+    _activeProfileId = nextProfileId;
+    notifyListeners();
+    return true;
+  }
+
+  bool _isActiveCandidate(HostSessionEntry entry) {
+    return switch (entry.status) {
+      CodexSessionStatus.connected ||
+      CodexSessionStatus.connecting ||
+      CodexSessionStatus.reconnecting => true,
+      CodexSessionStatus.idle ||
+      CodexSessionStatus.disconnecting ||
+      CodexSessionStatus.failed => false,
+    };
   }
 
   void _debugAssertNotDisposed() {

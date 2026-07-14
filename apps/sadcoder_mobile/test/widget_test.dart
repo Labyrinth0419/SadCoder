@@ -138,6 +138,60 @@ void main() {
     );
   });
 
+  testWidgets(
+    'chat host selector follows the next connected host after disconnect',
+    (tester) async {
+      const remoteProfile = SshProfile(
+        id: 'remote',
+        name: 'Remote Linux',
+        host: 'remote.example.com',
+        username: 'dev',
+      );
+      final starter = _RecordingStaticSessionStarter(
+        threads: const [],
+        detail: ThreadDetail(thread: _emptyThread),
+      );
+      final manager = HostSessionManager(
+        controllerFactory: (approvalController) => CodexSessionStateController(
+          connector: starter,
+          approvalController: approvalController,
+        ),
+      );
+      addTearDown(manager.dispose);
+
+      await tester.pumpWidget(
+        SadCoderApp(
+          hostSessionManager: manager,
+          profileStore: const _FakeProfileStore([_profile, remoteProfile]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await manager.connect(_profile);
+      await manager.connect(remoteProfile);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Chat').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Remote Linux'), findsOneWidget);
+
+      await manager.disconnect(remoteProfile.id);
+      await tester.pumpAndSettle();
+
+      expect(manager.activeProfileId, _profile.id);
+      expect(find.text('Local'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('chat-host-selector')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('chat-host-status-local')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('chat-host-status-remote')),
+        findsNothing,
+      );
+    },
+  );
+
   testWidgets('approvals page aggregates pending approvals across hosts', (
     tester,
   ) async {

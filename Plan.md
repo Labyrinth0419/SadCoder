@@ -880,7 +880,7 @@ MVP 可以简化为底部导航：
 - 本轮结构整理将 Chat timeline renderer、消息气泡、reasoning 折叠块、command/file/tool 执行块、Markdown raw fallback、terminal output 折叠和 diff 渲染从 `ChatPage` 拆到 `features/chat/chat_timeline_renderer.dart`；`ChatPage` 不再直接依赖 Markdown preview / diff block / terminal renderer 细节。后续 `ChatPage` 主要剩余解耦点是 slash command dispatcher callbacks 和各类 command sheets。
 - 本轮结构整理将 composer 上方的 slash command preview 从 `ChatPage` 拆到 `features/chat/chat_slash_command_preview.dart`，保留 known/unknown/empty slash 的轻提示与“作为文本发送”入口；`ChatPage` 只传入解析结果和回调。后续可继续把 slash command dispatcher callbacks 与 command sheets 从页面层拆出。
 - 本轮结构整理将 Chat 顶部 activity strip / TUI 状态线从 `ChatPage` 拆到 `features/chat/chat_activity_strip.dart`，保留 sidebar toggle、running/working 状态 rail、状态行 chips 和当前 active timeline work 摘要；`ChatPage` 只传入状态 controllers、status line parts 和连接控件。后续 `ChatPage` 仍主要剩余 slash command dispatcher callbacks、command sheets 和高级控制 sheet 可继续拆分。
-- 本轮结构整理将 Chat 右上连接/主机选择控件从 `ChatPage` 拆到 `features/chat/chat_connection_controls.dart`，保留已保存主机别名显示、popup profile 选择、per-host 状态 chip 和连接忙碌态；`ChatPage` 只提供 profiles/session summaries 与选择回调。后续主机管理和多 host 同时连接仍按 9.7.1 的 HostSessionManager 路线推进。
+- 本轮结构整理将 Chat 右上连接/主机选择控件从 `ChatPage` 拆到 `features/chat/chat_connection_controls.dart`，保留已保存主机别名显示、popup profile 选择、per-host 状态 chip 和连接忙碌态；`ChatPage` 只提供 profiles/session summaries 与选择回调。多 host active host 生命周期由 `HostSessionManager` 统一协调。
 - 本轮结构整理将 Chat 高级控制 bottom sheet 从 `ChatPage` 拆到 `features/chat/chat_advanced_controls_sheet.dart`，由独立组件组合 Session/Turn override controls 与 Raw RPC panel；`ChatPage` 只负责打开 sheet、传入 override controller、Raw RPC sender 和 session override 应用回调。后续 `ChatPage` 主要剩余 slash command dispatcher callbacks 与各类 command sheets 可继续拆分。
 - 本轮结构整理将 thread lifecycle / mutation slash callbacks 从 `ChatPage` 拆到 `features/chat/chat_thread_command_handler.dart`：`/new`、`/resume`、`/rename`、`/fork`、`/duplicate`、`/rewind`、`/compact`、`/archive`、`/delete` 和 archived-thread restore 的业务调用、确认弹窗、timeline/thread refresh 归入独立 handler；`ChatPage` 只传入 controllers 与少量页面级回调。`/side`、`/btw` 与 `/agent` 仍留在页面层，因为它们直接管理 side conversation 状态或 topology sheet。
 - 本轮结构整理将 appearance/input preference slash callbacks 从 `ChatPage` 拆到 `features/chat/chat_appearance_command_handler.dart`：`/theme`、`/title`、`/statusline`、`/vim`、`/keymap`、`/pets` 的 sheet 打开、inline 参数解析和 `AppAppearanceController` 写入集中到独立 handler；`ChatPage` 只创建 handler 并继续负责 composer 当前 UI 状态。
@@ -1093,7 +1093,7 @@ MVP 可以简化为底部导航：
 
 用户体验后续要求：
 
-- SSH 主机管理支持多台主机：本地保存多 profile，按 host 分组折叠展示；后续升级为多 host 同时连接和 per-host session/thread 列表。
+- SSH 主机管理支持多台主机：本地保存多 profile，按 host 分组折叠展示；多 host 同时连接和 per-host session/thread 列表已落地。
 - SSH 主机管理补文件导入和密钥管理：支持从文件导入 OpenSSH config 与私钥；支持 App 内生成 RSA / ED25519 密钥对并导出/复制 public key；导入或生成的私钥必须进入 durable credential store（Android Keystore / iOS Keychain），不得归入可被“清缓存”删除的普通 cache。
 - Chat 顶栏右上角提供当前连接主机选择器：主机选择切换当前 session 上下文；连接/断开操作保留在 Hosts 页面或 `/quit` 等明确命令入口，且不直接中断 active turn。
 - Settings 页面改为多级菜单，最多二级：一级为 Account、Models、Permissions、Appearance、SSH、Diagnostics 等分组；二级进入具体设置页，避免单页继续膨胀。
@@ -1108,7 +1108,7 @@ MVP 可以简化为底部导航：
 - 已对齐手动保存与 OpenSSH config 导入的 profile id 规则：用户填写别名时，同一 `user@host:port` 下的不同别名会保存为不同 profile，并在同一 host 分组下折叠展示；无别名时仍回退到 endpoint id，避免普通单主机配置产生重复项。
 - 已加固 OpenSSH config 导入的条件段边界：`Match` 条件块不会被当作普通 Host 配置继续套用到前一个主机或全局默认；当前移动端导入只解析明确的 `Host` 段，条件配置留待后续显式能力设计。
 - 已落地 Chat 顶栏主机选择器、Settings 二级菜单、candy/lagoon/ember palette 和斜杠命令高级可见性开关。
-- 已落地 Chat 侧栏 per-host 会话可见化：`HostSessionSummary` 携带当前选中 thread id/title 及该 host 当前缓存/远端列表，`AppShell` 从每个 host 的 UI state 汇总；Chat 左侧栏显示所有 managed host 的状态、endpoint、当前 thread 和可展开的完整线程列表，点击线程会先切换 host 再读取对应 thread。后台/reconnect reconciliation 仍按多 host 架构后续推进。
+- 已落地 Chat 侧栏 per-host 会话可见化：`HostSessionSummary` 携带当前选中 thread id/title 及该 host 当前缓存/远端列表，`AppShell` 从每个 host 的 UI state 汇总；Chat 左侧栏显示所有 managed host 的状态、endpoint、当前 thread 和可展开的完整线程列表，点击线程会先切换 host 再读取对应 thread。后台 active-turn、cursor gap、分页回填和 reconnect reconciliation 均按 host 隔离；active host 断开或失败时会自动选择仍可用的 host，没有候选时清空 active profile。
 - Settings 菜单已明确收敛为最多二级：一级分组为 Codex、Interface、Connection、System，二级才进入 Permissions、Account、Models、Appearance、SSH、Diagnostics；Diagnostics 默认折叠在 System 下，避免低频诊断项和常用设置平铺混杂，窄屏仍保持“菜单页 -> 具体设置页”的单详情导航。
 - 本轮 Chat 可见 UI 里程碑已压低 AppShell 底部 `NavigationBar` 高度到 58px，先减少主对话页被全局导航占用的垂直空间。后续二级 Chat detail 路由方案记录为：主页 -> 对话 -> 选择已连接服务器/session 或新建 session -> 对话详情；对话详情页隐藏 bottom nav，由详情页自己的左上返回/侧栏入口承担导航。
 - 本轮 Chat UI / timeline 性能里程碑保持 9.7.1 的二级 Chat detail 路由为后续设计，不在本轮重做导航架构；当前只增强 Chat 页面内侧栏动效、气泡阅读宽度、字体一致性和 timeline 按需加载。
@@ -1152,7 +1152,7 @@ MVP 可以简化为底部导航：
 - 已落地 realtime typed path：`CodexAppServerClient` / `CodexRealtimeRunner` 已具备 `thread/realtime/*` 的类型化协议和通知映射。Plan 主线仍以普通文本 `turn/start` 为权威会话路径；语音输入优先使用手机系统语音转文字后发送普通 turn。提交 `07863db` 的 WebSocket 音频设备链路作为隔离的 Future Feature 保留，不计入当前完成度，也不继续以 WebRTC SDP 扩展作为必做剩余项。
 - 已落地受控 Files 文本编辑：连接层暴露独立 `WorkspaceFileMutationRunner`，`fs/writeFile` 仅在 workspace path/符号链接校验、完整文本加载、版本或旧内容冲突检查通过后调用；Files 编辑 sheet 保存前展示逐行 diff 并要求二次确认，写入后刷新 preview stat/content。`fs/watch` / `fs/unwatch` 与 `fs/changed` 也已类型化，当前预览文件发生外部变化时会提示用户重新审阅。由于上游 `fs/writeFile` 没有 expected-version 参数，冲突检查仍是非原子的乐观保护。
 - 已落地结构化 Codex maintenance / Cloud runner：`sadcoder-agent codex` 只暴露固定的 `doctor`、`update`、legacy `apply`、`cloud list/status/diff/apply` 操作，task/env/cursor/attempt/cwd 均由 Rust `Command::arg` 传递，不提供任意 shell 参数。Settings Diagnostics 提供只读诊断/查询、更新确认、apply 前 diff 预览和 backend 重启入口；Cloud 明确依赖服务器已有 ChatGPT auth，手机不保存认证或 API key，API-first 主流程不变。
-- 后续仍需完整多 host 同时连接架构：`HostSessionManager` 已作为基础控制器引入，但完整后台保活策略、断线期间事件 cursor/分页增量回填和更完整的 reconnect turn/item reconciliation 还需要继续拆分完善。
+- 已落地多 host 同时连接生命周期：`HostSessionManager` 为每个 host 保留独立 session、approval、thread/item/timeline state；并发连接请求合并，后台保活与断线 cursor/分页回填按 host 隔离，active host disconnect/failure/close 后优先切换到 connected/connecting/reconnecting host，没有可用候选时清空 active profile。对应 manager、AppShell 和 Chat host selector 回归测试已覆盖。
 
 ### 9.8 i18n
 

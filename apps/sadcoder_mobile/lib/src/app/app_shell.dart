@@ -864,6 +864,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void _handleHostSessionManagerChanged() {
     final entry = _hostSessionManager?.activeSession;
     if (entry == null) {
+      if (mounted) {
+        setState(() {});
+      }
       return;
     }
     _activateHostSession(entry);

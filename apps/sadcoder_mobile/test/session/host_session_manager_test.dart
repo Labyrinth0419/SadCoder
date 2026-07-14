@@ -129,6 +129,24 @@ void main() {
     expect(starter.connections, hasLength(2));
   });
 
+  test('returns to a connected host when the active connect fails', () async {
+    final starter = _DeferredSessionStarter();
+    final manager = _manager(starter);
+    addTearDown(manager.dispose);
+
+    final first = manager.connect(_profileA);
+    starter.completeNext();
+    await first;
+
+    final failed = manager.connect(_profileB);
+    starter.failNext(StateError('remote unavailable'));
+    await expectLater(failed, throwsA(isA<StateError>()));
+
+    expect(manager.activeProfileId, _profileA.id);
+    expect(manager.sessionFor(_profileA.id)!.isConnected, isTrue);
+    expect(manager.sessionFor(_profileB.id)!.status, CodexSessionStatus.failed);
+  });
+
   test('disconnect releases pending host connect reuse', () async {
     final starter = _DeferredSessionStarter();
     final manager = _manager(starter);
@@ -167,6 +185,54 @@ void main() {
     );
     expect(starter.connections[0].closeCount, 1);
     expect(starter.connections[1].closeCount, 0);
+  });
+
+  test(
+    'selects another connected host when the active host disconnects',
+    () async {
+      final starter = _RecordingSessionStarter();
+      final manager = _manager(starter);
+      addTearDown(manager.dispose);
+
+      await manager.connect(_profileA);
+      await manager.connect(_profileB);
+
+      expect(await manager.disconnect(_profileB.id), true);
+
+      expect(manager.activeProfileId, _profileA.id);
+      expect(manager.activeSession, same(manager.sessionFor(_profileA.id)));
+      expect(manager.sessionFor(_profileA.id)!.isConnected, isTrue);
+      expect(manager.sessionFor(_profileB.id)!.status, CodexSessionStatus.idle);
+    },
+  );
+
+  test('clears active host when no connected session remains', () async {
+    final starter = _RecordingSessionStarter();
+    final manager = _manager(starter);
+    addTearDown(manager.dispose);
+
+    await manager.connect(_profileA);
+    expect(await manager.disconnect(_profileA.id), true);
+
+    expect(manager.activeProfileId, isNull);
+    expect(manager.activeSession, isNull);
+    expect(manager.sessions, hasLength(1));
+  });
+
+  test('closeSession does not select an idle host as active', () async {
+    final starter = _RecordingSessionStarter();
+    final manager = _manager(starter);
+    addTearDown(manager.dispose);
+
+    await manager.connect(_profileA);
+    await manager.connect(_profileB);
+    await manager.disconnect(_profileA.id);
+    expect(manager.activeProfileId, _profileB.id);
+    await manager.disconnect(_profileB.id);
+
+    expect(await manager.closeSession(_profileA.id), true);
+    expect(manager.activeProfileId, isNull);
+    expect(manager.sessions.map((entry) => entry.profileId), [_profileB.id]);
   });
 
   test('uses endpoint id for manual profiles', () {
