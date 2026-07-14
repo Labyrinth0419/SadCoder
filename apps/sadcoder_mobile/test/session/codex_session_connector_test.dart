@@ -53,6 +53,12 @@ void main() {
       ],
     }).resolveTarget('linear');
     await connection.pluginDetailReader.readPlugin(target: pluginTarget);
+    final pluginSkillReader =
+        (connection as PluginSkillReadConnectionHandle).pluginSkillReader;
+    await pluginSkillReader.readSkill(
+      target: pluginTarget,
+      skillName: 'triage',
+    );
     await connection.pluginMutationRunner.installPlugin(target: pluginTarget);
     await connection.pluginMutationRunner.uninstallPlugin(pluginId: 'linear');
     final marketplaceMutationRunner =
@@ -198,6 +204,7 @@ void main() {
       'skills/config/write',
       'plugin/list',
       'plugin/read',
+      'plugin/skill/read',
       'plugin/install',
       'plugin/uninstall',
       'marketplace/add',
@@ -566,6 +573,7 @@ class _LineServerProxyConnector implements AgentProxyConnector {
         },
       },
     },
+    'plugin/skill/read' => {'contents': '# Triage'},
     'plugin/install' => {'pluginId': 'linear'},
     'plugin/uninstall' => {'pluginId': 'linear'},
     'marketplace/add' => {

@@ -36,6 +36,7 @@ import '../plugins/marketplace_mutation_runner.dart';
 import '../plugins/plugin_detail_reader.dart';
 import '../plugins/plugin_list_reader.dart';
 import '../plugins/plugin_mutation_runner.dart';
+import '../plugins/plugin_skill_reader.dart';
 import '../processes/process_runner.dart';
 import '../protocol/json_rpc_diagnostic_log.dart';
 import '../reviews/thread_review_runner.dart';
@@ -260,6 +261,14 @@ class CodexSessionStateController extends ChangeNotifier {
   PluginListReader? get pluginListReader => _connection?.pluginListReader;
 
   PluginDetailReader? get pluginDetailReader => _connection?.pluginDetailReader;
+
+  PluginSkillReader? get pluginSkillReader {
+    final connection = _connection;
+    if (connection == null || connection is! PluginSkillReadConnectionHandle) {
+      return null;
+    }
+    return (connection as PluginSkillReadConnectionHandle).pluginSkillReader;
+  }
 
   PluginMutationRunner? get pluginMutationRunner =>
       _connection?.pluginMutationRunner;

@@ -6,6 +6,7 @@ import 'package:sadcoder_mobile/src/plugins/marketplace_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_detail_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_mutation_runner.dart';
+import 'package:sadcoder_mobile/src/plugins/plugin_skill_reader.dart';
 
 void main() {
   const l10n = AppLocalizations(Locale('en'));
@@ -85,6 +86,13 @@ void main() {
               'shortDescription': 'Plan work',
               'capabilities': ['mcp'],
             },
+            'skills': [
+              {
+                'name': 'triage',
+                'shortDescription': 'Triage Linear issues',
+                'enabled': true,
+              },
+            ],
           },
         },
       ),
@@ -98,7 +106,40 @@ void main() {
     expect(summary, contains('Version: 1.2.3, local 1.2.0'));
     expect(summary, contains('Source: remote'));
     expect(summary, contains('Capabilities: mcp'));
+    expect(summary, contains('Skills:'));
+    expect(summary, contains('triage: enabled'));
+    expect(summary, contains('Description: Triage Linear issues'));
     expect(summary, contains('README:\n# Linear'));
+  });
+
+  test('buildPluginSkillSummary preserves remote skill contents', () {
+    final summary = buildPluginSkillSummary(
+      l10n: l10n,
+      document: const PluginSkillDocument(
+        pluginId: 'reviewer@openai-curated-remote',
+        skillName: 'review',
+        contents: '# Review\n\nUse the review workflow.',
+        raw: <String, Object?>{},
+      ),
+    );
+
+    expect(
+      summary,
+      'Plugins\nSkills: review\n# Review\n\nUse the review workflow.',
+    );
+  });
+
+  test('buildPluginSkillSummary reports unavailable contents', () {
+    final summary = buildPluginSkillSummary(
+      l10n: l10n,
+      document: const PluginSkillDocument(
+        pluginId: 'reviewer@openai-curated-remote',
+        skillName: 'review',
+        raw: <String, Object?>{},
+      ),
+    );
+
+    expect(summary, contains('Skill contents are not available.'));
   });
 
   test('buildPluginDetailSummary localizes local plugin version label', () {

@@ -47,6 +47,7 @@ import 'package:sadcoder_mobile/src/plugins/marketplace_mutation_runner.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_detail_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_mutation_runner.dart';
+import 'package:sadcoder_mobile/src/plugins/plugin_skill_reader.dart';
 import 'package:sadcoder_mobile/src/protocol/json_rpc_diagnostic_log.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review.dart';
 import 'package:sadcoder_mobile/src/reviews/thread_review_runner.dart';
@@ -5290,6 +5291,93 @@ void main() {
     expect(find.textContaining('Plan work in Linear'), findsOneWidget);
   });
 
+  testWidgets('/plugins skill reads remote skill contents', (tester) async {
+    final approvalController = ApprovalStateController();
+    final pluginReader = _RecordingPluginListReader(
+      page: PluginListPage.fromJson({
+        'marketplaces': [
+          {
+            'name': 'openai-curated-remote',
+            'plugins': [
+              {
+                'id': 'reviewer@openai-curated-remote',
+                'remotePluginId': 'plugins~reviewer',
+                'name': 'reviewer',
+                'source': {'type': 'remote'},
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    final pluginSkillReader = _RecordingPluginSkillReader(
+      contents: '# Review\n\nUse the review workflow.',
+    );
+    final turnRunner = _FakeTurnRunner();
+    final starter = _FakeSessionStarter(
+      threadListReader: const _FakeThreadListReader(
+        page: ThreadListPage(threads: []),
+      ),
+      turnRunner: turnRunner,
+      pluginListReader: pluginReader,
+      pluginSkillReader: pluginSkillReader,
+    );
+    final sessionController = CodexSessionStateController(
+      connector: starter,
+      approvalController: approvalController,
+    );
+    final detailController = ThreadDetailController(
+      readerProvider: () => _FakeThreadDetailReader(
+        detail: ThreadDetail(
+          thread: ThreadSummary.fromJson({
+            'id': 'thr_selected',
+            'sessionId': 'sess_1',
+            'preview': 'Selected thread',
+            'ephemeral': false,
+            'status': 'idle',
+            'cwd': '/repo',
+            'updatedAt': 1,
+            'turns': <Object?>[],
+          }),
+        ),
+      ),
+    );
+    addTearDown(sessionController.dispose);
+    addTearDown(approvalController.dispose);
+    addTearDown(detailController.dispose);
+    await sessionController.connect(_profile);
+    await detailController.readThread('thr_selected');
+
+    await _pumpChatPage(
+      tester,
+      sessionController: sessionController,
+      threadDetailController: detailController,
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('chat-composer-field')),
+      '/plugins skill reviewer review',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('chat-composer-send-button')));
+    await tester.pumpAndSettle();
+
+    expect(pluginSkillReader.calls, hasLength(1));
+    expect(
+      pluginSkillReader.calls.single.target.plugin.id,
+      'reviewer@openai-curated-remote',
+    );
+    expect(
+      pluginSkillReader.calls.single.target.requestPluginName,
+      'plugins~reviewer',
+    );
+    expect(pluginSkillReader.calls.single.skillName, 'review');
+    expect(pluginReader.cwds.single, ['/repo']);
+    expect(turnRunner.startedTurns, isEmpty);
+    expect(find.textContaining('# Review'), findsOneWidget);
+    expect(find.textContaining('Use the review workflow.'), findsOneWidget);
+  });
+
   testWidgets('/plugins install mutates and refreshes plugin list', (
     tester,
   ) async {
@@ -9179,6 +9267,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
     this.skillMutationRunner = const _FakeSkillMutationRunner(),
     this.pluginListReader = const _FakePluginListReader(),
     this.pluginDetailReader = const _FakePluginDetailReader(),
+    this.pluginSkillReader = const _FakePluginSkillReader(),
     this.pluginMutationRunner = const _FakePluginMutationRunner(),
     this.marketplaceMutationRunner = const _FakeMarketplaceMutationRunner(),
     this.hookListReader = const _FakeHookListReader(),
@@ -9206,6 +9295,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
   final SkillMutationRunner skillMutationRunner;
   final PluginListReader pluginListReader;
   final PluginDetailReader pluginDetailReader;
+  final PluginSkillReader pluginSkillReader;
   final PluginMutationRunner pluginMutationRunner;
   final MarketplaceMutationRunner marketplaceMutationRunner;
   final HookListReader hookListReader;
@@ -9241,6 +9331,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
         skillMutationRunner: skillMutationRunner,
         pluginListReader: pluginListReader,
         pluginDetailReader: pluginDetailReader,
+        pluginSkillReader: pluginSkillReader,
         pluginMutationRunner: pluginMutationRunner,
         marketplaceMutationRunner: marketplaceMutationRunner,
         hookListReader: hookListReader,
@@ -9271,6 +9362,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       skillMutationRunner: skillMutationRunner,
       pluginListReader: pluginListReader,
       pluginDetailReader: pluginDetailReader,
+      pluginSkillReader: pluginSkillReader,
       pluginMutationRunner: pluginMutationRunner,
       marketplaceMutationRunner: marketplaceMutationRunner,
       hookListReader: hookListReader,
@@ -9295,7 +9387,8 @@ class _FakeSessionConnection
         CodexSessionConnectionHandle,
         WindowsSandboxConnectionHandle,
         MarketplaceMutationConnectionHandle,
-        SkillMutationConnectionHandle {
+        SkillMutationConnectionHandle,
+        PluginSkillReadConnectionHandle {
   _FakeSessionConnection({
     required this.profile,
     required this.threadListReader,
@@ -9309,6 +9402,7 @@ class _FakeSessionConnection
     required this.skillMutationRunner,
     required this.pluginListReader,
     required this.pluginDetailReader,
+    required this.pluginSkillReader,
     required this.pluginMutationRunner,
     required this.marketplaceMutationRunner,
     required this.hookListReader,
@@ -9367,6 +9461,9 @@ class _FakeSessionConnection
 
   @override
   final PluginDetailReader pluginDetailReader;
+
+  @override
+  final PluginSkillReader pluginSkillReader;
 
   @override
   final PluginMutationRunner pluginMutationRunner;
@@ -9509,6 +9606,7 @@ class _FakeThreadShellCommandConnection extends _FakeSessionConnection
     required super.skillMutationRunner,
     required super.pluginListReader,
     required super.pluginDetailReader,
+    required super.pluginSkillReader,
     required super.pluginMutationRunner,
     required super.marketplaceMutationRunner,
     required super.hookListReader,
@@ -9741,6 +9839,43 @@ class _RecordingPluginDetailReader implements PluginDetailReader {
   Future<PluginDetail> readPlugin({required PluginCatalogTarget target}) async {
     calls.add(target);
     return detail;
+  }
+}
+
+class _FakePluginSkillReader implements PluginSkillReader {
+  const _FakePluginSkillReader();
+
+  @override
+  Future<PluginSkillDocument> readSkill({
+    required PluginCatalogTarget target,
+    required String skillName,
+  }) async {
+    return PluginSkillDocument(
+      pluginId: target.plugin.id,
+      skillName: skillName,
+      raw: const <String, Object?>{},
+    );
+  }
+}
+
+class _RecordingPluginSkillReader implements PluginSkillReader {
+  _RecordingPluginSkillReader({required this.contents});
+
+  final String? contents;
+  final calls = <({PluginCatalogTarget target, String skillName})>[];
+
+  @override
+  Future<PluginSkillDocument> readSkill({
+    required PluginCatalogTarget target,
+    required String skillName,
+  }) async {
+    calls.add((target: target, skillName: skillName));
+    return PluginSkillDocument(
+      pluginId: target.plugin.id,
+      skillName: skillName,
+      contents: contents,
+      raw: const <String, Object?>{},
+    );
   }
 }
 

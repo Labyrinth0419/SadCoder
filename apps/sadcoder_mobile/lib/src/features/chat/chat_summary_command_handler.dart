@@ -150,6 +150,36 @@ class ChatSummaryCommandHandler {
     final l10n = context.l10n;
     final reader = sessionController?.pluginListReader;
     final cwds = currentWorkspaceCwdsProvider();
+    if (command case ChatPluginsSkillReadCommand(
+      :final pluginId,
+      :final skillName,
+    )) {
+      final skillReader = sessionController?.pluginSkillReader;
+      if (skillReader == null || reader == null) {
+        return [l10n.pluginsTitle, l10n.pluginsUnavailable].join('\n');
+      }
+      try {
+        final page = await reader.listPlugins(cwds: cwds);
+        final target = page.resolveTarget(pluginId);
+        final document = await skillReader.readSkill(
+          target: target,
+          skillName: skillName,
+        );
+        return plugins_summary.buildPluginSkillSummary(
+          l10n: l10n,
+          document: document,
+        );
+      } on Object catch (error) {
+        return [
+          l10n.pluginsTitle,
+          chatSummaryMessageWithOptionalDetail(
+            l10n,
+            l10n.pluginSkillReadFailed,
+            error,
+          ),
+        ].join('\n');
+      }
+    }
     if (command case ChatPluginsReadCommand(:final pluginId)) {
       final detailReader = sessionController?.pluginDetailReader;
       if (detailReader == null || reader == null) {

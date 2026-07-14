@@ -14,6 +14,13 @@ void main() {
           'marketplace_name': 'openai-curated',
           'marketplace_path': '/marketplace/plugins.json',
           'description': 'Longer Linear description',
+          'skills': [
+            {
+              'name': 'triage',
+              'short_description': 'Triage Linear issues',
+              'enabled': true,
+            },
+          ],
           'summary': {
             'id': 'linear@openai-curated',
             'remote_plugin_id': 'remote-linear',
@@ -44,6 +51,9 @@ void main() {
     expect(detail.marketplaceName, 'openai-curated');
     expect(detail.marketplacePath, '/marketplace/plugins.json');
     expect(detail.description, 'Longer Linear description');
+    expect(detail.skills.single.name, 'triage');
+    expect(detail.skills.single.displayDescription, 'Triage Linear issues');
+    expect(detail.skills.single.enabled, true);
   });
 
   test('PluginDetail parses top-level plugin fields', () {

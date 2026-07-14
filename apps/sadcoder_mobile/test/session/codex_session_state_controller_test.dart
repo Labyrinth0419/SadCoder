@@ -41,6 +41,7 @@ import 'package:sadcoder_mobile/src/memories/codex_memory_runner.dart';
 import 'package:sadcoder_mobile/src/models/model_list_reader.dart';
 import 'package:sadcoder_mobile/src/permissions/permission_profile_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/codex_marketplace_mutation_runner.dart';
+import 'package:sadcoder_mobile/src/plugins/codex_plugin_skill_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_detail_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_list_reader.dart';
 import 'package:sadcoder_mobile/src/plugins/plugin_mutation_runner.dart';
@@ -113,6 +114,7 @@ void main() {
     expect(controller.skillMutationRunner, isNotNull);
     expect(controller.pluginListReader, isNotNull);
     expect(controller.pluginDetailReader, isNotNull);
+    expect(controller.pluginSkillReader, isNotNull);
     expect(controller.pluginMutationRunner, isNotNull);
     expect(controller.hookListReader, isNotNull);
     expect(controller.hookMutationRunner, isNotNull);
@@ -1333,6 +1335,7 @@ class _FakeSessionStarter implements CodexSessionConnectionStarter {
       skillMutationRunner: CodexSkillMutationRunner(session.client),
       pluginListReader: const _FakePluginListReader(),
       pluginDetailReader: const _FakePluginDetailReader(),
+      pluginSkillReader: CodexPluginSkillReader(session.client),
       pluginMutationRunner: const _FakePluginMutationRunner(),
       marketplaceMutationRunner: CodexMarketplaceMutationRunner(session.client),
       hookListReader: const _FakeHookListReader(),

@@ -650,6 +650,30 @@ void main() {
     );
   });
 
+  test('readPluginSkill uses stable remote catalog parameters', () async {
+    final requests = <JsonRpcRequest>[];
+    final client = CodexAppServerClient(
+      MemoryJsonRpcTransport((request) {
+        requests.add(request);
+        return {'contents': '# Review'};
+      }),
+    );
+
+    final result = await client.readPluginSkill(
+      remoteMarketplaceName: ' openai-curated-remote ',
+      remotePluginId: ' plugins~reviewer ',
+      skillName: ' review ',
+    );
+
+    expect(result['contents'], '# Review');
+    expect(requests.single.method, 'plugin/skill/read');
+    expect(requests.single.params, {
+      'remoteMarketplaceName': 'openai-curated-remote',
+      'remotePluginId': 'plugins~reviewer',
+      'skillName': 'review',
+    });
+  });
+
   test('thread and turn start omit unset overrides', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {

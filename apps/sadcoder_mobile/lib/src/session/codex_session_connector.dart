@@ -59,10 +59,12 @@ import '../plugins/codex_marketplace_mutation_runner.dart';
 import '../plugins/codex_plugin_list_reader.dart';
 import '../plugins/codex_plugin_detail_reader.dart';
 import '../plugins/codex_plugin_mutation_runner.dart';
+import '../plugins/codex_plugin_skill_reader.dart';
 import '../plugins/plugin_detail_reader.dart';
 import '../plugins/plugin_list_reader.dart';
 import '../plugins/marketplace_mutation_runner.dart';
 import '../plugins/plugin_mutation_runner.dart';
+import '../plugins/plugin_skill_reader.dart';
 import '../processes/codex_process_runner.dart';
 import '../processes/process_runner.dart';
 import '../protocol/codex_app_session.dart';
@@ -233,6 +235,10 @@ abstract interface class SkillMutationConnectionHandle {
   SkillMutationRunner get skillMutationRunner;
 }
 
+abstract interface class PluginSkillReadConnectionHandle {
+  PluginSkillReader get pluginSkillReader;
+}
+
 abstract interface class RealtimeConnectionHandle {
   RealtimeRunner get realtimeRunner;
 }
@@ -340,6 +346,7 @@ class CodexSessionConnector implements CodexSessionConnectionStarter {
         skillMutationRunner: CodexSkillMutationRunner(session.client),
         pluginListReader: CodexPluginListReader(session.client),
         pluginDetailReader: CodexPluginDetailReader(session.client),
+        pluginSkillReader: CodexPluginSkillReader(session.client),
         pluginMutationRunner: CodexPluginMutationRunner(session.client),
         marketplaceMutationRunner: CodexMarketplaceMutationRunner(
           session.client,
@@ -435,6 +442,7 @@ class CodexSessionConnection
         EnvironmentConnectionHandle,
         HookMutationConnectionHandle,
         SkillMutationConnectionHandle,
+        PluginSkillReadConnectionHandle,
         RealtimeConnectionHandle,
         WorkspaceFileMutationConnectionHandle {
   CodexSessionConnection({
@@ -471,6 +479,7 @@ class CodexSessionConnection
     required this.skillListReader,
     required this.pluginListReader,
     required this.pluginDetailReader,
+    required this.pluginSkillReader,
     required this.pluginMutationRunner,
     required this.marketplaceMutationRunner,
     required this.hookListReader,
@@ -551,6 +560,8 @@ class CodexSessionConnection
   final PluginListReader pluginListReader;
   @override
   final PluginDetailReader pluginDetailReader;
+  @override
+  final PluginSkillReader pluginSkillReader;
   @override
   final PluginMutationRunner pluginMutationRunner;
   @override

@@ -1039,6 +1039,9 @@ class AppLocalizations {
   String get pluginSource => _text('pluginSource');
   String get pluginCapabilities => _text('pluginCapabilities');
   String get pluginReadme => _text('pluginReadme');
+  String get pluginSkillReadFailed => _text('pluginSkillReadFailed');
+  String get pluginSkillContentsUnavailable =>
+      _text('pluginSkillContentsUnavailable');
   String get pluginInstalled => _text('pluginInstalled');
   String get pluginNotInstalled => _text('pluginNotInstalled');
   String get pluginEnabled => _text('pluginEnabled');
@@ -2377,6 +2380,8 @@ const _values = <String, Map<String, String>>{
     'pluginSource': 'Source',
     'pluginCapabilities': 'Capabilities',
     'pluginReadme': 'README',
+    'pluginSkillReadFailed': 'Failed to load plugin skill',
+    'pluginSkillContentsUnavailable': 'Skill contents are not available.',
     'pluginInstalled': 'installed',
     'pluginNotInstalled': 'not installed',
     'pluginEnabled': 'enabled',
@@ -3495,6 +3500,8 @@ const _values = <String, Map<String, String>>{
     'pluginSource': '来源',
     'pluginCapabilities': '能力',
     'pluginReadme': 'README',
+    'pluginSkillReadFailed': '插件技能加载失败',
+    'pluginSkillContentsUnavailable': '该技能正文不可用。',
     'pluginInstalled': '已安装',
     'pluginNotInstalled': '未安装',
     'pluginEnabled': '已启用',

@@ -2,6 +2,7 @@ import '../../i18n/app_localizations.dart';
 import '../../plugins/plugin_detail_reader.dart';
 import '../../plugins/plugin_list_reader.dart';
 import '../../plugins/plugin_mutation_runner.dart';
+import '../../plugins/plugin_skill_reader.dart';
 import '../../plugins/marketplace_mutation_runner.dart';
 
 String buildPluginsSummary({
@@ -86,11 +87,37 @@ String buildPluginDetailSummary({
   if (capabilities.isNotEmpty) {
     lines.add('${l10n.pluginCapabilities}: ${capabilities.join(', ')}');
   }
+  if (detail.skills.isNotEmpty) {
+    lines.add('${l10n.skillsTitle}:');
+    for (final skill in detail.skills) {
+      final state = skill.enabled ? l10n.skillEnabled : l10n.skillDisabled;
+      lines.add('  ${skill.name}: $state');
+      final description = skill.displayDescription;
+      if (description.isNotEmpty) {
+        lines.add('    ${l10n.skillDescription}: $description');
+      }
+    }
+  }
   final readme = detail.readme;
   if (readme != null) {
     lines.add('${l10n.pluginReadme}:\n$readme');
   }
   return lines.join('\n');
+}
+
+String buildPluginSkillSummary({
+  required AppLocalizations l10n,
+  required PluginSkillDocument document,
+}) {
+  final contents = document.contents;
+  return [
+    l10n.pluginsTitle,
+    '${l10n.skillsTitle}: ${document.skillName}',
+    if (contents == null || contents.isEmpty)
+      l10n.pluginSkillContentsUnavailable
+    else
+      contents,
+  ].join('\n');
 }
 
 String buildPluginMutationSummary({

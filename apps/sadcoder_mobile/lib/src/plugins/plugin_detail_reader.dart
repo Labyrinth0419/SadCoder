@@ -8,6 +8,7 @@ class PluginDetail {
   const PluginDetail({
     required this.plugin,
     required this.raw,
+    this.skills = const [],
     this.marketplaceName,
     this.marketplacePath,
     this.description,
@@ -30,6 +31,9 @@ class PluginDetail {
     final marketplace = _objectMap(detailJson['marketplace']);
     return PluginDetail(
       plugin: plugin,
+      skills: _list(
+        detailJson['skills'],
+      ).map(PluginSkillSummary.fromJson).nonNulls.toList(growable: false),
       marketplaceName:
           _stringValue(
             detailJson['marketplaceName'] ?? detailJson['marketplace_name'],
@@ -60,12 +64,53 @@ class PluginDetail {
   }
 
   final PluginSummary plugin;
+  final List<PluginSkillSummary> skills;
   final String? marketplaceName;
   final String? marketplacePath;
   final String? description;
   final String? readme;
   final Map<String, Object?> raw;
 }
+
+class PluginSkillSummary {
+  const PluginSkillSummary({
+    required this.name,
+    required this.enabled,
+    required this.raw,
+    this.description,
+    this.shortDescription,
+    this.path,
+  });
+
+  static PluginSkillSummary? fromJson(Object? value) {
+    final map = _objectMap(value);
+    final name = _stringValue(map['name']);
+    if (name == null) {
+      return null;
+    }
+    return PluginSkillSummary(
+      name: name,
+      description: _stringValue(map['description']),
+      shortDescription: _stringValue(
+        map['shortDescription'] ?? map['short_description'],
+      ),
+      path: _stringValue(map['path']),
+      enabled: map['enabled'] is bool ? map['enabled']! as bool : true,
+      raw: map,
+    );
+  }
+
+  final String name;
+  final String? description;
+  final String? shortDescription;
+  final String? path;
+  final bool enabled;
+  final Map<String, Object?> raw;
+
+  String get displayDescription => shortDescription ?? description ?? '';
+}
+
+List<Object?> _list(Object? value) => value is List ? value : const [];
 
 Map<String, Object?> _objectMap(Object? value) {
   if (value is Map) {

@@ -32,6 +32,19 @@ void main() {
       }
     });
 
+    test('parses remote plugin skill read commands', () {
+      for (final verb in const ['skill', 'read-skill']) {
+        final command = parseChatPluginsCommand(
+          '$verb reviewer@openai-curated review',
+        );
+
+        expect(command, isA<ChatPluginsSkillReadCommand>());
+        final read = command as ChatPluginsSkillReadCommand;
+        expect(read.pluginId, 'reviewer@openai-curated');
+        expect(read.skillName, 'review');
+      }
+    });
+
     test('parses marketplace add with ref and repeated sparse paths', () {
       final command = parseChatPluginsCommand(
         'marketplace add https://example.com/tools.git '
@@ -113,6 +126,8 @@ void main() {
       expect(parseChatPluginsCommand('local extra'), isNull);
       expect(parseChatPluginsCommand('install'), isNull);
       expect(parseChatPluginsCommand('read plugin extra'), isNull);
+      expect(parseChatPluginsCommand('skill plugin'), isNull);
+      expect(parseChatPluginsCommand('skill plugin skill extra'), isNull);
     });
 
     test('rejects malformed marketplace mutations', () {

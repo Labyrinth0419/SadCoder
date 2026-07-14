@@ -1103,6 +1103,38 @@ class CodexAppServerClient {
     return _request('plugin/read', params);
   }
 
+  Future<Map<String, Object?>> readPluginSkill({
+    required String remoteMarketplaceName,
+    required String remotePluginId,
+    required String skillName,
+  }) {
+    final normalizedMarketplaceName = remoteMarketplaceName.trim();
+    final normalizedPluginId = remotePluginId.trim();
+    final normalizedSkillName = skillName.trim();
+    if (normalizedMarketplaceName.isEmpty) {
+      throw ArgumentError.value(
+        remoteMarketplaceName,
+        'remoteMarketplaceName',
+        'must not be blank',
+      );
+    }
+    if (normalizedPluginId.isEmpty) {
+      throw ArgumentError.value(
+        remotePluginId,
+        'remotePluginId',
+        'must not be blank',
+      );
+    }
+    if (normalizedSkillName.isEmpty) {
+      throw ArgumentError.value(skillName, 'skillName', 'must not be blank');
+    }
+    return _request('plugin/skill/read', {
+      'remoteMarketplaceName': normalizedMarketplaceName,
+      'remotePluginId': normalizedPluginId,
+      'skillName': normalizedSkillName,
+    });
+  }
+
   Future<Map<String, Object?>> installPlugin({
     required String pluginName,
     String? marketplacePath,

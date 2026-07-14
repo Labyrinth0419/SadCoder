@@ -16,6 +16,16 @@ class ChatPluginsReadCommand extends ChatPluginsCommand {
   final String pluginId;
 }
 
+class ChatPluginsSkillReadCommand extends ChatPluginsCommand {
+  const ChatPluginsSkillReadCommand({
+    required this.pluginId,
+    required this.skillName,
+  });
+
+  final String pluginId;
+  final String skillName;
+}
+
 class ChatPluginsInstallCommand extends ChatPluginsCommand {
   const ChatPluginsInstallCommand({required this.pluginId});
 
@@ -80,6 +90,9 @@ ChatPluginsCommand? parseChatPluginsCommand(String arguments) {
     if (head == 'uninstall' || head == 'remove') {
       return ChatPluginsUninstallCommand(pluginId: pluginId);
     }
+  }
+  if (parts.length == 3 && (head == 'skill' || head == 'read-skill')) {
+    return ChatPluginsSkillReadCommand(pluginId: parts[1], skillName: parts[2]);
   }
 
   final marketplaceKinds = _pluginMarketplaceKindsFromParts(parts);
