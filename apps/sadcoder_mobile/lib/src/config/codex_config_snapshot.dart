@@ -7,6 +7,8 @@ class CodexConfigSnapshot {
     required this.layers,
     this.requirements,
     this.requirementsSupported = false,
+    this.modelProviderCapabilities,
+    this.modelProviderCapabilitiesSupported = false,
   });
 
   factory CodexConfigSnapshot.fromJson(Map<String, Object?> json) {
@@ -16,6 +18,11 @@ class CodexConfigSnapshot {
       layers: _objectList(json['layers']),
       requirements: _nullableObjectMap(json['requirements']),
       requirementsSupported: json['requirementsSupported'] == true,
+      modelProviderCapabilities: _nullableObjectMap(
+        json['modelProviderCapabilities'],
+      ),
+      modelProviderCapabilitiesSupported:
+          json['modelProviderCapabilitiesSupported'] == true,
     );
   }
 
@@ -24,6 +31,8 @@ class CodexConfigSnapshot {
   final List<Map<String, Object?>> layers;
   final Map<String, Object?>? requirements;
   final bool requirementsSupported;
+  final Map<String, Object?>? modelProviderCapabilities;
+  final bool modelProviderCapabilitiesSupported;
 
   CodexConfigSnapshot withRequirements({
     required bool supported,
@@ -35,6 +44,23 @@ class CodexConfigSnapshot {
       layers: layers,
       requirements: value,
       requirementsSupported: supported,
+      modelProviderCapabilities: modelProviderCapabilities,
+      modelProviderCapabilitiesSupported: modelProviderCapabilitiesSupported,
+    );
+  }
+
+  CodexConfigSnapshot withModelProviderCapabilities({
+    required bool supported,
+    required Map<String, Object?>? value,
+  }) {
+    return CodexConfigSnapshot(
+      config: config,
+      origins: origins,
+      layers: layers,
+      requirements: requirements,
+      requirementsSupported: requirementsSupported,
+      modelProviderCapabilities: value,
+      modelProviderCapabilitiesSupported: supported,
     );
   }
 
@@ -61,6 +87,9 @@ class CodexConfigSnapshot {
     'layers': layers,
     'requirementsSupported': requirementsSupported,
     if (requirements != null) 'requirements': requirements,
+    'modelProviderCapabilitiesSupported': modelProviderCapabilitiesSupported,
+    if (modelProviderCapabilities != null)
+      'modelProviderCapabilities': modelProviderCapabilities,
   };
 }
 

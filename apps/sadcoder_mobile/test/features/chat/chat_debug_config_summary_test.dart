@@ -33,6 +33,12 @@ void main() {
               'config': {'model': 'gpt-5-codex'},
             },
           ],
+          'modelProviderCapabilitiesSupported': true,
+          'modelProviderCapabilities': {
+            'namespaceTools': true,
+            'imageGeneration': false,
+            'webSearch': true,
+          },
         }),
       ),
     );
@@ -55,6 +61,10 @@ void main() {
       summary,
       contains('metadata: {"version":"v1","name":{"type":"user"}}'),
     );
+    expect(summary, contains('Model provider capabilities'));
+    expect(summary, contains('Namespace tools: enabled'));
+    expect(summary, contains('Image generation: disabled'));
+    expect(summary, contains('Web search: enabled'));
   });
 
   test(
@@ -138,6 +148,13 @@ void main() {
     expect(summary, contains('allowRemoteControl: false'));
     expect(summary, contains('allowedApprovalPolicies: ["on-request"]'));
     expect(summary, contains('models: {"newThread":{"model":"gpt-5-codex"}}'));
+    expect(
+      summary,
+      contains(
+        'Model provider capabilities\n'
+        '  Not supported by this app-server.',
+      ),
+    );
   });
 }
 

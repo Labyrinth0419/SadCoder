@@ -17,7 +17,14 @@ class CodexConfigSnapshotRemoteReader implements CodexConfigSnapshotReader {
       includeLayers: includeLayers,
       cwd: cwd,
     );
-    final snapshot = CodexConfigSnapshot.fromJson(result);
+    var snapshot = CodexConfigSnapshot.fromJson(result);
+    snapshot = await _readRequirements(snapshot);
+    return _readModelProviderCapabilities(snapshot);
+  }
+
+  Future<CodexConfigSnapshot> _readRequirements(
+    CodexConfigSnapshot snapshot,
+  ) async {
     try {
       final requirementsResult = await _client.readConfigRequirements();
       return snapshot.withRequirements(
@@ -29,6 +36,26 @@ class CodexConfigSnapshotRemoteReader implements CodexConfigSnapshotReader {
         rethrow;
       }
       return snapshot.withRequirements(supported: false, value: null);
+    }
+  }
+
+  Future<CodexConfigSnapshot> _readModelProviderCapabilities(
+    CodexConfigSnapshot snapshot,
+  ) async {
+    try {
+      final result = await _client.readModelProviderCapabilities();
+      return snapshot.withModelProviderCapabilities(
+        supported: true,
+        value: _objectMapOrNull(result),
+      );
+    } on JsonRpcRemoteException catch (error) {
+      if (error.code != -32601) {
+        rethrow;
+      }
+      return snapshot.withModelProviderCapabilities(
+        supported: false,
+        value: null,
+      );
     }
   }
 }

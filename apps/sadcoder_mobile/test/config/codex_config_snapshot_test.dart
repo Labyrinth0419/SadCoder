@@ -76,4 +76,23 @@ void main() {
     expect(snapshot.requirements?['allowedSandboxModes'], ['workspace-write']);
     expect(snapshot.toRawJson(), containsPair('requirementsSupported', true));
   });
+
+  test('preserves model provider capabilities and support state', () {
+    final snapshot = CodexConfigSnapshot.fromJson({
+      'config': const <String, Object?>{},
+      'modelProviderCapabilitiesSupported': true,
+      'modelProviderCapabilities': {
+        'namespaceTools': true,
+        'imageGeneration': false,
+        'webSearch': true,
+      },
+    });
+
+    expect(snapshot.modelProviderCapabilitiesSupported, isTrue);
+    expect(snapshot.modelProviderCapabilities?['webSearch'], isTrue);
+    expect(
+      snapshot.toRawJson(),
+      containsPair('modelProviderCapabilitiesSupported', true),
+    );
+  });
 }

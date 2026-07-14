@@ -664,6 +664,10 @@ class CodexAppServerClient {
     return _request('configRequirements/read');
   }
 
+  Future<Map<String, Object?>> readModelProviderCapabilities() {
+    return _request('modelProvider/capabilities/read', const {});
+  }
+
   Future<Map<String, Object?>> listExperimentalFeatures({
     String? cursor,
     int? limit,

@@ -20,6 +20,11 @@ void main() {
             'allowedSandboxModes': ['workspace-write'],
           },
         },
+        'modelProvider/capabilities/read' => {
+          'namespaceTools': true,
+          'imageGeneration': false,
+          'webSearch': true,
+        },
         _ => <String, Object?>{},
       };
     });
@@ -33,10 +38,15 @@ void main() {
     expect(requests.map((request) => request.method), [
       'config/read',
       'configRequirements/read',
+      'modelProvider/capabilities/read',
     ]);
-    expect(requests.last.params, isNull);
+    expect(requests[1].params, isNull);
+    expect(requests.last.params, isEmpty);
     expect(snapshot.requirementsSupported, isTrue);
     expect(snapshot.requirements?['allowedApprovalPolicies'], ['on-request']);
+    expect(snapshot.modelProviderCapabilitiesSupported, isTrue);
+    expect(snapshot.modelProviderCapabilities?['namespaceTools'], isTrue);
+    expect(snapshot.modelProviderCapabilities?['imageGeneration'], isFalse);
   });
 
   test('keeps config snapshots usable on older app-server versions', () async {
@@ -60,6 +70,8 @@ void main() {
     expect(snapshot.displayValueFor('model'), 'gpt-5-codex');
     expect(snapshot.requirementsSupported, isFalse);
     expect(snapshot.requirements, isNull);
+    expect(snapshot.modelProviderCapabilitiesSupported, isFalse);
+    expect(snapshot.modelProviderCapabilities, isNull);
   });
 
   test('does not hide non-compatibility requirements failures', () async {
@@ -89,4 +101,39 @@ void main() {
       ),
     );
   });
+
+  test(
+    'does not hide non-compatibility provider capability failures',
+    () async {
+      final transport = MemoryJsonRpcTransport((request) {
+        return switch (request.method) {
+          'config/read' => {
+            'config': const <String, Object?>{},
+            'origins': const <String, Object?>{},
+            'layers': const <Object?>[],
+          },
+          'configRequirements/read' => {'requirements': null},
+          _ => throw const JsonRpcRemoteException(
+            'Provider failed',
+            code: -32603,
+          ),
+        };
+      });
+      addTearDown(transport.close);
+      final reader = CodexConfigSnapshotRemoteReader(
+        CodexAppServerClient(transport),
+      );
+
+      await expectLater(
+        reader.readConfig(),
+        throwsA(
+          isA<JsonRpcRemoteException>().having(
+            (error) => error.code,
+            'code',
+            -32603,
+          ),
+        ),
+      );
+    },
+  );
 }

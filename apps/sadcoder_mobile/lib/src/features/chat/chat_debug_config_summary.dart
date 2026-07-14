@@ -73,6 +73,14 @@ String buildDebugConfigSummary({
     }
   }
 
+  lines.add(l10n.modelProviderCapabilities);
+  if (!snapshot.modelProviderCapabilitiesSupported) {
+    lines.add('  ${l10n.modelProviderCapabilitiesUnavailable}');
+  } else {
+    final capabilities = snapshot.modelProviderCapabilities ?? const {};
+    lines.addAll(_modelProviderCapabilityLines(l10n, capabilities));
+  }
+
   lines.add(l10n.debugConfigLayers(snapshot.layers.length));
   for (var i = 0; i < snapshot.layers.length; i++) {
     final layer = snapshot.layers[i];
@@ -90,6 +98,25 @@ String buildDebugConfigSummary({
   }
 
   return lines.join('\n');
+}
+
+Iterable<String> _modelProviderCapabilityLines(
+  AppLocalizations l10n,
+  Map<String, Object?> capabilities,
+) sync* {
+  final entries = <(String, Object?)>[
+    (l10n.providerCapabilityNamespaceTools, capabilities['namespaceTools']),
+    (l10n.providerCapabilityImageGeneration, capabilities['imageGeneration']),
+    (l10n.providerCapabilityWebSearch, capabilities['webSearch']),
+  ];
+  for (final (label, value) in entries) {
+    final displayValue = switch (value) {
+      true => l10n.appEnabled,
+      false => l10n.appDisabled,
+      _ => l10n.serverValueUnset,
+    };
+    yield '  $label: $displayValue';
+  }
 }
 
 String _layerLabel(AppLocalizations l10n, Map<String, Object?> layer) {

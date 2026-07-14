@@ -2847,6 +2847,15 @@ class _LoadedServerConfig extends StatelessWidget {
           label: l10n.sandboxMode,
           keyName: 'sandbox_mode',
         ),
+        const SizedBox(height: 8),
+        Text(
+          l10n.modelProviderCapabilities,
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        if (!snapshot.modelProviderCapabilitiesSupported)
+          Text(l10n.modelProviderCapabilitiesUnavailable)
+        else
+          ..._providerCapabilityWidgets(context, snapshot),
         if (isHighRiskPermissionState(
           approvalPolicy: snapshot.valueFor('approval_policy'),
           sandboxPolicy: snapshot.valueFor('sandbox_mode'),
@@ -2860,6 +2869,30 @@ class _LoadedServerConfig extends StatelessWidget {
           Text(l10n.configLayersLoaded(snapshot.layers.length)),
         ],
       ],
+    );
+  }
+}
+
+Iterable<Widget> _providerCapabilityWidgets(
+  BuildContext context,
+  CodexConfigSnapshot snapshot,
+) sync* {
+  final l10n = context.l10n;
+  final capabilities = snapshot.modelProviderCapabilities ?? const {};
+  final entries = <(String, Object?)>[
+    (l10n.providerCapabilityNamespaceTools, capabilities['namespaceTools']),
+    (l10n.providerCapabilityImageGeneration, capabilities['imageGeneration']),
+    (l10n.providerCapabilityWebSearch, capabilities['webSearch']),
+  ];
+  for (final (label, value) in entries) {
+    final displayValue = switch (value) {
+      true => l10n.appEnabled,
+      false => l10n.appDisabled,
+      _ => l10n.serverValueUnset,
+    };
+    yield Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Text('$label: $displayValue'),
     );
   }
 }

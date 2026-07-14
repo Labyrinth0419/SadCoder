@@ -370,8 +370,9 @@ agent 负责：
 5. `model/list`
 6. `config/read`
 7. `configRequirements/read`；旧 app-server 返回 method-not-found 时保留普通配置快照并标记 requirements 不可用。
-8. `account/read`
-9. 可选：通过 `sadcoder-agent schema --json` 或 `agent/schema` 生成/读取服务器 app-server JSON Schema cache；App 设置诊断页展示缓存模式、Codex 版本、digest、bundle/cache 路径和文件摘要，且不直接依赖交互式 shell 环境，也不自行执行 `codex`。
+8. `modelProvider/capabilities/read`；读取当前模型提供方是否支持 namespace tools、image generation 和 web search，旧 app-server method-not-found 时只标记该能力摘要不可用。
+9. `account/read`
+10. 可选：通过 `sadcoder-agent schema --json` 或 `agent/schema` 生成/读取服务器 app-server JSON Schema cache；App 设置诊断页展示缓存模式、Codex 版本、digest、bundle/cache 路径和文件摘要，且不直接依赖交互式 shell 环境，也不自行执行 `codex`。
 
 客户端内置一个“最低支持 Codex 版本”，低于该版本只允许 stdio 调试或提示升级。
 
@@ -386,6 +387,7 @@ agent 负责：
 - 已将同一 model catalog 能力摘要接入 Chat `/model` 选择器：下拉菜单展开时显示 reasoning/service tier/announcement，选中态仍保持单行模型 label，避免影响输入区密度。
 - 已将 `/model` 的推理强度改为按所选模型自动读取 `model/list` 的 `supportedReasoningEfforts` 与 `defaultReasoningEffort`：有能力元数据时提供服务器默认值和服务端声明的可选项，切换模型时清理不兼容覆盖；旧服务端、未知模型或自定义模型仍保留自由输入兼容路径。
 - 已将 model catalog 能力摘要中的默认值片段资源化，英文显示 `default: ...`，中文显示 `默认：...`，避免 UI helper 内硬编码可见文案。
+- 已将稳定的 `modelProvider/capabilities/read` 合并进服务器配置快照：Settings 只读配置卡和 `/debug-config` 会展示当前 provider 的 namespace tools、image generation、web search 能力；旧版本 method-not-found 时明确显示不可用，其他读取错误保留 raw detail 并使本次快照刷新失败，不把未知状态伪装成全部禁用。
 
 ### 5.6 Codex 配置策略
 

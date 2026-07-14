@@ -373,6 +373,10 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Config layers loaded: 1'), findsOneWidget);
+    expect(find.text('Model provider capabilities'), findsOneWidget);
+    expect(find.text('Namespace tools: enabled'), findsOneWidget);
+    expect(find.text('Image generation: disabled'), findsOneWidget);
+    expect(find.text('Web search: enabled'), findsOneWidget);
     expect(
       snapshotController.snapshot?.displayValueFor('model'),
       'gpt-5-codex',
@@ -1638,6 +1642,12 @@ class _FakeConfigSnapshotReader implements CodexConfigSnapshotReader {
           'config': {'model': 'gpt-5-codex'},
         },
       ],
+      'modelProviderCapabilitiesSupported': true,
+      'modelProviderCapabilities': {
+        'namespaceTools': true,
+        'imageGeneration': false,
+        'webSearch': true,
+      },
     });
   }
 }

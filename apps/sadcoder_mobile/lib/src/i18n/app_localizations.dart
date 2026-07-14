@@ -583,6 +583,15 @@ class AppLocalizations {
   String get appDefaultOverrides => _text('appDefaultOverrides');
   String get modelOverride => _text('modelOverride');
   String get modelProvider => _text('modelProvider');
+  String get modelProviderCapabilities => _text('modelProviderCapabilities');
+  String get modelProviderCapabilitiesUnavailable =>
+      _text('modelProviderCapabilitiesUnavailable');
+  String get providerCapabilityNamespaceTools =>
+      _text('providerCapabilityNamespaceTools');
+  String get providerCapabilityImageGeneration =>
+      _text('providerCapabilityImageGeneration');
+  String get providerCapabilityWebSearch =>
+      _text('providerCapabilityWebSearch');
   String get effortOverride => _text('effortOverride');
   String modelEffortServerDefault(String? effort) {
     final normalized = effort?.trim();
@@ -1927,6 +1936,11 @@ const _values = <String, Map<String, String>>{
     'appDefaultOverrides': 'App default overrides',
     'modelOverride': 'Model',
     'modelProvider': 'Model provider',
+    'modelProviderCapabilities': 'Model provider capabilities',
+    'modelProviderCapabilitiesUnavailable': 'Not supported by this app-server.',
+    'providerCapabilityNamespaceTools': 'Namespace tools',
+    'providerCapabilityImageGeneration': 'Image generation',
+    'providerCapabilityWebSearch': 'Web search',
     'effortOverride': 'Reasoning effort',
     'modelEffortServerDefault': 'Server default',
     'modelEffortServerDefaultValue': 'Server default ({effort})',
@@ -3048,6 +3062,11 @@ const _values = <String, Map<String, String>>{
     'appDefaultOverrides': 'App 默认覆盖',
     'modelOverride': '模型',
     'modelProvider': '模型提供方',
+    'modelProviderCapabilities': '模型提供方能力',
+    'modelProviderCapabilitiesUnavailable': '当前 app-server 不支持读取。',
+    'providerCapabilityNamespaceTools': '命名空间工具',
+    'providerCapabilityImageGeneration': '图像生成',
+    'providerCapabilityWebSearch': '网页搜索',
     'effortOverride': '推理强度',
     'modelEffortServerDefault': '服务器默认',
     'modelEffortServerDefaultValue': '服务器默认（{effort}）',

@@ -504,6 +504,25 @@ void main() {
     expect(requests.single.params, isNull);
   });
 
+  test('readModelProviderCapabilities uses official empty params', () async {
+    final requests = <JsonRpcRequest>[];
+    final transport = MemoryJsonRpcTransport((request) {
+      requests.add(request);
+      return {
+        'namespaceTools': true,
+        'imageGeneration': false,
+        'webSearch': true,
+      };
+    });
+    addTearDown(transport.close);
+
+    final client = CodexAppServerClient(transport);
+    await client.readModelProviderCapabilities();
+
+    expect(requests.single.method, 'modelProvider/capabilities/read');
+    expect(requests.single.params, isEmpty);
+  });
+
   test('listThreads can request archived threads', () async {
     final requests = <JsonRpcRequest>[];
     final transport = MemoryJsonRpcTransport((request) {
