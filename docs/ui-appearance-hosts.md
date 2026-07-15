@@ -1,6 +1,6 @@
 # 主题、主机、设置与 i18n
 
-## 9.7 深色模式
+## 深色模式
 
 - 使用 Material 3 dynamic color 可选，但默认提供稳定主题。
 - 支持 system / light / dark。
@@ -13,7 +13,7 @@
 - 已将字号五档从默认 ChoiceChip 调整为带示例字形、语义色轨、选中勾选和固定宽度约束的自定义 tile；配色 swatch tile 在极窄宽度下按容器收缩，避免设置侧栏或小屏布局出现横向溢出。
 - 本轮可见 UI 里程碑已补 Appearance 测试契约：设置页必须渲染 `candy`、`pastel-candy`、`candy-tones`、`candy-pop`、`sugar-rush` 五套糖果色板入口，控制器必须暴露五套各 5 个互异 swatch 的真实糖果配色；字号入口必须完整渲染并按 `extra-small`、`small`、`medium`、`large`、`extra-large` 五档有序提供。
 
-### 9.7.1 主机、设置与主题演进
+### 主机、设置与主题演进
 
 用户体验要求：
 
@@ -80,7 +80,7 @@
 - 已落地结构化 Codex maintenance / Cloud runner：`sadcoder-agent codex` 只暴露固定的 `doctor`、`update`、legacy `apply`、`cloud list/status/diff/apply` 操作，task/env/cursor/attempt/cwd 均由 Rust `Command::arg` 传递，不提供任意 shell 参数。Settings Diagnostics 提供只读诊断/查询、更新确认、apply 前 diff 预览和 backend 重启入口；Cloud 明确依赖服务器已有 ChatGPT auth，手机不保存认证或 API key，API-first 主流程不变。
 - 已落地多 host 同时连接生命周期：`HostSessionManager` 为每个 host 保留独立 session、approval、thread/item/timeline state；并发连接请求合并，后台保活与断线 cursor/分页回填按 host 隔离，active host disconnect/failure/close 后优先切换到 connected/connecting/reconnecting host，没有可用候选时清空 active profile。对应 manager、AppShell 和 Chat host selector 回归测试已覆盖。
 
-## 9.8 i18n
+## i18n
 
 首版语言：
 

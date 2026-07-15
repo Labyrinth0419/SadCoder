@@ -1,8 +1,8 @@
 # SSH、保活与重连
 
-## 7. SSH 配置设计
+## SSH 配置设计
 
-### 7.1 Profile 字段
+### Profile 字段
 
 基础字段：
 
@@ -29,7 +29,7 @@
 - custom agent/backend start command
 - custom proxy command
 
-### 7.2 OpenSSH config 兼容
+### OpenSSH config 兼容
 
 首版 UI 支持常用字段，不承诺完整 OpenSSH parser：
 
@@ -57,7 +57,7 @@ mode = "agent-proxy"
 
 App 内部存储使用加密数据库；导入/导出时明确提示敏感信息处理。
 
-### 7.3 Host key 策略
+### Host key 策略
 
 - 默认启用 TOFU：首次连接展示 fingerprint，用户确认后保存。
 - fingerprint 改变时必须阻断连接并要求用户明确处理。
@@ -68,9 +68,9 @@ App 内部存储使用加密数据库；导入/导出时明确提示敏感信息
 
 - 已落地 Hosts 页面 changed host key 专用阻断弹窗：当已保存 endpoint 的 key type 或 SHA256 fingerprint 与当前收到值不一致时，App 会展示已保存/当前收到的 key type 与 fingerprint，只提供关闭动作，不提供信任继续或自动重试；手动 probe 与连接按钮路径均覆盖。
 
-## 8. 保活、重连与连通性验证
+## 保活、重连与连通性验证
 
-### 8.1 自动保活
+### 自动保活
 
 分三层：
 
@@ -85,7 +85,7 @@ App 内部存储使用加密数据库；导入/导出时明确提示敏感信息
 - App RPC heartbeat：60 秒，仅前台或 active turn。
 - 重连 backoff：1s、2s、5s、10s、30s，上限 60s，带 jitter。
 
-### 8.2 移动端后台策略
+### 移动端后台策略
 
 - 没有 active turn：App 进入后台后可以断开长连接，只保留本地状态。
 - Android 有 active turn：启动 foreground service，通知栏显示当前 host/thread，保持连接接收审批和完成状态。
@@ -94,7 +94,7 @@ App 内部存储使用加密数据库；导入/导出时明确提示敏感信息
 - Android WorkManager 只做低频健康检查，不承诺实时性。
 - 无论哪种后台策略，App 断线都只是停止实时观察；服务器上的 active turn 必须继续执行或继续等待审批，不能被 App 生命周期自动中断。
 
-### 8.3 重连流程
+### 重连流程
 
 1. SSH 断开或 agent proxy 心跳失败。
 2. App 标记 UI 为 reconnecting，但不向 agent 或 app-server 发送中断。
@@ -108,7 +108,7 @@ App 内部存储使用加密数据库；导入/导出时明确提示敏感信息
 10. 优先通过 proxy 内的 `agent/snapshot` 拉取 agent 缓存的 pending approvals 和最近事件；旧版本或兼容路径才回落到独立 `sadcoder-agent snapshot --json`。
 11. 如果仍有 active turn，继续订阅事件；否则标记 idle。
 
-### 8.4 手动连通性验证
+### 手动连通性验证
 
 “测试连接”按钮输出分阶段诊断：
 

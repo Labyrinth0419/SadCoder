@@ -1,8 +1,8 @@
 # 技术栈与系统架构
 
-## 3. 技术栈选择
+## 技术栈选择
 
-### 3.1 推荐客户端技术栈
+### 推荐客户端技术栈
 
 App 端推荐：
 
@@ -22,7 +22,7 @@ App 端推荐：
 
 通信核心保持在 Dart/Flutter 边界内；只有出现可测量的复杂度或性能瓶颈时才评估 Rust 抽取，相关条件性工作见 [TODO](../TODO.md#p2-条件性增强)。
 
-### 3.2 推荐服务端技术栈
+### 推荐服务端技术栈
 
 服务端推荐新增一个跨平台 Rust 二进制：
 
@@ -51,9 +51,9 @@ sadcoder-agent proxy
 
 这比完全依赖官方 daemon 多一个 SadCoder 二进制，但换来 Windows/Linux 一致的保活、诊断、重连和能力探测。Codex 本体仍然不 fork，仍然安装官方 `codex`，但 Codex 路径、Node/PATH 运行时和版本检测都由 agent 统一解析。
 
-## 4. 推荐架构
+## 推荐架构
 
-### 4.1 生产模式：sadcoder-agent over SSH
+### 生产模式：sadcoder-agent over SSH
 
 启动流程：
 
@@ -93,7 +93,7 @@ Compose UI
 - agent 需要实现 JSON-RPC 代理、事件缓存、审批转发和服务安装。
 - Windows 服务安装方式要尽量支持非管理员路径，必要时用用户级计划任务。
 
-### 4.2 调试模式：直接 stdio
+### 调试模式：直接 stdio
 
 调试/兜底流程：
 
@@ -115,7 +115,7 @@ App 通过 SSH exec channel 的 stdin/stdout 直接收发 newline-delimited JSON
 - 不适合长任务、弱网、后台运行。
 - 不满足“手机断线不影响任务继续执行”的硬约束，不允许作为生产默认模式。
 
-### 4.3 统一 service backend 与 direct stdio fallback
+### 统一 service backend 与 direct stdio fallback
 
 生产默认 backend 是 SadCoder 自己的 service：
 
@@ -138,7 +138,7 @@ fallback 的前置条件是 agent 已经用同一个 `ResolvedCodexCommand` 成�
 
 自动发现 common install locations 时，agent 只能缓存已经通过同一套 `ResolvedCodexCommand` 版本/运行时 probe 的候选项；坏的 `codex` wrapper、错误 Node 运行时或非 Codex 同名程序必须被跳过，不能写入持久化配置。
 
-### 4.4 Agent 内部设计
+### Agent 内部设计
 
 ```text
 Android/iOS App -> SSH -> sadcoder-agent proxy -> sadcoder-agent service -> codex app-server

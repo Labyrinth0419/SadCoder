@@ -1,6 +1,6 @@
 # 产品目标与原则
 
-## 0. 目标摘要
+## 目标摘要
 
 SadCoder 的目标不是在手机上“模拟一个终端”，而是让移动 App 通过 SSH 直连服务器，并以结构化协议监管服务器上的 Codex：能查看会话、发送消息、接收流式事件、处理审批、管理线程、执行命令、调整配置，并尽量覆盖 Codex CLI 暴露的能力。
 
@@ -23,9 +23,9 @@ Android/iOS App
   -> Codex core / tools / MCP / filesystem / shell
 ```
 
-## 1. 参考项目结论
+## 参考项目结论
 
-### 1.1 Codex 项目结论
+### Codex 项目结论
 
 `refs/codex` 中最关键的接口是 `codex app-server`：
 
@@ -40,7 +40,7 @@ Android/iOS App
 
 因此，第一性原理上不应该抓取 TUI 屏幕或模拟按键，也不应该先自造一套 Codex 协议。最稳的语义边界是 app-server。
 
-### 1.2 HappyCoder 项目结论
+### HappyCoder 项目结论
 
 `refs/happy` 提供了几个有价值的参考：
 
@@ -50,14 +50,14 @@ Android/iOS App
 - Happy 的主架构依赖云端同步服务器和端到端加密消息流；本项目主要目标是移动 App 通过 SSH 直连服务器，所以不引入 Happy Server 这种云中转。
 - Happy 的 `sessionProtocol.ts` 自身标记为 under review，不建议直接复制其 wire protocol。我们只参考事件建模和 UI 映射思路。
 
-### 1.3 对本项目的直接影响
+### 对本项目的直接影响
 
 - Codex 的 app-server 是主协议。
 - 移动 App 应该渲染 app-server 的结构化 item/event，而不是渲染 ANSI 终端。
 - 移动端断线不能杀掉服务器上的 Codex，因此生产模式必须有服务端常驻层；Linux/Windows 都由 `sadcoder-agent service` 持有 Codex app-server 子进程。
 - Happy 的“移动端 session state + event mapper + approval handler”值得借鉴，但通信路径要改成 SSH 直连。
 
-## 2. 第一性原理
+## 第一性原理
 
 1. Codex 真正的工作发生在服务器上，状态也应保留在服务器的 `CODEX_HOME` 与项目工作区中。
 2. 手机只是控制面，不应该持有项目代码、不应该替服务器做模型请求、不应该复制 Codex 状态。
@@ -67,7 +67,7 @@ Android/iOS App
 6. 对安全敏感操作，审批必须结构化显示：命令、cwd、diff、MCP tool、原因、权限范围都要可读。
 7. MVP 仍然少造业务协议轮子：Codex 语义直接复用官方 app-server；自研部分只做跨平台生命周期、代理、保活和恢复。
 
-### 2.1 任务生命周期硬约束
+### 任务生命周期硬约束
 
 SadCoder 必须遵守一个最重要的不变量：手机连接状态不能决定 Codex 任务是否继续执行。
 
@@ -78,7 +78,7 @@ SadCoder 必须遵守一个最重要的不变量：手机连接状态不能决�
 - 如果任务运行到审批点而手机不在线，默认行为是保持审批 pending，让任务等待用户重连后决策；不能因为手机断开自动拒绝、自动取消或自动 interrupt。
 - agent 可以记录“任务等待手机审批”的状态并发出本地通知/下次打开 App 提示，但不应擅自替用户作出终止性决策。
 
-## 16. 当前推荐决策
+## 当前推荐决策
 
 首版采用：
 

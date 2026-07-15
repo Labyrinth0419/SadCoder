@@ -2,9 +2,9 @@
 
 本文保留原始 M0-M4 的范围定义，用于解释功能演进和能力分组，不作为开放任务清单。未完成、待验证或需要继续改进的事项只在 [TODO](../TODO.md) 跟踪。
 
-## 13. 里程碑
+## 里程碑
 
-### M0：协议探针
+### 协议探针
 
 目标：证明移动端协议栈可以通过 SSH 连接 Linux/Windows 上的 Codex app-server。
 
@@ -17,7 +17,7 @@
 - Windows backend 覆盖 SadCoder service 后端和 direct stdio fallback。
 - `initialize`、`thread/list`、`model/list`。
 
-### M1：移动端 MVP
+### 移动端 MVP
 
 目标：Android 可连接 Linux/Windows 服务器并完成基础 Codex 对话；iOS 工程可自行编译安装并跑通主流程。
 
@@ -36,7 +36,7 @@
 - zh-CN/en-US。
 - MVP 斜杠命令面板和核心命令映射。
 
-### M2：可用性完善
+### 可用性完善
 
 目标：弱网和移动场景可用。
 
@@ -51,7 +51,7 @@
 - 本地日志与导出。
 - account/model/config 基础设置。
 
-### M3：Codex 功能扩展
+### Codex 功能扩展
 
 目标：覆盖大部分 Codex CLI/app-server 能力。
 
@@ -68,7 +68,7 @@
 - 第二阶段斜杠命令完整映射：review/fork/compact/goal/diff/mention/usage/MCP/plugin/skill/hooks/logout/background terminals。
 - `/side`、`/btw` 实验支持：ephemeral fork、side boundary prompt、side/main 切换、审批归属、断线降级。
 
-### M4：高级能力
+### 高级能力
 
 目标：接近完整 Codex 控制台。
 

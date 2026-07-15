@@ -1,8 +1,8 @@
 # 协议、配置与兼容性
 
-## 5. 协议设计
+## 协议设计
 
-### 5.1 Agent 与 app-server 初始化
+### Agent 与 app-server 初始化
 
 通过 SSH 执行 `sadcoder-agent proxy` 后，App 可以先发送 `agent/hello` 或在 proxy 前通过 `sadcoder-agent status --json` 完成健康检查。agent ready 后，进入 Codex app-server 初始化。app-server 初始化消息固定为：
 
@@ -36,7 +36,7 @@
 2. Notification：无 `id`，例如 `thread/started`、`turn/started`、`item/*`。
 3. Server request：带 `id` 和 `method`，例如审批请求、MCP form elicitation、current time request。客户端必须回复，否则 app-server 可能等待。
 
-### 5.2 JSON-RPC dispatcher
+### JSON-RPC dispatcher
 
 客户端内部需要一个通用 dispatcher：
 
@@ -52,7 +52,7 @@
 - 已接入 `currentTime/read` server request 的自动响应：`CodexAppSession` 组装独立的 `ServerRequestAutoResponder`，返回 `currentTimeAt` Unix 秒；该方法不会进入 approval state，也不会在重连 snapshot 回填时显示为未知审批。
 - 已对当前移动端明确不支持的已知 app-server server request 返回显式 JSON-RPC error，而不是长期挂成未知审批：`item/tool/call`、`account/chatgptAuthTokens/refresh`、`attestation/generate`、legacy `applyPatchApproval` 和 legacy `execCommandApproval` 由 `ServerRequestAutoResponder` 统一拒绝，approval coordinator 和 reconnect snapshot 过滤共用同一方法清单；未知未来 request 仍按通用只读审批显示。
 
-### 5.3 事件映射
+### 事件映射
 
 不要直接把 app-server 原始 JSON 塞给 UI。需要映射为 UI 状态：
 
@@ -88,7 +88,7 @@
 
 - 已落地移动端 `CodexEvent` typed mapper：thread/turn/item/chat delta、reasoning、file change、MCP progress、auto-review、`thread/tokenUsage/updated`、`account/updated`、`account/rateLimits/updated` 和 `mcpServer/startupStatus/updated` 均映射为明确 `CodexEventKind`；状态类通知保留结构化 `payload` 和原始 raw JSON，默认不进入 Chat timeline。`AccountSnapshotController` 已支持 `account/updated` 稀疏 payload 的非破坏性合并，AppShell 已订阅 active session event stream 并把 auth mode / plan type 更新接入 account snapshot state；`AccountUsageSnapshotController` 已支持 `account/rateLimits/updated` 稀疏 payload 的非破坏性合并，AppShell 已把 rate-limit 更新接入 account usage state；`McpServerStatusController` 已支持 `mcpServer/startupStatus/updated` 单 server startup 状态合并并在 `/mcp` 摘要展示；`ThreadTokenUsageController` 已接入 `thread/tokenUsage/updated`，并在 `/status` 与 `/usage` 摘要展示当前/最近会话 token 用量，不进入 Chat timeline。
 
-### 5.4 审批请求
+### 审批请求
 
 必须支持：
 
@@ -125,7 +125,7 @@
 - 已支持未知 app-server server request 的保守通用表示：`ApprovalCoordinator` 将未知 method 映射为 `PendingApprovalKind.unknown` 并保留 raw params；Approvals 页面展示 request id、thread、method、reason 和非标准参数 key 摘要，但不直接渲染未知 payload 值、不提供批准/拒绝按钮，避免客户端版本落后时丢失 pending request 或误发错误响应。
 - 已补强 Approvals 页面权限范围展示：command approval 的 `additionalPermissions` 与 permissions approval 的 `permissions` 会显示顶层/次级权限 scope 摘要（例如 `fileSystem.write, network.enabled`），不直接渲染深层未知 payload 值。
 
-### 5.5 能力探测与版本兼容
+### 能力探测与版本兼容
 
 每次连接后执行：
 
@@ -155,7 +155,7 @@
 - 已将 model catalog 能力摘要中的默认值片段资源化，英文显示 `default: ...`，中文显示 `默认：...`，避免 UI helper 内硬编码可见文案。
 - 已将稳定的 `modelProvider/capabilities/read` 合并进服务器配置快照：Settings 只读配置卡和 `/debug-config` 会展示当前 provider 的 namespace tools、image generation、web search 能力；旧版本 method-not-found 时明确显示不可用，其他读取错误保留 raw detail 并使本次快照刷新失败，不把未知状态伪装成全部禁用。
 
-### 5.6 Codex 配置策略
+### Codex 配置策略
 
 默认原则：服务器上的 Codex 配置是权威默认值。SadCoder 不复制、不重建、不默认覆盖服务器 `CODEX_HOME/config.toml`、项目级配置、profile、MCP、插件、技能、权限 profile、模型 provider 或登录状态。
 
@@ -205,7 +205,7 @@
 
 UI 必须清楚标识每个生效值来自哪里：`服务器默认`、`App 默认覆盖`、`本会话覆盖`、`本次覆盖`。
 
-### 5.7 斜杠命令覆盖策略
+### 斜杠命令覆盖策略
 
 新增硬要求：Codex TUI 的所有斜杠命令功能都必须在 SadCoder 中被涵盖实现。
 

@@ -1,8 +1,8 @@
 # 风险与决策
 
-## 14. 风险与对策
+## 风险与对策
 
-### 14.1 sadcoder-agent 增加维护面
+### sadcoder-agent 增加维护面
 
 风险：
 
@@ -15,7 +15,7 @@
 - agent RPC 限定在 `agent/*` 命名空间。
 - 做 Linux/Windows CI 和集成测试。
 
-### 14.2 Codex app-server daemon 只作为兼容背景
+### Codex app-server daemon 只作为兼容背景
 
 风险：
 
@@ -29,7 +29,7 @@
 - 客户端 JSON-RPC 通用化，不把所有 method 写死。
 - 建立 Codex 版本兼容矩阵。
 
-### 14.3 Agent proxy 与 app-server 连接恢复复杂
+### Agent proxy 与 app-server 连接恢复复杂
 
 风险：
 
@@ -44,7 +44,7 @@
 - agent 的上游 app-server 连接和下游手机 proxy 连接分离；下游断开只移除订阅，不关闭上游 active turn。
 - 保留 direct stdio debug 模式定位问题。
 
-### 14.4 手机后台限制
+### 手机后台限制
 
 风险：
 
@@ -57,7 +57,7 @@
 - 非 active turn 不承诺实时连接。
 - reconnect + backfill 保证最终一致。
 
-### 14.5 长任务与断线恢复
+### 长任务与断线恢复
 
 风险：
 
@@ -72,7 +72,7 @@
 - UI 明确区分“手机已断开/未实时观察”和“服务器任务已中断/已完成”。
 - 只有 App 发出用户明确触发的 `turn/interrupt`，agent 才转发中断；断线、后台、重连失败都不能隐式中断。
 
-### 14.6 “所有 CLI/斜杠功能”范围过大
+### “所有 CLI/斜杠功能”范围过大
 
 风险：
 
@@ -92,7 +92,7 @@
 - UI 分阶段结构化。
 - 提供高级 Raw RPC 面板用于临时覆盖新能力，并保持显式确认。Raw Command/SSH fallback 不属于当前安全边界，开放工作见 [TODO](../TODO.md#p1-协议与后端)。
 
-## 15. 已采用的决策
+## 已采用的决策
 
 1. 首版服务器是否同时支持 Linux 和 Windows？
    - 决策：是。为此把 `sadcoder-agent` 提升为生产路径；SadCoder service 统一承接 Linux/Windows。

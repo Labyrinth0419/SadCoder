@@ -1,6 +1,6 @@
 # 审批、配置覆盖与斜杠命令 UI
 
-## 9.3 Approvals 页面
+## Approvals 页面
 
 审批优先级最高，需要可从通知直接进入。
 
@@ -24,7 +24,7 @@
 - 拒绝
 - 取消本轮
 
-## 9.4 配置覆盖 UI
+## 配置覆盖 UI
 
 设置和对话页都需要避免让用户误以为 App 会接管服务器 Codex 配置。
 
@@ -44,7 +44,7 @@
 - 调用 `config/value/write` 或 `config/batchWrite` 前必须二次确认。
 - 写入后调用必要的 reload 接口，例如 `config/mcpServer/reload`，并刷新 `config/read`。
 
-## 9.5 斜杠命令面板
+## 斜杠命令面板
 
 斜杠命令面板是移动端覆盖 Codex TUI 能力的主要入口。
 

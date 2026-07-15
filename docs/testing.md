@@ -2,9 +2,9 @@
 
 本文件定义自动化、集成测试和设备 QA 契约。尚未在真实平台矩阵完成的执行项集中跟踪在 [TODO](../TODO.md#p0-发布与平台验证)，这里保留长期验证范围。
 
-## 12. 测试计划
+## 测试计划
 
-### 12.1 单元测试
+### 单元测试
 
 - SSH config parser。
 - JSON-RPC dispatcher。
@@ -17,7 +17,7 @@
 - reconnect state machine。
 - i18n resource completeness。
 
-### 12.2 集成测试
+### 集成测试
 
 使用本地或 CI Linux 容器，以及一台 Windows 测试机/Runner：
 
@@ -61,7 +61,7 @@
   - 已补充 Chat widget 层覆盖：`/agent` 拓扑弹层同时展示 running/closed/errored agent runtime status，且状态色用于区分运行、关闭和错误的子 agent 条目。
   - 已补充 Chat widget 层覆盖：`/subagents` 弹层只展示子 agent 条目，并验证显式 parent/ancestor 子线程和当前 thread 中 `CollabAgentToolCall` / `SubAgentActivity` 回填的子 agent 会同时展示 status、role、agent path、parent 和 ancestor 信息，切换子 agent thread 不启动新 turn。
 
-### 12.3 移动端 QA
+### 移动端 QA
 
 - Android/iOS 真机深色/浅色模式。
 - 网络切换：Wi-Fi -> 4G/5G -> Wi-Fi。
@@ -72,7 +72,7 @@
 - diff 大文件渲染性能。
 - host key 变化阻断。
 
-### 12.4 兼容性矩阵
+### 兼容性矩阵
 
 服务器：
 

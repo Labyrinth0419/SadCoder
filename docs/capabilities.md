@@ -2,9 +2,9 @@
 
 本文件保留 MVP、第二阶段和第三阶段的能力分组，用于说明接口覆盖层级；分组名称不是开放任务状态。明确未完成或待改进的工作统一记录在 [TODO](../TODO.md)。
 
-## 6. 功能范围
+## 功能范围
 
-### 6.1 MVP 必须支持
+### MVP 必须支持
 
 连接与服务器：
 
@@ -65,7 +65,7 @@
 - 移动端保活：Android active turn 使用 foreground service；iOS 尽量利用短后台窗口和本地通知，不能承诺长期后台 SSH。
 - 本地日志导出。
 
-### 6.2 第二阶段支持
+### 第二阶段支持
 
 Codex 高级会话：
 
@@ -110,7 +110,7 @@ MCP/插件/技能：
 - 斜杠命令第二阶段：`/review`、`/fork`、`/compact`、`/goal`、`/diff`、`/mention`、`/usage`、`/mcp`、`/plugins`、`/skills`、`/apps`、`/hooks`、`/logout`、`/ps`、`/stop`。
 - 临时侧聊实验支持：`/side`、`/btw`，基于 `thread/fork ephemeral=true`，注入 side boundary prompt，支持返回主线；不承诺 ephemeral side thread 长期断线恢复。
 
-### 6.3 第三阶段支持
+### 第三阶段支持
 
 - Review：`review/start`。
 - Remote environment：`environment/add/info`。
@@ -126,7 +126,7 @@ MCP/插件/技能：
 - 斜杠命令第三阶段和高级诊断：`/ide`、`/keymap`、`/vim`、`/setup-default-sandbox`、`/sandbox-add-read-dir`、`/experimental`、`/approve`、`/memories`、`/import`、`/app`、`/init`、`/plan`、`/agent`、`/subagents`、`/debug-config`、`/title`、`/statusline`、`/theme`、`/pets`、`/feedback`、`/rollout`、`/test-approval`、`/debug-m-drop`、`/debug-m-update`。
 - 多 agent 拓扑：`/agent`、`/subagents` 先支持只读树和切换查看，再评估主动控制能力。
 
-### 6.4 CLI 功能覆盖策略
+### CLI 功能覆盖策略
 
 Codex CLI 子命令与 App 覆盖方式：
 

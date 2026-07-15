@@ -1,6 +1,6 @@
 # Chat 信息架构与对话交互
 
-## 9.1 信息架构
+## 信息架构
 
 主导航：
 
@@ -18,7 +18,7 @@ MVP 可以简化为底部导航：
 - Approvals
 - Settings
 
-## 9.2 Chat 页面
+## Chat 页面
 
 核心元素：
 
@@ -101,7 +101,7 @@ MVP 可以简化为底部导航：
 - 本轮结构整理将 `/review` 的参数解析、`ThreadReviewRunner.startReview` 调用、返回 turn 跟踪、timeline 插入和 thread detail 刷新从 `ChatPage` 拆到 `features/chat/chat_review_command.dart`；`ChatPage` 只传入当前 thread/context controllers 和列表刷新回调。
 - 已补齐 active turn 文本追加路径：`CodexAppServerClient`、`CodexTurnRunner`、`TurnController` 和 Chat composer 已支持 `turn/steer`，active turn 中发送普通文本会带 `expectedTurnId` steer 当前回合，而不是启动新 turn 或禁用输入；本次 turn overrides 仍只随 `turn/start` 消耗，不会被 steer 清掉。
 
-### 9.2.1 Goal / 重连稳定性修复（完成于 2026-07-15 11:50:14 +08:00）
+### Goal / 重连稳定性修复（完成于 2026-07-15 11:50:14 +08:00）
 
 - [x] **`/goal <objective>` 已对齐 TUI 的状态编辑语义。** 设置 objective 前先读取当前权威 goal：首次创建继续让服务端默认 `active`，已有 `complete` / `budgetLimited` goal 显式恢复 `active`，`paused` / `blocked` / `usageLimited` 保持上游状态；显式 `/goal status ...` 不做额外读取。`thread/goal/set` 返回后只提示“目标已更新，将在就绪后继续执行”，不再把正常的 `0 token` 初始快照表达成执行完成。已覆盖首次 goal、两个终态、paused/blocked/usageLimited 和显式状态更新测试。提交：`ff47af3`。
 - [x] **权威 `thread/goal/updated` 已进入 live/replay timeline。** `CodexEvent` 解析完整 `ThreadGoal`，timeline 使用独立的 `threadGoalUpdate` 结构化类型，不伪造 `userMessage` 或 `turn/start`；界面显示等价的 `/goal <objective>`、权威状态、token 与时间用量。以服务端 `threadId + createdAt` 标识同一 goal 实例，后续状态更新与 reconnect snapshot 更新同一条记录，避免重复。提交：`7f592ed`。
@@ -110,7 +110,7 @@ MVP 可以简化为底部导航：
 
 以上三项已完成，`/goal` 与 reconnect timeline 可按当前稳定 app-server 能力标记为端到端稳定。
 
-### 9.2.2 TUI 展示与通知可读性（完成于 2026-07-15 12:43:43 +08:00）
+### TUI 展示与通知可读性（完成于 2026-07-15 12:43:43 +08:00）
 
 - [x] **命令执行输出已改为永久受限的头尾摘要。** command block 只显示总行数/字节数、头部、已本地化的中段省略标记和尾部；无论长短都至少隐藏一行或一个字符，完整输出永远不会进入 widget tree，展开/收起按钮及对应文案已删除。长输出、短单行输出、亮色/暗色 terminal 语义色和 ChatPage 结构化命令测试均按此安全契约更新。提交：`a1b6048`。
 - [x] **Android 后台通知已完成原生 i18n 与别名优先级。** `SshProfile.notificationLabel` 优先使用用户填写的非空别名，没有别名时回退 `username@host:port`；展示身份通过 `BackgroundConnectionContext -> MethodChannel -> MainActivity -> BackgroundConnectionService` 传递，route matching 仍使用 profile/endpoint，不把展示名称混入连接身份。通知 channel、标题、活动任务、会话、回合和未知主机文案均移入 English / `values-zh-rCN` 资源，长 thread/turn ID 会压缩。提交：`884aca8`。
