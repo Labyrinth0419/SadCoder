@@ -1,25 +1,22 @@
 # SadCoder
 
-SadCoder is a cross-platform mobile controller for Codex running on remote
-servers. The mobile app connects to a server over SSH, starts or attaches to a
-thin server-side agent, and then communicates with Codex through the official
-app-server JSON-RPC protocol.
+**中文** | [English](README-en.md)
 
-The design source of truth is [Plan.md](Plan.md).
+SadCoder 是一个跨平台移动端 Codex 控制器，用于连接和管理远程服务器上运行的 Codex。移动 App 通过 SSH 连接服务器，启动或接入轻量的服务端 agent，再通过官方 app-server JSON-RPC 协议与 Codex 通信。
 
-## Repository Layout
+当前架构、协议、UI、安全和测试文档从 [docs/README.md](docs/README.md) 开始阅读。未完成工作和需要继续改进的事项只在 [TODO.md](TODO.md) 跟踪。
 
-- `apps/sadcoder_mobile` - Flutter + Material 3 Android/iOS app.
-- `crates/sadcoder-agent` - Rust server-side binary for status, lifecycle, and
-  app-server proxy commands.
-- `crates/sadcoder-protocol` - Rust protocol DTOs shared by the agent and tests.
-- `resources` - shared manifests used by both the mobile app and agent.
-- `refs` - ignored local reference projects for Codex and HappyCoder.
+## 仓库结构
 
-## M0 Local Probe
+- `apps/sadcoder_mobile`：Flutter + Material 3 Android/iOS App。
+- `crates/sadcoder-agent`：负责状态、生命周期和 app-server 代理命令的 Rust 服务端二进制。
+- `crates/sadcoder-protocol`：agent 与测试共享的 Rust 协议 DTO。
+- `resources`：移动端与 agent 共用的 manifest。
+- `refs`：已忽略的 Codex 和 HappyCoder 本地参考项目。
 
-The first implementation milestone focuses on proving the app-server protocol
-boundary without reimplementing Codex semantics.
+## M0 本地协议探针
+
+首个实现里程碑用于证明 app-server 协议边界，不重新实现 Codex 业务语义。
 
 ```powershell
 cargo run -p sadcoder-agent -- status --json
@@ -29,91 +26,58 @@ cargo run -p sadcoder-agent -- schema --json
 cargo run -p sadcoder-agent -- slash-commands --json
 ```
 
-`probe --json` starts `codex app-server --listen stdio://`, sends
-`initialize`, acknowledges `initialized`, then calls `model/list` and
-`thread/list`.
+`probe --json` 会启动 `codex app-server --listen stdio://`，发送 `initialize`，确认 `initialized`，然后调用 `model/list` 和 `thread/list`。
 
-The mobile app has an SSH command runner abstraction and a `dartssh2`
-implementation for invoking remote agent commands.
+移动端提供 SSH command runner 抽象，并使用 `dartssh2` 实现远端 agent 命令调用。
 
-For interactive Codex sessions, the mobile app opens an SSH exec channel to:
+交互式 Codex 会话会打开 SSH exec channel 并执行：
 
 ```powershell
 sadcoder-agent proxy
 ```
 
-`start` launches a long-lived `sadcoder-agent service` when needed. The service
-owns `codex app-server --listen unix://...`; `proxy` connects the SSH channel to
-that local service socket and bridges the app's JSONL messages to app-server
-WebSocket text frames. The service is spawned in a detached Unix session or
-Windows process group with job breakaway, so closing the mobile SSH channel only
-stops the proxy subscription, not the app-server process owned by the service.
+需要时，`start` 会启动长期运行的 `sadcoder-agent service`。service 持有 `codex app-server --listen unix://...`；`proxy` 将 SSH channel 连接到本地 service socket，并在 App JSONL 消息与 app-server WebSocket text frame 之间桥接。service 运行在脱离 SSH channel 的 Unix session 或带 job breakaway 的 Windows process group 中，因此关闭移动端 SSH channel 只会停止 proxy 订阅，不会结束 service 持有的 app-server 进程。
 
-Backend selection is controlled by `--backend` or `SADCODER_BACKEND`:
+backend 由 `--backend` 或 `SADCODER_BACKEND` 控制：
 
-- `auto` is the production backend and always targets the SadCoder service.
-  If the service cannot be started or reached, `start --json` and `proxy`
-  return a structured error instead of silently falling back to stdio.
-- `auto` only reports a ready backend after the resolved Codex command passes
-  the agent's version/runtime probe. Missing Codex binaries, Node runtime
-  errors, permission failures, or malformed version output are reported as
-  unavailable instead of a ready stdio backend.
-- `stdio` forces the direct stdio debug path; SSH disconnect can end that
-  app-server process.
-- `daemon` is accepted for compatibility, but falls back to stdio because
-  npm/NVM Codex CLIs can expose daemon commands that still require the official
-  standalone installer layout.
+- `auto` 是生产 backend，始终连接 SadCoder service。service 无法启动或访问时，`start --json` 和 `proxy` 返回结构化错误，不会静默降级到 stdio。
+- `auto` 只在已解析的 Codex command 通过 agent 版本/运行时 probe 后报告 ready。Codex 缺失、Node runtime 错误、权限失败或版本输出异常会报告 unavailable，不会把 stdio 错标成可用 backend。
+- `stdio` 强制使用 direct stdio 调试路径；SSH 断开可能结束该 app-server 进程。
+- `daemon` 仅为兼容保留并回退到 stdio，因为 npm/NVM Codex CLI 可能暴露 daemon 命令，但仍缺少官方 standalone installer layout。
 
-`status` is non-mutating: in `auto` mode it reports the SadCoder service
-readiness and, when the service is not running yet, reports that `auto` will
-start and connect to the SadCoder service. `start --json` and `proxy` use the
-same service-only production backend selected by `auto`; direct stdio remains
-available only when explicitly requested with `--backend stdio` or the
-compatibility `--backend daemon` mode.
+`status` 不修改远端状态：在 `auto` 模式下报告 SadCoder service readiness；service 尚未运行时，会说明 `auto` 将启动并连接 SadCoder service。`start --json` 和 `proxy` 使用相同的 service-only 生产 backend；只有显式指定 `--backend stdio` 或兼容的 `--backend daemon` 时才使用 direct stdio。
 
-`doctor --json` combines the resolved Codex command diagnostic with the same
-agent status/backend/reconnect-cache shape used by `status --json`, so callers
-can troubleshoot Codex runtime, service readiness, and pending reconnect state
-from one non-mutating command.
+`doctor --json` 将已解析 Codex command 的诊断与 `status --json` 使用的 agent status/backend/reconnect-cache 结构组合，调用方可以通过一个非破坏性命令排查 Codex runtime、service readiness 和待恢复状态。
 
-`schema --json` uses the same resolved Codex command to run
-`codex app-server generate-json-schema`, caches the generated JSON Schema bundle
-under the agent state directory, and returns file count, total bytes, digest,
-bundle path, and Codex version metadata. The proxy also exposes the same summary
-through `agent/schema`, with optional `refresh` and `experimental` booleans, so
-the mobile app does not need to locate or execute `codex` itself.
+`schema --json` 使用同一个已解析 Codex command 执行 `codex app-server generate-json-schema`，把生成的 JSON Schema bundle 缓存在 agent state 目录，并返回文件数量、总字节数、digest、bundle 路径和 Codex 版本。proxy 也通过 `agent/schema` 暴露同一摘要，并支持可选的 `refresh` 和 `experimental` 参数，因此移动 App 不需要自己定位或执行 `codex`。
 
-## Codex Command Configuration
+## Codex 命令配置
 
-The mobile app only needs to find `sadcoder-agent`. The agent is the source of
-truth for the Codex executable, runtime PATH, and version diagnostics.
+移动 App 只需要定位 `sadcoder-agent`。Codex executable、runtime PATH 和版本诊断均以 agent 为权威来源。
 
-The agent resolves Codex in this order:
+agent 按以下顺序解析 Codex：
 
 1. `--codex-path` / `--codex-program`
 2. `SADCODER_CODEX_PATH`
-3. persisted agent config
-4. inherited `PATH`
-5. automatic discovery of common install locations
+3. 已持久化的 agent config
+4. 继承的 `PATH`
+5. 自动发现常见安装位置
 
-Automatic discovery only caches a candidate after the agent can run the same
-resolved command and recognize its `codex --version` output. Invalid wrappers,
-wrong Node runtimes, and unrelated programs named `codex` are skipped instead
-of being persisted.
+自动发现只有在 agent 可以执行同一个 resolved command，并识别其 `codex --version` 输出后才会缓存候选项。无效 wrapper、错误 Node runtime 和与 Codex 无关的同名程序会被跳过，不会写入持久化配置。
 
-Persist a Codex command with:
+持久化 Codex command：
 
 ```powershell
 sadcoder-agent configure --codex /home/me/.nvm/versions/node/v24.14.1/bin/codex --path-prepend /home/me/.nvm/versions/node/v24.14.1/bin --json
 ```
 
-Wrapper arguments can be persisted with repeated `--codex-arg` flags:
+使用重复的 `--codex-arg` 持久化 wrapper 参数：
 
 ```powershell
 sadcoder-agent configure --codex /opt/codex-wrapper --codex-arg --profile --codex-arg mobile --path-prepend /opt/node/bin --json
 ```
 
-The resulting config is structured, for example:
+生成的配置是结构化数据，例如：
 
 ```json
 {
@@ -126,18 +90,14 @@ The resulting config is structured, for example:
 }
 ```
 
-Config file locations:
+配置文件位置：
 
-- Linux/macOS: `~/.config/sadcoder/agent.json`
-- Windows: `%LOCALAPPDATA%\SadCoder\agent.json`
+- Linux/macOS：`~/.config/sadcoder/agent.json`
+- Windows：`%LOCALAPPDATA%\SadCoder\agent.json`
 
-`slash-commands --json` prints the shared slash command manifest from
-`resources/slash_commands_manifest.json`. The manifest tracks the current Codex
-TUI slash command surface, aliases, availability rules, implementation phase,
-and SadCoder mapping strategy so `/...` input is handled as a command rather
-than silently sent as a normal prompt.
+`slash-commands --json` 输出 `resources/slash_commands_manifest.json` 中的共享斜杠命令 manifest。manifest 跟踪当前 Codex TUI 命令、别名、可用性规则、实现阶段和 SadCoder 映射策略，确保 `/...` 输入按命令处理，而不是静默作为普通 prompt 发给模型。
 
-## Verification
+## 验证
 
 ```powershell
 cargo fmt --all -- --check

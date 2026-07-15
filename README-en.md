@@ -1,0 +1,153 @@
+# SadCoder
+
+[中文](README.md) | **English**
+
+SadCoder is a cross-platform mobile controller for Codex running on remote
+servers. The mobile app connects to a server over SSH, starts or attaches to a
+thin server-side agent, and then communicates with Codex through the official
+app-server JSON-RPC protocol.
+
+Current architecture, protocol, UI, security, and testing documentation starts
+at [docs/README.md](docs/README.md). Open work and follow-up improvements are
+tracked only in [TODO.md](TODO.md).
+
+## Repository Layout
+
+- `apps/sadcoder_mobile` - Flutter + Material 3 Android/iOS app.
+- `crates/sadcoder-agent` - Rust server-side binary for status, lifecycle, and
+  app-server proxy commands.
+- `crates/sadcoder-protocol` - Rust protocol DTOs shared by the agent and tests.
+- `resources` - shared manifests used by both the mobile app and agent.
+- `refs` - ignored local reference projects for Codex and HappyCoder.
+
+## M0 Local Probe
+
+The first implementation milestone focuses on proving the app-server protocol
+boundary without reimplementing Codex semantics.
+
+```powershell
+cargo run -p sadcoder-agent -- status --json
+cargo run -p sadcoder-agent -- doctor --json
+cargo run -p sadcoder-agent -- probe --json
+cargo run -p sadcoder-agent -- schema --json
+cargo run -p sadcoder-agent -- slash-commands --json
+```
+
+`probe --json` starts `codex app-server --listen stdio://`, sends
+`initialize`, acknowledges `initialized`, then calls `model/list` and
+`thread/list`.
+
+The mobile app has an SSH command runner abstraction and a `dartssh2`
+implementation for invoking remote agent commands.
+
+For interactive Codex sessions, the mobile app opens an SSH exec channel to:
+
+```powershell
+sadcoder-agent proxy
+```
+
+`start` launches a long-lived `sadcoder-agent service` when needed. The service
+owns `codex app-server --listen unix://...`; `proxy` connects the SSH channel to
+that local service socket and bridges the app's JSONL messages to app-server
+WebSocket text frames. The service is spawned in a detached Unix session or
+Windows process group with job breakaway, so closing the mobile SSH channel only
+stops the proxy subscription, not the app-server process owned by the service.
+
+Backend selection is controlled by `--backend` or `SADCODER_BACKEND`:
+
+- `auto` is the production backend and always targets the SadCoder service.
+  If the service cannot be started or reached, `start --json` and `proxy`
+  return a structured error instead of silently falling back to stdio.
+- `auto` only reports a ready backend after the resolved Codex command passes
+  the agent's version/runtime probe. Missing Codex binaries, Node runtime
+  errors, permission failures, or malformed version output are reported as
+  unavailable instead of a ready stdio backend.
+- `stdio` forces the direct stdio debug path; SSH disconnect can end that
+  app-server process.
+- `daemon` is accepted for compatibility, but falls back to stdio because
+  npm/NVM Codex CLIs can expose daemon commands that still require the official
+  standalone installer layout.
+
+`status` is non-mutating: in `auto` mode it reports the SadCoder service
+readiness and, when the service is not running yet, reports that `auto` will
+start and connect to the SadCoder service. `start --json` and `proxy` use the
+same service-only production backend selected by `auto`; direct stdio remains
+available only when explicitly requested with `--backend stdio` or the
+compatibility `--backend daemon` mode.
+
+`doctor --json` combines the resolved Codex command diagnostic with the same
+agent status/backend/reconnect-cache shape used by `status --json`, so callers
+can troubleshoot Codex runtime, service readiness, and pending reconnect state
+from one non-mutating command.
+
+`schema --json` uses the same resolved Codex command to run
+`codex app-server generate-json-schema`, caches the generated JSON Schema bundle
+under the agent state directory, and returns file count, total bytes, digest,
+bundle path, and Codex version metadata. The proxy also exposes the same summary
+through `agent/schema`, with optional `refresh` and `experimental` booleans, so
+the mobile app does not need to locate or execute `codex` itself.
+
+## Codex Command Configuration
+
+The mobile app only needs to find `sadcoder-agent`. The agent is the source of
+truth for the Codex executable, runtime PATH, and version diagnostics.
+
+The agent resolves Codex in this order:
+
+1. `--codex-path` / `--codex-program`
+2. `SADCODER_CODEX_PATH`
+3. persisted agent config
+4. inherited `PATH`
+5. automatic discovery of common install locations
+
+Automatic discovery only caches a candidate after the agent can run the same
+resolved command and recognize its `codex --version` output. Invalid wrappers,
+wrong Node runtimes, and unrelated programs named `codex` are skipped instead
+of being persisted.
+
+Persist a Codex command with:
+
+```powershell
+sadcoder-agent configure --codex /home/me/.nvm/versions/node/v24.14.1/bin/codex --path-prepend /home/me/.nvm/versions/node/v24.14.1/bin --json
+```
+
+Wrapper arguments can be persisted with repeated `--codex-arg` flags:
+
+```powershell
+sadcoder-agent configure --codex /opt/codex-wrapper --codex-arg --profile --codex-arg mobile --path-prepend /opt/node/bin --json
+```
+
+The resulting config is structured, for example:
+
+```json
+{
+  "codex": {
+    "program": "/home/me/.nvm/versions/node/v24.14.1/bin/codex",
+    "args": [],
+    "pathPrepend": ["/home/me/.nvm/versions/node/v24.14.1/bin"],
+    "version": "codex-cli 0.143.0"
+  }
+}
+```
+
+Config file locations:
+
+- Linux/macOS: `~/.config/sadcoder/agent.json`
+- Windows: `%LOCALAPPDATA%\SadCoder\agent.json`
+
+`slash-commands --json` prints the shared slash command manifest from
+`resources/slash_commands_manifest.json`. The manifest tracks the current Codex
+TUI slash command surface, aliases, availability rules, implementation phase,
+and SadCoder mapping strategy so `/...` input is handled as a command rather
+than silently sent as a normal prompt.
+
+## Verification
+
+```powershell
+cargo fmt --all -- --check
+cargo test --workspace
+cd apps\sadcoder_mobile
+dart format lib test
+flutter analyze
+flutter test
+```
