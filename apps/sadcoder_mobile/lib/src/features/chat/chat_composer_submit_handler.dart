@@ -11,7 +11,8 @@ typedef ChatSlashCommandDispatcher =
     Future<void> Function(SlashCommandParseResult parsed);
 typedef ChatComposerTextElementsProvider =
     List<TurnTextElement> Function(String text);
-typedef ChatActiveTurnSync = void Function({String? submittedText});
+typedef ChatActiveTurnSync =
+    void Function({String? submittedText, required bool queuedInstruction});
 typedef ChatComposerClearer = void Function();
 typedef ChatComposerSnackBar = void Function(String message);
 
@@ -87,7 +88,10 @@ class ChatComposerSubmitHandler {
       await controller.submitText(text, textElements: textElements);
     }
     if (controller.status != TurnControllerStatus.failed) {
-      syncActiveTurn(submittedText: text);
+      syncActiveTurn(
+        submittedText: text,
+        queuedInstruction: steeringActiveTurn,
+      );
       if (!steeringActiveTurn) {
         configOverrideController?.clearTurn();
       }

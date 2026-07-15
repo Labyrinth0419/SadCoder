@@ -207,6 +207,68 @@ void main() {
     expect(find.textContaining('Private reasoning'), findsNothing);
     expect(find.byType(ExpansionTile), findsNothing);
   });
+
+  testWidgets('timeline renderer distinguishes queued and interrupt controls', (
+    tester,
+  ) async {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+    controller.showQueuedInstruction(
+      threadId: 'thr_1',
+      turnId: 'turn_1',
+      text: '**Refine** this answer',
+    );
+    controller.showInterruptInstruction(threadId: 'thr_1', turnId: 'turn_1');
+
+    await _pumpRenderer(tester, controller);
+
+    final queued = controller.turns.single.items.first;
+    final interrupt = controller.turns.single.items.last;
+    expect(find.text('Queued instruction'), findsOneWidget);
+    expect(find.text('Conversation interrupted'), findsOneWidget);
+    expect(
+      find.byKey(ValueKey('timeline-queued-instruction-${queued.itemId}')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        ValueKey('timeline-interrupt-instruction-${interrupt.itemId}'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(ValueKey('timeline-message-bubble-${queued.itemId}')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(ValueKey('timeline-message-bubble-${interrupt.itemId}')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(
+        ValueKey('timeline-queued-instruction-markdown-${queued.itemId}'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('queued and interrupt controls are localized in Chinese', (
+    tester,
+  ) async {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+    controller.showQueuedInstruction(
+      threadId: 'thr_1',
+      turnId: 'turn_1',
+      text: '继续检查',
+    );
+    controller.showInterruptInstruction(threadId: 'thr_1', turnId: 'turn_1');
+
+    await _pumpRenderer(tester, controller, locale: const Locale('zh', 'CN'));
+
+    expect(find.text('已排队的指令'), findsOneWidget);
+    expect(find.text('对话已中断'), findsOneWidget);
+  });
 }
 
 ThreadSummary _thread() => const ThreadSummary(
@@ -221,10 +283,12 @@ ThreadSummary _thread() => const ThreadSummary(
 
 Future<void> _pumpRenderer(
   WidgetTester tester,
-  ChatTimelineController controller,
-) async {
+  ChatTimelineController controller, {
+  Locale? locale,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: locale,
       theme: sadCoderThemeData(
         colorPalette: AppColorPalette.sadcoder,
         brightness: Brightness.light,

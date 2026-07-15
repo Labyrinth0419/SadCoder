@@ -614,7 +614,20 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _interruptActiveTurn() async {
-    await widget.turnController?.interruptActiveTurn();
+    final turnController = widget.turnController;
+    final threadId = _nonEmptyText(turnController?.activeThreadId);
+    final turnId = _nonEmptyText(turnController?.activeTurnId);
+    if (turnController == null || threadId == null || turnId == null) {
+      return;
+    }
+    await turnController.interruptActiveTurn();
+    if (!mounted || turnController.status != TurnControllerStatus.interrupted) {
+      return;
+    }
+    widget.timelineController?.showInterruptInstruction(
+      threadId: threadId,
+      turnId: turnId,
+    );
   }
 
   List<SshProfile> _headerProfiles() {

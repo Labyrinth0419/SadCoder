@@ -36,6 +36,7 @@ class ChatTimelineController extends ChangeNotifier {
   Object? _olderHistoryError;
   Stream<CodexEvent>? _attachedEvents;
   StreamSubscription<CodexEvent>? _subscription;
+  int _localInstructionSequence = 0;
 
   List<ChatTimelineTurn> get turns => List.unmodifiable(_turns);
 
@@ -366,6 +367,63 @@ class ChatTimelineController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void showQueuedInstruction({
+    required String threadId,
+    required String turnId,
+    required String text,
+  }) {
+    final normalizedThreadId = threadId.trim();
+    final normalizedTurnId = turnId.trim();
+    final normalizedText = text.trim();
+    if (normalizedThreadId.isEmpty ||
+        normalizedTurnId.isEmpty ||
+        normalizedText.isEmpty) {
+      return;
+    }
+    if (_selectedThreadId != normalizedThreadId) {
+      _selectedThreadId = normalizedThreadId;
+      _turns.removeWhere((turn) => turn.threadId != normalizedThreadId);
+      _resetHistoryPaging();
+    }
+    _mergeCachedItemIntoTurn(
+      threadId: normalizedThreadId,
+      turnId: normalizedTurnId,
+      item: ChatTimelineItem.localQueuedInstruction(
+        turnId: normalizedTurnId,
+        sequence: ++_localInstructionSequence,
+        text: normalizedText,
+      ),
+    );
+    _trimToMaxItems(chatTimelineMaxItemWindow);
+    notifyListeners();
+  }
+
+  void showInterruptInstruction({
+    required String threadId,
+    required String turnId,
+  }) {
+    final normalizedThreadId = threadId.trim();
+    final normalizedTurnId = turnId.trim();
+    if (normalizedThreadId.isEmpty || normalizedTurnId.isEmpty) {
+      return;
+    }
+    if (_selectedThreadId != normalizedThreadId) {
+      _selectedThreadId = normalizedThreadId;
+      _turns.removeWhere((turn) => turn.threadId != normalizedThreadId);
+      _resetHistoryPaging();
+    }
+    _mergeCachedItemIntoTurn(
+      threadId: normalizedThreadId,
+      turnId: normalizedTurnId,
+      item: ChatTimelineItem.localInterruptInstruction(
+        turnId: normalizedTurnId,
+        sequence: ++_localInstructionSequence,
+      ),
+    );
+    _trimToMaxItems(chatTimelineMaxItemWindow);
+    notifyListeners();
+  }
+
   void restoreCachedItems({
     required String threadId,
     required List<ThreadItemSummary> items,
@@ -417,6 +475,7 @@ class ChatTimelineController extends ChangeNotifier {
   void clear() {
     _selectedThreadId = null;
     _turns.clear();
+    _localInstructionSequence = 0;
     _resetHistoryPaging();
     _recentAutoReviewDenials.clear();
     notifyListeners();
@@ -518,6 +577,11 @@ class ChatTimelineController extends ChangeNotifier {
     final itemIndex = items.indexWhere(
       (existing) => existing.itemId == item.itemId,
     );
+    if (itemIndex == -1 &&
+        item.itemType == 'userMessage' &&
+        !item.isLocalUserMessage) {
+      _reconcileLocalUserProjections(items, item);
+    }
     if (itemIndex == -1) {
       items.add(item);
     } else {
@@ -580,6 +644,16 @@ class ChatTimelineController extends ChangeNotifier {
           .skip(firstOverlap)
           .where((existing) => !recoveredIds.contains(existing.itemId)),
     );
+    for (final item in items) {
+      if (existingItems.any((existing) => existing.itemId == item.id)) {
+        continue;
+      }
+      final recovered = ChatTimelineItem.fromThreadItem(item);
+      if (recovered.itemType == 'userMessage' &&
+          !recovered.isLocalUserMessage) {
+        _reconcileLocalUserProjections(mergedItems, recovered);
+      }
+    }
     _turns[turnIndex] = turn.copyWith(items: mergedItems);
     return true;
   }
@@ -643,12 +717,12 @@ class ChatTimelineController extends ChangeNotifier {
     final turn = _turns[turnIndex];
     final items = List<ChatTimelineItem>.from(turn.items);
     final item = ChatTimelineItem.fromEvent(event);
-    if (item.itemType == 'userMessage' && !item.isLocalUserMessage) {
-      items.removeWhere(
-        (existing) => existing.itemId == _localUserMessageItemId(turn.turnId),
-      );
-    }
     final itemIndex = items.indexWhere((item) => item.itemId == itemId);
+    if (itemIndex == -1 &&
+        item.itemType == 'userMessage' &&
+        !item.isLocalUserMessage) {
+      _reconcileLocalUserProjections(items, item);
+    }
     if (itemIndex == -1) {
       items.add(item);
     } else {
@@ -908,14 +982,14 @@ class ChatTimelineTurn {
           )) {
         continue;
       }
-      if (liveItem.itemType == 'userMessage' && !liveItem.isLocalUserMessage) {
-        mergedItems.removeWhere(
-          (item) => item.itemId == _localUserMessageItemId(turnId),
-        );
-      }
       final index = mergedItems.indexWhere(
         (item) => item.itemId == liveItem.itemId,
       );
+      if (index == -1 &&
+          liveItem.itemType == 'userMessage' &&
+          !liveItem.isLocalUserMessage) {
+        _reconcileLocalUserProjections(mergedItems, liveItem);
+      }
       if (index == -1) {
         mergedItems.add(liveItem);
       } else {
@@ -1051,6 +1125,48 @@ class ChatTimelineItem {
     );
   }
 
+  factory ChatTimelineItem.localQueuedInstruction({
+    required String turnId,
+    required int sequence,
+    required String text,
+  }) {
+    final itemId = _localInstructionItemId(
+      type: 'queued',
+      turnId: turnId,
+      sequence: sequence,
+    );
+    return ChatTimelineItem(
+      itemId: itemId,
+      itemType: 'queuedInstruction',
+      text: text,
+      output: '',
+      raw: {
+        'id': itemId,
+        'type': 'queuedInstruction',
+        'text': text,
+        'local': true,
+      },
+    );
+  }
+
+  factory ChatTimelineItem.localInterruptInstruction({
+    required String turnId,
+    required int sequence,
+  }) {
+    final itemId = _localInstructionItemId(
+      type: 'interrupt',
+      turnId: turnId,
+      sequence: sequence,
+    );
+    return ChatTimelineItem(
+      itemId: itemId,
+      itemType: 'interruptInstruction',
+      text: '',
+      output: '',
+      raw: {'id': itemId, 'type': 'interruptInstruction', 'local': true},
+    );
+  }
+
   factory ChatTimelineItem.fromThreadGoalEvent(CodexEvent event) {
     final goal = event.threadGoal!;
     return ChatTimelineItem(
@@ -1081,6 +1197,9 @@ class ChatTimelineItem {
 
   bool get isLocalUserMessage =>
       itemType == 'userMessage' && raw['local'] == true;
+
+  bool get isLocalQueuedInstruction =>
+      itemType == 'queuedInstruction' && raw['local'] == true;
 
   ChatTimelineItem copyWith({
     String? text,
@@ -1179,7 +1298,34 @@ String? _normalized(String? value) {
   return trimmed == null || trimmed.isEmpty ? null : trimmed;
 }
 
+void _reconcileLocalUserProjections(
+  List<ChatTimelineItem> items,
+  ChatTimelineItem authoritative,
+) {
+  items.removeWhere((item) => item.isLocalUserMessage);
+  final authoritativeText = _normalized(authoritative.text);
+  if (authoritativeText == null) {
+    return;
+  }
+  final queuedIndex = items.indexWhere(
+    (item) =>
+        item.isLocalQueuedInstruction &&
+        _normalized(item.text) == authoritativeText,
+  );
+  if (queuedIndex != -1) {
+    items.removeAt(queuedIndex);
+  }
+}
+
 String _localUserMessageItemId(String turnId) => 'local_user_$turnId';
+
+String _localInstructionItemId({
+  required String type,
+  required String turnId,
+  required int sequence,
+}) {
+  return 'local_${type}_${Uri.encodeComponent(turnId)}_$sequence';
+}
 
 String _threadGoalItemId(ThreadGoal goal) {
   final createdAt = goal.createdAtSeconds > 0

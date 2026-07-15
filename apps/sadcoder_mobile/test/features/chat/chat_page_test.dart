@@ -923,7 +923,12 @@ void main() {
   });
 
   testWidgets('sends active turn follow-up text through steer', (tester) async {
-    final harness = await _pumpConnectedChatPage(tester);
+    final timelineController = ChatTimelineController();
+    addTearDown(timelineController.dispose);
+    final harness = await _pumpConnectedChatPage(
+      tester,
+      timelineController: timelineController,
+    );
 
     await _submitComposerText(tester, 'Run long task');
     await _submitComposerText(tester, 'Refine the current answer');
@@ -938,6 +943,20 @@ void main() {
         text: 'Refine the current answer',
       ),
     ]);
+    expect(timelineController.turns.single.items.map((item) => item.itemType), [
+      'userMessage',
+      'queuedInstruction',
+    ]);
+    final queued = timelineController.turns.single.items.last;
+    expect(
+      find.byKey(ValueKey('timeline-queued-instruction-${queued.itemId}')),
+      findsOneWidget,
+    );
+    expect(find.text('Queued instruction'), findsOneWidget);
+    expect(
+      find.byKey(ValueKey('timeline-message-bubble-${queued.itemId}')),
+      findsNothing,
+    );
   });
 
   testWidgets('applies next-turn overrides once and clears them after send', (
@@ -7789,7 +7808,9 @@ void main() {
     final turnController = TurnController(
       runnerProvider: () => sessionController.turnRunner,
     );
+    final timelineController = ChatTimelineController();
     addTearDown(turnController.dispose);
+    addTearDown(timelineController.dispose);
     addTearDown(sessionController.dispose);
     addTearDown(approvalController.dispose);
 
@@ -7799,6 +7820,7 @@ void main() {
       tester,
       sessionController: sessionController,
       turnController: turnController,
+      timelineController: timelineController,
     );
 
     await tester.tap(find.byTooltip('Interrupt turn'));
@@ -7808,6 +7830,19 @@ void main() {
       (threadId: 'thr_new', turnId: 'turn_1'),
     ]);
     expect(find.text('Turn interrupted'), findsOneWidget);
+    final interrupt = timelineController.turns.single.items.single;
+    expect(interrupt.itemType, 'interruptInstruction');
+    expect(find.text('Conversation interrupted'), findsOneWidget);
+    expect(
+      find.byKey(
+        ValueKey('timeline-interrupt-instruction-${interrupt.itemId}'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(ValueKey('timeline-message-bubble-${interrupt.itemId}')),
+      findsNothing,
+    );
   });
 
   testWidgets(
@@ -8707,9 +8742,9 @@ void main() {
     expect(find.byKey(const ValueKey('timeline-details-cmd_1')), findsNothing);
     expect(find.textContaining('Exit code: 0'), findsNothing);
     expect(find.textContaining('Duration: 1,200 ms'), findsNothing);
-    expect(find.text('tests passed'), findsOneWidget);
+    expect(find.text('tests passed'), findsNothing);
     final terminalBlock = tester.widget<Container>(
-      find.byKey(const ValueKey('timeline-terminal-output')),
+      find.byKey(const ValueKey('timeline-command-output-collapsed-cmd_1')),
     );
     expect(
       (terminalBlock.decoration as BoxDecoration).color,
@@ -8918,16 +8953,14 @@ void main() {
       );
 
       final terminalBlock = tester.widget<Container>(
-        find.byKey(const ValueKey('timeline-terminal-output')),
+        find.byKey(const ValueKey('timeline-command-output-collapsed-cmd_1')),
       );
       expect(
         (terminalBlock.decoration as BoxDecoration).color,
         SadCoderThemeColors.dark.terminalBackground,
       );
       final terminalText = tester.widget<SelectableText>(
-        find.byWidgetPredicate(
-          (widget) => widget is SelectableText && widget.data == 'tests passed',
-        ),
+        find.byKey(const ValueKey('timeline-command-output-head-cmd_1')),
       );
       expect(
         terminalText.style?.color,
@@ -9148,6 +9181,7 @@ class _FakeCollaborationModeListReader implements CollaborationModeListReader {
 Future<_ConnectedChatHarness> _pumpConnectedChatPage(
   WidgetTester tester, {
   AppAppearanceController? appearanceController,
+  ChatTimelineController? timelineController,
 }) async {
   final approvalController = ApprovalStateController();
   final turnRunner = _FakeTurnRunner();
@@ -9178,6 +9212,7 @@ Future<_ConnectedChatHarness> _pumpConnectedChatPage(
     tester,
     sessionController: sessionController,
     turnController: turnController,
+    timelineController: timelineController,
     appearanceController: appearanceController,
   );
   return _ConnectedChatHarness(

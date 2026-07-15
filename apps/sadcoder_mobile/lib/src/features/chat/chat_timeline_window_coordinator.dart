@@ -144,7 +144,7 @@ class ChatTimelineWindowCoordinator {
     }
   }
 
-  void syncActiveTurn({String? submittedText}) {
+  void syncActiveTurn({String? submittedText, bool queuedInstruction = false}) {
     final timelineController = timelineControllerProvider();
     final turnController = turnControllerProvider();
     final activeThreadId = _normalizedText(turnController?.activeThreadId);
@@ -158,11 +158,19 @@ class ChatTimelineWindowCoordinator {
       timelineController.showTurn(threadId: activeThreadId, turn: lastTurn);
       final text = _normalizedText(submittedText);
       if (text != null) {
-        timelineController.showLocalUserMessage(
-          threadId: activeThreadId,
-          turnId: lastTurn.id,
-          text: text,
-        );
+        if (queuedInstruction) {
+          timelineController.showQueuedInstruction(
+            threadId: activeThreadId,
+            turnId: lastTurn.id,
+            text: text,
+          );
+        } else {
+          timelineController.showLocalUserMessage(
+            threadId: activeThreadId,
+            turnId: lastTurn.id,
+            text: text,
+          );
+        }
       }
       return;
     }

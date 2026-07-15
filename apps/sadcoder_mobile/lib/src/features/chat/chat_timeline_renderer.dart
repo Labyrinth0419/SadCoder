@@ -202,6 +202,15 @@ class _TimelineItemView extends StatelessWidget {
     final body = _body(context);
     final title = _title(context);
     final icon = _iconFor(item.itemType);
+    if (item.itemType == 'queuedInstruction' ||
+        item.itemType == 'interruptInstruction') {
+      return _TimelineInstructionItem(
+        item: item,
+        title: title,
+        icon: icon,
+        body: body,
+      );
+    }
     if (item.itemType == 'userMessage' ||
         item.itemType == 'agentMessage' ||
         item.itemType == 'threadGoalUpdate') {
@@ -241,6 +250,8 @@ class _TimelineItemView extends StatelessWidget {
     return switch (item.itemType) {
       'userMessage' => l10n.timelineUser,
       'agentMessage' => l10n.timelineCodex,
+      'queuedInstruction' => l10n.timelineQueuedInstruction,
+      'interruptInstruction' => l10n.timelineConversationInterrupted,
       'threadGoalUpdate' => l10n.threadGoalStatus,
       'reasoning' => l10n.timelineReasoning,
       'plan' => l10n.timelinePlan,
@@ -276,6 +287,9 @@ class _TimelineItemView extends StatelessWidget {
     if (item.text.isNotEmpty) {
       return item.text;
     }
+    if (item.itemType == 'interruptInstruction') {
+      return '';
+    }
     if (item.itemType == 'commandExecution' ||
         item.itemType == 'fileChange' ||
         item.itemType == 'mcpToolCall') {
@@ -288,6 +302,8 @@ class _TimelineItemView extends StatelessWidget {
     return switch (itemType) {
       'userMessage' => Icons.person_outline,
       'agentMessage' => Icons.smart_toy_outlined,
+      'queuedInstruction' => Icons.schedule_send_outlined,
+      'interruptInstruction' => Icons.stop_circle_outlined,
       'threadGoalUpdate' => Icons.flag_outlined,
       'commandExecution' => Icons.terminal,
       'fileChange' => Icons.difference_outlined,
@@ -296,6 +312,78 @@ class _TimelineItemView extends StatelessWidget {
       'plan' => Icons.checklist,
       _ => Icons.notes_outlined,
     };
+  }
+}
+
+class _TimelineInstructionItem extends StatelessWidget {
+  const _TimelineInstructionItem({
+    required this.item,
+    required this.title,
+    required this.icon,
+    required this.body,
+  });
+
+  final ChatTimelineItem item;
+  final String title;
+  final IconData icon;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isInterrupt = item.itemType == 'interruptInstruction';
+    final typeKey = isInterrupt
+        ? 'interrupt-instruction'
+        : 'queued-instruction';
+    final accent = isInterrupt ? colorScheme.error : colorScheme.secondary;
+    return Container(
+      key: ValueKey('timeline-$typeKey-${item.itemId}'),
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.fromLTRB(10, 9, 12, 10),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.07),
+        border: Border.all(color: accent.withValues(alpha: 0.26)),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(
+              icon,
+              key: ValueKey('timeline-$typeKey-icon-${item.itemId}'),
+              size: 19,
+              color: accent,
+            ),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  key: ValueKey('timeline-$typeKey-label-${item.itemId}'),
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (body.isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  _TimelineMarkdownMessage(
+                    key: ValueKey('timeline-$typeKey-markdown-${item.itemId}'),
+                    text: body,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

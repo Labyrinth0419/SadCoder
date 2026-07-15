@@ -455,6 +455,147 @@ void main() {
     expect(controller.turns.single.items.single.isLocalUserMessage, false);
   });
 
+  test(
+    'queued and interrupt instructions use distinct local timeline items',
+    () {
+      final controller = ChatTimelineController();
+      addTearDown(controller.dispose);
+
+      controller.showQueuedInstruction(
+        threadId: 'thr_1',
+        turnId: 'turn_1',
+        text: 'Refine the answer',
+      );
+      controller.showQueuedInstruction(
+        threadId: 'thr_1',
+        turnId: 'turn_1',
+        text: 'Refine the answer',
+      );
+      controller.showInterruptInstruction(threadId: 'thr_1', turnId: 'turn_1');
+
+      final localItems = controller.turns.single.items;
+      expect(localItems.map((item) => item.itemType), [
+        'queuedInstruction',
+        'queuedInstruction',
+        'interruptInstruction',
+      ]);
+      expect(localItems.map((item) => item.itemId).toSet(), hasLength(3));
+
+      controller.ingest(
+        _itemStarted(
+          itemId: 'real_user_1',
+          itemType: 'userMessage',
+          raw: {
+            'id': 'real_user_1',
+            'type': 'userMessage',
+            'content': [
+              {'type': 'text', 'text': 'Refine the answer'},
+            ],
+          },
+        ),
+      );
+
+      expect(
+        controller.turns.single.items.where(
+          (item) => item.itemType == 'queuedInstruction',
+        ),
+        hasLength(1),
+      );
+      expect(
+        controller.turns.single.items.where(
+          (item) => item.itemType == 'interruptInstruction',
+        ),
+        hasLength(1),
+      );
+
+      controller.ingest(
+        _itemStarted(
+          itemId: 'real_user_2',
+          itemType: 'userMessage',
+          raw: {
+            'id': 'real_user_2',
+            'type': 'userMessage',
+            'content': [
+              {'type': 'text', 'text': 'Refine the answer'},
+            ],
+          },
+        ),
+      );
+
+      expect(
+        controller.turns.single.items.where(
+          (item) => item.itemType == 'queuedInstruction',
+        ),
+        isEmpty,
+      );
+      expect(
+        controller.turns.single.items.where(
+          (item) => item.itemType == 'userMessage',
+        ),
+        hasLength(2),
+      );
+    },
+  );
+
+  test('recovered user input does not duplicate a queued instruction', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.showQueuedInstruction(
+      threadId: 'thr_1',
+      turnId: 'turn_1',
+      text: 'Use the smaller patch',
+    );
+    controller.restoreThreadItems(
+      threadId: 'thr_1',
+      items: [
+        ThreadItemSummary.fromJson({
+          'id': 'real_user',
+          'type': 'userMessage',
+          'turnId': 'turn_1',
+          'content': [
+            {'type': 'text', 'text': 'Use the smaller patch'},
+          ],
+        }),
+      ],
+    );
+
+    expect(controller.turns.single.items, hasLength(1));
+    expect(controller.turns.single.items.single.itemId, 'real_user');
+    expect(controller.turns.single.items.single.itemType, 'userMessage');
+  });
+
+  test('replayed user item does not acknowledge a newer matching queue', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+    final authoritative = _itemStarted(
+      itemId: 'real_user',
+      itemType: 'userMessage',
+      raw: {
+        'id': 'real_user',
+        'type': 'userMessage',
+        'content': [
+          {'type': 'text', 'text': 'Continue'},
+        ],
+      },
+    );
+
+    controller.ingest(authoritative);
+    controller.showQueuedInstruction(
+      threadId: 'thr_1',
+      turnId: 'turn_1',
+      text: 'Continue',
+    );
+    controller.ingest(authoritative);
+
+    expect(
+      controller.turns.single.items.where(
+        (item) => item.itemType == 'queuedInstruction',
+      ),
+      hasLength(1),
+    );
+  });
+
   test('selected thread filters displayed live events only', () {
     ({String threadId, TurnSummary turn})? completed;
     final controller = ChatTimelineController(

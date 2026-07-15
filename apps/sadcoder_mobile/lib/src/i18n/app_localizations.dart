@@ -288,6 +288,9 @@ class AppLocalizations {
   String get noTimelineEvents => _text('noTimelineEvents');
   String get timelineUser => _text('timelineUser');
   String get timelineCodex => _text('timelineCodex');
+  String get timelineQueuedInstruction => _text('timelineQueuedInstruction');
+  String get timelineConversationInterrupted =>
+      _text('timelineConversationInterrupted');
   String get timelineReasoning => _text('timelineReasoning');
   String get timelinePlan => _text('timelinePlan');
   String get timelineCommand => _text('timelineCommand');
@@ -1735,6 +1738,8 @@ const _values = <String, Map<String, String>>{
     'noTimelineEvents': 'No events yet',
     'timelineUser': 'You',
     'timelineCodex': 'Codex',
+    'timelineQueuedInstruction': 'Queued instruction',
+    'timelineConversationInterrupted': 'Conversation interrupted',
     'timelineReasoning': 'Reasoning',
     'timelinePlan': 'Plan',
     'timelineCommand': 'Command',
@@ -2902,6 +2907,8 @@ const _values = <String, Map<String, String>>{
     'noTimelineEvents': '暂无事件',
     'timelineUser': '你',
     'timelineCodex': 'Codex',
+    'timelineQueuedInstruction': '已排队的指令',
+    'timelineConversationInterrupted': '对话已中断',
     'timelineReasoning': '推理',
     'timelinePlan': '计划',
     'timelineCommand': '命令',
