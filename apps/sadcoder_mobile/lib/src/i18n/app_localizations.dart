@@ -295,10 +295,8 @@ class AppLocalizations {
       _text('timelineCommandOutputSummary')
           .replaceAll('{lines}', formatNumber(lines))
           .replaceAll('{bytes}', formatNumber(bytes));
-  String get timelineCommandOutputExpand =>
-      _text('timelineCommandOutputExpand');
-  String get timelineCommandOutputCollapse =>
-      _text('timelineCommandOutputCollapse');
+  String get timelineCommandOutputOmitted =>
+      _text('timelineCommandOutputOmitted');
   String get timelineJumpToLatest => _text('timelineJumpToLatest');
   String get timelineToolCall => _text('timelineToolCall');
   String get timelineItem => _text('timelineItem');
@@ -1741,8 +1739,7 @@ const _values = <String, Map<String, String>>{
     'timelinePlan': 'Plan',
     'timelineCommand': 'Command',
     'timelineCommandOutputSummary': '{lines} lines / {bytes} bytes',
-    'timelineCommandOutputExpand': 'Show full output',
-    'timelineCommandOutputCollapse': 'Collapse output',
+    'timelineCommandOutputOmitted': '... middle output omitted ...',
     'timelineJumpToLatest': 'Jump to latest',
     'timelineToolCall': 'Tool call',
     'timelineItem': 'Item',
@@ -2909,8 +2906,7 @@ const _values = <String, Map<String, String>>{
     'timelinePlan': '计划',
     'timelineCommand': '命令',
     'timelineCommandOutputSummary': '{lines} 行 / {bytes} 字节',
-    'timelineCommandOutputExpand': '展开完整输出',
-    'timelineCommandOutputCollapse': '折叠输出',
+    'timelineCommandOutputOmitted': '……中间输出已省略……',
     'timelineJumpToLatest': '跳到最新',
     'timelineToolCall': '工具调用',
     'timelineItem': '条目',

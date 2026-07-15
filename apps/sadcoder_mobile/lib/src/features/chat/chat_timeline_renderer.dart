@@ -658,7 +658,7 @@ class _TimelineBodyBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (item.itemType == 'commandExecution') {
-      return _CollapsibleTerminalOutputBlock(itemId: item.itemId, text: body);
+      return _TerminalOutputSummaryBlock(itemId: item.itemId, text: body);
     }
     if (item.itemType == 'fileChange') {
       return DiffTextBlock(
@@ -670,74 +670,24 @@ class _TimelineBodyBlock extends StatelessWidget {
   }
 }
 
-const _terminalOutputCollapseChars = 1800;
-const _terminalOutputCollapseLines = 28;
-const _terminalOutputSummaryLines = 5;
+const _terminalOutputHeadLines = 4;
+const _terminalOutputTailLines = 4;
 
-class _CollapsibleTerminalOutputBlock extends StatefulWidget {
-  const _CollapsibleTerminalOutputBlock({
-    required this.itemId,
-    required this.text,
-  });
+class _TerminalOutputSummaryBlock extends StatelessWidget {
+  const _TerminalOutputSummaryBlock({required this.itemId, required this.text});
 
   final String itemId;
   final String text;
 
   @override
-  State<_CollapsibleTerminalOutputBlock> createState() =>
-      _CollapsibleTerminalOutputBlockState();
-}
-
-class _CollapsibleTerminalOutputBlockState
-    extends State<_CollapsibleTerminalOutputBlock> {
-  bool _expanded = false;
-
-  @override
-  void didUpdateWidget(_CollapsibleTerminalOutputBlock oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.itemId != widget.itemId || oldWidget.text != widget.text) {
-      _expanded = false;
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final lines = _terminalLines(widget.text);
-    final bytes = utf8.encode(widget.text).length;
-    final shouldCollapse =
-        widget.text.length > _terminalOutputCollapseChars ||
-        lines.length > _terminalOutputCollapseLines;
-    if (!shouldCollapse || _expanded) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _TerminalOutputBlock(text: widget.text),
-          if (shouldCollapse) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                key: ValueKey(
-                  'timeline-command-output-collapse-${widget.itemId}',
-                ),
-                onPressed: () => setState(() => _expanded = false),
-                icon: const Icon(Icons.unfold_less, size: 18),
-                label: Text(context.l10n.timelineCommandOutputCollapse),
-              ),
-            ),
-          ],
-        ],
-      );
-    }
-
+    final lines = _terminalLines(text);
+    final bytes = utf8.encode(text).length;
+    final preview = _terminalOutputPreview(lines, text);
     final colors = SadCoderThemeColors.of(context);
     final colorScheme = Theme.of(context).colorScheme;
-    final summaryStart = lines.length > _terminalOutputSummaryLines
-        ? lines.length - _terminalOutputSummaryLines
-        : 0;
-    final summary = lines.skip(summaryStart).join('\n').trimRight();
     return Container(
-      key: ValueKey('timeline-command-output-collapsed-${widget.itemId}'),
+      key: ValueKey('timeline-command-output-collapsed-$itemId'),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: colors.terminalBackground,
@@ -754,31 +704,76 @@ class _CollapsibleTerminalOutputBlockState
               fontWeight: FontWeight.w700,
             ),
           ),
-          if (summary.isNotEmpty) ...[
+          if (preview.head.isNotEmpty) ...[
             const SizedBox(height: 8),
             SelectableText(
-              summary,
-              key: ValueKey('timeline-command-output-summary-${widget.itemId}'),
+              preview.head,
+              key: ValueKey('timeline-command-output-head-$itemId'),
               style: TextStyle(
                 color: colors.terminalForeground,
                 fontFamily: sadCoderMonospaceFontFamily,
               ),
             ),
           ],
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton.tonalIcon(
-              key: ValueKey('timeline-command-output-expand-${widget.itemId}'),
-              onPressed: () => setState(() => _expanded = true),
-              icon: const Icon(Icons.unfold_more, size: 18),
-              label: Text(context.l10n.timelineCommandOutputExpand),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            child: Text(
+              context.l10n.timelineCommandOutputOmitted,
+              key: ValueKey('timeline-command-output-omitted-$itemId'),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: colors.terminalForeground.withValues(alpha: 0.62),
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ),
+          if (preview.tail.isNotEmpty)
+            SelectableText(
+              preview.tail,
+              key: ValueKey('timeline-command-output-tail-$itemId'),
+              style: TextStyle(
+                color: colors.terminalForeground,
+                fontFamily: sadCoderMonospaceFontFamily,
+              ),
+            ),
         ],
       ),
     );
   }
+}
+
+({String head, String tail}) _terminalOutputPreview(
+  List<String> lines,
+  String text,
+) {
+  if (text.isEmpty) {
+    return (head: '', tail: '');
+  }
+  if (lines.length >= 3) {
+    final visibleLines = lines.length - 1;
+    final headCount = (visibleLines ~/ 2).clamp(1, _terminalOutputHeadLines);
+    final tailCount = (visibleLines - headCount).clamp(
+      1,
+      _terminalOutputTailLines,
+    );
+    return (
+      head: lines.take(headCount).join('\n').trimRight(),
+      tail: lines.skip(lines.length - tailCount).join('\n').trimRight(),
+    );
+  }
+
+  final normalized = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  if (normalized.length == 1) {
+    return (head: '', tail: '');
+  }
+  final visibleChars = normalized.length - 1;
+  final headChars = (visibleChars / 2).ceil();
+  final tailChars = visibleChars - headChars;
+  return (
+    head: normalized.substring(0, headChars),
+    tail: tailChars == 0
+        ? ''
+        : normalized.substring(normalized.length - tailChars),
+  );
 }
 
 List<String> _terminalLines(String text) {
@@ -786,32 +781,6 @@ List<String> _terminalLines(String text) {
     return const [];
   }
   return text.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n');
-}
-
-class _TerminalOutputBlock extends StatelessWidget {
-  const _TerminalOutputBlock({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = SadCoderThemeColors.of(context);
-    return Container(
-      key: const ValueKey('timeline-terminal-output'),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.terminalBackground,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: SelectableText(
-        text,
-        style: TextStyle(
-          color: colors.terminalForeground,
-          fontFamily: sadCoderMonospaceFontFamily,
-        ),
-      ),
-    );
-  }
 }
 
 class _TimelineDiffBlock extends StatelessWidget {

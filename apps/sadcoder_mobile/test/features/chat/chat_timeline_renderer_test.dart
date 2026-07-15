@@ -66,7 +66,7 @@ void main() {
     expect(find.text('Hello from Codex'), findsOneWidget);
   });
 
-  testWidgets('timeline renderer collapses long command output', (
+  testWidgets('timeline renderer permanently summarizes command output', (
     tester,
   ) async {
     final controller = ChatTimelineController();
@@ -93,7 +93,55 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const ValueKey('timeline-command-output-expand-cmd_1')),
+      find.byKey(const ValueKey('timeline-command-output-head-cmd_1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('timeline-command-output-tail-cmd_1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('timeline-command-output-omitted-cmd_1')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('line 0'), findsOneWidget);
+    expect(find.textContaining('line 39'), findsOneWidget);
+    expect(find.textContaining('line 20'), findsNothing);
+    expect(find.text('Show full output'), findsNothing);
+  });
+
+  testWidgets('short command output never exposes its complete value', (
+    tester,
+  ) async {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+    controller.showThreadItemWindow(
+      thread: _thread(),
+      items: const [
+        ThreadItemSummary(
+          id: 'cmd_short',
+          type: 'commandExecution',
+          text: '',
+          output: 'secret-output',
+          command: 'print-secret',
+          turnId: 'turn_1',
+        ),
+      ],
+    );
+
+    await _pumpRenderer(tester, controller);
+
+    expect(find.text('secret-output'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('timeline-command-output-omitted-cmd_short')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('timeline-command-output-head-cmd_short')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('timeline-command-output-tail-cmd_short')),
       findsOneWidget,
     );
   });

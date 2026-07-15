@@ -8753,7 +8753,7 @@ void main() {
     expect(find.byKey(const ValueKey('timeline-details-mcp_1')), findsNothing);
   });
 
-  testWidgets('long command output is collapsed and can expand', (
+  testWidgets('command output permanently shows only its head and tail', (
     tester,
   ) async {
     final timelineController = ChatTimelineController();
@@ -8793,22 +8793,17 @@ void main() {
     );
     expect(find.textContaining('40 lines'), findsOneWidget);
     expect(find.textContaining('line 39'), findsOneWidget);
-    expect(find.textContaining('line 0'), findsNothing);
+    expect(find.textContaining('line 0'), findsOneWidget);
+    expect(find.textContaining('line 20'), findsNothing);
     expect(
-      find.byKey(const ValueKey('timeline-terminal-output')),
-      findsNothing,
-    );
-
-    await tester.tap(
-      find.byKey(const ValueKey('timeline-command-output-expand-cmd_long')),
-    );
-    await tester.pumpAndSettle();
-
-    expect(
-      find.byKey(const ValueKey('timeline-terminal-output')),
+      find.byKey(const ValueKey('timeline-command-output-omitted-cmd_long')),
       findsOneWidget,
     );
-    expect(find.textContaining('line 0'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('timeline-command-output-expand-cmd_long')),
+      findsNothing,
+    );
+    expect(find.text('Show full output'), findsNothing);
   });
 
   testWidgets(
