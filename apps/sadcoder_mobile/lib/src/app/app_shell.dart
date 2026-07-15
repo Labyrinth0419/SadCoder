@@ -545,6 +545,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       isConnected: _hasBackgroundObservableConnection,
       hasActiveTurn: () => _backgroundActiveTurnContext() != null,
       profileIdProvider: () => _backgroundActiveTurnContext()?.profileId,
+      profileLabelProvider: () => _backgroundActiveTurnContext()?.profileLabel,
       endpointProvider: () => _backgroundActiveTurnContext()?.endpoint,
       activeThreadIdProvider: () => _backgroundActiveTurnContext()?.threadId,
       activeTurnIdProvider: () => _backgroundActiveTurnContext()?.turnId,
@@ -659,6 +660,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final profile = uiState.sessionController.profile;
     return BackgroundConnectionContext(
       profileId: profile == null ? null : hostSessionProfileId(profile),
+      profileLabel: profile?.notificationLabel,
       endpoint: profile?.endpoint,
       threadId: uiState.turnController.activeThreadId,
       turnId: turnId,

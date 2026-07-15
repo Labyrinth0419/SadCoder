@@ -713,6 +713,7 @@ void main() {
 
     expect(keeper.contexts, hasLength(1));
     expect(keeper.contexts.single.profileId, remoteProfile.id);
+    expect(keeper.contexts.single.profileLabel, remoteProfile.name);
     expect(keeper.contexts.single.endpoint, remoteProfile.endpoint);
     expect(keeper.contexts.single.threadId, 'remote_thread');
     expect(keeper.contexts.single.turnId, 'turn_remote_active');

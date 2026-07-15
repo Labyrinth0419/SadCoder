@@ -54,6 +54,11 @@ class SshProfile {
     return trimmedHost.isEmpty ? endpoint : trimmedHost;
   }
 
+  String get notificationLabel {
+    final alias = name.trim();
+    return alias.isNotEmpty ? alias : endpoint;
+  }
+
   SshProfile copyWith({
     String? id,
     String? name,

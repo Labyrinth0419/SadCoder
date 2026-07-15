@@ -22,12 +22,14 @@ class BackgroundConnectionPreferences extends ChangeNotifier {
 class BackgroundConnectionContext {
   const BackgroundConnectionContext({
     this.profileId,
+    this.profileLabel,
     this.endpoint,
     this.threadId,
     this.turnId,
   });
 
   final String? profileId;
+  final String? profileLabel;
   final String? endpoint;
   final String? threadId;
   final String? turnId;
@@ -36,13 +38,15 @@ class BackgroundConnectionContext {
   bool operator ==(Object other) {
     return other is BackgroundConnectionContext &&
         other.profileId == profileId &&
+        other.profileLabel == profileLabel &&
         other.endpoint == endpoint &&
         other.threadId == threadId &&
         other.turnId == turnId;
   }
 
   @override
-  int get hashCode => Object.hash(profileId, endpoint, threadId, turnId);
+  int get hashCode =>
+      Object.hash(profileId, profileLabel, endpoint, threadId, turnId);
 }
 
 abstract interface class BackgroundConnectionKeeper {
@@ -96,6 +100,7 @@ class AppLifecycleConnectionCoordinator {
     required BackgroundBoolProvider isConnected,
     required BackgroundBoolProvider hasActiveTurn,
     required BackgroundStringProvider profileIdProvider,
+    required BackgroundStringProvider profileLabelProvider,
     required BackgroundStringProvider endpointProvider,
     required BackgroundStringProvider activeThreadIdProvider,
     required BackgroundStringProvider activeTurnIdProvider,
@@ -108,6 +113,7 @@ class AppLifecycleConnectionCoordinator {
        _isConnected = isConnected,
        _hasActiveTurn = hasActiveTurn,
        _profileIdProvider = profileIdProvider,
+       _profileLabelProvider = profileLabelProvider,
        _endpointProvider = endpointProvider,
        _activeThreadIdProvider = activeThreadIdProvider,
        _activeTurnIdProvider = activeTurnIdProvider,
@@ -121,6 +127,7 @@ class AppLifecycleConnectionCoordinator {
   final BackgroundBoolProvider _isConnected;
   final BackgroundBoolProvider _hasActiveTurn;
   final BackgroundStringProvider _profileIdProvider;
+  final BackgroundStringProvider _profileLabelProvider;
   final BackgroundStringProvider _endpointProvider;
   final BackgroundStringProvider _activeThreadIdProvider;
   final BackgroundStringProvider _activeTurnIdProvider;
@@ -198,6 +205,7 @@ class AppLifecycleConnectionCoordinator {
     if (shouldRetain) {
       final context = BackgroundConnectionContext(
         profileId: _profileIdProvider(),
+        profileLabel: _profileLabelProvider(),
         endpoint: _endpointProvider(),
         threadId: _activeThreadIdProvider(),
         turnId: _activeTurnIdProvider(),

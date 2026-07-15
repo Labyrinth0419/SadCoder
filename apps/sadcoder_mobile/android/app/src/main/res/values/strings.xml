@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="background_notification_channel_name">Sad active tasks</string>
+    <string name="background_notification_channel_description">Keeps an active Sad task connected while the app is in the background.</string>
+    <string name="background_notification_title">Sad - %1$s</string>
+    <string name="background_notification_active_task">Active task</string>
+    <string name="background_notification_thread">Thread %1$s</string>
+    <string name="background_notification_turn">Turn %1$s</string>
+    <string name="background_notification_unknown_host">Connected host</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="background_notification_channel_name">Sad 正在执行的任务</string>
+    <string name="background_notification_channel_description">应用进入后台时，保持 Sad 当前任务的连接。</string>
+    <string name="background_notification_title">Sad - %1$s</string>
+    <string name="background_notification_active_task">任务正在执行</string>
+    <string name="background_notification_thread">会话 %1$s</string>
+    <string name="background_notification_turn">回合 %1$s</string>
+    <string name="background_notification_unknown_host">已连接主机</string>
+</resources>

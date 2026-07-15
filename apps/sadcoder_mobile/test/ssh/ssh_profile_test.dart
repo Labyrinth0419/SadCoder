@@ -19,5 +19,7 @@ void main() {
 
     expect(aliased.displayName, 'Dev box');
     expect(unnamed.displayName, '192.0.2.11');
+    expect(aliased.notificationLabel, 'Dev box');
+    expect(unnamed.notificationLabel, 'bob@192.0.2.11:2200');
   });
 }

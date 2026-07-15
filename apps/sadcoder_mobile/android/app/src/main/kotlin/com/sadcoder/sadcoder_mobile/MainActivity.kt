@@ -45,6 +45,7 @@ class MainActivity : FlutterActivity() {
                     retainWithNotificationPermission(
                         RetainRequest(
                             profileId = args?.get("profileId") as? String,
+                            profileLabel = args?.get("profileLabel") as? String,
                             endpoint = args?.get("endpoint") as? String,
                             threadId = args?.get("threadId") as? String,
                             turnId = args?.get("turnId") as? String,
@@ -255,6 +256,7 @@ class MainActivity : FlutterActivity() {
         val intent = BackgroundConnectionService.retainIntent(
             context = this,
             profileId = retainRequest.profileId,
+            profileLabel = retainRequest.profileLabel,
             endpoint = retainRequest.endpoint,
             threadId = retainRequest.threadId,
             turnId = retainRequest.turnId,
@@ -311,6 +313,7 @@ class MainActivity : FlutterActivity() {
 
     private data class RetainRequest(
         val profileId: String?,
+        val profileLabel: String?,
         val endpoint: String?,
         val threadId: String?,
         val turnId: String?,

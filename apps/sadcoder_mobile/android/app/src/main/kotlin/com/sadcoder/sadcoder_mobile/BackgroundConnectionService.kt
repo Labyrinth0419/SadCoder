@@ -23,6 +23,7 @@ class BackgroundConnectionService : Service() {
         createNotificationChannel()
         val notification = buildNotification(
             profileId = intent.getStringExtra(EXTRA_PROFILE_ID),
+            profileLabel = intent.getStringExtra(EXTRA_PROFILE_LABEL),
             endpoint = intent.getStringExtra(EXTRA_ENDPOINT),
             threadId = intent.getStringExtra(EXTRA_THREAD_ID),
             turnId = intent.getStringExtra(EXTRA_TURN_ID),
@@ -50,10 +51,10 @@ class BackgroundConnectionService : Service() {
         }
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Sad active task",
+            getString(R.string.background_notification_channel_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "Keeps the active Sad connection alive while the app is in the background."
+            description = getString(R.string.background_notification_channel_description)
             setShowBadge(false)
         }
         val manager = getSystemService(NotificationManager::class.java)
@@ -62,6 +63,7 @@ class BackgroundConnectionService : Service() {
 
     private fun buildNotification(
         profileId: String?,
+        profileLabel: String?,
         endpoint: String?,
         threadId: String?,
         turnId: String?,
@@ -88,13 +90,18 @@ class BackgroundConnectionService : Service() {
             launchIntent,
             pendingIntentFlags,
         )
+        val hostLabel = profileLabel?.takeIf { it.isNotBlank() }
+            ?: endpoint?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.background_notification_unknown_host)
         val content = listOfNotNull(
-            endpoint?.takeIf { it.isNotBlank() },
-            threadId?.takeIf { it.isNotBlank() }?.let { "thread $it" },
-            turnId?.takeIf { it.isNotBlank() }?.let { "turn $it" },
-        ).joinToString(" - ").ifBlank {
-            "Active Codex task is still running."
-        }
+            getString(R.string.background_notification_active_task),
+            compactId(threadId)?.let {
+                getString(R.string.background_notification_thread, it)
+            },
+            compactId(turnId)?.let {
+                getString(R.string.background_notification_turn, it)
+            },
+        ).joinToString(" - ")
 
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, CHANNEL_ID)
@@ -105,13 +112,21 @@ class BackgroundConnectionService : Service() {
 
         return builder
             .setSmallIcon(applicationInfo.icon)
-            .setContentTitle("Sad active task")
+            .setContentTitle(getString(R.string.background_notification_title, hostLabel))
             .setContentText(content)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setShowWhen(false)
             .setCategory(Notification.CATEGORY_SERVICE)
             .build()
+    }
+
+    private fun compactId(value: String?): String? {
+        val normalized = value?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        if (normalized.length <= 16) {
+            return normalized
+        }
+        return "${normalized.take(9)}...${normalized.takeLast(4)}"
     }
 
     companion object {
@@ -122,6 +137,7 @@ class BackgroundConnectionService : Service() {
         private const val CHANNEL_ID = "sadcoder_active_task"
         private const val NOTIFICATION_ID = 1001
         private const val EXTRA_PROFILE_ID = "profileId"
+        private const val EXTRA_PROFILE_LABEL = "profileLabel"
         private const val EXTRA_ENDPOINT = "endpoint"
         private const val EXTRA_THREAD_ID = "threadId"
         private const val EXTRA_TURN_ID = "turnId"
@@ -129,6 +145,7 @@ class BackgroundConnectionService : Service() {
         fun retainIntent(
             context: Context,
             profileId: String?,
+            profileLabel: String?,
             endpoint: String?,
             threadId: String?,
             turnId: String?,
@@ -136,6 +153,7 @@ class BackgroundConnectionService : Service() {
             return Intent(context, BackgroundConnectionService::class.java).apply {
                 action = ACTION_RETAIN
                 putExtra(EXTRA_PROFILE_ID, profileId)
+                putExtra(EXTRA_PROFILE_LABEL, profileLabel)
                 putExtra(EXTRA_ENDPOINT, endpoint)
                 putExtra(EXTRA_THREAD_ID, threadId)
                 putExtra(EXTRA_TURN_ID, turnId)

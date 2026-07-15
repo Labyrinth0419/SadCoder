@@ -28,6 +28,7 @@ class AndroidForegroundConnectionKeeper implements BackgroundConnectionKeeper {
 
     await _channel.invokeMethod<void>('retain', {
       'profileId': context.profileId,
+      'profileLabel': context.profileLabel,
       'endpoint': context.endpoint,
       'threadId': context.threadId,
       'turnId': context.turnId,

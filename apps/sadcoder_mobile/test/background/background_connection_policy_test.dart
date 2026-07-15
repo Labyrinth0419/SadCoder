@@ -205,6 +205,7 @@ class _Fixture {
       isConnected: () => connected.value,
       hasActiveTurn: () => turnId.value != null,
       profileIdProvider: () => 'local',
+      profileLabelProvider: () => 'Local workstation',
       endpointProvider: () => 'tester@localhost:22',
       activeThreadIdProvider: () => threadId.value,
       activeTurnIdProvider: () => turnId.value,
