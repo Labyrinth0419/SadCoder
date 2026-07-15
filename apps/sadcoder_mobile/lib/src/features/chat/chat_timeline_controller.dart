@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../events/codex_event.dart';
 import '../../events/guardian_assessment_event.dart';
+import '../../goals/thread_goal.dart';
 import '../../threads/thread_summary.dart';
 
 typedef TurnCompletedHandler =
@@ -108,6 +109,8 @@ class ChatTimelineController extends ChangeNotifier {
         _upsertTurn(event, status: event.turn?.status ?? 'completed');
       case CodexEventKind.itemStarted || CodexEventKind.itemCompleted:
         _upsertItem(event);
+      case CodexEventKind.threadGoalUpdated:
+        _upsertThreadGoal(event);
       case CodexEventKind.agentMessageDelta:
         _appendDelta(event, fallbackType: 'agentMessage');
       case CodexEventKind.commandExecutionOutputDelta:
@@ -571,6 +574,34 @@ class ChatTimelineController extends ChangeNotifier {
     _trimToMaxItems(chatTimelineMaxItemWindow);
   }
 
+  void _upsertThreadGoal(CodexEvent event) {
+    final threadId = _normalized(event.threadId);
+    final goal = event.threadGoal;
+    if (threadId == null || goal == null) {
+      return;
+    }
+    _selectLiveThread(threadId);
+    final next = ChatTimelineItem.fromThreadGoalEvent(event);
+    for (var turnIndex = 0; turnIndex < _turns.length; turnIndex++) {
+      final itemIndex = _turns[turnIndex].items.indexWhere(
+        (item) => item.itemId == next.itemId,
+      );
+      if (itemIndex == -1) {
+        continue;
+      }
+      final items = List<ChatTimelineItem>.from(_turns[turnIndex].items);
+      items[itemIndex] = items[itemIndex].merge(next);
+      _turns[turnIndex] = _turns[turnIndex].copyWith(items: items);
+      return;
+    }
+    _mergeCachedItemIntoTurn(
+      threadId: threadId,
+      turnId: _normalized(event.turnId) ?? _threadGoalEventsTurnId,
+      item: next,
+    );
+    _trimToMaxItems(chatTimelineMaxItemWindow);
+  }
+
   void _appendDelta(
     CodexEvent event, {
     required String fallbackType,
@@ -745,6 +776,7 @@ class ChatTimelineController extends ChangeNotifier {
 }
 
 const _cachedItemsTurnId = 'cached_items';
+const _threadGoalEventsTurnId = 'thread_goal_events';
 
 class ChatTimelineTurn {
   const ChatTimelineTurn({
@@ -878,6 +910,7 @@ class ChatTimelineItem {
     this.durationMs,
     this.server,
     this.tool,
+    this.threadGoal,
     this.fileChanges = const [],
     required this.raw,
   });
@@ -934,6 +967,19 @@ class ChatTimelineItem {
     );
   }
 
+  factory ChatTimelineItem.fromThreadGoalEvent(CodexEvent event) {
+    final goal = event.threadGoal!;
+    return ChatTimelineItem(
+      itemId: _threadGoalItemId(goal),
+      itemType: 'threadGoalUpdate',
+      text: '/goal ${goal.objective}',
+      output: '',
+      status: goal.status,
+      threadGoal: goal,
+      raw: event.raw,
+    );
+  }
+
   final String itemId;
   final String itemType;
   final String text;
@@ -945,6 +991,7 @@ class ChatTimelineItem {
   final int? durationMs;
   final String? server;
   final String? tool;
+  final ThreadGoal? threadGoal;
   final List<ThreadFileChangeSummary> fileChanges;
   final Map<String, Object?> raw;
 
@@ -968,6 +1015,7 @@ class ChatTimelineItem {
       durationMs: durationMs,
       server: server,
       tool: tool,
+      threadGoal: threadGoal,
       fileChanges: fileChanges ?? this.fileChanges,
       raw: raw,
     );
@@ -986,6 +1034,7 @@ class ChatTimelineItem {
       durationMs: next.durationMs ?? durationMs,
       server: next.server ?? server,
       tool: next.tool ?? tool,
+      threadGoal: next.threadGoal ?? threadGoal,
       fileChanges: next.fileChanges.isEmpty ? fileChanges : next.fileChanges,
       raw: next.raw.isEmpty ? raw : next.raw,
     );
@@ -1004,6 +1053,7 @@ class ChatTimelineItem {
       durationMs: liveItem.durationMs ?? durationMs,
       server: server ?? liveItem.server,
       tool: tool ?? liveItem.tool,
+      threadGoal: liveItem.threadGoal ?? threadGoal,
       fileChanges: fileChanges.isEmpty ? liveItem.fileChanges : fileChanges,
       raw: raw.isEmpty ? liveItem.raw : raw,
     );
@@ -1046,3 +1096,10 @@ String? _normalized(String? value) {
 }
 
 String _localUserMessageItemId(String turnId) => 'local_user_$turnId';
+
+String _threadGoalItemId(ThreadGoal goal) {
+  final createdAt = goal.createdAtSeconds > 0
+      ? goal.createdAtSeconds
+      : goal.updatedAtSeconds;
+  return 'thread_goal_${Uri.encodeComponent(goal.threadId)}_$createdAt';
+}

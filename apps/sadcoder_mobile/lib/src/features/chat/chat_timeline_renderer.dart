@@ -194,10 +194,12 @@ class _TimelineItemView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final body = _body;
+    final body = _body(context);
     final title = _title(context);
     final icon = _iconFor(item.itemType);
-    if (item.itemType == 'userMessage' || item.itemType == 'agentMessage') {
+    if (item.itemType == 'userMessage' ||
+        item.itemType == 'agentMessage' ||
+        item.itemType == 'threadGoalUpdate') {
       return _TimelineMessageItem(
         item: item,
         title: title,
@@ -244,6 +246,7 @@ class _TimelineItemView extends StatelessWidget {
     return switch (item.itemType) {
       'userMessage' => l10n.timelineUser,
       'agentMessage' => l10n.timelineCodex,
+      'threadGoalUpdate' => l10n.threadGoalStatus,
       'reasoning' => l10n.timelineReasoning,
       'plan' => l10n.timelinePlan,
       'commandExecution' when item.command != null => item.command!,
@@ -259,7 +262,19 @@ class _TimelineItemView extends StatelessWidget {
     };
   }
 
-  String get _body {
+  String _body(BuildContext context) {
+    final goal = item.threadGoal;
+    if (item.itemType == 'threadGoalUpdate' && goal != null) {
+      final l10n = context.l10n;
+      return [
+        item.text,
+        '${l10n.timelineStatus}: ${goal.status}',
+        '${l10n.threadGoalTokensUsed}: ${l10n.tokenCount(goal.tokensUsed)}',
+        if (goal.tokenBudget != null)
+          '${l10n.threadGoalTokenBudget}: ${l10n.tokenCount(goal.tokenBudget!)}',
+        '${l10n.threadGoalTimeUsed}: ${l10n.secondCount(goal.timeUsedSeconds)}',
+      ].join('\n');
+    }
     if (item.output.isNotEmpty) {
       return item.output;
     }
@@ -278,6 +293,7 @@ class _TimelineItemView extends StatelessWidget {
     return switch (itemType) {
       'userMessage' => Icons.person_outline,
       'agentMessage' => Icons.smart_toy_outlined,
+      'threadGoalUpdate' => Icons.flag_outlined,
       'commandExecution' => Icons.terminal,
       'fileChange' => Icons.difference_outlined,
       'mcpToolCall' => Icons.extension_outlined,
@@ -309,7 +325,8 @@ class _TimelineMessageItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final isUser = item.itemType == 'userMessage';
+    final isUser =
+        item.itemType == 'userMessage' || item.itemType == 'threadGoalUpdate';
     final accent = isUser ? colorScheme.primary : colorScheme.tertiary;
     final bubbleColor = isUser
         ? colorScheme.primaryContainer.withValues(alpha: 0.58)

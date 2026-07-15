@@ -162,6 +162,34 @@ void main() {
     expect(turnCompleted.turn?.status, 'completed');
   });
 
+  test('maps authoritative thread goal updates', () {
+    final event = CodexEvent.fromNotification({
+      'method': 'thread/goal/updated',
+      'params': {
+        'threadId': 'thr_1',
+        'turnId': null,
+        'goal': {
+          'threadId': 'thr_1',
+          'objective': 'Ship stable goals',
+          'status': 'active',
+          'tokenBudget': 12000,
+          'tokensUsed': 42,
+          'timeUsedSeconds': 7,
+          'createdAt': 100,
+          'updatedAt': 101,
+        },
+      },
+    });
+
+    expect(event.kind, CodexEventKind.threadGoalUpdated);
+    expect(event.threadId, 'thr_1');
+    expect(event.turnId, isNull);
+    expect(event.threadGoal?.objective, 'Ship stable goals');
+    expect(event.threadGoal?.status, 'active');
+    expect(event.threadGoal?.tokenBudget, 12000);
+    expect(event.payload?['goal'], isA<Map>());
+  });
+
   test('maps item lifecycle and delta notifications', () {
     final itemStarted = CodexEvent.fromNotification({
       'method': 'item/started',

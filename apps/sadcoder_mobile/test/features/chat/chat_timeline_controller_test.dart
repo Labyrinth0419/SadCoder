@@ -66,6 +66,76 @@ void main() {
     expect(completed?.turn.id, 'turn_1');
   });
 
+  test('goal updates create one authoritative replay-stable operation', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.ingest(
+      _goalUpdated(
+        objective: 'Ship stable goals',
+        status: 'active',
+        tokensUsed: 0,
+      ),
+    );
+    controller.ingest(
+      _goalUpdated(
+        objective: 'Ship stable goals',
+        status: 'complete',
+        tokensUsed: 900,
+        turnId: 'turn_1',
+      ),
+    );
+
+    expect(controller.turns, hasLength(1));
+    expect(controller.turns.single.turnId, 'thread_goal_events');
+    expect(controller.turns.single.items, hasLength(1));
+    final item = controller.turns.single.items.single;
+    expect(item.itemType, 'threadGoalUpdate');
+    expect(item.text, '/goal Ship stable goals');
+    expect(item.status, 'complete');
+    expect(item.threadGoal?.tokensUsed, 900);
+    expect(item.raw['method'], 'thread/goal/updated');
+  });
+
+  test('goal replay survives snapshot hydration without duplication', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    final replay = _goalUpdated(
+      objective: 'Recover the goal',
+      status: 'active',
+      tokensUsed: 25,
+    );
+    controller.ingest(replay);
+    controller.showThread(
+      ThreadSummary.fromJson({
+        'id': 'thr_1',
+        'sessionId': 'sess_1',
+        'preview': 'Goal thread',
+        'ephemeral': false,
+        'turns': [
+          {
+            'id': 'turn_1',
+            'status': 'completed',
+            'itemsView': 'full',
+            'items': [
+              {'id': 'item_1', 'type': 'agentMessage', 'text': 'Recovered'},
+            ],
+          },
+        ],
+      }),
+    );
+    controller.ingest(replay);
+
+    expect(
+      controller.turns
+          .expand((turn) => turn.items)
+          .where((item) => item.itemType == 'threadGoalUpdate'),
+      hasLength(1),
+    );
+    expect(controller.cursor.itemIds.toSet(), hasLength(2));
+  });
+
   test('turn start calls start handler', () {
     ({String threadId, TurnSummary turn})? started;
     final controller = ChatTimelineController(
@@ -797,6 +867,31 @@ CodexEvent _autoReviewCompleted({
         'source': 'shell',
         'command': 'rm -rf /tmp/test',
         'cwd': '/repo',
+      },
+    },
+  });
+}
+
+CodexEvent _goalUpdated({
+  required String objective,
+  required String status,
+  required int tokensUsed,
+  String? turnId,
+}) {
+  return CodexEvent.fromNotification({
+    'method': 'thread/goal/updated',
+    'params': {
+      'threadId': 'thr_1',
+      'turnId': turnId,
+      'goal': {
+        'threadId': 'thr_1',
+        'objective': objective,
+        'status': status,
+        'tokenBudget': 1200,
+        'tokensUsed': tokensUsed,
+        'timeUsedSeconds': 12,
+        'createdAt': 100,
+        'updatedAt': 110,
       },
     },
   });

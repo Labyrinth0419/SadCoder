@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/appearance/app_appearance_controller.dart';
+import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_timeline_controller.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_timeline_renderer.dart';
 import 'package:sadcoder_mobile/src/i18n/app_localizations.dart';
@@ -95,6 +96,44 @@ void main() {
       find.byKey(const ValueKey('timeline-command-output-expand-cmd_1')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('timeline renderer shows goal updates as user operations', (
+    tester,
+  ) async {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+    controller.ingest(
+      CodexEvent.fromNotification({
+        'method': 'thread/goal/updated',
+        'params': {
+          'threadId': 'thr_1',
+          'turnId': null,
+          'goal': {
+            'threadId': 'thr_1',
+            'objective': 'Ship stable goals',
+            'status': 'active',
+            'tokenBudget': 12000,
+            'tokensUsed': 42,
+            'timeUsedSeconds': 7,
+            'createdAt': 100,
+            'updatedAt': 101,
+          },
+        },
+      }),
+    );
+
+    await _pumpRenderer(tester, controller);
+
+    final item = controller.turns.single.items.single;
+    final align = tester.widget<Align>(
+      find.byKey(ValueKey('timeline-message-align-${item.itemId}')),
+    );
+    expect(align.alignment, AlignmentDirectional.centerEnd);
+    expect(find.text('Goal'), findsOneWidget);
+    expect(find.textContaining('/goal Ship stable goals'), findsOneWidget);
+    expect(find.textContaining('Status: active'), findsOneWidget);
+    expect(find.textContaining('Tokens used: 42'), findsOneWidget);
   });
 }
 

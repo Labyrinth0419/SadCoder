@@ -1,4 +1,5 @@
 import '../threads/thread_summary.dart';
+import '../goals/thread_goal.dart';
 import 'guardian_assessment_event.dart';
 
 enum CodexEventKind {
@@ -7,6 +8,7 @@ enum CodexEventKind {
   threadUnarchived,
   threadDeleted,
   threadNameUpdated,
+  threadGoalUpdated,
   threadSettingsUpdated,
   threadTokenUsageUpdated,
   turnStarted,
@@ -54,6 +56,7 @@ class CodexEvent {
     this.itemType,
     this.delta,
     this.threadName,
+    this.threadGoal,
     this.thread,
     this.turn,
     this.item,
@@ -92,6 +95,7 @@ class CodexEvent {
         notification,
         params,
       ),
+      'thread/goal/updated' => _threadGoalUpdated(method, notification, params),
       'thread/settings/updated' => _threadSettingsUpdated(
         method,
         notification,
@@ -313,6 +317,7 @@ class CodexEvent {
   final String? itemType;
   final String? delta;
   final String? threadName;
+  final ThreadGoal? threadGoal;
   final ThreadSummary? thread;
   final TurnSummary? turn;
   final Map<String, Object?>? item;
@@ -364,6 +369,23 @@ class CodexEvent {
       raw: Map.unmodifiable(raw),
       threadId: _stringValue(params['threadId']),
       threadSettings: Map.unmodifiable(settings),
+    );
+  }
+
+  static CodexEvent _threadGoalUpdated(
+    String method,
+    Map<String, Object?> raw,
+    Map<String, Object?> params,
+  ) {
+    final goal = ThreadGoal.fromJson(params['goal']);
+    return CodexEvent(
+      kind: CodexEventKind.threadGoalUpdated,
+      method: method,
+      raw: Map.unmodifiable(raw),
+      threadId: _stringValue(params['threadId']) ?? goal?.threadId,
+      turnId: _stringValue(params['turnId']),
+      threadGoal: goal,
+      payload: Map.unmodifiable(params),
     );
   }
 
