@@ -95,14 +95,37 @@ Future<String?> buildThreadGoalSummaryFromCommand({
       cleared: (await runner.clearGoal(threadId: threadId)).cleared,
     ),
     ChatGoalSetCommand(:final objective, :final status, :final tokenBudget) =>
-      buildThreadGoalSummary(
+      _setThreadGoal(
         l10n: l10n,
-        goal: (await runner.setGoal(
-          threadId: threadId,
-          objective: objective,
-          status: status,
-          tokenBudget: tokenBudget,
-        )).goal,
+        runner: runner,
+        threadId: threadId,
+        objective: objective,
+        status: status,
+        tokenBudget: tokenBudget,
       ),
   };
+}
+
+Future<String> _setThreadGoal({
+  required AppLocalizations l10n,
+  required ThreadGoalRunner runner,
+  required String threadId,
+  required String? objective,
+  required String? status,
+  required int? tokenBudget,
+}) async {
+  var resolvedStatus = status;
+  if (objective != null && resolvedStatus == null) {
+    final current = (await runner.getGoal(threadId: threadId)).goal;
+    if (current?.status == 'complete' || current?.status == 'budgetLimited') {
+      resolvedStatus = 'active';
+    }
+  }
+  await runner.setGoal(
+    threadId: threadId,
+    objective: objective,
+    status: resolvedStatus,
+    tokenBudget: tokenBudget,
+  );
+  return l10n.threadGoalUpdated;
 }

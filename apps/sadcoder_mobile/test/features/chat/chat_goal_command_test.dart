@@ -107,7 +107,8 @@ void main() {
         arguments: 'budget 12000 Finish benchmark',
       );
 
-      expect(summary, contains('Finish benchmark'));
+      expect(summary, l10n.threadGoalUpdated);
+      expect(runner.calls, ['get:thr_1', 'set:thr_1']);
       expect(runner.setCalls, [
         (
           threadId: 'thr_1',
@@ -116,6 +117,84 @@ void main() {
           tokenBudget: 12000,
         ),
       ]);
+    });
+
+    test(
+      'creates a first goal without overriding the server default',
+      () async {
+        final runner = _RecordingThreadGoalRunner();
+
+        final summary = await buildThreadGoalSummaryFromCommand(
+          l10n: l10n,
+          runner: runner,
+          threadId: 'thr_1',
+          arguments: 'Ship goal support',
+        );
+
+        expect(summary, l10n.threadGoalUpdated);
+        expect(runner.calls, ['get:thr_1', 'set:thr_1']);
+        expect(runner.setCalls.single.status, isNull);
+      },
+    );
+
+    test(
+      'reactivates completed and budget-limited goals when edited',
+      () async {
+        for (final terminalStatus in const ['complete', 'budgetLimited']) {
+          final runner = _RecordingThreadGoalRunner(
+            goal: _goal(status: terminalStatus),
+          );
+
+          await buildThreadGoalSummaryFromCommand(
+            l10n: l10n,
+            runner: runner,
+            threadId: 'thr_1',
+            arguments: 'Replace the objective',
+          );
+
+          expect(runner.setCalls.single.status, 'active');
+        }
+      },
+    );
+
+    test(
+      'preserves paused blocked and usage-limited goals when edited',
+      () async {
+        for (final preservedStatus in const [
+          'paused',
+          'blocked',
+          'usageLimited',
+        ]) {
+          final runner = _RecordingThreadGoalRunner(
+            goal: _goal(status: preservedStatus),
+          );
+
+          await buildThreadGoalSummaryFromCommand(
+            l10n: l10n,
+            runner: runner,
+            threadId: 'thr_1',
+            arguments: 'Refine the objective',
+          );
+
+          expect(runner.setCalls.single.status, isNull);
+        }
+      },
+    );
+
+    test('does not reread a goal for an explicit status update', () async {
+      final runner = _RecordingThreadGoalRunner(
+        goal: _goal(status: 'complete'),
+      );
+
+      await buildThreadGoalSummaryFromCommand(
+        l10n: l10n,
+        runner: runner,
+        threadId: 'thr_1',
+        arguments: 'status paused',
+      );
+
+      expect(runner.calls, ['set:thr_1']);
+      expect(runner.setCalls.single.status, 'paused');
     });
 
     test('clears the selected thread goal', () async {

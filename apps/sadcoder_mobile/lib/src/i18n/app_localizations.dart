@@ -951,6 +951,7 @@ class AppLocalizations {
   String get threadGoalTokensUsed => _text('threadGoalTokensUsed');
   String get threadGoalTokenBudget => _text('threadGoalTokenBudget');
   String get threadGoalTimeUsed => _text('threadGoalTimeUsed');
+  String get threadGoalUpdated => _text('threadGoalUpdated');
   String get threadGoalCleared => _text('threadGoalCleared');
   String get threadReviewStarted => _text('threadReviewStarted');
   String get threadReviewTarget => _text('threadReviewTarget');
@@ -2306,6 +2307,7 @@ const _values = <String, Map<String, String>>{
     'threadGoalTokensUsed': 'Tokens used',
     'threadGoalTokenBudget': 'Token budget',
     'threadGoalTimeUsed': 'Time used',
+    'threadGoalUpdated': 'Goal updated. Execution will continue when ready.',
     'threadGoalCleared': 'Goal cleared.',
     'threadReviewStarted': 'Review started.',
     'threadReviewTarget': 'Target',
@@ -3431,6 +3433,7 @@ const _values = <String, Map<String, String>>{
     'threadGoalTokensUsed': '已用 token',
     'threadGoalTokenBudget': 'Token 预算',
     'threadGoalTimeUsed': '已用时间',
+    'threadGoalUpdated': '目标已更新，将在就绪后继续执行。',
     'threadGoalCleared': '已清除目标。',
     'threadReviewStarted': '已开始代码审查。',
     'threadReviewTarget': '审查目标',
