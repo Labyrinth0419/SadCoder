@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/events/codex_event.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_timeline_controller.dart';
 import 'package:sadcoder_mobile/src/features/chat/chat_timeline_window_coordinator.dart';
+import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_item_list_reader.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 
@@ -14,6 +15,7 @@ void main() {
     final coordinator = ChatTimelineWindowCoordinator(
       mounted: () => true,
       timelineControllerProvider: () => timeline,
+      threadDetailReaderProvider: () => null,
       threadItemListReaderProvider: () => reader,
       turnControllerProvider: () => null,
     );
@@ -39,6 +41,7 @@ void main() {
     final coordinator = ChatTimelineWindowCoordinator(
       mounted: () => true,
       timelineControllerProvider: () => timeline,
+      threadDetailReaderProvider: () => null,
       threadItemListReaderProvider: () => reader,
       turnControllerProvider: () => null,
     );
@@ -73,6 +76,7 @@ void main() {
     final coordinator = ChatTimelineWindowCoordinator(
       mounted: () => true,
       timelineControllerProvider: () => timeline,
+      threadDetailReaderProvider: () => null,
       threadItemListReaderProvider: () => reader,
       turnControllerProvider: () => null,
     );
@@ -98,6 +102,87 @@ void main() {
     expect(timeline.selectedThreadId, 'thr_1');
     expect(timeline.turns.single.items.single.text, 'From detail');
   });
+
+  test(
+    'empty item pages reread full thread history for metadata detail',
+    () async {
+      final timeline = ChatTimelineController();
+      final itemReader = _DeferredThreadItemListReader();
+      final detailReader = _RecordingThreadDetailReader(
+        _threadWithMessage('thr_1', 'History from fallback'),
+      );
+      final coordinator = ChatTimelineWindowCoordinator(
+        mounted: () => true,
+        timelineControllerProvider: () => timeline,
+        threadDetailReaderProvider: () => detailReader,
+        threadItemListReaderProvider: () => itemReader,
+        turnControllerProvider: () => null,
+      );
+      addTearDown(timeline.dispose);
+
+      coordinator.loadInitialWindow(_thread('thr_1'));
+      itemReader.complete(0, const ThreadItemsPage(items: []));
+      await _flushMicrotasks();
+
+      expect(detailReader.calls, [(threadId: 'thr_1', includeTurns: true)]);
+      expect(timeline.selectedThreadId, 'thr_1');
+      expect(timeline.turns.single.items.single.text, 'History from fallback');
+    },
+  );
+
+  test('failed item requests reread full thread history', () async {
+    final timeline = ChatTimelineController();
+    final itemReader = _DeferredThreadItemListReader();
+    final detailReader = _RecordingThreadDetailReader(
+      _threadWithMessage('thr_1', 'Recovered after item failure'),
+    );
+    final coordinator = ChatTimelineWindowCoordinator(
+      mounted: () => true,
+      timelineControllerProvider: () => timeline,
+      threadDetailReaderProvider: () => detailReader,
+      threadItemListReaderProvider: () => itemReader,
+      turnControllerProvider: () => null,
+    );
+    addTearDown(timeline.dispose);
+
+    coordinator.loadInitialWindow(_thread('thr_1'));
+    itemReader.fail(0, StateError('thread/items/list unavailable'));
+    await _flushMicrotasks();
+
+    expect(detailReader.calls, [(threadId: 'thr_1', includeTurns: true)]);
+    expect(
+      timeline.turns.single.items.single.text,
+      'Recovered after item failure',
+    );
+  });
+
+  test('reset rejects a stale full-thread fallback', () async {
+    final timeline = ChatTimelineController();
+    final itemReader = _DeferredThreadItemListReader();
+    final detailReader = _DeferredThreadDetailReader();
+    final coordinator = ChatTimelineWindowCoordinator(
+      mounted: () => true,
+      timelineControllerProvider: () => timeline,
+      threadDetailReaderProvider: () => detailReader,
+      threadItemListReaderProvider: () => itemReader,
+      turnControllerProvider: () => null,
+    );
+    addTearDown(timeline.dispose);
+
+    coordinator.loadInitialWindow(_thread('thr_old'));
+    itemReader.complete(0, const ThreadItemsPage(items: []));
+    await _flushMicrotasks();
+    expect(detailReader.calls, ['thr_old']);
+
+    coordinator.reset();
+    coordinator.loadInitialWindow(_thread('thr_new'));
+    itemReader.complete(1, ThreadItemsPage(items: [_item('new', 'New')]));
+    detailReader.complete(_threadWithMessage('thr_old', 'Stale'));
+    await _flushMicrotasks();
+
+    expect(timeline.selectedThreadId, 'thr_new');
+    expect(timeline.turns.single.items.single.text, 'New');
+  });
 }
 
 class _DeferredThreadItemListReader implements ThreadItemListReader {
@@ -108,6 +193,10 @@ class _DeferredThreadItemListReader implements ThreadItemListReader {
 
   void complete(int index, ThreadItemsPage page) {
     calls[index].result.complete(page);
+  }
+
+  void fail(int index, Object error) {
+    calls[index].result.completeError(error);
   }
 
   @override
@@ -124,6 +213,40 @@ class _DeferredThreadItemListReader implements ThreadItemListReader {
   }
 }
 
+class _RecordingThreadDetailReader implements ThreadDetailReader {
+  _RecordingThreadDetailReader(this.thread);
+
+  final ThreadSummary thread;
+  final calls = <({String threadId, bool includeTurns})>[];
+
+  @override
+  Future<ThreadDetail> readThread({
+    required String threadId,
+    bool includeTurns = true,
+  }) async {
+    calls.add((threadId: threadId, includeTurns: includeTurns));
+    return ThreadDetail(thread: thread);
+  }
+}
+
+class _DeferredThreadDetailReader implements ThreadDetailReader {
+  final _result = Completer<ThreadDetail>();
+  final calls = <String>[];
+
+  void complete(ThreadSummary thread) {
+    _result.complete(ThreadDetail(thread: thread));
+  }
+
+  @override
+  Future<ThreadDetail> readThread({
+    required String threadId,
+    bool includeTurns = true,
+  }) {
+    calls.add(threadId);
+    return _result.future;
+  }
+}
+
 ThreadSummary _thread(String id) => ThreadSummary.fromJson({
   'id': id,
   'sessionId': 'session_$id',
@@ -133,6 +256,22 @@ ThreadSummary _thread(String id) => ThreadSummary.fromJson({
   'cwd': '/repo',
   'updatedAt': 1,
 });
+
+ThreadSummary _threadWithMessage(String id, String message) {
+  return ThreadSummary.fromJson({
+    ..._thread(id).toDetailJson(),
+    'turns': [
+      {
+        'id': 'turn_$id',
+        'status': 'completed',
+        'itemsView': 'full',
+        'items': [
+          {'id': 'item_$id', 'type': 'agentMessage', 'text': message},
+        ],
+      },
+    ],
+  });
+}
 
 ThreadItemSummary _item(String id, String text, {String? turnId}) {
   return ThreadItemSummary.fromJson({

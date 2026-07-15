@@ -136,6 +136,8 @@ class _ChatPageState extends State<ChatPage> {
     _timelineWindowCoordinator = ChatTimelineWindowCoordinator(
       mounted: () => mounted,
       timelineControllerProvider: () => widget.timelineController,
+      threadDetailReaderProvider: () =>
+          widget.sessionController?.threadDetailReader,
       threadItemListReaderProvider: () =>
           widget.sessionController?.threadItemListReader,
       turnControllerProvider: () => widget.turnController,

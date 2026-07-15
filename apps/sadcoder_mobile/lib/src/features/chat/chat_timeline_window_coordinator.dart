@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import '../../threads/thread_detail_reader.dart';
 import '../../threads/thread_item_list_reader.dart';
 import '../../threads/thread_summary.dart';
 import '../../turns/turn_controller.dart';
 import 'chat_timeline_controller.dart';
 
 typedef ChatTimelineControllerProvider = ChatTimelineController? Function();
+typedef ChatThreadDetailReaderProvider = ThreadDetailReader? Function();
 typedef ChatThreadItemListReaderProvider = ThreadItemListReader? Function();
 typedef ChatTurnControllerProvider = TurnController? Function();
 
@@ -13,12 +15,14 @@ class ChatTimelineWindowCoordinator {
   ChatTimelineWindowCoordinator({
     required this.mounted,
     required this.timelineControllerProvider,
+    required this.threadDetailReaderProvider,
     required this.threadItemListReaderProvider,
     required this.turnControllerProvider,
   });
 
   final bool Function() mounted;
   final ChatTimelineControllerProvider timelineControllerProvider;
+  final ChatThreadDetailReaderProvider threadDetailReaderProvider;
   final ChatThreadItemListReaderProvider threadItemListReaderProvider;
   final ChatTurnControllerProvider turnControllerProvider;
 
@@ -39,7 +43,10 @@ class ChatTimelineWindowCoordinator {
     final reader = threadItemListReaderProvider();
     if (reader == null) {
       _lastWindowThreadId = threadId;
-      timelineController.showThread(thread);
+      final generation = ++_generation;
+      unawaited(
+        _showFullThreadFallback(generation: generation, thread: thread),
+      );
       return;
     }
     if (_lastWindowThreadId == threadId &&
@@ -72,16 +79,50 @@ class ChatTimelineWindowCoordinator {
       if (!mounted() || generation != _generation) {
         return;
       }
-      final timelineController = timelineControllerProvider();
-      if (page.items.isEmpty && thread.turns.isNotEmpty) {
-        timelineController?.showThread(thread);
+      if (page.items.isEmpty) {
+        await _showFullThreadFallback(generation: generation, thread: thread);
         return;
       }
-      timelineController?.showThreadItemWindow(
+      timelineControllerProvider()?.showThreadItemWindow(
         thread: thread,
         items: page.items.reversed.toList(growable: false),
         olderItemsCursor: page.nextCursor,
       );
+    } on Object {
+      if (!mounted() || generation != _generation) {
+        return;
+      }
+      await _showFullThreadFallback(generation: generation, thread: thread);
+    }
+  }
+
+  Future<void> _showFullThreadFallback({
+    required int generation,
+    required ThreadSummary thread,
+  }) async {
+    if (!mounted() || generation != _generation) {
+      return;
+    }
+    if (thread.turns.isNotEmpty) {
+      timelineControllerProvider()?.showThread(thread);
+      return;
+    }
+
+    final detailReader = threadDetailReaderProvider();
+    if (detailReader == null) {
+      timelineControllerProvider()?.showThread(thread);
+      return;
+    }
+    try {
+      final detail = await detailReader.readThread(
+        threadId: thread.id,
+        includeTurns: true,
+      );
+      if (!mounted() || generation != _generation) {
+        return;
+      }
+      final fullThread = detail.thread.id == thread.id ? detail.thread : thread;
+      timelineControllerProvider()?.showThread(fullThread);
     } on Object {
       if (!mounted() || generation != _generation) {
         return;
