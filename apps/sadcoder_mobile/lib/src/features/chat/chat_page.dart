@@ -42,6 +42,7 @@ import 'chat_file_context_command_handler.dart';
 import 'chat_layout_metrics.dart';
 import 'chat_override_command_handler.dart';
 import 'chat_profile_selection_handler.dart';
+import 'chat_reasoning_overlay.dart';
 import 'chat_raw_transcript_command.dart';
 import 'chat_status_summary.dart';
 import 'chat_summary_command_handler.dart';
@@ -390,6 +391,11 @@ class _ChatPageState extends State<ChatPage> {
                   );
                 },
               ),
+            ),
+            ChatReasoningOverlay(
+              controller: widget.timelineController,
+              activeTurnId: turnController?.activeTurnId,
+              compact: compactHeight,
             ),
             SafeArea(
               top: false,

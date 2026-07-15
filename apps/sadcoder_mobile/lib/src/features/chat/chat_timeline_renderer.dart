@@ -51,7 +51,9 @@ class _ChatTimelineContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final turns = controller.turns;
+    final turns = controller.turns
+        .where((turn) => turn.items.any((item) => item.itemType != 'reasoning'))
+        .toList(growable: false);
     if (turns.isEmpty) {
       return _TimelineEmptyState();
     }
@@ -169,16 +171,19 @@ class _TimelineTurnView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final items = turn.items
+        .where((item) => item.itemType != 'reasoning')
+        .toList(growable: false);
     return Padding(
       key: ValueKey('timeline-turn-${turn.turnId}'),
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (turn.items.isEmpty)
+          if (items.isEmpty)
             Text(context.l10n.noTimelineEvents)
           else
-            for (final item in turn.items)
+            for (final item in items)
               _TimelineItemView(item: item, showRaw: showRaw),
         ],
       ),
@@ -203,16 +208,6 @@ class _TimelineItemView extends StatelessWidget {
       return _TimelineMessageItem(
         item: item,
         title: title,
-        body: body,
-        rawJson: _rawJson,
-        showRaw: showRaw,
-      );
-    }
-    if (item.itemType == 'reasoning') {
-      return _TimelineCollapsibleItem(
-        item: item,
-        title: title,
-        icon: icon,
         body: body,
         rawJson: _rawJson,
         showRaw: showRaw,
@@ -538,62 +533,6 @@ Color _timelineExecutionAccent(ColorScheme colorScheme, String itemType) {
     'collabAgentToolCall' => colorScheme.primary,
     _ => colorScheme.outline,
   };
-}
-
-class _TimelineCollapsibleItem extends StatelessWidget {
-  const _TimelineCollapsibleItem({
-    required this.item,
-    required this.title,
-    required this.icon,
-    required this.body,
-    required this.rawJson,
-    required this.showRaw,
-  });
-
-  final ChatTimelineItem item;
-  final String title;
-  final IconData icon;
-  final String body;
-  final String rawJson;
-  final bool showRaw;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      key: ValueKey('timeline-collapsible-${item.itemId}'),
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLowest,
-        border: Border.all(color: colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          dense: true,
-          initiallyExpanded: false,
-          leading: _TimelineGlyph(icon: icon, color: colorScheme.secondary),
-          title: Text(title, style: Theme.of(context).textTheme.titleSmall),
-          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          children: [
-            if (body.isNotEmpty)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: _TimelineBodyBlock(item: item, body: body),
-              ),
-            if (showRaw) ...[
-              const SizedBox(height: 8),
-              SelectableText(
-                rawJson,
-                key: ValueKey('timeline-raw-${item.itemId}'),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _TimelineGlyph extends StatelessWidget {

@@ -8806,6 +8806,65 @@ void main() {
     expect(find.text('Show full output'), findsNothing);
   });
 
+  testWidgets('active reasoning floats directly above the composer', (
+    tester,
+  ) async {
+    final timelineController = ChatTimelineController();
+    final turnController = TurnController(runnerProvider: () => null);
+    addTearDown(timelineController.dispose);
+    addTearDown(turnController.dispose);
+    const runningTurn = TurnSummary(
+      id: 'turn_reasoning',
+      status: 'inProgress',
+      itemCount: 0,
+      itemsView: 'notLoaded',
+    );
+    turnController.trackStartedTurn(threadId: 'thr_1', turn: runningTurn);
+    timelineController.ingest(
+      CodexEvent.fromNotification({
+        'method': 'item/reasoning/summaryTextDelta',
+        'params': {
+          'threadId': 'thr_1',
+          'turnId': 'turn_reasoning',
+          'itemId': 'reason_1',
+          'delta': '**Checking** the active turn',
+        },
+      }),
+    );
+
+    await _pumpChatPage(
+      tester,
+      timelineController: timelineController,
+      turnController: turnController,
+    );
+
+    final overlay = find.byKey(const ValueKey('chat-reasoning-overlay'));
+    final composer = find.byKey(const ValueKey('chat-composer-chrome'));
+    expect(overlay, findsOneWidget);
+    expect(
+      tester.getBottomLeft(overlay).dy,
+      lessThanOrEqualTo(tester.getTopLeft(composer).dy),
+    );
+    expect(
+      find.byKey(const ValueKey('chat-reasoning-markdown')),
+      findsOneWidget,
+    );
+    expect(find.byType(ExpansionTile), findsNothing);
+
+    turnController.finishTurn(
+      threadId: 'thr_1',
+      turn: const TurnSummary(
+        id: 'turn_reasoning',
+        status: 'completed',
+        itemCount: 0,
+        itemsView: 'full',
+      ),
+    );
+    await tester.pump();
+
+    expect(overlay, findsNothing);
+  });
+
   testWidgets(
     'uses dark semantic colors for timeline terminal and diff blocks',
     (tester) async {

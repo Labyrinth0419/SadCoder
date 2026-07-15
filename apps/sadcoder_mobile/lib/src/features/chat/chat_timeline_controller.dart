@@ -82,6 +82,25 @@ class ChatTimelineController extends ChangeNotifier {
     return null;
   }
 
+  String? reasoningMarkdownForTurn(String? turnId) {
+    final normalizedTurnId = _normalized(turnId);
+    if (normalizedTurnId == null) {
+      return null;
+    }
+    final turnIndex = _turns.indexWhere(
+      (turn) => turn.turnId == normalizedTurnId,
+    );
+    if (turnIndex == -1) {
+      return null;
+    }
+    final sections = [
+      for (final item in _turns[turnIndex].items)
+        if (item.itemType == 'reasoning' && item.text.trim().isNotEmpty)
+          item.text.trim(),
+    ];
+    return sections.isEmpty ? null : sections.join('\n\n');
+  }
+
   void attach(Stream<CodexEvent>? events) {
     if (identical(_attachedEvents, events)) {
       return;

@@ -162,6 +162,36 @@ void main() {
     expect(controller.lastAssistantMessageMarkdown(), 'second');
   });
 
+  test('reasoningMarkdownForTurn combines current turn reasoning sections', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.ingest(_turnStarted());
+    controller.ingest(
+      _itemStarted(
+        itemId: 'reason_1',
+        itemType: 'reasoning',
+        raw: {'id': 'reason_1', 'type': 'reasoning', 'summary': <Object?>[]},
+      ),
+    );
+    controller.ingest(_reasoningDelta('reason_1', '**Inspecting** code'));
+    controller.ingest(
+      _itemStarted(
+        itemId: 'reason_2',
+        itemType: 'reasoning',
+        raw: {'id': 'reason_2', 'type': 'reasoning', 'summary': <Object?>[]},
+      ),
+    );
+    controller.ingest(_reasoningDelta('reason_2', '- Found one issue'));
+
+    expect(
+      controller.reasoningMarkdownForTurn('turn_1'),
+      '**Inspecting** code\n\n- Found one issue',
+    );
+    expect(controller.reasoningMarkdownForTurn('turn_missing'), isNull);
+    expect(controller.reasoningMarkdownForTurn(null), isNull);
+  });
+
   test('showThread backfills turns and items from thread read detail', () {
     final controller = ChatTimelineController();
     addTearDown(controller.dispose);
@@ -853,6 +883,18 @@ CodexEvent _agentDelta(String itemId, String delta) {
 CodexEvent _commandDelta(String itemId, String delta) {
   return CodexEvent.fromNotification({
     'method': 'item/commandExecution/outputDelta',
+    'params': {
+      'threadId': 'thr_1',
+      'turnId': 'turn_1',
+      'itemId': itemId,
+      'delta': delta,
+    },
+  });
+}
+
+CodexEvent _reasoningDelta(String itemId, String delta) {
+  return CodexEvent.fromNotification({
+    'method': 'item/reasoning/summaryTextDelta',
     'params': {
       'threadId': 'thr_1',
       'turnId': 'turn_1',

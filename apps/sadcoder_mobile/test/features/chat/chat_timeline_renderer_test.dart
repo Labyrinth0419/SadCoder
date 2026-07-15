@@ -183,6 +183,30 @@ void main() {
     expect(find.textContaining('Status: active'), findsOneWidget);
     expect(find.textContaining('Tokens used: 42'), findsOneWidget);
   });
+
+  testWidgets('timeline renderer omits reasoning from conversation history', (
+    tester,
+  ) async {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+    controller.ingest(
+      CodexEvent.fromNotification({
+        'method': 'item/reasoning/summaryTextDelta',
+        'params': {
+          'threadId': 'thr_1',
+          'turnId': 'turn_1',
+          'itemId': 'reason_1',
+          'delta': '**Private reasoning**',
+        },
+      }),
+    );
+
+    await _pumpRenderer(tester, controller);
+
+    expect(find.text('No events yet'), findsOneWidget);
+    expect(find.textContaining('Private reasoning'), findsNothing);
+    expect(find.byType(ExpansionTile), findsNothing);
+  });
 }
 
 ThreadSummary _thread() => const ThreadSummary(
