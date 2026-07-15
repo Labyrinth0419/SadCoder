@@ -924,6 +924,15 @@ MVP 可以简化为底部导航：
 - 本轮结构整理将 `/review` 的参数解析、`ThreadReviewRunner.startReview` 调用、返回 turn 跟踪、timeline 插入和 thread detail 刷新从 `ChatPage` 拆到 `features/chat/chat_review_command.dart`；`ChatPage` 只传入当前 thread/context controllers 和列表刷新回调。
 - 已补齐 active turn 文本追加路径：`CodexAppServerClient`、`CodexTurnRunner`、`TurnController` 和 Chat composer 已支持 `turn/steer`，active turn 中发送普通文本会带 `expectedTurnId` steer 当前回合，而不是启动新 turn 或禁用输入；本次 turn overrides 仍只随 `turn/start` 消耗，不会被 steer 清掉。
 
+### 9.2.1 Goal / 重连稳定性修复（完成于 2026-07-15 11:50:14 +08:00）
+
+- [x] **`/goal <objective>` 已对齐 TUI 的状态编辑语义。** 设置 objective 前先读取当前权威 goal：首次创建继续让服务端默认 `active`，已有 `complete` / `budgetLimited` goal 显式恢复 `active`，`paused` / `blocked` / `usageLimited` 保持上游状态；显式 `/goal status ...` 不做额外读取。`thread/goal/set` 返回后只提示“目标已更新，将在就绪后继续执行”，不再把正常的 `0 token` 初始快照表达成执行完成。已覆盖首次 goal、两个终态、paused/blocked/usageLimited 和显式状态更新测试。提交：`ff47af3`。
+- [x] **权威 `thread/goal/updated` 已进入 live/replay timeline。** `CodexEvent` 解析完整 `ThreadGoal`，timeline 使用独立的 `threadGoalUpdate` 结构化类型，不伪造 `userMessage` 或 `turn/start`；界面显示等价的 `/goal <objective>`、权威状态、token 与时间用量。以服务端 `threadId + createdAt` 标识同一 goal 实例，后续状态更新与 reconnect snapshot 更新同一条记录，避免重复。提交：`7f592ed`。
+- [x] **session recovery 已按 profile、connection generation、request generation 和 threadId 隔离。** `CodexSessionStateController` 为每个实际连接发布 generation；恢复请求在每次 await 后校验完整 ownership token，离开 connected 时立即使旧请求失效并清理 detail/turn/timeline 内存状态，同 profile 新连接仅恢复挂起 thread，切换 profile/host 不继承旧 thread。timeline 的 detail/turn/window hydration 已收敛到 `ChatPage -> ChatTimelineWindowCoordinator`，空 item 页可回退到稳定 `thread/read` turns；窗口 reset 会拒绝旧 host 的迟到页，snapshot 与 live delta 按服务端顺序合并并按 item ID 去重。提交：`bdc3c2b`。
+- [x] **回归验证已完成。** 覆盖“旧请求在途 -> 断开 -> 连接另一 profile -> 旧结果迟到”、同 session reconnect、host switch、live delta 与初始/分页窗口交错、goal live/replay 去重、完整 detail fallback 和原有 host timeline/后台通知流程；`flutter analyze` 无问题，完整 `flutter test` 共 `1230` 项全部通过。
+
+以上三项已完成，`/goal` 与 reconnect timeline 可按当前稳定 app-server 能力标记为端到端稳定。
+
 ### 9.3 Approvals 页面
 
 审批优先级最高，需要可从通知直接进入。
