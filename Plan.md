@@ -850,8 +850,8 @@ MVP 可以简化为底部导航：
 - item 渲染：
   - 用户消息。
   - assistant message。
-  - reasoning 折叠块。
-  - command execution 卡片：命令、cwd、实时输出、exit code。
+  - active reasoning：Markdown 渲染并浮动在输入框上方，不折叠、不混入历史消息流。
+  - command execution 卡片：命令与永久受限的头尾输出摘要，不提供完整输出入口。
   - file change 卡片：文件名、状态、diff。
   - MCP tool 卡片：server、tool、args/result。
   - web search item。
@@ -866,7 +866,7 @@ MVP 可以简化为底部导航：
 
 当前实现状态：
 
-- 已收敛 Chat 顶部为左侧三横线会话侧栏按钮、中部 TUI 式状态词（idle/running/working/failed）+ 当前工作详情和右侧 host selector；活动条会从当前非终态 timeline item 提取命令/工具/文件变更详情，不暴露 thread/turn 内部 id。主区域优先显示 thread timeline 的用户/Codex 文本、工具调用、命令输出和 diff；用户/Codex 消息采用开放消息流，命令/工具/diff 采用执行块，推理等低频内容默认折叠，会话列表不再展示 cwd/status 详情，timeline item metadata 不进入默认主对话流。
+- 已收敛 Chat 顶部为左侧三横线会话侧栏按钮、中部 TUI 式状态词（idle/running/working/failed）+ 当前工作详情和右侧 host selector；活动条会从当前非终态 timeline item 提取命令/工具/文件变更详情，不暴露 thread/turn 内部 id。主区域优先显示 thread timeline 的用户/Codex 文本、工具调用、命令输出和 diff；用户/Codex 消息采用开放消息流，命令/工具/diff 采用执行块，当前活动 turn 的 reasoning 以不折叠 Markdown 浮层固定在 composer 上方且不混入历史消息流，会话列表不再展示 cwd/status 详情，timeline item metadata 不进入默认主对话流。
 - 本轮 UI pass 已补强 Chat 主画布权重和 TUI 状态 marker/status chip，侧栏开关固定为左上三横线且默认收起会话侧栏，timeline turn 作为主内容渲染并有 widget 测试覆盖；会话侧栏已改为工具侧栏式列表 surface，点选会话只切换/加载 timeline，不展示 Thread detail/cwd/turn id 详情；顶栏状态和主机选择器支持窄屏 flex 收缩，斜杠命令预览仍保留为输入附近的轻提示，不再抢占默认对话信息架构。
 - Chat 高级折叠区已按能力拆分：配置覆盖控件只在有 `CodexConfigOverrideController` 时出现，Raw RPC 面板可显示禁用态，但发送只依赖已注入的 session controller，避免 session-only 页面展开高级区时因覆盖 controller 缺失而崩溃；默认对话面仍不显示这些调试控件。
 - 最新 UI pass 已把 active turn 的 raw `Status: inProgress` 从主 timeline 移除，running/working/failed 详情只由顶部 TUI 状态槽承担；高级调试入口改为图标折叠按钮，斜杠命令输入预览改为轻量 inline surface，避免底部输入区继续占用对话主体。
@@ -875,14 +875,14 @@ MVP 可以简化为底部导航：
 - 本轮 UI pass 继续强化对话主体权重：顶部 activity strip 增加 TUI 式语义色轨，running/working/failed 详情仍只放在顶部状态槽；会话侧栏行改为紧凑工具行和选中 rail，仅展示会话标题，不回退显示 cwd、status、thread/turn id 等详情。
 - 本轮 UI polish 将会话侧栏的 active / archived 模式切换从横向 segmented control 改为竖向紧凑工具按钮，保留 tooltip、选中 rail 和图标语义，避免窄侧栏横向挤压对话主体。
 - 侧聊提示面板也已去掉 side/main thread id，仅保留侧聊标题、触发命令和返回主线按钮；默认对话画布不再显示内部会话详情。
-- 本轮 Chat 可见 UI 里程碑已将 user / Codex 文本改为左右气泡式阅读流，并默认复用 Files Markdown 预览的 MarkdownBody、代码高亮和图片占位策略；command/file/tool/reasoning 仍保持中性 timeline block，超长文本回退 selectable raw，长 command output 默认折叠并提供行数/字节数、尾部摘要和展开动作。Composer 已压缩为多行自动换行输入，移除输入模式/发送快捷键/terminal pet helper 文案，高级控制入口迁入左上三横线侧栏，timeline 增加跳到最新行为：同一 thread 新事件尊重用户历史位置，切换 thread/session 默认滚到最新。
+- 本轮 Chat 可见 UI 里程碑已将 user / Codex 文本改为左右气泡式阅读流，并默认复用 Files Markdown 预览的 MarkdownBody、代码高亮和图片占位策略；command/file/tool 保持中性 timeline block，active reasoning 改为 composer 上方的不折叠 Markdown 浮层，超长文本回退 selectable raw。command output 永久只显示行数/字节数与头尾摘要，中段始终省略，短输出也至少隐藏一个字符，不再存在展开或完整输出动作。Composer 已压缩为多行自动换行输入，移除输入模式/发送快捷键/terminal pet helper 文案，高级控制入口迁入左上三横线侧栏，timeline 增加跳到最新行为：同一 thread 新事件尊重用户历史位置，切换 thread/session 默认滚到最新。
 - 后续 Chat 输入框修复已将 composer 改为受最大高度约束的真正多行输入区：移动端键盘动作保留换行，长文本软换行后输入框增高到上限再内部滚动；硬件 Enter / Ctrl+Enter 发送仍按 keymap 执行，widget 测试覆盖长中文输入不再把布局向右撑开。
-- 本轮 Chat UI / timeline 性能里程碑已修正消息方向契约：user 消息固定右侧、Codex/assistant 消息固定左侧，文本气泡使用约 92% 可用 timeline 宽度且保留左右方向感；command/file/tool/reasoning 仍为中性 timeline block。Chat timeline 新增可拖动的浮层“跳到最新”按钮，位置限制在对话内容区域内，不占 composer 或 timeline layout 空间；左上三横线会话侧栏使用 210ms ease-out slide/fade 过渡，打开/关闭不再跳变。全局正文、中文、英文、代码块和 terminal/diff/raw 输出统一到随包发布的 LXGW WenKai Mono 字体，并在 `assets/fonts` 保留 OFL 授权文本。
+- 本轮 Chat UI / timeline 性能里程碑已修正消息方向契约：user 消息固定右侧、Codex/assistant 消息固定左侧，文本气泡使用约 92% 可用 timeline 宽度且保留左右方向感；command/file/tool 仍为中性 timeline block，active reasoning 使用独立的 composer 上方 Markdown 浮层。Chat timeline 新增可拖动的浮层“跳到最新”按钮，位置限制在对话内容区域内，不占 composer 或 timeline layout 空间；左上三横线会话侧栏使用 210ms ease-out slide/fade 过渡，打开/关闭不再跳变。全局正文、中文、英文、代码块和 terminal/diff/raw 输出统一到随包发布的 LXGW WenKai Mono 字体，并在 `assets/fonts` 保留 OFL 授权文本。
 - 本轮 Chat timeline 已改为有界窗口与按需分页：普通 thread 选择先读取 metadata，再通过 `thread/items/list(sortDirection=desc, limit=80)` 拉最新窗口，向上滚动接近顶部后按 cursor 继续加载更早 item page；即使 detail reader 意外带回 full turns，只要 item reader 可用，Chat 首屏仍优先使用 bounded items page，full turns 只作为无 reader 或读取失败 fallback；controller 对 item id 去重，失败时保留当前 timeline 并显示 retry 状态，live event / reconnect recovery 的 turn backfill 路径仍保留且同样受窗口上限保护。后续仍需根据真实 app-server cursor 语义做端到端设备验证，确认 `nextCursor` 在各 Codex 版本上均表示更早历史页。
 - 本轮结构整理将 Chat timeline viewport、滚动监听、向上加载触发和可拖动“跳到最新”浮层从 `ChatPage` 拆到 `features/chat/chat_timeline_view.dart`；`ChatPage` 只负责页面编排、侧聊 header 和 timeline renderer 组合。后续若继续降低 `ChatPage` 体量，可再把 timeline item renderer、thread sidebar 与 slash command sheets 分别拆成独立文件。
 - 本轮结构整理将 Chat timeline 首屏有界窗口、向上分页、older-history retry 和 active turn -> timeline 同步从 `ChatPage` 拆到 `features/chat/chat_timeline_window_coordinator.dart`；分页 generation、最近加载 thread id 和 reader fallback 都由 coordinator 持有，`ChatPage` 只在 thread/turn listener 中触发 coordinator，避免页面继续承载 timeline 按需加载状态机。
 - 本轮结构整理继续将 Chat 会话侧栏 surface、workspace 摘要 header、active/archived thread list 与 thread tile 从 `ChatPage` 拆到 `features/chat/chat_thread_sidebar.dart`；高级控制 bottom sheet 仍保留在页面层，避免 sidebar 模块依赖配置覆盖/Raw RPC 调试能力。后续 `ChatPage` 仍可继续拆 timeline item renderer 与 slash command sheets。
-- 本轮结构整理将 Chat timeline renderer、消息气泡、reasoning 折叠块、command/file/tool 执行块、Markdown raw fallback、terminal output 折叠和 diff 渲染从 `ChatPage` 拆到 `features/chat/chat_timeline_renderer.dart`；`ChatPage` 不再直接依赖 Markdown preview / diff block / terminal renderer 细节。后续 `ChatPage` 主要剩余解耦点是 slash command dispatcher callbacks 和各类 command sheets。
+- 本轮结构整理将 Chat timeline renderer、消息气泡、command/file/tool 执行块、Markdown raw fallback、terminal output 头尾摘要和 diff 渲染从 `ChatPage` 拆到 `features/chat/chat_timeline_renderer.dart`；active reasoning 浮层由 `features/chat/chat_reasoning_overlay.dart` 独立承载。`ChatPage` 不再直接依赖 Markdown preview / diff block / terminal renderer 细节。后续 `ChatPage` 主要剩余解耦点是 slash command dispatcher callbacks 和各类 command sheets。
 - 本轮结构整理将 composer 上方的 slash command preview 从 `ChatPage` 拆到 `features/chat/chat_slash_command_preview.dart`，保留 known/unknown/empty slash 的轻提示与“作为文本发送”入口；`ChatPage` 只传入解析结果和回调。后续可继续把 slash command dispatcher callbacks 与 command sheets 从页面层拆出。
 - 本轮结构整理将 Chat 顶部 activity strip / TUI 状态线从 `ChatPage` 拆到 `features/chat/chat_activity_strip.dart`，保留 sidebar toggle、running/working 状态 rail、状态行 chips 和当前 active timeline work 摘要；`ChatPage` 只传入状态 controllers、status line parts 和连接控件。后续 `ChatPage` 仍主要剩余 slash command dispatcher callbacks、command sheets 和高级控制 sheet 可继续拆分。
 - 本轮结构整理将 Chat 右上连接/主机选择控件从 `ChatPage` 拆到 `features/chat/chat_connection_controls.dart`，保留已保存主机别名显示、popup profile 选择、per-host 状态 chip 和连接忙碌态；`ChatPage` 只提供 profiles/session summaries 与选择回调。多 host active host 生命周期由 `HostSessionManager` 统一协调。
@@ -932,6 +932,16 @@ MVP 可以简化为底部导航：
 - [x] **回归验证已完成。** 覆盖“旧请求在途 -> 断开 -> 连接另一 profile -> 旧结果迟到”、同 session reconnect、host switch、live delta 与初始/分页窗口交错、goal live/replay 去重、完整 detail fallback 和原有 host timeline/后台通知流程；`flutter analyze` 无问题，完整 `flutter test` 共 `1230` 项全部通过。
 
 以上三项已完成，`/goal` 与 reconnect timeline 可按当前稳定 app-server 能力标记为端到端稳定。
+
+### 9.2.2 TUI 展示与通知可读性（完成于 2026-07-15 12:43:43 +08:00）
+
+- [x] **命令执行输出已改为永久受限的头尾摘要。** command block 只显示总行数/字节数、头部、已本地化的中段省略标记和尾部；无论长短都至少隐藏一行或一个字符，完整输出永远不会进入 widget tree，展开/收起按钮及对应文案已删除。长输出、短单行输出、亮色/暗色 terminal 语义色和 ChatPage 结构化命令测试均按此安全契约更新。提交：`a1b6048`。
+- [x] **Android 后台通知已完成原生 i18n 与别名优先级。** `SshProfile.notificationLabel` 优先使用用户填写的非空别名，没有别名时回退 `username@host:port`；展示身份通过 `BackgroundConnectionContext -> MethodChannel -> MainActivity -> BackgroundConnectionService` 传递，route matching 仍使用 profile/endpoint，不把展示名称混入连接身份。通知 channel、标题、活动任务、会话、回合和未知主机文案均移入 English / `values-zh-rCN` 资源，长 thread/turn ID 会压缩。提交：`884aca8`。
+- [x] **active reasoning 已按 Codex TUI 方向浮动在 composer 上方。** timeline history 不再渲染 reasoning item；当前活动 turn 的多个 reasoning section 组合为 Markdown，通过 `WorkspaceMarkdownPreview` 直接展示，无折叠控件，并以有界滚动区域防止长推理与输入框重叠；turn 结束后浮层消失。提交：`37f6595`。
+- [x] **queued steer 与 interrupt 已使用专用控制条目。** 普通新 turn 首条输入仍是 user message；活动 turn 中通过 `turn/steer` 提交的文本生成带唯一序号的 `queuedInstruction`，成功 `turn/interrupt` 生成 `interruptInstruction`，两者使用独立图标、颜色、key 和中英文标签，不再伪装成普通用户气泡。app-server 的持久化 `UserMessage` 不携带 queue/interrupt delivery metadata，因此该分类只在当前客户端会话内成立；首次到达且文本匹配的权威 user item 会逐条确认本地 queue，重复 replay/item-completed 不会误消费后来同文本的指令，重连历史不伪造服务端未提供的语义。提交：`8020264`。
+- [x] **全量与设备验证已完成。** `flutter analyze` 无问题，完整 `flutter test` 共 `1241` 项全部通过，`flutter build apk --debug` 成功生成 `apps/sadcoder_mobile/build/app/outputs/flutter-apk/app-debug.apk`（构建产物继续由 Git 忽略）。Android 36 x86_64 emulator 已完成安装和冷启动：Sad 品牌名/icon 与 Hosts 首屏正常渲染；英文通知标题实际为 `Sad - Lab-Workstation` 且未显示 endpoint，简体中文通知实际显示“任务正在执行 / 会话 / 回合”，无别名时实际回退 `Sad - tester@10.0.2.2:22`；长 ID 在通知栏中压缩且无重叠，app 专属 logcat 与 crash buffer 均无 fatal。
+
+以上四项已完成。通知展示身份与连接 route 保持分离；queued/interrupt 的特殊样式遵守当前 app-server 能力边界，不宣称可以从重连历史恢复未持久化的 delivery 语义。
 
 ### 9.3 Approvals 页面
 
