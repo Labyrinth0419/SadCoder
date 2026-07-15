@@ -9,40 +9,42 @@
 >
   <title id="title">Sad app icon</title>
   <desc id="description">
-    Two flat signal ribbons form an abstract S between a mobile client and a remote coding agent.
+    An angular coral and mint S with crisp folded corners and a restrained 8-bit treatment.
   </desc>
 
-  <rect width="1024" height="1024" fill="#121719" />
+  <rect width="1024" height="1024" fill="#F4F6F2" />
 
+  <!-- Offset pixel shadow, kept as a separate silhouette for small-size clarity. -->
   <path
-    fill="#FF665C"
-    d="
-      M 180 202
-      H 474
-      C 610 202 692 290 692 426
-      C 692 512 656 580 570 626
-      L 486 542
-      C 551 508 580 475 580 426
-      C 580 358 541 314 474 314
-      H 180
-      A 56 56 0 1 1 180 202
-      Z
-    "
+    fill="#D7DDD7"
+    transform="translate(14 16)"
+    d="M 373 137 L 258 253 V 405 L 461 609 H 637 L 662 634 V 687 L 618 732 H 296 L 281 746 L 282 833 L 295 846 H 662 L 771 736 V 553 L 623 405 H 414 L 373 364 V 296 L 418 251 H 730 L 745 237 V 152 L 730 137 Z"
   />
 
+  <!-- The dark silhouette is the keyline; all turns are explicit mitered folds. -->
   <path
-    fill="#5ED6C0"
-    d="
-      M 454 398
-      L 538 482
-      C 473 516 444 549 444 598
-      C 444 666 483 710 550 710
-      H 844
-      A 56 56 0 1 1 844 822
-      H 550
-      C 414 822 332 734 332 598
-      C 332 512 368 444 454 398
-      Z
-    "
+    fill="#252B2D"
+    d="M 373 137 L 258 253 V 405 L 461 609 H 637 L 662 634 V 687 L 618 732 H 296 L 281 746 L 282 833 L 295 846 H 662 L 771 736 V 553 L 623 405 H 414 L 373 364 V 296 L 418 251 H 730 L 745 237 V 152 L 730 137 Z"
   />
+
+  <!-- Upper folded ribbon. -->
+  <path
+    fill="#FE5E52"
+    d="M 376 142 H 728 L 741 155 V 233 L 728 246 H 416 L 368 294 V 366 L 411 409 H 619 L 463 604 L 263 403 V 255 Z"
+  />
+
+  <!-- Lower folded ribbon, joined to the upper ribbon with a clean diagonal seam. -->
+  <path
+    fill="#51CEB5"
+    d="M 619 409 L 766 556 V 734 L 658 842 H 299 L 286 829 V 749 L 298 736 H 621 L 666 691 V 631 L 639 604 L 463 604 Z"
+  />
+
+  <g fill="#FFB0AA">
+    <rect x="371" y="190" width="18" height="18" />
+    <rect x="389" y="172" width="18" height="18" />
+  </g>
+  <g fill="#A0EBDD">
+    <rect x="620" y="793" width="18" height="18" />
+    <rect x="638" y="775" width="18" height="18" />
+  </g>
 </svg>

@@ -8,6 +8,9 @@ import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart'
 import 'package:sadcoder_mobile/src/session/host_session_summary.dart';
 import 'package:sadcoder_mobile/src/ssh/ssh_profile.dart';
 import 'package:sadcoder_mobile/src/theme/sadcoder_theme.dart';
+import 'package:sadcoder_mobile/src/threads/thread_detail_controller.dart';
+import 'package:sadcoder_mobile/src/threads/thread_detail_reader.dart';
+import 'package:sadcoder_mobile/src/threads/thread_list_controller.dart';
 import 'package:sadcoder_mobile/src/threads/thread_summary.dart';
 
 void main() {
@@ -210,6 +213,53 @@ void main() {
     expect(selectedThreadId, 'thread-2');
   });
 
+  testWidgets('thread list highlights a session immediately after tapping it', (
+    tester,
+  ) async {
+    final threadListController =
+        ThreadListController(readerProvider: () => null)..restoreCached([
+          _thread(id: 'thread-1', name: 'Release build'),
+          _thread(id: 'thread-2', name: 'Fix CI'),
+        ]);
+    final detailController = ThreadDetailController(
+      readerProvider: () => _StaticThreadDetailReader(),
+    );
+    addTearDown(threadListController.dispose);
+    addTearDown(detailController.dispose);
+
+    await _pumpSidebar(
+      tester,
+      ChatThreadListPanel(
+        controller: threadListController,
+        detailController: detailController,
+        archived: false,
+        onArchivedChanged: (_) {},
+        onUnarchiveThread: null,
+      ),
+    );
+
+    final targetTile = find.byKey(const ValueKey('thread-summary-thread-2'));
+    expect(
+      find.descendant(of: targetTile, matching: find.byIcon(Icons.chat_bubble)),
+      findsNothing,
+    );
+
+    await tester.tap(targetTile);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(of: targetTile, matching: find.byIcon(Icons.chat_bubble)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('thread-summary-thread-1')),
+        matching: find.byIcon(Icons.chat_bubble_outline),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('thread list panel shows disconnected state without controller', (
     tester,
   ) async {
@@ -267,4 +317,16 @@ ThreadSummary _thread({required String id, required String name}) {
     updatedAtSeconds: 1,
     name: name,
   );
+}
+
+class _StaticThreadDetailReader implements ThreadDetailReader {
+  @override
+  Future<ThreadDetail> readThread({
+    required String threadId,
+    bool includeTurns = true,
+  }) async {
+    return ThreadDetail(
+      thread: _thread(id: threadId, name: threadId),
+    );
+  }
 }

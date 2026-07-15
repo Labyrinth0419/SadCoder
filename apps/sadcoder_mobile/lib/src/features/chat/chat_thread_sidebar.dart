@@ -479,8 +479,11 @@ class ChatThreadListPanel extends StatelessWidget {
         child: Text(context.l10n.connectBeforeLoadingThreads),
       );
     }
+    final listenable = detailController == null
+        ? controller
+        : Listenable.merge(<Listenable>[controller, detailController!]);
     return AnimatedBuilder(
-      animation: controller,
+      animation: listenable,
       builder: (context, _) => _ThreadListContent(
         controller: controller,
         detailController: detailController,
