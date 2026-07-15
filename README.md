@@ -1,109 +1,187 @@
-# SadCoder
+# Sad
 
 **中文** | [English](README-en.md)
 
-SadCoder 是一个跨平台移动端 Codex 控制器，用于连接和管理远程服务器上运行的 Codex。移动 App 通过 SSH 连接服务器，启动或接入轻量的服务端 agent，再通过官方 app-server JSON-RPC 协议与 Codex 通信。
+Sad 是一个 API-first 的 Codex 移动客户端。手机通过 SSH 连接服务端，服务端运行 sadcoder-agent，由它管理 Codex app-server 并提供可恢复的代理连接。
 
-当前架构、协议、UI、安全和测试文档从 [docs/README.md](docs/README.md) 开始阅读。未完成工作和需要继续改进的事项只在 [TODO.md](TODO.md) 跟踪。
+## 快速开始
 
-## 仓库结构
+### 服务端准备
 
-- `apps/sadcoder_mobile`：Flutter + Material 3 Android/iOS App。
-- `crates/sadcoder-agent`：负责状态、生命周期和 app-server 代理命令的 Rust 服务端二进制。
-- `crates/sadcoder-protocol`：agent 与测试共享的 Rust 协议 DTO。
-- `resources`：移动端与 agent 共用的 manifest。
-- `refs`：已忽略的 Codex 和 HappyCoder 本地参考项目。
+服务端需要：
 
-## M0 本地协议探针
+- Linux、macOS 或 Windows。
+- 已安装并可执行的 Codex CLI。
+- Rust stable，用于从源码构建 sadcoder-agent。
+- 一个允许手机通过 SSH 登录的用户。
 
-首个实现里程碑用于证明 app-server 协议边界，不重新实现 Codex 业务语义。
+先确认 Codex 可用：
 
-```powershell
-cargo run -p sadcoder-agent -- status --json
-cargo run -p sadcoder-agent -- doctor --json
-cargo run -p sadcoder-agent -- probe --json
-cargo run -p sadcoder-agent -- schema --json
-cargo run -p sadcoder-agent -- slash-commands --json
-```
+~~~powershell
+codex --version
+~~~
 
-`probe --json` 会启动 `codex app-server --listen stdio://`，发送 `initialize`，确认 `initialized`，然后调用 `model/list` 和 `thread/list`。
+### 构建并安装 sadcoder-agent
 
-移动端提供 SSH command runner 抽象，并使用 `dartssh2` 实现远端 agent 命令调用。
+在仓库根目录执行：
 
-交互式 Codex 会话会打开 SSH exec channel 并执行：
+~~~powershell
+cargo install --path crates/sadcoder-agent --locked
+sadcoder-agent --help
+~~~
 
-```powershell
+如果不想安装到用户目录，也可以构建后直接使用：
+
+~~~powershell
+cargo build -p sadcoder-agent --release
+~~~
+
+生成位置：
+
+- Linux/macOS：target/release/sadcoder-agent
+- Windows：target/release/sadcoder-agent.exe
+
+确保 sadcoder-agent 位于 SSH 登录用户的 PATH 中。若 Codex 不在默认 PATH，显式保存其路径：
+
+~~~powershell
+sadcoder-agent configure --codex /path/to/codex --path-prepend /path/to/node/bin --json
+~~~
+
+Windows 示例：
+
+~~~powershell
+sadcoder-agent configure --codex C:\Users\me\AppData\Roaming\npm\codex.cmd --json
+~~~
+
+### 启用服务端 service
+
+检查 Codex 和 agent：
+
+~~~powershell
+sadcoder-agent doctor --json
+sadcoder-agent status --json
+~~~
+
+启动 SadCoder service：
+
+~~~powershell
+sadcoder-agent start --json
+~~~
+
+start 会启动或复用长期运行的 sadcoder-agent service，由 service 持有 Codex app-server。手机 SSH 断开后，服务端的 Codex 任务不会因为 proxy channel 关闭而被直接终止。
+
+再次检查运行状态：
+
+~~~powershell
+sadcoder-agent status --json
+~~~
+
+停止 service：
+
+~~~powershell
+sadcoder-agent stop --json
+~~~
+
+Sad 的生产默认 backend 是 auto，只连接 SadCoder service：
+
+~~~powershell
+$env:SADCODER_BACKEND = "auto"
+sadcoder-agent start --json
+~~~
+
+只有调试或兼容旧环境时才显式使用 direct stdio：
+
+~~~powershell
+$env:SADCODER_BACKEND = "stdio"
+sadcoder-agent probe --json
+~~~
+
+### SSH proxy
+
+Sad App 会在 SSH exec channel 中执行：
+
+~~~powershell
 sadcoder-agent proxy
-```
+~~~
 
-需要时，`start` 会启动长期运行的 `sadcoder-agent service`。service 持有 `codex app-server --listen unix://...`；`proxy` 将 SSH channel 连接到本地 service socket，并在 App JSONL 消息与 app-server WebSocket text frame 之间桥接。service 运行在脱离 SSH channel 的 Unix session 或带 job breakaway 的 Windows process group 中，因此关闭移动端 SSH channel 只会停止 proxy 订阅，不会结束 service 持有的 app-server 进程。
+一般不需要手动执行 proxy。在 App 中添加服务端 SSH 主机后，App 会先调用 start --json，再打开 proxy 通道。
 
-backend 由 `--backend` 或 `SADCODER_BACKEND` 控制：
+## 使用 App
 
-- `auto` 是生产 backend，始终连接 SadCoder service。service 无法启动或访问时，`start --json` 和 `proxy` 返回结构化错误，不会静默降级到 stdio。
-- `auto` 只在已解析的 Codex command 通过 agent 版本/运行时 probe 后报告 ready。Codex 缺失、Node runtime 错误、权限失败或版本输出异常会报告 unavailable，不会把 stdio 错标成可用 backend。
-- `stdio` 强制使用 direct stdio 调试路径；SSH 断开可能结束该 app-server 进程。
-- `daemon` 仅为兼容保留并回退到 stdio，因为 npm/NVM Codex CLI 可能暴露 daemon 命令，但仍缺少官方 standalone installer layout。
+### 使用发布版 APK
 
-`status` 不修改远端状态：在 `auto` 模式下报告 SadCoder service readiness；service 尚未运行时，会说明 `auto` 将启动并连接 SadCoder service。`start --json` 和 `proxy` 使用相同的 service-only 生产 backend；只有显式指定 `--backend stdio` 或兼容的 `--backend daemon` 时才使用 direct stdio。
+从 [Sad 1.0.0 Release](https://github.com/Labyrinth0419/SadCoder/releases/tag/v1.0.0) 下载与设备 ABI 对应的 APK：
 
-`doctor --json` 将已解析 Codex command 的诊断与 `status --json` 使用的 agent status/backend/reconnect-cache 结构组合，调用方可以通过一个非破坏性命令排查 Codex runtime、service readiness 和待恢复状态。
+- app-arm64-v8a-release.apk：绝大多数现代 Android 手机。
+- app-armeabi-v7a-release.apk：32 位 ARM 设备。
+- app-x86_64-release.apk：x86_64 Android 模拟器或设备。
 
-`schema --json` 使用同一个已解析 Codex command 执行 `codex app-server generate-json-schema`，把生成的 JSON Schema bundle 缓存在 agent state 目录，并返回文件数量、总字节数、digest、bundle 路径和 Codex 版本。proxy 也通过 `agent/schema` 暴露同一摘要，并支持可选的 `refresh` 和 `experimental` 参数，因此移动 App 不需要自己定位或执行 `codex`。
+安装后：
 
-## Codex 命令配置
+1. 在 Hosts 中添加服务端 SSH 地址、端口、用户名和认证信息。
+2. 选择该主机并连接。
+3. 打开会话列表，选择历史 session，或点击新建对话。
+4. 在对话区发送普通文本 turn。
 
-移动 App 只需要定位 `sadcoder-agent`。Codex executable、runtime PATH 和版本诊断均以 agent 为权威来源。
+Sad 不要求把登录作为主要流程；核心使用方式是连接你自己的 Codex 服务端 API。
 
-agent 按以下顺序解析 Codex：
+## 本地构建 App
 
-1. `--codex-path` / `--codex-program`
-2. `SADCODER_CODEX_PATH`
-3. 已持久化的 agent config
-4. 继承的 `PATH`
-5. 自动发现常见安装位置
+准备 Flutter stable 和 Android SDK 后，在仓库根目录执行：
 
-自动发现只有在 agent 可以执行同一个 resolved command，并识别其 `codex --version` 输出后才会缓存候选项。无效 wrapper、错误 Node runtime 和与 Codex 无关的同名程序会被跳过，不会写入持久化配置。
-
-持久化 Codex command：
-
-```powershell
-sadcoder-agent configure --codex /home/me/.nvm/versions/node/v24.14.1/bin/codex --path-prepend /home/me/.nvm/versions/node/v24.14.1/bin --json
-```
-
-使用重复的 `--codex-arg` 持久化 wrapper 参数：
-
-```powershell
-sadcoder-agent configure --codex /opt/codex-wrapper --codex-arg --profile --codex-arg mobile --path-prepend /opt/node/bin --json
-```
-
-生成的配置是结构化数据，例如：
-
-```json
-{
-  "codex": {
-    "program": "/home/me/.nvm/versions/node/v24.14.1/bin/codex",
-    "args": [],
-    "pathPrepend": ["/home/me/.nvm/versions/node/v24.14.1/bin"],
-    "version": "codex-cli 0.143.0"
-  }
-}
-```
-
-配置文件位置：
-
-- Linux/macOS：`~/.config/sadcoder/agent.json`
-- Windows：`%LOCALAPPDATA%\SadCoder\agent.json`
-
-`slash-commands --json` 输出 `resources/slash_commands_manifest.json` 中的共享斜杠命令 manifest。manifest 跟踪当前 Codex TUI 命令、别名、可用性规则、实现阶段和 SadCoder 映射策略，确保 `/...` 输入按命令处理，而不是静默作为普通 prompt 发给模型。
-
-## 验证
-
-```powershell
-cargo fmt --all -- --check
-cargo test --workspace
+~~~powershell
 cd apps\sadcoder_mobile
-dart format lib test
+flutter pub get
 flutter analyze
 flutter test
-```
+~~~
+
+构建 debug APK：
+
+~~~powershell
+flutter build apk --debug
+~~~
+
+构建 split-ABI release APK：
+
+~~~powershell
+flutter build apk --release --split-per-abi
+~~~
+
+输出目录：
+
+~~~text
+apps/sadcoder_mobile/build/app/outputs/flutter-apk/
+~~~
+
+生成：
+
+- app-arm64-v8a-release.apk
+- app-armeabi-v7a-release.apk
+- app-x86_64-release.apk
+
+构建 iOS：
+
+~~~powershell
+cd apps\sadcoder_mobile
+flutter build ios --release
+~~~
+
+## 服务端诊断
+
+~~~powershell
+sadcoder-agent status --json
+sadcoder-agent doctor --json
+sadcoder-agent probe --json
+sadcoder-agent schema --json
+sadcoder-agent logs --json
+~~~
+
+status 和 doctor 不修改服务端状态。probe 会验证 Codex app-server 的初始化和核心读取能力。schema 生成或读取当前 Codex 版本的 app-server JSON Schema 缓存。
+
+## 配置位置
+
+- Linux/macOS：~/.config/sadcoder/agent.json
+- Windows：%LOCALAPPDATA%\SadCoder\agent.json
+
+可通过 SADCODER_STATE_PATH 指定 agent 状态和 service 缓存目录。

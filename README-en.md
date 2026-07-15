@@ -1,153 +1,187 @@
-# SadCoder
+# Sad
 
 [中文](README.md) | **English**
 
-SadCoder is a cross-platform mobile controller for Codex running on remote
-servers. The mobile app connects to a server over SSH, starts or attaches to a
-thin server-side agent, and then communicates with Codex through the official
-app-server JSON-RPC protocol.
+Sad is an API-first mobile client for Codex. The phone connects to a server over SSH, the server runs sadcoder-agent, and the agent owns the Codex app-server process while exposing a recoverable proxy connection.
 
-Current architecture, protocol, UI, security, and testing documentation starts
-at [docs/README.md](docs/README.md). Open work and follow-up improvements are
-tracked only in [TODO.md](TODO.md).
+## Quick Start
 
-## Repository Layout
+### Prepare The Server
 
-- `apps/sadcoder_mobile` - Flutter + Material 3 Android/iOS app.
-- `crates/sadcoder-agent` - Rust server-side binary for status, lifecycle, and
-  app-server proxy commands.
-- `crates/sadcoder-protocol` - Rust protocol DTOs shared by the agent and tests.
-- `resources` - shared manifests used by both the mobile app and agent.
-- `refs` - ignored local reference projects for Codex and HappyCoder.
+The server needs:
 
-## M0 Local Probe
+- Linux, macOS, or Windows.
+- An installed Codex CLI that the SSH user can execute.
+- Rust stable to build sadcoder-agent from source.
+- An SSH user that the phone can log in as.
 
-The first implementation milestone focuses on proving the app-server protocol
-boundary without reimplementing Codex semantics.
+Verify Codex first:
 
-```powershell
-cargo run -p sadcoder-agent -- status --json
-cargo run -p sadcoder-agent -- doctor --json
-cargo run -p sadcoder-agent -- probe --json
-cargo run -p sadcoder-agent -- schema --json
-cargo run -p sadcoder-agent -- slash-commands --json
-```
+~~~powershell
+codex --version
+~~~
 
-`probe --json` starts `codex app-server --listen stdio://`, sends
-`initialize`, acknowledges `initialized`, then calls `model/list` and
-`thread/list`.
+### Build And Install sadcoder-agent
 
-The mobile app has an SSH command runner abstraction and a `dartssh2`
-implementation for invoking remote agent commands.
+From the repository root:
 
-For interactive Codex sessions, the mobile app opens an SSH exec channel to:
+~~~powershell
+cargo install --path crates/sadcoder-agent --locked
+sadcoder-agent --help
+~~~
 
-```powershell
+You can also build without installing into the user directory:
+
+~~~powershell
+cargo build -p sadcoder-agent --release
+~~~
+
+The binary is written to:
+
+- Linux/macOS: target/release/sadcoder-agent
+- Windows: target/release/sadcoder-agent.exe
+
+Make sure sadcoder-agent is on the SSH user's PATH. If Codex is not on the default PATH, persist its location:
+
+~~~powershell
+sadcoder-agent configure --codex /path/to/codex --path-prepend /path/to/node/bin --json
+~~~
+
+Windows example:
+
+~~~powershell
+sadcoder-agent configure --codex C:\Users\me\AppData\Roaming\npm\codex.cmd --json
+~~~
+
+### Enable The Server Service
+
+Check Codex and the agent:
+
+~~~powershell
+sadcoder-agent doctor --json
+sadcoder-agent status --json
+~~~
+
+Start the SadCoder service:
+
+~~~powershell
+sadcoder-agent start --json
+~~~
+
+start starts or reuses a long-lived sadcoder-agent service. The service owns the Codex app-server process, so closing the phone's SSH proxy channel does not directly terminate the server-side Codex task.
+
+Check the service again:
+
+~~~powershell
+sadcoder-agent status --json
+~~~
+
+Stop the service:
+
+~~~powershell
+sadcoder-agent stop --json
+~~~
+
+Sad uses the auto backend in production. It connects only to the SadCoder service:
+
+~~~powershell
+$env:SADCODER_BACKEND = "auto"
+sadcoder-agent start --json
+~~~
+
+Use direct stdio only for debugging or compatibility testing:
+
+~~~powershell
+$env:SADCODER_BACKEND = "stdio"
+sadcoder-agent probe --json
+~~~
+
+### SSH Proxy
+
+The Sad App opens an SSH exec channel and runs:
+
+~~~powershell
 sadcoder-agent proxy
-```
+~~~
 
-`start` launches a long-lived `sadcoder-agent service` when needed. The service
-owns `codex app-server --listen unix://...`; `proxy` connects the SSH channel to
-that local service socket and bridges the app's JSONL messages to app-server
-WebSocket text frames. The service is spawned in a detached Unix session or
-Windows process group with job breakaway, so closing the mobile SSH channel only
-stops the proxy subscription, not the app-server process owned by the service.
+You normally do not run proxy manually. After you add a server in the App, the App calls start --json and then opens the proxy channel.
 
-Backend selection is controlled by `--backend` or `SADCODER_BACKEND`:
+## Using The App
 
-- `auto` is the production backend and always targets the SadCoder service.
-  If the service cannot be started or reached, `start --json` and `proxy`
-  return a structured error instead of silently falling back to stdio.
-- `auto` only reports a ready backend after the resolved Codex command passes
-  the agent's version/runtime probe. Missing Codex binaries, Node runtime
-  errors, permission failures, or malformed version output are reported as
-  unavailable instead of a ready stdio backend.
-- `stdio` forces the direct stdio debug path; SSH disconnect can end that
-  app-server process.
-- `daemon` is accepted for compatibility, but falls back to stdio because
-  npm/NVM Codex CLIs can expose daemon commands that still require the official
-  standalone installer layout.
+### Install A Release APK
 
-`status` is non-mutating: in `auto` mode it reports the SadCoder service
-readiness and, when the service is not running yet, reports that `auto` will
-start and connect to the SadCoder service. `start --json` and `proxy` use the
-same service-only production backend selected by `auto`; direct stdio remains
-available only when explicitly requested with `--backend stdio` or the
-compatibility `--backend daemon` mode.
+Download the APK matching the device ABI from the [Sad 1.0.0 Release](https://github.com/Labyrinth0419/SadCoder/releases/tag/v1.0.0):
 
-`doctor --json` combines the resolved Codex command diagnostic with the same
-agent status/backend/reconnect-cache shape used by `status --json`, so callers
-can troubleshoot Codex runtime, service readiness, and pending reconnect state
-from one non-mutating command.
+- app-arm64-v8a-release.apk: most modern Android phones.
+- app-armeabi-v7a-release.apk: 32-bit ARM devices.
+- app-x86_64-release.apk: x86_64 Android emulators or devices.
 
-`schema --json` uses the same resolved Codex command to run
-`codex app-server generate-json-schema`, caches the generated JSON Schema bundle
-under the agent state directory, and returns file count, total bytes, digest,
-bundle path, and Codex version metadata. The proxy also exposes the same summary
-through `agent/schema`, with optional `refresh` and `experimental` booleans, so
-the mobile app does not need to locate or execute `codex` itself.
+After installation:
 
-## Codex Command Configuration
+1. Add the server SSH address, port, username, and authentication details in Hosts.
+2. Select the host and connect.
+3. Open the session list, select a history session, or start a new conversation.
+4. Send ordinary text turns from the chat composer.
 
-The mobile app only needs to find `sadcoder-agent`. The agent is the source of
-truth for the Codex executable, runtime PATH, and version diagnostics.
+Sad does not make account login the primary workflow. The main path is connecting to your own Codex server API.
 
-The agent resolves Codex in this order:
+## Build The App Locally
 
-1. `--codex-path` / `--codex-program`
-2. `SADCODER_CODEX_PATH`
-3. persisted agent config
-4. inherited `PATH`
-5. automatic discovery of common install locations
+Install Flutter stable and the Android SDK, then run from the repository root:
 
-Automatic discovery only caches a candidate after the agent can run the same
-resolved command and recognize its `codex --version` output. Invalid wrappers,
-wrong Node runtimes, and unrelated programs named `codex` are skipped instead
-of being persisted.
-
-Persist a Codex command with:
-
-```powershell
-sadcoder-agent configure --codex /home/me/.nvm/versions/node/v24.14.1/bin/codex --path-prepend /home/me/.nvm/versions/node/v24.14.1/bin --json
-```
-
-Wrapper arguments can be persisted with repeated `--codex-arg` flags:
-
-```powershell
-sadcoder-agent configure --codex /opt/codex-wrapper --codex-arg --profile --codex-arg mobile --path-prepend /opt/node/bin --json
-```
-
-The resulting config is structured, for example:
-
-```json
-{
-  "codex": {
-    "program": "/home/me/.nvm/versions/node/v24.14.1/bin/codex",
-    "args": [],
-    "pathPrepend": ["/home/me/.nvm/versions/node/v24.14.1/bin"],
-    "version": "codex-cli 0.143.0"
-  }
-}
-```
-
-Config file locations:
-
-- Linux/macOS: `~/.config/sadcoder/agent.json`
-- Windows: `%LOCALAPPDATA%\SadCoder\agent.json`
-
-`slash-commands --json` prints the shared slash command manifest from
-`resources/slash_commands_manifest.json`. The manifest tracks the current Codex
-TUI slash command surface, aliases, availability rules, implementation phase,
-and SadCoder mapping strategy so `/...` input is handled as a command rather
-than silently sent as a normal prompt.
-
-## Verification
-
-```powershell
-cargo fmt --all -- --check
-cargo test --workspace
+~~~powershell
 cd apps\sadcoder_mobile
-dart format lib test
+flutter pub get
 flutter analyze
 flutter test
-```
+~~~
+
+Build a debug APK:
+
+~~~powershell
+flutter build apk --debug
+~~~
+
+Build split-ABI release APKs:
+
+~~~powershell
+flutter build apk --release --split-per-abi
+~~~
+
+Outputs are written to:
+
+~~~text
+apps/sadcoder_mobile/build/app/outputs/flutter-apk/
+~~~
+
+The split build produces:
+
+- app-arm64-v8a-release.apk
+- app-armeabi-v7a-release.apk
+- app-x86_64-release.apk
+
+Build iOS:
+
+~~~powershell
+cd apps\sadcoder_mobile
+flutter build ios --release
+~~~
+
+## Server Diagnostics
+
+~~~powershell
+sadcoder-agent status --json
+sadcoder-agent doctor --json
+sadcoder-agent probe --json
+sadcoder-agent schema --json
+sadcoder-agent logs --json
+~~~
+
+status and doctor are non-mutating. probe verifies Codex app-server initialization and core reads. schema generates or reads the app-server JSON Schema cache for the resolved Codex version.
+
+## Configuration Paths
+
+- Linux/macOS: ~/.config/sadcoder/agent.json
+- Windows: %LOCALAPPDATA%\SadCoder\agent.json
+
+Set SADCODER_STATE_PATH to choose the agent state and service cache directory.
