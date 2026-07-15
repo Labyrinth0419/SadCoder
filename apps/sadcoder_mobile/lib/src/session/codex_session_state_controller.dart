@@ -120,6 +120,7 @@ class CodexSessionStateController extends ChangeNotifier {
   SshProfile? _profile;
   Object? _error;
   int _generation = 0;
+  int _connectionGeneration = 0;
   int _reconnectAttempt = 0;
   Duration? _nextReconnectDelay;
   bool _disposed = false;
@@ -127,6 +128,9 @@ class CodexSessionStateController extends ChangeNotifier {
   CodexSessionStatus get status => _status;
 
   bool get isConnected => _status == CodexSessionStatus.connected;
+
+  int? get activeConnectionGeneration =>
+      isConnected && _connection != null ? _connectionGeneration : null;
 
   SshProfile? get profile => _profile;
 
@@ -714,6 +718,7 @@ class CodexSessionStateController extends ChangeNotifier {
     SshProfile profile,
     int generation,
   ) {
+    _connectionGeneration++;
     _connection = connection;
     _attachConnectionEvents(connection);
     _watchConnectionDone(connection, generation);

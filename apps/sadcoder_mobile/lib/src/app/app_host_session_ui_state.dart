@@ -72,10 +72,9 @@ class AppHostSessionUiState {
       turnController: turnController,
       threadTurnListReaderProvider: () =>
           sessionController.threadTurnListReader,
-      threadItemListReaderProvider: () =>
-          sessionController.threadItemListReader,
-      threadItemRecoveryHandler: timelineController.restoreThreadItems,
       threadRecoveryHintProvider: _loadRecoveryHint,
+      sessionIdentityProvider: _sessionRecoveryIdentity,
+      sessionIsolationHandler: _isolateSessionState,
     );
     threadListController.addListener(_handleThreadListChanged);
     threadDetailController.addListener(_handleThreadDetailChanged);
@@ -111,6 +110,7 @@ class AppHostSessionUiState {
   final Set<String> _unknownCursorGapRecoveredThreadIds = {};
   bool _unknownCursorGapActive = false;
   bool _restoringCachedThreadState = false;
+  bool _sessionStateIsolated = false;
   bool _disposed = false;
 
   void attachEvents() {
@@ -123,6 +123,7 @@ class AppHostSessionUiState {
 
   void handleSessionStatus(CodexSessionStatus status) {
     if (status == CodexSessionStatus.connected) {
+      _sessionStateIsolated = false;
       unawaited(
         _restoreCachedThreadStateOnce()
             .then((_) {
@@ -278,26 +279,8 @@ class AppHostSessionUiState {
   }
 
   void _handleThreadDetailChanged() {
-    switch (threadDetailController.status) {
-      case ThreadDetailStatus.loading:
-        timelineController.selectThread(
-          threadDetailController.selectedThreadId,
-        );
-      case ThreadDetailStatus.loaded:
-        final detail = threadDetailController.detail;
-        if (detail != null &&
-            detail.thread.id == threadDetailController.selectedThreadId) {
-          if (detail.thread.turns.isEmpty) {
-            timelineController.selectThread(detail.thread.id);
-          } else {
-            timelineController.showThread(detail.thread);
-          }
-        }
-        _recoverCurrentThreadIfCursorGapPending();
-      case ThreadDetailStatus.idle:
-        timelineController.clear();
-      case ThreadDetailStatus.failed:
-        break;
+    if (threadDetailController.status == ThreadDetailStatus.loaded) {
+      _recoverCurrentThreadIfCursorGapPending();
     }
     _persistThreadCache();
   }
@@ -325,7 +308,6 @@ class AppHostSessionUiState {
   }
 
   void _handleTurnChanged() {
-    _syncActiveTurnToTimeline();
     _recoverActiveThreadIfCursorGapPending();
     _persistThreadCache();
   }
@@ -348,21 +330,30 @@ class AppHostSessionUiState {
     _sessionRecoveryCoordinator.recoverThread(threadId);
   }
 
-  void _syncActiveTurnToTimeline() {
-    final activeThreadId = _normalized(turnController.activeThreadId);
-    if (activeThreadId == null) {
-      return;
-    }
-    final lastTurn = turnController.lastTurn;
-    if (lastTurn != null && lastTurn.id.trim().isNotEmpty) {
-      timelineController.showTurn(threadId: activeThreadId, turn: lastTurn);
-      return;
-    }
-    timelineController.selectThread(activeThreadId);
-  }
-
   void _handleTimelineChanged() {
     _persistTimelineCursor();
+  }
+
+  void _isolateSessionState() {
+    _sessionStateIsolated = true;
+    timelineController.clear();
+  }
+
+  ThreadRecoverySessionIdentity? _sessionRecoveryIdentity() {
+    final connectionGeneration = sessionController.activeConnectionGeneration;
+    final profile = sessionController.profile;
+    if (connectionGeneration == null || profile == null) {
+      return null;
+    }
+    final explicitProfileId = _normalized(profile.id);
+    final profileId = explicitProfileId != null && explicitProfileId != 'manual'
+        ? explicitProfileId
+        : sshProfileId(
+            host: profile.host,
+            port: profile.port,
+            username: profile.username,
+          );
+    return (profileId: profileId, connectionGeneration: connectionGeneration);
   }
 
   void _handleAgentSnapshot(AgentSnapshot snapshot) {
@@ -424,7 +415,7 @@ class AppHostSessionUiState {
   }
 
   void _persistThreadCache() {
-    if (_disposed || _restoringCachedThreadState) {
+    if (_disposed || _restoringCachedThreadState || _sessionStateIsolated) {
       return;
     }
     final store = threadCacheStore;

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sadcoder_mobile/src/app/app_session_recovery_coordinator.dart';
 import 'package:sadcoder_mobile/src/session/codex_session_state_controller.dart';
@@ -37,12 +39,70 @@ void main() {
     await _flushMicrotasks();
 
     expect(fixture.threadListReader.limits, [20, 20]);
-    expect(fixture.threadDetailReader.threadIds, [
-      'thr_selected',
-      'thr_selected',
-    ]);
-    expect(fixture.threadDetailReader.includeTurnsValues, [true, true]);
+    expect(fixture.threadDetailReader.threadIds, ['thr_selected']);
+    expect(fixture.threadDetailReader.includeTurnsValues, [true]);
+    expect(fixture.isolationCount, 1);
   });
+
+  test('drops an old recovery result after switching profiles', () async {
+    ThreadRecoverySessionIdentity? identity = (
+      profileId: 'profile-a',
+      connectionGeneration: 1,
+    );
+    final itemReader = _DeferredThreadItemListReader();
+    final fixture = _Fixture(
+      threadItemListReader: itemReader,
+      sessionIdentityProvider: () => identity,
+    );
+    addTearDown(fixture.dispose);
+    await fixture.threadDetailController.readThread('thr_profile_a');
+    fixture.threadDetailReader.clear();
+
+    fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
+    await _flushMicrotasks();
+    expect(itemReader.calls, hasLength(1));
+
+    identity = null;
+    fixture.coordinator.handleSessionStatus(CodexSessionStatus.reconnecting);
+    identity = (profileId: 'profile-b', connectionGeneration: 2);
+    fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
+    itemReader.complete(
+      ThreadItemsPage(
+        items: [_item('item_stale', 'Stale result', turnId: 'turn_old')],
+      ),
+    );
+    await _flushMicrotasks();
+
+    expect(fixture.isolationCount, 1);
+    expect(fixture.threadDetailController.selectedThreadId, isNull);
+    expect(fixture.turnController.activeThreadId, isNull);
+    expect(fixture.recoveredItems, isEmpty);
+  });
+
+  test(
+    'recovers the pending thread on a new same-profile generation',
+    () async {
+      ThreadRecoverySessionIdentity? identity = (
+        profileId: 'profile-a',
+        connectionGeneration: 1,
+      );
+      final fixture = _Fixture(sessionIdentityProvider: () => identity);
+      addTearDown(fixture.dispose);
+      await fixture.threadDetailController.readThread('thr_selected');
+      fixture.threadDetailReader.clear();
+
+      fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
+      identity = null;
+      fixture.coordinator.handleSessionStatus(CodexSessionStatus.reconnecting);
+      identity = (profileId: 'profile-a', connectionGeneration: 2);
+      fixture.coordinator.handleSessionStatus(CodexSessionStatus.connected);
+      await _flushMicrotasks();
+
+      expect(fixture.isolationCount, 1);
+      expect(fixture.threadDetailReader.threadIds, ['thr_selected']);
+      expect(fixture.threadDetailController.selectedThreadId, 'thr_selected');
+    },
+  );
 
   test(
     'backfills recent turns after reconnect with thread turns list',
@@ -610,6 +670,8 @@ class _Fixture {
     ThreadItemListReader? threadItemListReader,
     ThreadTimelineCursorSnapshot? timelineCursor,
     bool forceConservativeBackfill = false,
+    ThreadRecoverySessionIdentityProvider? sessionIdentityProvider,
+    ThreadRecoveryIsolationHandler? sessionIsolationHandler,
   }) : threadListReader = _RecordingThreadListReader(),
        threadDetailReader = _RecordingThreadDetailReader() {
     threadListController = ThreadListController(
@@ -642,6 +704,11 @@ class _Fixture {
               forceConservativeBackfill: true,
             )
           : null,
+      sessionIdentityProvider: sessionIdentityProvider,
+      sessionIsolationHandler: () {
+        isolationCount++;
+        sessionIsolationHandler?.call();
+      },
     );
   }
 
@@ -652,6 +719,7 @@ class _Fixture {
   late final TurnController turnController;
   late final AppSessionRecoveryCoordinator coordinator;
   final recoveredItems = <({String threadId, List<ThreadItemSummary> items})>[];
+  int isolationCount = 0;
 
   void dispose() {
     threadListController.dispose();
@@ -778,6 +846,25 @@ class _RecordingThreadItemListReader implements ThreadItemListReader {
       return const ThreadItemsPage(items: []);
     }
     return pages[pageIndex];
+  }
+}
+
+class _DeferredThreadItemListReader implements ThreadItemListReader {
+  final _completer = Completer<ThreadItemsPage>();
+  final calls = <String>[];
+
+  void complete(ThreadItemsPage page) => _completer.complete(page);
+
+  @override
+  Future<ThreadItemsPage> listItems({
+    required String threadId,
+    String? turnId,
+    String? cursor,
+    int? limit,
+    String? sortDirection,
+  }) {
+    calls.add(threadId);
+    return _completer.future;
   }
 }
 

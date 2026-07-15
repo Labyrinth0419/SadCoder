@@ -603,6 +603,28 @@ void main() {
     );
   });
 
+  test('recovery keeps live deltas ordered and deduplicated', () {
+    final controller = ChatTimelineController();
+    addTearDown(controller.dispose);
+
+    controller.selectThread('thr_1');
+    controller.ingest(_agentDelta('item_live', 'streamed complete'));
+    final recovered = [
+      _threadItem('item_before', 'Persisted before live', turnId: 'turn_1'),
+      _threadItem('item_live', 'streamed', turnId: 'turn_1'),
+    ];
+    controller.restoreThreadItems(threadId: 'thr_1', items: recovered);
+    controller.restoreThreadItems(threadId: 'thr_1', items: recovered);
+
+    expect(controller.turns, hasLength(1));
+    expect(controller.turns.single.items.map((item) => item.itemId), [
+      'item_before',
+      'item_live',
+    ]);
+    expect(controller.turns.single.items.last.text, 'streamed complete');
+    expect(controller.cursor.itemIds.toSet(), hasLength(2));
+  });
+
   test('ingest maps reasoning file changes and MCP progress into timeline', () {
     final controller = ChatTimelineController();
     addTearDown(controller.dispose);

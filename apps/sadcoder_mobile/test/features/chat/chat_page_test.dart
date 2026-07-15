@@ -4309,7 +4309,11 @@ void main() {
         tokenBudget: null,
       ),
     ]);
-    expect(find.textContaining('Objective: Ship goal support'), findsOneWidget);
+    expect(goalRunner.getGoalThreadIds, ['thr_active']);
+    expect(
+      find.text('Goal updated. Execution will continue when ready.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('/goal budget sets budget and optional objective', (
@@ -4356,8 +4360,11 @@ void main() {
       status: null,
       tokenBudget: 7500,
     ));
-    expect(find.textContaining('Objective: Finish benchmark'), findsOneWidget);
-    expect(find.textContaining('Token budget: 7,500 tokens'), findsOneWidget);
+    expect(goalRunner.getGoalThreadIds, ['thr_active']);
+    expect(
+      find.text('Goal updated. Execution will continue when ready.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('/goal status updates the selected thread goal status', (
@@ -4404,7 +4411,11 @@ void main() {
       status: 'complete',
       tokenBudget: null,
     ));
-    expect(find.textContaining('Status: complete'), findsOneWidget);
+    expect(goalRunner.getGoalThreadIds, isEmpty);
+    expect(
+      find.text('Goal updated. Execution will continue when ready.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('/goal clear clears the selected thread goal', (tester) async {

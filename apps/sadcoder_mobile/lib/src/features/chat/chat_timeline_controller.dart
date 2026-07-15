@@ -368,16 +368,24 @@ class ChatTimelineController extends ChangeNotifier {
       _resetHistoryPaging();
     }
     _selectedThreadId = normalizedThreadId;
-    var changed = selectedChanged;
+    final itemsByTurn = <String, List<ThreadItemSummary>>{};
     for (final item in items) {
       if (item.id.trim().isEmpty) {
         continue;
       }
+      final turnId =
+          _normalized(item.turnId) ??
+          _turnIdContainingItem(item.id) ??
+          _cachedItemsTurnId;
+      itemsByTurn.putIfAbsent(turnId, () => []).add(item);
+    }
+    var changed = selectedChanged;
+    for (final entry in itemsByTurn.entries) {
       changed =
-          _mergeCachedItem(
+          _mergeRecoveredItemBatch(
             threadId: normalizedThreadId,
-            turnId: item.turnId,
-            item: item,
+            turnId: entry.key,
+            items: entry.value,
           ) ||
           changed;
     }
@@ -497,6 +505,63 @@ class ChatTimelineController extends ChangeNotifier {
       items[itemIndex] = item.mergeLive(items[itemIndex]);
     }
     _turns[turnIndex] = turn.copyWith(items: items);
+    return true;
+  }
+
+  String? _turnIdContainingItem(String itemId) {
+    for (final turn in _turns) {
+      if (turn.items.any((item) => item.itemId == itemId)) {
+        return turn.turnId;
+      }
+    }
+    return null;
+  }
+
+  bool _mergeRecoveredItemBatch({
+    required String threadId,
+    required String turnId,
+    required List<ThreadItemSummary> items,
+  }) {
+    var turnIndex = _turns.indexWhere((turn) => turn.turnId == turnId);
+    if (turnIndex == -1) {
+      _turns.add(
+        ChatTimelineTurn(
+          threadId: threadId,
+          turnId: turnId,
+          status: 'unknown',
+          items: const [],
+        ),
+      );
+      turnIndex = _turns.length - 1;
+    }
+    final turn = _turns[turnIndex];
+    final existingItems = turn.items;
+    final recoveredIds = {for (final item in items) item.id};
+    var firstOverlap = existingItems.length;
+    for (var index = 0; index < existingItems.length; index++) {
+      if (recoveredIds.contains(existingItems[index].itemId)) {
+        firstOverlap = index;
+        break;
+      }
+    }
+    final mergedItems = <ChatTimelineItem>[...existingItems.take(firstOverlap)];
+    for (final item in items) {
+      final recovered = ChatTimelineItem.fromThreadItem(item);
+      final existingIndex = existingItems.indexWhere(
+        (existing) => existing.itemId == recovered.itemId,
+      );
+      mergedItems.add(
+        existingIndex == -1
+            ? recovered
+            : recovered.mergeLive(existingItems[existingIndex]),
+      );
+    }
+    mergedItems.addAll(
+      existingItems
+          .skip(firstOverlap)
+          .where((existing) => !recoveredIds.contains(existing.itemId)),
+    );
+    _turns[turnIndex] = turn.copyWith(items: mergedItems);
     return true;
   }
 

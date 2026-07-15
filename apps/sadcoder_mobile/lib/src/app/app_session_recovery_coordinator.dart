@@ -18,6 +18,13 @@ typedef ThreadTimelineCursorProvider =
     Future<ThreadTimelineCursorSnapshot?> Function(String threadId);
 typedef ThreadRecoveryHintProvider =
     Future<ThreadRecoveryHint> Function(String threadId);
+typedef ThreadRecoverySessionIdentity = ({
+  String profileId,
+  int connectionGeneration,
+});
+typedef ThreadRecoverySessionIdentityProvider =
+    ThreadRecoverySessionIdentity? Function();
+typedef ThreadRecoveryIsolationHandler = void Function();
 
 class ThreadRecoveryHint {
   const ThreadRecoveryHint({
@@ -41,6 +48,8 @@ class AppSessionRecoveryCoordinator {
     ThreadItemRecoveryHandler? threadItemRecoveryHandler,
     ThreadTimelineCursorProvider? threadTimelineCursorProvider,
     ThreadRecoveryHintProvider? threadRecoveryHintProvider,
+    ThreadRecoverySessionIdentityProvider? sessionIdentityProvider,
+    ThreadRecoveryIsolationHandler? sessionIsolationHandler,
   }) : _threadListController = threadListController,
        _threadDetailController = threadDetailController,
        _turnController = turnController,
@@ -48,7 +57,9 @@ class AppSessionRecoveryCoordinator {
        _threadItemListReaderProvider = threadItemListReaderProvider,
        _threadItemRecoveryHandler = threadItemRecoveryHandler,
        _threadTimelineCursorProvider = threadTimelineCursorProvider,
-       _threadRecoveryHintProvider = threadRecoveryHintProvider;
+       _threadRecoveryHintProvider = threadRecoveryHintProvider,
+       _sessionIdentityProvider = sessionIdentityProvider,
+       _sessionIsolationHandler = sessionIsolationHandler;
 
   final ThreadListController _threadListController;
   final ThreadDetailController _threadDetailController;
@@ -58,7 +69,14 @@ class AppSessionRecoveryCoordinator {
   final ThreadItemRecoveryHandler? _threadItemRecoveryHandler;
   final ThreadTimelineCursorProvider? _threadTimelineCursorProvider;
   final ThreadRecoveryHintProvider? _threadRecoveryHintProvider;
+  final ThreadRecoverySessionIdentityProvider? _sessionIdentityProvider;
+  final ThreadRecoveryIsolationHandler? _sessionIsolationHandler;
   CodexSessionStatus? _lastStatus;
+  ThreadRecoverySessionIdentity? _activeIdentity;
+  ThreadRecoverySessionIdentity? _pendingIdentity;
+  String? _pendingThreadId;
+  int _fallbackConnectionGeneration = 0;
+  int _recoveryGeneration = 0;
 
   static const _turnBackfillLimit = 50;
   static const _turnBackfillMaxPages = 3;
@@ -66,51 +84,88 @@ class AppSessionRecoveryCoordinator {
   static const _itemBackfillMaxPages = 3;
 
   void handleSessionStatus(CodexSessionStatus status) {
+    final wasConnected = _lastStatus == CodexSessionStatus.connected;
+    if (wasConnected && status != CodexSessionStatus.connected) {
+      _pendingThreadId = _threadIdToRecover();
+      _pendingIdentity = _activeIdentity;
+      _invalidateSessionState();
+    }
     final becameConnected =
-        _lastStatus != CodexSessionStatus.connected &&
-        status == CodexSessionStatus.connected;
+        !wasConnected && status == CodexSessionStatus.connected;
     _lastStatus = status;
     if (!becameConnected) {
       return;
     }
 
+    if (_sessionIdentityProvider == null) {
+      _fallbackConnectionGeneration++;
+    }
+    final identity = _currentSessionIdentity();
+    if (identity == null) {
+      return;
+    }
+    _activeIdentity = identity;
     unawaited(_threadListController.refresh());
-    final threadId = _threadIdToRecover();
+    final pendingMatchesProfile =
+        _pendingIdentity?.profileId == identity.profileId;
+    final threadId = pendingMatchesProfile
+        ? _normalized(_pendingThreadId)
+        : _threadIdToRecover();
+    _pendingThreadId = null;
+    _pendingIdentity = null;
     if (threadId != null) {
-      unawaited(_recoverThread(threadId));
+      _startRecovery(threadId);
     }
   }
 
   void recoverCurrentThread() {
     final threadId = _threadIdToRecover();
     if (threadId != null) {
-      unawaited(_recoverThread(threadId));
+      _startRecovery(threadId);
     }
   }
 
   void recoverThread(String threadId) {
     final normalizedThreadId = _normalized(threadId);
     if (normalizedThreadId != null) {
-      unawaited(_recoverThread(normalizedThreadId));
+      _startRecovery(normalizedThreadId);
     }
   }
 
-  Future<void> _recoverThread(String threadId) async {
+  void _startRecovery(String threadId) {
+    final identity = _identityForRecovery();
+    if (identity == null) {
+      return;
+    }
+    final token = _ThreadRecoveryToken(
+      threadId: threadId,
+      profileId: identity.profileId,
+      connectionGeneration: identity.connectionGeneration,
+      recoveryGeneration: ++_recoveryGeneration,
+    );
+    unawaited(_recoverThread(token));
+  }
+
+  Future<void> _recoverThread(_ThreadRecoveryToken token) async {
+    final threadId = token.threadId;
     final recoveryHint = await _loadRecoveryHint(threadId);
+    if (!_isCurrent(token)) {
+      return;
+    }
     final turnListReader = _threadTurnListReaderProvider?.call();
     if (turnListReader == null) {
       final itemRecovered = await _recoverThreadWithItems(
-        threadId,
+        token,
         recoveryHint: recoveryHint,
       );
-      if (!itemRecovered) {
+      if (!itemRecovered && _isCurrent(token)) {
         await _threadDetailController.readThread(threadId);
       }
       return;
     }
 
     await _threadDetailController.readThread(threadId, includeTurns: false);
-    if (_threadDetailController.selectedThreadId != threadId) {
+    if (!_ownsSelectedThread(token)) {
       return;
     }
     try {
@@ -128,7 +183,7 @@ class AppSessionRecoveryCoordinator {
           sortDirection: 'desc',
           itemsView: 'full',
         );
-        if (_threadDetailController.selectedThreadId != threadId) {
+        if (!_ownsSelectedThread(token)) {
           return;
         }
         final reachedKnownTurn = _appendUniqueTurns(
@@ -146,17 +201,19 @@ class AppSessionRecoveryCoordinator {
         }
         cursor = nextCursor;
       }
-      _threadDetailController.backfillTurns(
-        threadId: threadId,
-        turns: turns.reversed.toList(growable: false),
-      );
+      if (_ownsSelectedThread(token)) {
+        _threadDetailController.backfillTurns(
+          threadId: threadId,
+          turns: turns.reversed.toList(growable: false),
+        );
+      }
     } catch (_) {
-      if (_threadDetailController.selectedThreadId == threadId) {
+      if (_ownsSelectedThread(token)) {
         final itemRecovered = await _recoverThreadItems(
-          threadId,
+          token,
           recoveryHint: recoveryHint,
         );
-        if (!itemRecovered) {
+        if (!itemRecovered && _ownsSelectedThread(token)) {
           await _threadDetailController.readThread(threadId);
         }
       }
@@ -164,24 +221,26 @@ class AppSessionRecoveryCoordinator {
   }
 
   Future<bool> _recoverThreadWithItems(
-    String threadId, {
+    _ThreadRecoveryToken token, {
     required ThreadRecoveryHint recoveryHint,
   }) async {
+    final threadId = token.threadId;
     final itemReader = _threadItemListReaderProvider?.call();
     if (itemReader == null || _threadItemRecoveryHandler == null) {
       return false;
     }
     await _threadDetailController.readThread(threadId, includeTurns: false);
-    if (_threadDetailController.selectedThreadId != threadId) {
+    if (!_ownsSelectedThread(token)) {
       return true;
     }
-    return _recoverThreadItems(threadId, recoveryHint: recoveryHint);
+    return _recoverThreadItems(token, recoveryHint: recoveryHint);
   }
 
   Future<bool> _recoverThreadItems(
-    String threadId, {
+    _ThreadRecoveryToken token, {
     required ThreadRecoveryHint recoveryHint,
   }) async {
+    final threadId = token.threadId;
     final itemReader = _threadItemListReaderProvider?.call();
     final recoveryHandler = _threadItemRecoveryHandler;
     if (itemReader == null || recoveryHandler == null) {
@@ -205,7 +264,7 @@ class AppSessionRecoveryCoordinator {
           limit: _itemBackfillLimit,
           sortDirection: 'asc',
         );
-        if (_threadDetailController.selectedThreadId != threadId) {
+        if (!_ownsSelectedThread(token)) {
           return true;
         }
         _appendUniqueItems(fallbackItems, fallbackSeenItemIds, page.items);
@@ -224,8 +283,7 @@ class AppSessionRecoveryCoordinator {
       final recoveredItems = itemBoundary.hasBoundary && itemBoundary.found
           ? items
           : fallbackItems;
-      if (recoveredItems.isNotEmpty &&
-          _threadDetailController.selectedThreadId == threadId) {
+      if (recoveredItems.isNotEmpty && _ownsSelectedThread(token)) {
         recoveryHandler(threadId: threadId, items: recoveredItems);
       }
       return true;
@@ -237,6 +295,61 @@ class AppSessionRecoveryCoordinator {
   String? _threadIdToRecover() {
     return _normalized(_turnController.activeThreadId) ??
         _normalized(_threadDetailController.selectedThreadId);
+  }
+
+  void _invalidateSessionState() {
+    _recoveryGeneration++;
+    _activeIdentity = null;
+    _sessionIsolationHandler?.call();
+    _threadDetailController.clear();
+    _turnController.clearLocalConversation();
+  }
+
+  ThreadRecoverySessionIdentity? _identityForRecovery() {
+    if (_sessionIdentityProvider != null) {
+      return _currentSessionIdentity();
+    }
+    if (_lastStatus != null && _lastStatus != CodexSessionStatus.connected) {
+      return null;
+    }
+    return _activeIdentity ??
+        (
+          profileId: 'default',
+          connectionGeneration: _fallbackConnectionGeneration,
+        );
+  }
+
+  ThreadRecoverySessionIdentity? _currentSessionIdentity() {
+    final provided = _sessionIdentityProvider?.call();
+    if (_sessionIdentityProvider != null) {
+      final profileId = _normalized(provided?.profileId);
+      if (provided == null || profileId == null) {
+        return null;
+      }
+      return (
+        profileId: profileId,
+        connectionGeneration: provided.connectionGeneration,
+      );
+    }
+    return (
+      profileId: 'default',
+      connectionGeneration: _fallbackConnectionGeneration,
+    );
+  }
+
+  bool _ownsSelectedThread(_ThreadRecoveryToken token) {
+    return _isCurrent(token) &&
+        _threadDetailController.selectedThreadId == token.threadId;
+  }
+
+  bool _isCurrent(_ThreadRecoveryToken token) {
+    if (token.recoveryGeneration != _recoveryGeneration) {
+      return false;
+    }
+    final identity = _identityForRecovery();
+    return identity != null &&
+        identity.profileId == token.profileId &&
+        identity.connectionGeneration == token.connectionGeneration;
   }
 
   Future<ThreadTimelineCursorSnapshot?> _loadTimelineCursor(
@@ -349,6 +462,20 @@ class _ItemRecoveryBoundary {
     }
     return false;
   }
+}
+
+class _ThreadRecoveryToken {
+  const _ThreadRecoveryToken({
+    required this.threadId,
+    required this.profileId,
+    required this.connectionGeneration,
+    required this.recoveryGeneration,
+  });
+
+  final String threadId;
+  final String profileId;
+  final int connectionGeneration;
+  final int recoveryGeneration;
 }
 
 String? _normalized(String? value) {

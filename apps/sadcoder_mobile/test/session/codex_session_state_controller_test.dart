@@ -980,10 +980,12 @@ void main() {
     addTearDown(approvalController.dispose);
 
     await controller.connect(_profile);
+    final firstConnectionGeneration = controller.activeConnectionGeneration;
     connector.connections.single.completeDone();
     await _flushMicrotasks();
 
     expect(controller.status, CodexSessionStatus.reconnecting);
+    expect(controller.activeConnectionGeneration, isNull);
     expect(scheduler.delays, [const Duration(milliseconds: 1)]);
 
     scheduler.completeNext();
@@ -1001,6 +1003,10 @@ void main() {
     await _flushMicrotasks();
 
     expect(controller.status, CodexSessionStatus.connected);
+    expect(
+      controller.activeConnectionGeneration,
+      greaterThan(firstConnectionGeneration!),
+    );
     expect(connector.connectedProfiles, [_profile, _profile]);
     expect(connector.connectCount, 3);
   });

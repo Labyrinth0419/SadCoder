@@ -72,7 +72,12 @@ class ChatTimelineWindowCoordinator {
       if (!mounted() || generation != _generation) {
         return;
       }
-      timelineControllerProvider()?.showThreadItemWindow(
+      final timelineController = timelineControllerProvider();
+      if (page.items.isEmpty && thread.turns.isNotEmpty) {
+        timelineController?.showThread(thread);
+        return;
+      }
+      timelineController?.showThreadItemWindow(
         thread: thread,
         items: page.items.reversed.toList(growable: false),
         olderItemsCursor: page.nextCursor,
