@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dartssh2/dartssh2.dart';
+import 'package:flutter/foundation.dart';
 
 import 'known_host_verifier.dart';
 import 'remote_command_runner.dart';
@@ -118,6 +119,15 @@ class DartSshClientFactory {
         'Private key authentication requires a key.',
       );
     }
-    return SSHKeyPair.fromPem(privateKeyPem, profile.passphrase);
+    return parseSshPrivateKey(privateKeyPem, profile.passphrase);
   }
+}
+
+@visibleForTesting
+List<SSHKeyPair> parseSshPrivateKey(
+  String privateKeyPem,
+  String? passphrase,
+) {
+  final normalizedPassphrase = passphrase?.isEmpty == true ? null : passphrase;
+  return SSHKeyPair.fromPem(privateKeyPem, normalizedPassphrase);
 }
